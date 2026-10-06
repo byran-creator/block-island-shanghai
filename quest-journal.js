@@ -1,0 +1,12 @@
+import {CITY_QUESTS,CityQuestState} from './city-quests.js';
+import {BLOCKS} from './world.js';
+export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},canOpen=()=>true}){
+ const $=id=>document.getElementById(id),state=new CityQuestState();let panel=false;
+ const rewards=r=>[...Object.entries(r.blocks??{}).map(([id,n])=>BLOCKS[id].name+' ×'+n),r.food&&'食物 ×'+r.food,r.wool&&'羊毛 ×'+r.wool,r.pearls&&'珍珠 ×'+r.pearls].filter(Boolean).join(' · ');
+ function render(){const done=CITY_QUESTS.filter(q=>state.done(q.id)).length,ready=CITY_QUESTS.filter(q=>state.done(q.id)&&!state.claimed.has(q.id)).length;$('task-count').textContent=done+' / '+CITY_QUESTS.length;$('task-summary').textContent='已完成 '+done+' / '+CITY_QUESTS.length+' · 待领取 '+ready+' 项';$('task-open').textContent='I 城市任务 '+done+'/'+CITY_QUESTS.length+(ready?' · '+ready+'项奖励':'');$('task-list').replaceChildren();for(const q of CITY_QUESTS){const row=document.createElement('article');row.className='task-card'+(state.done(q.id)?' done':'');const title=document.createElement('h3');title.textContent=q.title;const desc=document.createElement('p');desc.textContent=q.description;const reward=document.createElement('p');reward.className='task-reward';reward.textContent='奖励：'+rewards(q.reward);const status=document.createElement('span');status.textContent=Math.min(q.target,state.progress[q.id]??0)+' / '+q.target;const button=document.createElement('button');button.textContent=state.claimed.has(q.id)?'已领取':state.done(q.id)?'领取奖励':'进行中';button.disabled=!state.done(q.id)||state.claimed.has(q.id);button.onclick=()=>{const r=state.claim(q.id);if(!r)return;grant(r);render();onProgress();notify('已领取「'+q.title+'」奖励：'+rewards(r));};row.append(title,desc,reward,status,button);$('task-list').appendChild(row);}}
+ function changed(ok){if(!ok)return;render();onProgress();}
+ function close(){if(!panel)return;panel=false;$('tasks-dialog').close();resume();}
+ function open(){if(panel){close();return;}if(!canOpen())return;pause();panel=true;render();$('tasks-dialog').showModal();}
+ $('task-open').onclick=open;$('tasks-close').onclick=close;$('tasks-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});render();
+ return {state,open,close,isPanelOpen:()=>panel,record:e=>changed(state.record(e)),setBuildCount:n=>changed(state.set('build',n)),serialize:()=>state.serialize(),restore:(d,legacy)=>{state.restore(d,legacy);render();}};
+}
