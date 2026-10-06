@@ -1,3 +1,4 @@
+import {createChunkMesher,createChunkQueue} from './chunk-work.js';
 import {createQuestJournal} from './quest-journal.js';
 import {mountVoiceSettings} from './voice-settings.js';
 import * as THREE from './three.module.js';
@@ -61,35 +62,21 @@ for(let tile=0;tile<14;tile++){
 const atlas=new THREE.CanvasTexture(atlasCanvas);atlas.magFilter=THREE.NearestFilter;atlas.minFilter=THREE.NearestFilter;atlas.colorSpace=THREE.SRGBColorSpace;
 const terrainMaterial=new THREE.MeshLambertMaterial({map:atlas,vertexColors:true});
 const chunks=new Map();
-const faces=[
- {d:[1,0,0],v:[[1,0,1],[1,0,0],[1,1,0],[1,1,1]],light:.83},
- {d:[-1,0,0],v:[[0,0,0],[0,0,1],[0,1,1],[0,1,0]],light:.73},
- {d:[0,1,0],v:[[0,1,1],[1,1,1],[1,1,0],[0,1,0]],light:1},
- {d:[0,-1,0],v:[[0,0,0],[1,0,0],[1,0,1],[0,0,1]],light:.58},
- {d:[0,0,1],v:[[0,0,1],[1,0,1],[1,1,1],[0,1,1]],light:.9},
- {d:[0,0,-1],v:[[1,0,0],[0,0,0],[0,1,0],[1,1,0]],light:.8}
-];
+function chunkTask(key){const [cx,cz]=key.split(',').map(Number);return createChunkMesher({world,cx,cz,chunk:CHUNK,height:HEIGHT,skip:(x,y,z,id)=>id===9&&nanpuDeckCell(x,y,z)});}
+const chunkWork=createChunkQueue({has:key=>chunks.has(key),create:chunkTask,commit:(key,data)=>installChunk(key,data)});
 function rebuild(cx,cz){
  if(cx<WORLD_MIN/CHUNK||cz<WORLD_MIN/CHUNK||cx>=WORLD_MAX/CHUNK||cz>=WORLD_MAX/CHUNK)return;
- const key=cx+','+cz,old=chunks.get(key);if(old){scene.remove(old);old.geometry.dispose();}
- const p=[],norm=[],uv=[],col=[],indices=[];
- for(let x=cx*CHUNK;x<(cx+1)*CHUNK;x++)for(let z=cz*CHUNK;z<(cz+1)*CHUNK;z++)for(let y=0;y<HEIGHT;y++){
-  const id=world.get(x,y,z);if(!id||id===9&&nanpuDeckCell(x,y,z))continue;
-  for(const f of faces){if(world.get(x+f.d[0],y+f.d[1],z+f.d[2]))continue;
-   let tile=id-1;if(id===1)tile=f.d[1]===1?0:f.d[1]===-1?1:8;if(id===4&&f.d[1]!==0)tile=9;
-   if(id>=9)tile=id+1;
-   const start=p.length/3;
-   for(let i=0;i<4;i++){const v=f.v[i];p.push(x+v[0],y+v[1],z+v[2]);norm.push(...f.d);col.push(f.light,f.light,f.light);const u=(i===1||i===2)?1:0,vv=i>=2?1:0;uv.push((tile+(.025+u*.95))/14,.025+vv*.95);}
-   indices.push(start,start+1,start+2,start,start+2,start+3);
-  }
- }
- const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(norm,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));geo.setIndex(indices);geo.computeBoundingSphere();
- const mesh=new THREE.Mesh(geo,terrainMaterial);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;scene.add(mesh);chunks.set(key,mesh);
+ const key=cx+','+cz;chunkWork.cancel(key);const task=chunkTask(key);while(!task.step(256)){}installChunk(key,task.data);
 }
-function ensureChunks(point,force=false){const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();for(let x=cx-5;x<=cx+5;x++)for(let z=cz-5;z<=cz+5;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<260)for(let x=Math.floor((p.x-12)/CHUNK);x<=Math.floor((p.x+12)/CHUNK);x++)for(let z=Math.floor((p.z-13)/CHUNK);z<=Math.floor((p.z+13)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<180)for(let x=7;x<=8;x++)for(let z=1;z<=3;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<275)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<245){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}for(const [key,mesh] of chunks)if(!needed.has(key)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}for(const key of needed)if(force||!chunks.has(key))rebuild(...key.split(',').map(Number));}
+function installChunk(key,{p,norm,uv,col,indices}){
+ const [cx,cz]=key.split(',').map(Number),old=chunks.get(key);
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(norm,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));geo.setIndex(indices);geo.computeBoundingSphere();
+ const mesh=new THREE.Mesh(geo,terrainMaterial);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;if(old){scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);
+}
+function ensureChunks(point,force=false,immediate=false){const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();for(let x=cx-5;x<=cx+5;x++)for(let z=cz-5;z<=cz+5;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<260)for(let x=Math.floor((p.x-12)/CHUNK);x<=Math.floor((p.x+12)/CHUNK);x++)for(let z=Math.floor((p.z-13)/CHUNK);z<=Math.floor((p.z+13)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<180)for(let x=7;x<=8;x++)for(let z=1;z<=3;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<275)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<245){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}for(const [key,mesh] of chunks)if(!needed.has(key)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}chunkWork.setDesired(needed,point,CHUNK,force);if(immediate)for(const key of needed)if(force||!chunks.has(key))rebuild(...key.split(',').map(Number));}
 await new Promise(requestAnimationFrame);
-ensureChunks(LANDMARKS.bund);
-function updateBlock(x,y,z,id){world.set(x,y,z,id);savedEdits.set(`${x},${y},${z}`,id);const affected=new Set([[x,z],[x-1,z],[x+1,z],[x,z-1],[x,z+1]].map(([a,b])=>Math.floor(a/CHUNK)+','+Math.floor(b/CHUNK)));for(const key of affected)if(chunks.has(key))rebuild(...key.split(',').map(Number));}
+ensureChunks(LANDMARKS.bund,false,true);
+function updateBlock(x,y,z,id){world.set(x,y,z,id);savedEdits.set(`${x},${y},${z}`,id);const affected=new Set([[x,z],[x-1,z],[x+1,z],[x,z-1],[x,z+1]].map(([a,b])=>Math.floor(a/CHUNK)+','+Math.floor(b/CHUNK)));for(const key of affected){chunkWork.invalidate(key);if(chunks.has(key))rebuild(...key.split(',').map(Number));}}
 const water=new THREE.Mesh(new THREE.PlaneGeometry(SIZE*1.4,SIZE*1.4,16,16),new THREE.MeshPhongMaterial({color:'#3daabe',transparent:true,opacity:.67,shininess:90,depthWrite:false,side:THREE.DoubleSide}));water.rotation.x=-Math.PI/2;water.position.set((WORLD_MIN+WORLD_MAX)/2,WATER_LEVEL,(WORLD_MIN+WORLD_MAX)/2);scene.add(water);scene.userData.water=water;
 const {clouds,cloudMat}=createClouds();scene.add(clouds);
 const sunBlock=new THREE.Mesh(new THREE.SphereGeometry(7,32,20),new THREE.MeshBasicMaterial({color:'#fff8ce'}));sunBlock.position.set(-12,43,-20);scene.add(sunBlock);
@@ -192,7 +179,7 @@ let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0;
 function frame(now){
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}npcGuides?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled});
- if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
+ if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(3);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
   camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);outline.visible=!!target;if(target)outline.position.set(target.x+.5,target.y+.5,target.z+.5);
   if((mouseHeld!==-1||keys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
   hudTime+=dt;if(hudTime>.15){$('coordinates').textContent=`X ${(pos.x-40).toFixed(1)} · Y ${pos.y.toFixed(1)} · Z ${(pos.z-40).toFixed(1)}`;$('target').textContent=target?BLOCKS[target.id].name:'';const nearby=companions.nearest(pos,camera);$('npc-prompt').classList.toggle('visible',!!nearby);$('npc-prompt').textContent=nearby?`奶龙 · G 打招呼 / 跳舞 · H ${nearby.follow?'停止跟随':'一起散步'}`:'';hudTime=0;}
@@ -273,7 +260,7 @@ function applySave(data){try{
 if(p&&(data.mapRevision||0)<5){migrateCityPoint(p);if(p.y>=25&&p.y<33&&!data.flying&&!data.gliding&&!world.get(Math.floor(p.x),Math.floor(p.y)-1,Math.floor(p.z)))Object.assign(p,LANDMARKS.bund);}
 if(p&&data.mapRevision===5)migrateBundPoint(p);
 if(p&&!data.flying&&!data.gliding&&[44,70].includes(Math.round(p.y))&&Math.abs(p.x-PEARL.x)<12&&Math.abs(p.z-PEARL.z)<12&&!overlaps(world,p.x,p.y-.1,p.z)){const safe=safeLanding(world,p);if(safe)Object.assign(p,safe);}
-if(p&&[p.x,p.y,p.z].every(Number.isFinite)&&p.y<HEIGHT+12&&!overlaps(world,p.x,p.y,p.z))Object.assign(pos,p);else Object.assign(pos,LANDMARKS.village);ensureChunks(pos,true);
+if(p&&[p.x,p.y,p.z].every(Number.isFinite)&&p.y<HEIGHT+12&&!overlaps(world,p.x,p.y,p.z))Object.assign(pos,p);else Object.assign(pos,LANDMARKS.village);ensureChunks(pos,true,true);
  yaw=Number.isFinite(data.yaw)?data.yaw:0;pitch=Number.isFinite(data.pitch)?Math.max(-1.52,Math.min(1.52,data.pitch)):-.08;select(Number.isInteger(data.selected)&&data.selected>0&&data.selected<BLOCKS.length?data.selected:1,false);life.restore(data.version===6?data.life:null);if(data.mapRevision===5){const migrated=life.serialize();for(const f of migrated.furniture)migrateBundPoint(f);if(migrated.home)migrateBundPoint(migrated.home);life.restore(migrated);}if((data.mapRevision||0)<5){const migrated=life.serialize();for(const f of migrated.furniture)movePersonal(f);if(migrated.home)movePersonal(migrated.home);life.restore(migrated);}if((data.mapRevision||0)<4){for(const f of life.state.furniture)if(f.x<=115&&f.z>138&&f.y>=25){const x=Math.floor(f.x),z=Math.floor(f.z),y=Math.floor(f.y)-1;for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)if(!world.get(x+dx,y,z+dz))updateBlock(x+dx,y,z+dz,7);}}if(collides(pos.x,pos.y,pos.z)){const nearby=[{x:pos.x+1.5,y:pos.y,z:pos.z},{x:pos.x-1.5,y:pos.y,z:pos.z},{x:pos.x,y:pos.y+2,z:pos.z}].find(p=>!collides(p.x,p.y,p.z));teleport(nearby||LANDMARKS.village);}setFlight(!!data.flying);gliding=!!data.gliding&&life.state.glider&&!flying;restaurant.restore(data.restaurant);privateSuites.restore(data.suites);activity.restore(data.activity);skyline.restore(data.skyline);weather.restore(data.weather);$('weather-choice').value=weather.state.mode;timeOptions=clockOptions(data.timeOptions);dayClock=Number.isFinite(data.dayClock)?Math.max(0,data.dayClock)%240:36;mined=Math.max(0,Number(data.mined)||0);placed=Math.max(0,Number(data.placed)||0);adventure.restore(data.adventure);talkDone=!!data.talkDone;followDone=!!data.followDone;celebrated=!!data.celebrated;quests.restore(data.quests,{talkDone,placed});if(adventure.state.race){gliding=false;teleport(courseById(adventure.state.race.course).platforms[adventure.state.race.checkpoint]);setFlight(false)}updateTasks();started=true;enter();notify(shift?'旧存档已迁移到新群岛，你的建筑仍然保留。':'已读取存档，欢迎回到你的小岛。');
  }catch{notify('未能读取存档，当前游戏仍然可以继续。');throw new Error('存档格式不正确');}}
 function lookTowards(point){const dx=point.x-pos.x,dz=point.z-pos.z; yaw=Math.atan2(-dx,-dz);pitch=Math.atan2(point.y-pos.y-1.62,Math.hypot(dx,dz));camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();}
