@@ -2,7 +2,7 @@ import * as THREE from './three.module.js';
 import {BUND_STREETS,roadX,westSpine,CAR_ROUTES,roadContains} from './city-layout.js';
 import {vehicleContact} from './vehicle-dynamics.js';
 import {nanpuFloor} from './bridge-road.js';
-import {planTrafficDetour} from './traffic-detour.js';
+import {createTrafficDetour} from './traffic-detour.js';
 import {createJunctionControl} from './traffic-junctions.js';
 
 // Photo-inspired street furniture; phases and bus routes use the game's compressed scale.
@@ -88,9 +88,24 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  function shiftLane(c,target,step,obstacles){const before=c.lane;c.lane+=THREE.MathUtils.clamp(target-before,-step*.85,step*.85);const at=pose(c,c.t);if(!worldClear(c,at)||[...agents,...obstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o))){c.lane=before;return false;}setPose(c,at);return true;}
  for(const c of agents){c.baseLane=c.lane;if(c.kind==='delivery'){for(let i=0;i<100&&!junctions.spawnClear(pose(c,c.deliveryD));i++)c.deliveryD=(c.deliveryD+4)%c.route.lengthMeters;}}
  function detourClear(c,p,obstacles){return junctions.permits(c,p)&&(c.route===outer?p.x>120:p.x<100&&Math.abs(p.z-66)>5)&&!!world.get(Math.floor(p.x),25,Math.floor(p.z))&&worldClear(c,p)&&![...agents,...obstacles].some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o));}
+ const detourJobs=new Map();let detourObstacles=[];
+ function requestDetour(c){if(!detourJobs.has(c))detourJobs.set(c,{start:{x:c.root.position.x,y:c.root.position.y,z:c.root.position.z},index:0,search:null});}
+ function processDetours(){
+  if(!detourJobs.size)return;detourObstacles=getObstacles().filter(o=>!o.root.userData.piloted);const start=performance.now();
+  do{
+   const [c,job]=detourJobs.entries().next().value;detourJobs.delete(c);
+   if(c.waitTime<3||Math.hypot(c.root.position.x-job.start.x,c.root.position.z-job.start.z)>.75)continue;
+   if(!job.search){
+    if(job.index===4)continue;const distance=[12,18,24,32][job.index++];job.targetT=(c.t+c.dir*distance+c.route.lengthMeters)%c.route.lengthMeters;const goal=routePose(c.route,job.targetT,c.baseLane);goal.x+=.5;goal.z+=.5;
+    if(detourClear(c,goal,detourObstacles))job.search=createTrafficDetour(job.start,goal,p=>detourClear(c,p,detourObstacles));
+   }
+   if(job.search?.step(1)){if(job.search.path){c.detour={path:job.search.path,targetT:job.targetT};continue;}job.search=null;}
+   detourJobs.set(c,job);
+  }while(detourJobs.size&&performance.now()-start<2);
+ }
  function followDetour(c,step,obstacles){c.following=null;let travel=0,remaining=Math.min(c.speed,1.8)*step;while(remaining>1e-8&&c.detour.path.length){const target=c.detour.path[0],p=c.root.position,d=Math.hypot(target.x-p.x,target.z-p.z),length=Math.min(d,remaining,.12),yaw=d>.001?Math.atan2(target.x-p.x,target.z-p.z)+Math.PI:c.root.rotation.y;if(d<.001){c.detour.path.shift();continue;}const at={x:p.x+(target.x-p.x)/d*length,y:p.y,z:p.z+(target.z-p.z)/d*length,yaw};if(!detourClear(c,at,obstacles)){c.following=agents.find(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o))??null;break;}setPose(c,at);travel+=length;remaining-=length;if(d<=length+.001)c.detour.path.shift();}
   c.travelSpeed=travel/step;c.waitReason=travel?'':'obstacle';c.waitTime=travel?0:c.waitTime+step;for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
-  if(!c.detour.path.length){c.t=c.detour.targetT;c.lane=c.baseLane;delete c.detour;delete c.avoidLane;c.progressSinceWait=0;}else if(c.waitTime>3){c.detour.recheck=(c.detour.recheck??0)-step;if(c.detour.recheck<=0){c.detour.recheck=4;for(const distance of [12,18,24,32]){const targetT=(c.t+c.dir*distance+c.route.lengthMeters)%c.route.lengthMeters,goal=routePose(c.route,targetT,c.baseLane);goal.x+=.5;goal.z+=.5;if(!detourClear(c,goal,obstacles))continue;const path=planTrafficDetour(c.root.position,goal,p=>detourClear(c,p,obstacles));if(path){c.detour={path,targetT};break;}}}}
+  if(!c.detour.path.length){c.t=c.detour.targetT;c.lane=c.baseLane;delete c.detour;delete c.avoidLane;c.progressSinceWait=0;}else if(c.waitTime>3){c.detour.recheck=(c.detour.recheck??0)-step;if(c.detour.recheck<=0){c.detour.recheck=4;requestDetour(c);}}
  }
  function reverseYield(c,step,obstacles){const state=c.yielding;state.age+=step;c.currentSpeed=0;c.travelSpeed=0;c.following=null;c.waitReason='yield';
   // Keep the wheels straight while backing out. Rewinding a tightly curved
@@ -112,7 +127,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
    c.detourCooldown=Math.max(0,(c.detourCooldown??0)-step);
    if(['delivery','bicycle'].includes(c.kind)&&c.waitTime>6&&!c.detourCooldown&&['obstacle','traffic'].includes(c.waitReason)){
     const red=(c.crossings??[]).some(cross=>signalPhase(clock,cross.signal.offset)[cross.axis]!=='green'&&Math.abs(forwardDistance(c.t,cross.d,c.route.lengthMeters,c.dir)-6-c.halfLength)<1);
-    if(!red){c.detourCooldown=8;for(const distance of [12,18,24,32]){const targetT=(c.t+c.dir*distance+c.route.lengthMeters)%c.route.lengthMeters,goal=routePose(c.route,targetT,c.baseLane);goal.x+=.5;goal.z+=.5;if(!detourClear(c,goal,obstacles))continue;const path=planTrafficDetour(c.root.position,goal,p=>detourClear(c,p,obstacles));if(path){c.detour={path,targetT};break;}}if(c.detour){followDetour(c,step,obstacles);continue;}}
+    if(!red){c.detourCooldown=8;requestDetour(c);if(c.detour){followDetour(c,step,obstacles);continue;}}
    }
    if(['delivery','bicycle'].includes(c.kind)){
     const stopAhead=c.kind==='delivery'&&!c.deliveryCooldown&&forwardDistance(c.t,c.deliveryD,c.route.lengthMeters,c.dir)<4;
@@ -136,7 +151,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
    const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||[...agents,...obstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o)))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
   }first=(first+1)%agents.length;
  }
- function tick(dt,{night=false,rain=0}={}){let remaining=dt;const travelled=new Map(agents.map(c=>[c,0]));while(remaining>1e-8){const step=Math.min(remaining,1/30);remaining-=step;advance(step);for(const c of agents)travelled.set(c,travelled.get(c)+c.travelSpeed*step);}if(dt>0)for(const c of agents)c.travelSpeed=travelled.get(c)/dt;for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
+ function tick(dt,{night=false,rain=0}={}){if(dt>0)processDetours();let remaining=dt;const travelled=new Map(agents.map(c=>[c,0]));while(remaining>1e-8){const step=Math.min(remaining,1/30);remaining-=step;advance(step);for(const c of agents)travelled.set(c,travelled.get(c)+c.travelSpeed*step);}if(dt>0)for(const c of agents)c.travelSpeed=travelled.get(c)/dt;for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
   for(const c of agents)for(const light of c.lights??[])light.visible=night||rain>.2;
   for(const o of officers){o.arm.rotation.x=signalPhase(clock,o.signal.offset).ns==='green'?-Math.PI/2:-.15;o.root.rotation.y=Math.PI/2;}
  }
