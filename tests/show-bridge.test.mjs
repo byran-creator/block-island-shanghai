@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../game/three.module.js';
+import {VoxelWorld,overlaps} from '../game/world.js';
+import {ALL_BUILDINGS} from '../game/city-layout.js';
+import {BRIDGES,inRiver} from '../game/shanghai-map.js';
+import {createBund} from '../game/bund.js';
+import {createCommute} from '../game/commute.js';
+import {nanpuFloor,nanpuSurfaceAt} from '../game/bridge-road.js';
+import {fireworksScore,createHarbourFireworks,FIREWORK_BARGES} from '../game/harbour-fireworks.js';
+import {showCue} from '../game/show-cues.js';
+import {beamCue,createLujiazuiShow} from '../game/lujiazui-show.js';
+import {SHOW_VIEW} from '../game/drone-show.js';
+const score=fireworksScore();assert(score.length>50);assert.equal(new Set(score.map(c=>c.barge)).size,3);assert(new Set(score.map(c=>c.kind)).size>=5);assert(score.every((c,i)=>!i||c.time>=score[i-1].time));assert(FIREWORK_BARGES.every(p=>inRiver(p.x,p.z)));
+const fireworks=createHarbourFireworks(new THREE.Scene());fireworks.start();let peak=0;for(let i=0;i<480;i++){fireworks.tick(.1);peak=Math.max(peak,fireworks.particleCount);for(const b of fireworks.batches){assert(b.geometry.drawRange.count<=b.geometry.index.count);const used=b.geometry.drawRange.count/6*4;for(let v=0;v<used*3;v++)assert(Number.isFinite(b.positions[v]),'Every active trail vertex must remain finite');}}assert(peak>800&&peak<=4200);assert.equal(fireworks.particleCount,0);assert.equal(fireworks.shellCount,0);fireworks.start();assert.equal(fireworks.particleCount,0,'Replay clears old trails');
+const strengths=Array.from({length:120},(_,i)=>beamCue(i/100,0).strength);assert(Math.max(...strengths)>.95&&Math.min(...strengths)<.04,'Searchlights need distinct bright and dark intervals');assert.notEqual(beamCue(.3,0).strength,beamCue(.3,1).strength);
+const lights=createLujiazuiShow(new THREE.Scene());lights.tick(0,{active:true,time:16});assert(lights.beams.length>=16);assert(lights.beams.every(b=>b.cone.scale.y>=170&&b.rays.length===3));assert(lights.beams.every(b=>Math.abs(b.cone.material.color.getHSL({}).h-showCue(16).hue)<.001));lights.tick(0,{active:false});assert(lights.beams.every(b=>b.rays.every(r=>!r.visible)));
+const world=new VoxelWorld(),nanpu=BRIDGES.find(b=>b.id==='nanpu');assert(ALL_BUILDINGS.every(b=>!nanpu.samples.some(p=>Math.abs(p.x-b.x)<=b.rx+nanpu.width+2&&Math.abs(p.z-b.z)<=b.rz+nanpu.width+2)),'No building shell or facade may occupy the bridge clearance');
+assert(!overlaps(world,SHOW_VIEW.x,SHOW_VIEW.y,SHOW_VIEW.z)&&overlaps(world,SHOW_VIEW.x,SHOW_VIEW.y-.1,SHOW_VIEW.z),'The show viewpoint must have safe support');assert(!ALL_BUILDINGS.some(b=>Math.abs(SHOW_VIEW.x-b.x)<=b.rx+2&&Math.abs(SHOW_VIEW.z-b.z)<=b.rz+2),'Keep the show camera outside waterfront roof overhangs');
+let pos={x:136.5,y:26,z:208.05};const commute=createCommute({scene:new THREE.Scene(),world,civil:{traffic:{buses:[]}},activity:{heli:new THREE.Group()},getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z),place:p=>Object.assign(pos,p),setView(){},turnView(){},notify(){}});
+const car=commute.vehicles.find(v=>v.kind==='car');
+for(const east of [true,false]){car.root.position.set(east?136.5:281.5,26,208.05);car.root.rotation.y=east?-Math.PI/2:Math.PI/2;car.speed=0;commute.mount(car);let last=26;for(let i=0;i<1600;i++){commute.tick(1/60,new Set(['KeyW','Digit3']));assert(Math.abs(car.root.position.y-last)<.1,'Driving height must change smoothly instead of jumping a block');last=car.root.position.y;const h=nanpuFloor(world,car.root.position.x,car.root.position.z);if(h!==null)assert(Math.abs(car.root.position.y-h)<.0001);if(east?car.root.position.x>=281:car.root.position.x<=137)break;}assert(east?car.root.position.x>=281:car.root.position.x<=137,'Car must cross both bridge ramps without getting stuck');commute.end(true);}
+const oldDocument=globalThis.document;const context={fillRect(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}};globalThis.document={createElement:()=>({getContext:()=>context})};
+try{const city=createBund({scene:new THREE.Scene(),world,getPos:()=>({x:-200,y:26,z:-150})});const bridgeCars=city.cars.filter(c=>c.kind==='bridge');assert.equal(bridgeCars.length,12);assert(bridgeCars.filter(c=>nanpuFloor(world,c.root.position.x,c.root.position.z)>27).length>=3,'Traffic should already be visible on the span');const starts=bridgeCars.map(c=>c.t);city.tick(2,{night:true,festival:true,showTime:16});assert(bridgeCars.some((c,i)=>c.t!==starts[i]));assert(city.skylineLEDs.length>0&&city.skylineLEDs.every(m=>m.visible));assert(city.skylineLEDs.every(m=>Math.abs(m.material.color.getHSL({}).h-showCue(16).hue)<.001));city.tick(0,{night:false});assert(city.skylineLEDs.every(m=>!m.visible));}finally{globalThis.document=oldDocument;}
+assert.equal(nanpuSurfaceAt(223.5,206.5),31);assert.equal(nanpuSurfaceAt(275.5,206.5),26);
+console.log('PASS: multi-barge layered firework score, bounded reusable trails/replay, broad rhythmic synchronized beams/LEDs, clear bridge corridor, smooth bidirectional player driving and active bridge traffic.');

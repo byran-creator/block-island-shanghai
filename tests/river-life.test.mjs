@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../game/three.module.js';
+import {VoxelWorld,overlaps,trace} from '../game/world.js';
+import {PRIVATE_SUITES,suiteArrival} from '../game/private-suite-layout.js';
+import {createPrivateSuites} from '../game/private-suites.js';
+import {ferryPosition} from '../game/city-activity.js';
+import {createBuildingResidents} from '../game/building-residents.js';
+import {TRAVEL_POINTS,safeLanding} from '../game/map-travel.js';
+import {boatSurfaces,boatSupport,boatSolid,boatLocal,boatWorld} from '../game/boat-support.js';
+const world=new VoxelWorld();
+for(let y=35;y<=106;y++)assert(world.get(126,y,42),'Pearl stem must remain continuous through both spheres and capsule at '+y);
+for(const s of PRIVATE_SUITES){const p=suiteArrival(s);assert(!overlaps(world,p.x,p.y,p.z));assert(overlaps(world,p.x,p.y-.1,p.z));assert(TRAVEL_POINTS.some(p=>p.id===s.id));assert(safeLanding(world,p));assert(!overlaps(world,s.lobby.x,26,s.lobby.z),'Suite lobby must be reachable');const dx=s.target.x-p.x,dy=s.target.y-p.y-1.62,dz=s.target.z-p.z,n=Math.hypot(dx,dy,dz);assert(!trace(world,{x:p.x,y:p.y+1.62,z:p.z},{x:dx/n,y:dy/n,z:dz/n},s.rx+2),'Window must reveal real skyline');}
+for(let t=0;t<94;t+=.2){const f=ferryPosition(t),p=boatWorld({position:f,rotation:{y:f.yaw}},{x:0,z:1.8});assert(!overlaps(world,p.x,24.64,p.z),'Both ferry directions need shore clearance at '+t);}
+const residents=createBuildingResidents({scene:new THREE.Scene(),world,getPos:()=>({x:0,y:26,z:90})});assert(residents.people.filter(p=>p.bank==='west').length>=5&&residents.people.filter(p=>p.bank==='east').length>=5);const seen=new Map(residents.people.map(p=>[p,new Set()]));for(let i=0;i<700;i++){residents.tick(.5);for(const p of residents.people){assert(!overlaps(world,p.root.position.x,26,p.root.position.z),'Residents must walk through doors without clipping');seen.get(p).add(p.state);}}assert([...seen.values()].every(states=>states.size===4),'Every resident must leave, spend time outside and return');
+const ferry=new THREE.Group();ferry.position.set(40,22.3,60);const surfaces=boatSurfaces(ferry);
+for(const angle of [0,.6,Math.PI]){ferry.rotation.y=angle;const p=boatWorld(ferry,{x:0,z:1.8}),local=boatLocal(ferry,p.x,p.z);assert(Math.abs(local.z-1.8)<1e-8);assert(!boatSolid(surfaces,p.x,24.64,p.z));assert(boatSolid(surfaces,p.x,24.5,p.z));assert.equal(boatSupport(surfaces,p.x,24.7,p.z)?.y,24.64);assert(!boatSupport(surfaces,p.x+15,24.7,p.z));}
+const oldDocument=globalThis.document;globalThis.document={body:{append(){}},createElement:()=>({getContext:()=>({fillRect(){},fillText(){}})})};
+try{let p=suiteArrival(PRIVATE_SUITES[0]),rests=0;const state={health:3,hunger:4,oxygen:0,maxOxygen:40,home:{x:130,y:26,z:309}},home=state.home;const suites=createPrivateSuites({scene:new THREE.Scene(),getPos:()=>p,getState:()=>state,teleport:q=>p={...q},lookAt(){},notify(){},setDay:()=>rests++,onProgress(){}});for(const s of PRIVATE_SUITES){p=suiteArrival(s);assert(!suites.collides(p.x,p.y,p.z),'Arrival must avoid furniture');p={...s.lobby};assert(suites.use());assert.equal(p.y,s.y);p={x:s.x+.5-s.view*(s.rx-1.7)+s.view*1.8,y:s.y,z:s.z+.5-s.rz+2};assert(suites.use());assert.equal(state.health,20);assert.equal(state.home,home,'Existing home is retained');}assert.equal(rests,2);const s=PRIVATE_SUITES.find(s=>s.balcony);for(let x=s.x+.5;x>s.x-s.rx-.8;x-=.1){assert(!overlaps(world,x,s.y,s.z+.5));assert(!suites.collides(x,s.y,s.z+.5),'Balcony door needs a clear central aisle');assert(overlaps(world,x,s.y-.1,s.z+.5));}assert(suites.collides(s.x+.5-s.rx-1.9,s.y,s.z+.5),'Balcony rail must stop a walking player');}finally{globalThis.document=oldDocument;}
+console.log('PASS: continuous Pearl support, solid rotating decks, two physical river-view suites, safe arrival/lobby/map travel, rest without overwriting home.');

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {creatureStep} from '../game/creature-movement.js';
+import {chooseVoice,voicePreferences,setVoicePreference} from '../game/voice-settings.js';
+const settings={ground:()=>26,bounds:{min:-100,max:100},water:23,blocked:(x,y,z)=>x>=2&&x<=2.1&&Math.abs(z)<3};
+const p={x:0,y:26,z:0};creatureStep(p,5,2,-Math.PI/2,settings);assert(p.x<2,'A slow frame must not tunnel through a thin model wall');
+creatureStep(p,1,2,-Math.PI/4,settings);assert(Math.abs(p.z)>1,'Creature should slide beside a wall');assert(p.x<2);
+const high={x:0,y:26,z:0};creatureStep(high,5,2,-Math.PI/2,{...settings,blocked:(x,y)=>x>=2&&y>26.1});assert(high.x<2,'Head clearance must block a low overhang');
+const memory=new Map(),storage={getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v)},voices=[{name:'旧语音',voiceURI:'old',lang:'zh-CN',localService:true},{name:'Xiaoxiao Natural',voiceURI:'natural',lang:'zh-CN',localService:false}],speech={getVoices:()=>voices};
+assert.equal(chooseVoice(speech,'metro',voicePreferences(storage)).voiceURI,'natural');setVoicePreference('metro','old',storage);assert.equal(chooseVoice(speech,'metro',voicePreferences(storage)).voiceURI,'old');setVoicePreference('captionsOnly',true,storage);assert.equal(chooseVoice(speech,'metro',voicePreferences(storage)),null);assert.equal(chooseVoice({getVoices:()=>[]}),null);
+console.log('PASS: swept enemy wall/head clearance and sliding; natural Chinese voice selection, chosen role, captions and preferences.');
