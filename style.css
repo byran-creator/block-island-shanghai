@@ -14,6 +14,7 @@
 .music-controls select,.weather-controls select{font:inherit;color:#edfadf;background:#23424b;border:1px solid #87aba0;border-radius:6px;padding:7px;max-width:160px}.weather-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:15px;font-size:14px}.weather-controls label{display:flex;gap:8px;align-items:center}.weather-controls span{color:#b9d6c8;font-size:12px}.day-status #weather-status{display:block;margin-top:5px;color:#d2e8e8;font-size:12px}#music-choice{max-width:135px}
 
 .weather-controls button{border:1px solid #87aba0;background:#23424b;color:#edfadf;padding:7px 10px;border-radius:6px;font:inherit;cursor:pointer}.weather-controls button:hover{background:#315b65}
+#weather-pace{max-width:220px}
 
 .mode-entry{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 15px}.mode-entry button{border:1px solid #a4d99b;background:#254743;color:#edffdf;border-radius:9px;padding:11px 15px;font:inherit;font-size:14px;cursor:pointer}.mode-entry button:first-child{background:#bde683;color:#193626}.survival-goal{position:fixed;left:25px;bottom:163px;white-space:pre-line;font-size:14px;line-height:1.8;background:#142e35e8;color:#e0f3be;padding:10px 14px;border:1px solid #8fba8b;border-radius:10px;max-width:330px;pointer-events:none}body.in-menu .survival-goal{display:none}@media(max-width:700px){.survival-goal{left:12px;top:112px;bottom:auto;font-size:12px;max-width:240px;line-height:1.5;padding:7px 10px}}
 
