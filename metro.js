@@ -1,3 +1,7 @@
+import {createMetroSounds} from './metro-sounds.js';
+import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
+import {paintMetroSign} from './metro-sign-paint.js';
+import {METRO_POSTER_SRC,METRO_POSTER_ASPECT} from './metro-poster-art.js';
 import {styleNpc} from './npc-appearance.js';
 import {announcementLines,speakVoiceLines} from './voice-settings.js';
 import {terrazzoTexture,decorateMetroStation} from './metro-decor.js';
@@ -23,50 +27,58 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   for(let i=1;i<xs.length;i++)for(let j=1;j<zs.length;j++){const a=xs[i-1],b=xs[i],c=zs[j-1],d=zs[j],h=metroRampFloor((a+b)/2,(c+d)/2);if(b-a<.001||d-c<.001||h!==null&&y>=h-.25&&y<h+3.8)continue;vertices.push(a,y,c,a,y,d,b,y,c,b,y,c,a,y,d,b,y,d);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));const uv=[];for(let i=0;i<vertices.length;i+=3)uv.push(vertices[i]/2,vertices[i+2]/2);g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));const material=mat(color).clone();material.side=THREE.DoubleSide;const m=new THREE.Mesh(g,material);parent.add(m);return m;
  }
- function board(parent,lines,x,y,z,w,h,color='#c4ef67',bg='#18212a'){
-  const c=document.createElement('canvas');c.width=768;c.height=256;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+ function board(parent,lines,x,y,z,w,h,color='#c4ef67',bg='#18212a',options=null){
+  const c=document.createElement('canvas');c.width=options?1024:768;c.height=256;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
   const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),material=new THREE.MeshBasicMaterial({map:tex});const front=new THREE.Mesh(geometry,material),back=new THREE.Mesh(geometry,material);front.userData.panel=back.userData.panel=true;front.position.z=.012;back.position.z=-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);parent.add(m);
-  const paint=text=>{ctx.fillStyle=bg;ctx.fillRect(0,0,768,256);ctx.fillStyle=color;ctx.textAlign='center';text.forEach((line,i)=>{ctx.font=`${i===0?'bold ':''}${text.length>2?48:64}px sans-serif`;ctx.fillText(line,384,55+i*(text.length>2?68:110),746);});tex.needsUpdate=true;};paint(lines);return {mesh:m,paint};
+  const paint=text=>{if(options){paintMetroSign(ctx,text,{...options,width:c.width,height:c.height,color,bg});tex.needsUpdate=true;return;}ctx.fillStyle=bg;ctx.fillRect(0,0,768,256);ctx.fillStyle=color;ctx.textAlign='center';text.forEach((line,i)=>{ctx.font=`${i===0?'bold ':''}${text.length>2?48:64}px sans-serif`;ctx.fillText(line,384,55+i*(text.length>2?68:110),746);});tex.needsUpdate=true;};paint(lines);return {mesh:m,paint};
  }
  function person(parent,index,x,y,z,uniform){const r=new THREE.Group();r.position.set(x,y,z);parent.add(r);const shirt=uniform??['#a98ad3','#dde8eb','#dd9d72','#799cc4','#789f91'][index%5];cube(r,shirt,0,1.04,0,.42,.65,.29);cube(r,'#dcb08d',0,1.55,0,.34,.35,.33);cube(r,'#302b30',0,1.76,0,.35,.08,.34);for(const side of [-1,1]){cube(r,shirt,side*.29,1.04,0,.14,.56,.19);cube(r,'#344053',side*.12,.39,0,.17,.74,.22);}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms:[r.children[3],r.children[5]],legs:[r.children[4],r.children[6]]},index,uniform?'staff':'visitor');return r;}
- function chime(){if(!audioAllowed||!getSound())return;try{const ctx=getAudio();ctx.resume()?.catch?.(()=>{});[659,784,523].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime+i*.19;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.035,t+.025);g.gain.exponentialRampToValueAtTime(.0001,t+.32);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.34);});}catch{}}
- function announce(text,english){const speech=globalThis.speechSynthesis,lines=announcementLines(speech,'metro',text,english);caption.textContent='2号线广播 · '+lines.map(line=>line.text).join(' / ');caption.hidden=false;subtitleTime=8;if(!audioAllowed||!getSound())return;chime();try{if(speech?.speaking||speech?.pending)return;ownSpeech=speakVoiceLines(speech,globalThis.SpeechSynthesisUtterance,lines,{onEnd:()=>ownSpeech=false})>0;}catch{ownSpeech=false;}}
- function suspend(){audioAllowed=false;if(ownSpeech){globalThis.speechSynthesis?.cancel();ownSpeech=false;}}
+ const sounds=createMetroSounds({getAudio,allowed:()=>audioAllowed&&getSound()&&!document.hidden});
+ function announce(text,english,{cue='station',speaker='2号线广播'}={}){const speech=globalThis.speechSynthesis,lines=announcementLines(speech,'metro',text,english);caption.textContent=speaker+' · '+lines.map(line=>line.text).join(' / ');caption.hidden=false;subtitleTime=8;if(!audioAllowed||!getSound())return;sounds.play(cue);try{if(speech?.speaking||speech?.pending)return;ownSpeech=speakVoiceLines(speech,globalThis.SpeechSynthesisUtterance,lines,{onEnd:()=>ownSpeech=false})>0;}catch{ownSpeech=false;}}
+ function suspend(){audioAllowed=false;sounds.suspend();if(ownSpeech){globalThis.speechSynthesis?.cancel();ownSpeech=false;}}
+ function stationSign(lines,x,y,z,w,h,options={}){const a=board(root,lines,x,y,z,w,h,'#f4f7f4','#192123',options);a.mesh.rotation.y=options.yaw??0;a.mesh.userData.stationSign={y,height:h};cube(a.mesh,'#252e30',0,0,0,w,h,.009);for(const side of [-1,1])cube(a.mesh,'#687273',side*w*.36,h/2+.23,0,.035,.46,.035);return a;}
+ const posterTexture=new THREE.Texture();posterTexture.colorSpace=THREE.SRGBColorSpace;posterTexture.minFilter=THREE.LinearMipmapLinearFilter;posterTexture.magFilter=THREE.LinearFilter;posterTexture.anisotropy=4;
+ if(typeof Image!=='undefined'){const art=new Image();art.onload=()=>{posterTexture.image=art;posterTexture.needsUpdate=true;};art.src=METRO_POSTER_SRC;}
+ const posterMaterial=new THREE.MeshBasicMaterial({map:posterTexture});
  for(const s of METRO_STATIONS){
-  const state={...s,checked:false,paid:false,gate:0,lastSecond:-1,doors:[],people:[],screens:[]};stations.push(state);
+  const state={...s,fixtures:metroFixtures(s),checked:false,paid:false,gate:0,lastSecond:-1,doors:[],people:[],screens:[]};stations.push(state);
   // Gray tile floors, dark slatted ceilings, linear white lamps and station color columns.
   for(const y of [16,6]){const half=y===16?14:5,top=y===16?5.5:4.8,columnZ=y===16?s.z-11:s.z-.4;const floor=slab(root,'#ffffff',s.x,y+.005,s.z,70,half*2);floor.material.map=tileTexture;slab(root,'#1e252d',s.x,y+top,s.z,70,y===16?30:23);for(let x=-32;x<34;x+=3)slab(root,'#afb4b3',s.x+x,y+.01,s.z,.025,half*2);for(let z=-half;z<half;z+=3)slab(root,'#afb4b3',s.x,y+.01,s.z+z,70,.025);for(let x=-32;x<=32;x+=4){slab(root,'#39434a',s.x+x,y+top-.15,s.z,.5,half*2);slab(root,'#f5ffff',s.x+x,y+top-.3,s.z,2.8,.2);}for(let x=-28;x<=28;x+=14){cube(root,s.color,s.x+x,y+2.3,columnZ,.85,4.6,.85);board(root,[s.name,'2号线 · Line 2'],s.x+x,y+2.6,columnZ+.44,2.6,1.1,'#18212a',s.color);}}
   for(const side of [-1,1]){cube(root,'#d8dede',s.x,6.7,s.z+side*11.75,70,7.1,.06);cube(root,'#315144',s.x,9.8,s.z+side*11.7,70,.45,.07);cube(root,'#d8dede',s.x,18.8,s.z+side*15.9,70,5.5,.06);}
-  board(root,['2 南京东路  →  陆家嘴','本站 '+s.name+'  |  安检 → 闸机 → B2站台'],s.x,19.8,s.z-14.85,30,2.1);
+  stationSign([s.name+'  南京东路 ↔ 陆家嘴',s.english+' · Line 2'],s.x,20.1,s.z-15.8,15,1.05,{line2:true});
   // Security lane in the unpaid hall. The backpack visibly passes through the X-ray belt.
   cube(root,'#555f68',s.x-22,16.45,s.z-8,5,.9,1.8);cube(root,'#252b31',s.x-22,16.98,s.z-8,5,.12,1.5);cube(root,'#9aa5a9',s.x-22,17.9,s.z-8,2.1,1.8,2);cube(root,'#111a23',s.x-20.93,17.55,s.z-8,.03,1,1.4);
   state.bag=cube(root,'#cfb064',s.x-24,17.28,s.z-8,.6,.6,.5);state.bag.visible=false;
-  board(root,['安检 · 请把背包放上传送带','靠近按 V · 检查后取回全部物品'],s.x-22,19.3,s.z-8,9,1.4);
-  const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐2号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],['去外滩或东方明珠怎么走？',s.id==='nanjing'?'出站后沿南京路向东走到外滩；乘浦东方向列车可到陆家嘴。':'1号方向出站后去东方明珠；乘市区方向列车到南京东路，再往东走到外滩。'],['广告上的演唱会能买票吗？','墙上是游戏原创的华晨宇火星演唱会主题海报，未标注真实场次，也不提供售票。']]}};staff.push(employee);
+  stationSign(['安全检查','Security check'],s.x-22,20.25,s.z-8,4.8,.7,{line2:false,arrow:'↓'});
+  const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐2号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],['去外滩或东方明珠怎么走？',s.id==='nanjing'?'出站后沿南京路向东走到外滩；乘浦东方向列车可到陆家嘴。':'1号方向出站后去东方明珠；乘市区方向列车到南京东路，再往东走到外滩。'],['广告上的演唱会能买票吗？','墙上展示的是玩家提供的华晨宇演唱会图片，不代表真实场次，站内也不提供售票。']]}};staff.push(employee);
   const gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
-  cube(root,'#a7b4bc',gx,17,s.z-10.7,.1,1.8,10.3,.55);cube(root,'#a7b4bc',gx,17,s.z+5.6,.1,1.8,20.7,.55);
+  cube(root,'#a7b4bc',gx,17,s.z-11.225,.1,1.8,9.25,.55);cube(root,'#a7b4bc',gx,17,s.z+5.775,.1,1.8,20.35,.55);
   for(const z of [gz-2,gz+2]){cube(root,'#b9c3c6',gx,16.6,z,2,1.2,.48);cube(root,'#28403e',gx,17.22,z,.8,.05,.35);}
   state.gateMesh=cube(root,'#49d5b2',gx,16.8,gz,.08,.7,1.45,.75);
-  const gateSign=board(root,['→ V 刷免费体验票 · 进 / 出站','安检完成后直行 · B2站台'],gx,19.3,gz,9,1.4);gateSign.mesh.rotation.y=-Math.PI/2;
+  stationSign(['进站验票 · 站台','Tickets · Platforms'],gx,20.25,gz,5.6,.75,{line2:true,arrow:'↑',yaw:-Math.PI/2});
   const paths=[[[s.x-21,s.z-4.75],[s.x-22,s.z-5.5]],[[s.x-22,s.z-5.5],[gx+2,gz]],[[gx+2,gz],[gx+2,s.z+3]]];
   state.routes=paths.map(points=>{const g=new THREE.Group();root.add(g);for(let i=1;i<points.length;i++){const [ax,az]=points[i-1],[bx,bz]=points[i];cube(g,'#72edce',(ax+bx)/2,16.045,(az+bz)/2,Math.abs(bx-ax)||.16,.025,Math.abs(bz-az)||.16);}return g;});
-  board(root,['背包安检 → 旁边闸机','机器旁 V 放包 · 之后向右直行'],s.x-22,METRO_SECURITY_GUIDANCE.y,s.z-5.5,METRO_SECURITY_GUIDANCE.width,METRO_SECURITY_GUIDANCE.height);
+  stationSign(['进站验票','Ticket gates'],s.x-22,METRO_SECURITY_GUIDANCE.y,s.z-5.5,METRO_SECURITY_GUIDANCE.width,METRO_SECURITY_GUIDANCE.height,{line2:false,arrow:'→'});
   cube(root,'#72edce',gx-1,16.05,gz,1.2,.025,.55);
   for(const side of [-1,1]){
    cube(root,'#bad787',s.x,6.025,s.z+side*4.4,69,.045,.45);cube(root,'#eed368',s.x,6.03,s.z+side*5,69,.05,.16);
    let edge=-34.5;
    for(const x of METRO_DOOR_CENTERS){const lo=x-.8;if(lo>edge)cube(root,'#85b2bf',s.x+(edge+lo)/2,6.75,s.z+side*5.55,lo-edge,1.4,.1,.32);const door=createSlidingDoor(root,cube,{x:s.x+x,z:s.z+side*5.55,y:6.75,height:1.4,screen:true});state.doors.push({...door,side});cube(root,'#c0cad0',s.x+x+.88,6.8,s.z+side*5.55,.1,1.5,.18);edge=x+.8;}
    if(edge<34.5)cube(root,'#85b2bf',s.x+(edge+34.5)/2,6.75,s.z+side*5.55,34.5-edge,1.4,.1,.32);
-   const dir=side===-1?1:-1;const screen=board(root,[dir===1?'→ 陆家嘴 · 浦东方向':'← 南京东路 · 市区方向','下一班 · 计算中'],s.x+(side===1?-17:17),9.4,s.z+side*2.8,14,1.5);state.screens.push({screen,dir});
+   const dir=side===-1?1:-1;const screen=stationSign([dir===1?'陆家嘴 · 浦东方向':'南京东路 · 市区方向','下一班 · 计算中'],s.x+(side===1?-17:17),10,s.z+side*2.8,8.5,.75,{line2:true,arrow:side<0?'→':'←'});state.screens.push({screen,dir});
   }
   for(const x of [-28,28]){cube(root,'#91b2bd',s.x+x,6.55,s.z,4,.15,1);for(const z of [-.48,.48])cube(root,'#6e979f',s.x+x,6.95,s.z+z,4,.85,.1);}
   for(const [i,x]of [-28,-8,12,29].entries()){
-   const poster=board(root,['华晨宇','火星演唱会 · MARS','游戏原创主题海报 · 非售票'],s.x+x,18.6,s.z+14.9,6,3.6,['#ffb0e8','#a5eaff','#ffd893','#e3b1ff'][i],'#1e1733');cube(root,'#eff4f5',s.x+x,18.6,s.z+15,6.25,3.85,.08);
+   const height=4.1,width=height*METRO_POSTER_ASPECT;cube(root,'#edf2ed',s.x+x,18.65,s.z+15.78,width+.18,height+.18,.08);
+   const poster=new THREE.Mesh(new THREE.PlaneGeometry(width,height),posterMaterial);poster.rotation.y=Math.PI;poster.position.set(s.x+x,18.65,s.z+15.72);poster.userData.panel=true;root.add(poster);
   }
   decorateMetroStation(root,s,{cube,slab,board});
   // Different phases and destinations prevent passengers marching in identical rows.
-  for(let i=0;i<34;i++){const y=i<14?16:6,z=i<14?s.z-11+(i%4)*2.4:s.z-3.4+(i%5)*1.3,x=s.x-31+(i*7.73)%62;const p=person(root,i,x,y,z);state.people.push({root:p,x,z,y,phase:i*2.173,speed:.28+(i%7)*.055});}
-  for(const e of s.exits){cube(root,'#abbec0',e.x-e.dir*.8,27.8,e.z-(e.width??1.5)-.35,1.1,3.6,.13);const sign=board(root,['2 '+s.name+'  '+e.number+'号方向','↓ 自动扶梯 · V 查看乘车指引'],e.x-e.dir*.8,29,e.z,7,1.6);sign.mesh.rotation.y=Math.PI/2;const exitSign=metroExitSign(e);const exitBoard=board(root,[e.label,'↑ 地面出站'],exitSign.x,exitSign.y,exitSign.z,exitSign.width,exitSign.height);exitBoard.mesh.rotation.y=Math.PI/2;exitBoard.mesh.userData.exitSign={...exitSign};}
+  for(let i=0;i<34;i++){const y=i<14?16:6,z=i<14?s.z-11+(i%4)*2.4:s.z-3.4+(i%5)*1.3,x=s.x-31+(i*7.73)%62;
+   const gx=s.x+METRO_HALL.gateX;let self=null;
+   const clear=(x,y,z)=>!(y===16&&x>s.x-27&&x<s.x-10&&z<s.z-4&&z>s.z-13)&&!fixtureCollision(state.fixtures,x,y,z,.38,1.92)&&Math.abs(x-gx)>1.4&&!METRO_RAMPS.some(r=>Math.abs(r.z-z)<r.width+.4&&Math.abs(y-(metroRampFloor(x,z)??-100))<2)&&!state.people.some(p=>p!==self&&Math.abs(p.y-y)<2&&Math.abs(p.z-z)<.7&&Math.abs(p.x-x)<2);
+   const spot=passengerSpot(s,x,z,y,clear);if(!spot)continue;const p=person(root,i,spot.x,y,spot.z);self={root:p,...spot,phase:i*2.173,speed:.28+(i%7)*.055,clear};state.people.push(self);}
+  for(const e of s.exits){cube(root,'#abbec0',e.x-e.dir*.8,27.8,e.z-(e.width??1.5)-.35,1.1,3.6,.13);const sign=board(root,['2 '+s.name+'  '+e.number+'号方向','↓ 自动扶梯 · V 查看乘车指引'],e.x-e.dir*.8,29,e.z,7,1.6);sign.mesh.rotation.y=Math.PI/2;const exitSign=metroExitSign(e);const exitBoard=stationSign([e.number+' 出口  '+e.label,'Exit · Street level'],exitSign.x,exitSign.y,exitSign.z,exitSign.width,exitSign.height,{line2:false,arrow:'↑',yaw:Math.PI/2});exitBoard.mesh.userData.exitSign={...exitSign};}
  }
  // Sloped escalator support is analytic; treads move while the walking surface stays smooth.
  const treads=[],treadBatch=new THREE.InstancedMesh(box,mat('#98a4ac'),METRO_RAMPS.length*72),treadPose=new THREE.Object3D();treadBatch.frustumCulled=false;root.add(treadBatch);
@@ -83,7 +95,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function stationIndex(s){return METRO_STATIONS.findIndex(a=>a.id===s.id);}
  const dynamic=new Set([...trains.flatMap(t=>[t.root,...t.exchanges]),...staff.map(s=>s.root),...stations.flatMap(s=>[s.gateMesh,s.bag,...s.people.map(p=>p.root),...s.doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...s.routes])]);
  batchMeshes(root,staticMeshes(root,dynamic),'station-interior');
- function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked){notify('你已通过安检，请沿青色地面线去绿色箭头闸机按 V 刷票。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');}
+ function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked){notify('你已通过安检，请沿青色地面线去绿色箭头闸机按 V 刷票。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');announce('请把背包放上传送带，稍等一下。','Please place your bag on the belt.',{cue:'scan',speaker:'安检员'});}
  function gate(s){const entering=getPos().x<=s.x+METRO_HALL.gateX;if(entering&&!s.checked){notify('这里是检票闸机。本次尚未通过安检。先到青色背包安检机器按 V，检查结束后再来刷票。');return;}s.paid=entering;s.gate=3;if(!entering)for(const station of stations){station.checked=false;station.paid=false;}notify(entering?'已刷免费体验票 · 对准绿色箭头通道直行，再沿地面线去 B2 扶梯。':'已出闸 · 本次安检结束，再次进站请重新安检。');}
  function end(force=false){if(!ride)return false;const t=trains[ride.index],st=t.state;if(!force&&!(st.phase==='dwell'&&st.open)){notify('列车行驶中不能下车，请等到站开门。');return true;}const index=st.phase==='dwell'?st.station:ride.from,s=METRO_STATIONS[index];stations[index].checked=true;stations[index].paid=true;const trip=ride;ride=null;place({x:s.x,y:6,z:s.z+(t.direction>0?-3.7:3.7)});setView(t.direction>0?0:Math.PI,-.1);if(!force&&trip.departed&&index!==trip.from)onEvent({type:'metro',from:METRO_STATIONS[trip.from].id,to:s.id,departed:true});return true;}
  function use(){const p=getPos();if(ride){return end();}const s=stations.find(s=>Math.abs(p.x-s.x)<37&&Math.abs(p.z-s.z)<17&&Math.abs(p.y-16)<1.1);
@@ -106,8 +118,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   if(y>=15.5&&y<20&&Math.abs(x-s.x-METRO_HALL.gateX)<.42&&(!s.paid||Math.abs(z-s.z-METRO_HALL.gateZ)>.65))return true;
   const distance=Math.abs(z-s.z),side=Math.sign(z-s.z);
   if(distance>5.15&&distance<7.4){const open=doorOpen(s,x,side);if(y>=5.4&&y<10&&!open)return true;if(open&&y<5.985&&y>5.5)return true;}
-  for(const px of [-28,-14,0,14,28])if([6,16].some(f=>y>=f-.1&&y<f+4&&Math.abs(z-s.z+(f===16?11:.4))<.7)&&Math.abs(x-s.x-px)<.7)return true;
-  if(y>=16&&y<19&&Math.abs(x-s.x+22)<2.8&&Math.abs(z-s.z+8)<1.25)return true;
+  if(fixtureCollision(s.fixtures,x,y,z))return true;
  }return false;}
  function exchangePassengers(t,st){const station=METRO_STATIONS[st.station],part=METRO_DWELL-st.remaining;
   for(const [i,p]of t.exchanges.entries()){const alighting=i<6,start=alighting?1.7+i*.25:5+(i-6)*.35,u=(part-start)/2.5,doorX=nearestMetroDoor((i-4)*4),side=-t.direction;
@@ -118,8 +129,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  }
  function tick(dt,{playing=false,sound=true}={}){
   if(playing&&!ride&&!metroInterior(getPos())){for(const station of stations){station.checked=false;station.paid=false;}if(scan){scan.s.bag.visible=false;scan=null;notify('已离开站内，背包已取回；再次进站请重新安检。');}}
-  audioAllowed=playing&&sound&&!document.hidden;if(!audioAllowed&&ownSpeech)suspend();clock+=dt;
-  if(scan){scan.time+=dt;scan.s.bag.position.x=scan.s.x-24+scan.time*1.35;if(scan.time>=3){scan.s.checked=true;scan.s.bag.visible=false;onEvent({type:'security',station:scan.s.id});scan=null;notify('安检通过，背包已取回，全部物品保留。到绿色箭头闸机按 V。');chime();}}
+  audioAllowed=playing&&sound&&!document.hidden;if(audioAllowed&&metroInterior(getPos()))sounds.prepare();if(!audioAllowed)suspend();clock+=dt;
+  if(scan){scan.time+=dt;scan.s.bag.position.x=scan.s.x-24+scan.time*1.35;if(scan.time>=3){scan.s.checked=true;scan.s.bag.visible=false;onEvent({type:'security',station:scan.s.id});scan=null;notify('安检通过，背包已取回，全部物品保留。到绿色箭头闸机按 V。');announce('检查好了，请取回背包，往旁边闸机走。','Check complete. Collect your bag and proceed to the gates.',{cue:'pass',speaker:'安检员'});}}
   for(const t of trains){const st=trainState(clock,t.offset,t.direction),q=trainPose(st);t.state=st;if(ride?.index===t.index&&st.phase==='travel'&&st.origin===ride.from)ride.departed=true;t.root.visible=st.visible;t.root.position.set(q.x,q.y,q.z);t.root.rotation.y=q.yaw;const part=METRO_DWELL-st.remaining;t.doorAmount=st.open?Math.min(1,(part-1.2)/.45,(METRO_DWELL-2-part)/.45):0;for(const d of t.doors)d.set(d.side===t.direction?t.doorAmount:0);exchangePassengers(t,st);const crowd=trainCrowd(st,t.index);t.passengers.forEach((p,i)=>p.visible=(crowd.crowded||i<8)&&!(st.open&&i<6&&METRO_DWELL-st.remaining>2+i*.25));
    const s=metroStationAt(getPos()),near=s&&stationIndex(s)===st.station,event=st.cycle+':'+st.station+':'+(st.phase==='dwell'?(st.open?'open':st.remaining<=3?'close':'arriving'):st.phase);
    if(event!==t.lastEvent){if(dt>0&&(near||ride?.index===t.index)){if(st.phase==='dwell'&&st.open)announce('列车到站，'+METRO_STATIONS[st.station].name+'。右侧车门已打开。请先下后上，注意站台间隙。','This is '+METRO_STATIONS[st.station].english+'. Doors are open on the right. Please let passengers off first and mind the gap.');else if(st.phase==='dwell'&&st.remaining<=3)announce('车门即将关闭，请勿抢上抢下。','Doors are closing. Please stand clear of the doors.');else if(st.phase==='travel'&&ride?.index===t.index)announce('下一站，'+METRO_STATIONS[st.next].name+'。右侧车门将会打开。','Next station, '+METRO_STATIONS[st.next].english+'. Doors will open on the right.');}t.lastEvent=event;}
@@ -130,8 +141,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   positionRider();const p=getPos(),r=metroRampAt(p.x,p.z),h=metroRampFloor(p.x,p.z);if(!ride&&canCarry()&&r&&Math.abs(p.y-h)<.13){const d=(p.x-r.x)*r.dir;if(d>.05&&d<r.length-.05){const step=(p.z>=r.z?1:-1)*r.dir*dt*.7,x=p.x+step;place({x,y:metroRampFloor(x,p.z),z:p.z});}}
   for(const [index,{r,i,side}]of treads.entries()){const u=((i/36+clock*.026*side)%1+1)%1,x=r.x+r.dir*r.length*u;treadPose.position.set(x,r.from+(r.to-r.from)*u+.015,r.z+side*r.width*.5);treadPose.scale.set(r.length/36,.035,r.width*.91);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);}treadBatch.instanceMatrix.needsUpdate=true;
   for(const s of stations){s.routes.forEach((r,i)=>r.visible=i===(s.paid?2:s.checked?1:0));s.gateMesh.visible=!s.paid;for(const d of s.doors){const t=trains.find(t=>t.direction===-d.side);d.set(t.state.station===stationIndex(s)?t.doorAmount:0);}
-   s.people.forEach((p,i)=>{p.root.position.x=p.x+Math.sin(clock*p.speed+p.phase)*.65;p.root.rotation.y=Math.sin(clock*.12+p.phase);});
-   const second=Math.floor(clock);if(second!==s.lastSecond){s.lastSecond=second;for(const {screen,dir}of s.screens){const t=trains.find(t=>t.direction===dir),here=t.state.station===stationIndex(s)&&t.state.phase==='dwell',n=Math.ceil(arrivalSeconds(clock,stationIndex(s),t.offset,t.direction));screen.paint([dir===1?'→ 陆家嘴 · 浦东方向':'← 南京东路 · 市区方向',here?(t.state.open?'列车已到站 · 请先下后上':'列车已到站 · 请留意车门'):'下一班 '+Math.floor(n/60)+'分 '+n%60+'秒']);if(dt>0&&n===5&&metroStationAt(getPos())?.id===s.id)announce('列车即将进站，请站在黄色安全线以内。','A train is approaching. Please stand behind the yellow line.');}}
+   s.people.forEach(p=>{const x=p.x+Math.sin(clock*p.speed+p.phase)*.65;if(p.clear(x,p.y,p.z))p.root.position.x=x;p.root.rotation.y=Math.sin(clock*.12+p.phase);});
+   const second=Math.floor(clock);if(second!==s.lastSecond){s.lastSecond=second;for(const {screen,dir}of s.screens){const t=trains.find(t=>t.direction===dir),here=t.state.station===stationIndex(s)&&t.state.phase==='dwell',n=Math.ceil(arrivalSeconds(clock,stationIndex(s),t.offset,t.direction));screen.paint([dir===1?'→ 陆家嘴 · 浦东方向':'← 南京东路 · 市区方向',here?(t.state.open?'列车已到站 · 请先下后上':'列车已到站 · 请留意车门'):'下一班 '+Math.floor(n/60)+'分 '+n%60+'秒']);if(dt>0&&n===5&&metroStationAt(getPos())?.id===s.id)announce('列车即将进站，请站在黄色安全线以内。','A train is approaching. Please stand behind the yellow line.',{cue:'arrival'});}}
   }
   subtitleTime=Math.max(0,subtitleTime-dt);caption.hidden=!playing||subtitleTime===0;
   const s=metroStationAt(getPos()),state=s&&stations[stationIndex(s)];hud.hidden=!playing||!metroInterior(getPos());document.body.classList?.toggle('in-metro',!hud.hidden);

@@ -10,7 +10,7 @@ export function decorateMetroStation(root,s,{cube,slab,board}){
  }
  for(const side of [-1,1]){
   for(let x=-34;x<35;x+=1.5)for(const z of [-.14,0,.14])cube(root,'#b1ca7c',s.x+x,6.06,s.z+side*4.4+z,1.4,.025,.035);
-  const guidance=board(root,[side<0?'→ 陆家嘴':'← 南京东路','出口 Exit ↑ · 先下后上'],s.x+(side<0?9:-9),9.6,s.z+side*1.7,6,.65,'#d9eeaf','#20282c');
+  const guidance=board(root,[side<0?'→ 陆家嘴':'← 南京东路','出口 Exit ↑ · 先下后上'],s.x+(side<0?9:-9),10.1,s.z+side*10.9,6,.55,'#f4f7f4','#192123');
   guidance.mesh.userData.stationSign=true;
  }
 }

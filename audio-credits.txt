@@ -1,0 +1,12 @@
+地铁进站音频 / Metro arrival audio
+
+Title: London Underground 1996 Stock train arriving in a station
+Author: Philt3r
+Source: https://commons.wikimedia.org/wiki/File:London_Underground_1996_Stock_train_arriving_in_a_station.ogg
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License link: https://creativecommons.org/licenses/by/4.0/
+Changes: first 5.6 seconds used in playback; volume envelope and low-pass filter applied for the game's accelerated arrival schedule. The included source recording itself is unchanged.
+
+录音来自伦敦地铁，不是上海2号线官方录音；原作者没有为本游戏背书。
+安检提示铃、音频无法解码时的滚动声后备均由程序原创合成。
+安检员与站内普通话/英文语音来自玩家浏览器的语音服务，不属于此录音。
