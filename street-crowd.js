@@ -5,11 +5,17 @@ export function crowdProfile(index){
  return {random,speed:.58+random()*.74,phase:random()*Math.PI*2,wait:random()<.27?1+random()*4:0,breakIn:15+random()*35};
 }
 const bounds={x1:-179,x2:-38,z1:64.4,z2:68.45};
+// Shopping bags extend about .5m from the centre; include neighbouring arms.
+export const CROWD_SEPARATION=.9;
 export function createStreetCrowd(people,{clear=()=>true}={}){
  const walkers=people.filter(p=>!p.stationary);let first=0;
- const othersClear=(p,q)=>people.every(o=>o===p||!o.stationary&&!o.ready||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2||(o.root.position.x-q.x)**2+(o.root.position.z-q.z)**2>.66**2);
+ const othersClear=(p,q)=>people.every(o=>o===p||!o.stationary&&!o.ready||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2||(o.root.position.x-q.x)**2+(o.root.position.z-q.z)**2>CROWD_SEPARATION**2);
  const inside=q=>q.x>=bounds.x1&&q.x<=bounds.x2&&q.z>=bounds.z1&&q.z<=bounds.z2;
- function goal(p){const r=p.crowd.random;p.crowd.goal={x:bounds.x1+r()*(bounds.x2-bounds.x1),y:26,z:bounds.z1+r()*(bounds.z2-bounds.z1)};}
+ function goal(p){const r=p.crowd.random;for(let i=0;i<40;i++){const q={x:bounds.x1+r()*(bounds.x2-bounds.x1),y:26,z:bounds.z1+r()*(bounds.z2-bounds.z1)};if(clear(q)&&othersClear(p,q)){p.crowd.goal=q;return;}}p.crowd.goal={...p.root.position};}
+ function retreat(p){const at=p.root.position,state=p.crowd,dx=state.goal.x-at.x,dz=state.goal.z-at.z,n=Math.hypot(dx,dz)||1;
+  for(const angle of [Math.PI,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75]){const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(dx*c-dz*s)/n*1.5,y:26,z:at.z+(dx*s+dz*c)/n*1.5};if(inside(q)&&clear(q)&&othersClear(p,q)){state.goal=q;return;}}
+  goal(p);
+ }
  for(const [i,p]of walkers.entries()){p.crowd=crowdProfile(i);p.speed=p.crowd.speed;p.phase=p.crowd.phase;p.crowd.blocked=0;p.ready=false;goal(p);}
  function advance(dt,vehicles){
   for(let i=0;i<walkers.length;i++){
@@ -22,10 +28,18 @@ export function createStreetCrowd(people,{clear=()=>true}={}){
     if(distance<.35){state.wait=.8+state.random()*3;goal(p);}
     else if(dt>0){
      const length=Math.min(distance,state.speed*dt),nx=dx/distance,nz=dz/distance;
-     for(const angle of [0,.65,-.65]){const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(nx*c-nz*s)*length,y:26,z:at.z+(nx*s+nz*c)*length};if(inside(q)&&clear(q)&&othersClear(p,q)&&pedestrianStepClear(at,q,vehicles)){p.root.rotation.y=Math.atan2(q.x-at.x,q.z-at.z)+Math.PI;at.set(q.x,q.y,q.z);moving=true;break;}}
+     // Prefer a consistent passing side. Once blocked, allow a true sidestep or
+     // retreat rather than insisting on forward movement into a head-on queue.
+     const angles=state.blocked>.35?[0,.65,-.65,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]:[0,.65,-.65];
+     for(const angle of angles){const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(nx*c-nz*s)*length,y:26,z:at.z+(nx*s+nz*c)*length};if(inside(q)&&clear(q)&&othersClear(p,q)&&pedestrianStepClear(at,q,vehicles)){p.root.rotation.y=Math.atan2(q.x-at.x,q.z-at.z)+Math.PI;at.set(q.x,q.y,q.z);moving=true;break;}}
      state.blocked=moving?0:state.blocked+dt;if(state.blocked>4){goal(p);state.blocked=0;}
     }
    }
+   // Tiny oscillations used to reset `blocked` forever. Measure real progress
+   // over time, excluding intentional browsing, and make room by backing out.
+   const at=p.root.position;state.anchor??={x:at.x,z:at.z};state.progressTime=(state.progressTime??0)+dt;
+   if(state.wait||Math.hypot(at.x-state.anchor.x,at.z-state.anchor.z)>.5){state.anchor={x:at.x,z:at.z};state.progressTime=0;}
+   else if(state.progressTime>3){retreat(p);state.anchor={x:at.x,z:at.z};state.progressTime=0;state.blocked=.4;}
    state.state=moving?'walk':state.wait?'browse':'yield';state.phase+=dt*state.speed*4.5;
    for(let j=0;j<2;j++){p.legs[j].rotation.x=moving?Math.sin(state.phase+p.phase)*(j?-.25:.25):0;p.arms[j].rotation.x=moving?-p.legs[j].rotation.x:Math.sin(state.phase*.35+p.phase)*.04;}
   }
