@@ -1,3 +1,4 @@
+import {createStreetCrowd} from './street-crowd.js';
 import {styleNpc} from './npc-appearance.js';
 import {createProduct,SHOP_PRODUCTS} from './city-products.js';
 import * as THREE from './three.module.js';
@@ -7,7 +8,6 @@ import {riverWestEdge,riverEastEdge,MAGNOLIA} from './shanghai-map.js';
 import {overlaps} from './world.js';
 import {boatWorld} from './boat-support.js';
 import {shopSignAnchor} from './shop-sign-layout.js';
-import {pedestrianBlocked,pedestrianStepClear} from './pedestrian-traffic.js';
 
 export const SHOP_NAMES=['永安百货','先施商厦','上海时装','老字号眼镜','沪上书店','光影唱片','海派咖啡','鲜肉月饼','小笼生煎','南京路礼品'];
 export const NEON_COLORS=['#ff4f9c','#42eaff','#ab71ff','#ffe176','#49efbb'];
@@ -73,10 +73,11 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(port>=0){if(ferryPhase(clock).port!==port){notify('轮渡还未靠岸，请在渡口候船。');return true;}ride={from:port};notify('已登上轮渡，正在前往'+landings[1-port].name+'。');return true;}
   const v=nearestVendor();if(!v)return false;pause();panel=true;$('city-title').textContent=v.name;$('city-result').textContent='柜台现货 '+v.remaining+' 份 · 购物袋已有 '+(goods[v.product]??0)+' 份'+SHOP_PRODUCTS[v.product].name+'。';$('city-actions').replaceChildren();const button=document.createElement('button');button.className='recipe-card';const label=()=>button.textContent=v.remaining?'购买'+SHOP_PRODUCTS[v.product].name+' · 库存 '+v.remaining:'已售罄';label();button.disabled=!v.remaining;button.onclick=()=>{if(!v.remaining)return;if(cooldown>0){$('city-result').textContent='刚买过一份，稍后再来。';return;}if(v.food){const state=getState();state.food+=2;if(state.hunger<20)state.eat();}v.remaining--;goods[v.product]=(goods[v.product]??0)+1;showStock(v);label();button.disabled=!v.remaining;purchases++;cooldown=30;onEvent({type:'shop'});$('city-result').textContent='已购买'+SHOP_PRODUCTS[v.product].name+'，柜台少一份；购物袋共 '+goods[v.product]+' 份'+(v.food?'，食物已加入背包。':'。');onProgress();};$('city-actions').appendChild(button);$('city-dialog').showModal();return true;
  }
+ const crowd=createStreetCrowd(tourists,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29)});
  function tick(dt,{night=false}={}){clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;for(const m of shopLights)m.visible=night;for(const m of ferryLamps)m.visible=night;const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
-  for(const p of tourists){if(p.stationary){p.arms[0].rotation.x=p.kind==='eat'?-1.1+Math.sin(clock*1.5+p.phase)*.2:-.3;continue;}const next=(p.t+dt*.9)%290,q=next<145?next:290-next,target={x:-181+q,y:26,z:next<145?65:68};if(!p.ready){for(let i=0;i<3000&&pedestrianBlocked(target,vehicles);i++){p.t=(p.t+.1)%290;const q=p.t<145?p.t:290-p.t;Object.assign(target,{x:-181+q,z:p.t<145?65:68});}p.root.position.set(target.x,26,target.z);p.ready=true;}else if(pedestrianStepClear(p.root.position,target,vehicles)){p.t=next;p.root.position.set(target.x,26,target.z);}p.root.rotation.y=p.t<145?-Math.PI/2:Math.PI/2;for(let i=0;i<2;i++){p.legs[i].rotation.x=Math.sin(clock*4+p.phase)*(i?-.25:.25);p.arms[i].rotation.x=-p.legs[i].rotation.x;}}
+  crowd.tick(dt,vehicles);for(const p of tourists)if(p.stationary)p.arms[0].rotation.x=p.kind==='eat'?-1.1+Math.sin(clock*1.5+p.phase)*.2:-.3;
   const v=nearestVendor(),port=landings.find(s=>Math.hypot(getPos().x-s.x,getPos().z-s.z)<3&&Math.abs(getPos().y-26)<2);$('city-prompt').hidden=!(v||port||ride);$('city-prompt').textContent=ride?'轮渡过江中 · 抵达自动下船':port?'V 搭乘轮渡 · '+port.name:v?'V '+(v.indoor?'店内购物':'逛摊位')+' · '+v.name:'';
  }
  const moving=new Set([...tourists,...vendors].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons,shopLights));
