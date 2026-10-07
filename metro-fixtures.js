@@ -1,4 +1,4 @@
-import {METRO_HALL} from './metro-layout.js';
+import {METRO_HALL,metroFarePartitions} from './metro-layout.js';
 
 // The rendered equipment and columns share these bounds for players and passengers.
 export function metroFixtures(s){
@@ -7,8 +7,7 @@ export function metroFixtures(s){
  add(-22,-8,5,2,16,18.8);
  for(const floor of [6,16])for(const x of [-28,-14,0,14,28])add(x,floor===16?-11:-.4,1.3,1.3,floor,floor+4.5);
  for(const x of [-28,28])add(x,0,4,1.06,6,7.4);
- add(METRO_HALL.gateX,-11.225,.1,9.25,16,17.9);
- add(METRO_HALL.gateX,5.775,.1,20.35,16,17.9);
+ for(const b of metroFarePartitions(s))add(b.x-s.x,b.z-s.z,b.w,b.d,16,19.5);
  for(const z of [METRO_HALL.gateZ-2,METRO_HALL.gateZ+2])add(METRO_HALL.gateX,z,2,.48,16,17.25);
  return bounds;
 }

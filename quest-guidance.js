@@ -16,6 +16,7 @@ export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,tra
   if(pos.y>=23){const close=distance(exit,pos)<3;return point({x:exit.x+(close?exit.dir*4:0),y:close?23.78:26,z:exit.z},s.name+'站 · '+exit.number+'号口',close?'沿扶梯方向直行下到 B1，先找到背包安检。':'前往'+exit.label+'的地铁入口，沿扶梯走下去。','entrance');}
   if(pos.y<10&&!flags.paid)return point({x:s.x+6,y:6,z:s.z+3},'返回 B1 站厅','尚未刷票。沿扶梯返回 B1，完成安检后再刷票。','return-hall');
   if(!flags.checked)return point({x:s.x+METRO_HALL.securityX,y:16,z:s.z+METRO_HALL.securityZ-2.4},'B1 · 背包安检','靠近青色安检机器按 V 放包，等3秒检查结束。工作人员旁也可以问路。','security');
+  if(flags.gatePass?.entering)return point({x:s.x+METRO_HALL.gateX+1.4,y:16,z:s.z+METRO_HALL.gateZ},'B1 · 走过绿色箭头通道','闸机已开。直接走过通道，无需重复刷票。','through-gate');
   if(!flags.paid)return point({x:s.x+METRO_HALL.gateX-1.4,y:16,z:s.z+METRO_HALL.gateZ},'B1 · 绿色箭头闸机','安检已完成。沿地面线到旁边绿色箭头闸机按 V 刷票，再走过通道。','gate');
   if(pos.y>=10&&pos.x<s.x+METRO_HALL.gateX+.8)return point({x:s.x+METRO_HALL.gateX+2,y:16,z:s.z+METRO_HALL.gateZ},'B1 · 走过绿色箭头通道','刷票成功。对准绿色箭头直行走过闸机，再前往 B2 扶梯。','through-gate');
   if(pos.y>=10){const top={x:s.x-12,z:s.z+3};const close=distance(top,pos)<2.5;return point({x:top.x+(close?4:0),y:close?13.78:16,z:top.z},'下行扶梯 · B2站台','已进闸。沿扶梯直行下到 B2，不需要返回安检。','platform-ramp');}
