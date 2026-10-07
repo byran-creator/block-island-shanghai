@@ -1,6 +1,6 @@
 import {createMetroSounds} from './metro-sounds.js';
 import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
-import {paintMetroSign} from './metro-sign-paint.js';
+import {paintMetroSign,metroSignCanvasSize} from './metro-sign-paint.js';
 import {METRO_POSTER_SRC,METRO_POSTER_ASPECT} from './metro-poster-art.js';
 import {styleNpc} from './npc-appearance.js';
 import {announcementLines,speakVoiceLines} from './voice-settings.js';
@@ -28,44 +28,45 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));const uv=[];for(let i=0;i<vertices.length;i+=3)uv.push(vertices[i]/2,vertices[i+2]/2);g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));const material=mat(color).clone();material.side=THREE.DoubleSide;const m=new THREE.Mesh(g,material);parent.add(m);return m;
  }
  function board(parent,lines,x,y,z,w,h,color='#c4ef67',bg='#18212a',options=null){
-  const c=document.createElement('canvas');c.width=options?1024:768;c.height=256;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
-  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),material=new THREE.MeshBasicMaterial({map:tex});const front=new THREE.Mesh(geometry,material),back=new THREE.Mesh(geometry,material);front.userData.panel=back.userData.panel=true;front.position.z=.012;back.position.z=-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);parent.add(m);
-  const paint=text=>{if(options){paintMetroSign(ctx,text,{...options,width:c.width,height:c.height,color,bg});tex.needsUpdate=true;return;}ctx.fillStyle=bg;ctx.fillRect(0,0,768,256);ctx.fillStyle=color;ctx.textAlign='center';text.forEach((line,i)=>{ctx.font=`${i===0?'bold ':''}${text.length>2?48:64}px sans-serif`;ctx.fillText(line,384,55+i*(text.length>2?68:110),746);});tex.needsUpdate=true;};paint(lines);return {mesh:m,paint};
+  const c=document.createElement('canvas');const size=options?metroSignCanvasSize(w,h):{width:768,height:256};c.width=size.width;c.height=size.height;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),material=new THREE.MeshBasicMaterial({map:tex});const front=new THREE.Mesh(geometry,material),back=new THREE.Mesh(geometry,material);front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.04:.012;back.position.z=options?.transit?-.04:-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);parent.add(m);
+  const paint=text=>{if(options){paintMetroSign(ctx,text,{...options,width:c.width,height:c.height,color,bg});tex.needsUpdate=true;return;}ctx.fillStyle=bg;ctx.fillRect(0,0,768,256);ctx.fillStyle=color;ctx.textAlign='center';text.forEach((line,i)=>{ctx.font=`${i===0?'bold ':''}${text.length>2?48:64}px sans-serif`;ctx.fillText(line,384,55+i*(text.length>2?68:110),746);});tex.needsUpdate=true;};paint(lines);return {mesh:m,paint,texture:tex};
  }
  function person(parent,index,x,y,z,uniform){const r=new THREE.Group();r.position.set(x,y,z);parent.add(r);const shirt=uniform??['#a98ad3','#dde8eb','#dd9d72','#799cc4','#789f91'][index%5];cube(r,shirt,0,1.04,0,.42,.65,.29);cube(r,'#dcb08d',0,1.55,0,.34,.35,.33);cube(r,'#302b30',0,1.76,0,.35,.08,.34);for(const side of [-1,1]){cube(r,shirt,side*.29,1.04,0,.14,.56,.19);cube(r,'#344053',side*.12,.39,0,.17,.74,.22);}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms:[r.children[3],r.children[5]],legs:[r.children[4],r.children[6]]},index,uniform?'staff':'visitor');return r;}
  const sounds=createMetroSounds({getAudio,allowed:()=>audioAllowed&&getSound()&&!document.hidden});
  function announce(text,english,{cue='station',speaker='2号线广播'}={}){const speech=globalThis.speechSynthesis,lines=announcementLines(speech,'metro',text,english);caption.textContent=speaker+' · '+lines.map(line=>line.text).join(' / ');caption.hidden=false;subtitleTime=8;if(!audioAllowed||!getSound())return;sounds.play(cue);try{if(speech?.speaking||speech?.pending)return;ownSpeech=speakVoiceLines(speech,globalThis.SpeechSynthesisUtterance,lines,{onEnd:()=>ownSpeech=false})>0;}catch{ownSpeech=false;}}
  function suspend(){audioAllowed=false;sounds.suspend();if(ownSpeech){globalThis.speechSynthesis?.cancel();ownSpeech=false;}}
- function stationSign(lines,x,y,z,w,h,options={}){const a=board(root,lines,x,y,z,w,h,'#f4f7f4','#192123',options);a.mesh.rotation.y=options.yaw??0;a.mesh.userData.stationSign={y,height:h};cube(a.mesh,'#252e30',0,0,0,w,h,.009);for(const side of [-1,1])cube(a.mesh,'#687273',side*w*.36,h/2+.23,0,.035,.46,.035);return a;}
+ function stationSign(lines,x,y,z,w,h,options={}){const a=board(root,lines,x,y,z,w,h,'#f4f7f4','#192123',{...options,transit:true});a.mesh.rotation.y=options.yaw??0;a.mesh.userData.stationSign={y,height:h,width:w,options};cube(a.mesh,'#555b5c',0,0,0,w+.035,h+.035,.075);if(!options.wall){const ceiling=y>14?21.5:10.8,hang=Math.max(.15,ceiling>y+h/2?ceiling-y-h/2:.46);for(const side of [-1,1])cube(a.mesh,'#687273',side*w*.36,h/2+hang/2,0,.035,hang,.035);}return a;}
  const posterTexture=new THREE.Texture();posterTexture.colorSpace=THREE.SRGBColorSpace;posterTexture.minFilter=THREE.LinearMipmapLinearFilter;posterTexture.magFilter=THREE.LinearFilter;posterTexture.anisotropy=4;
  if(typeof Image!=='undefined'){const art=new Image();art.onload=()=>{posterTexture.image=art;posterTexture.needsUpdate=true;};art.src=METRO_POSTER_SRC;}
  const posterMaterial=new THREE.MeshBasicMaterial({map:posterTexture});
  for(const s of METRO_STATIONS){
   const state={...s,fixtures:metroFixtures(s),checked:false,paid:false,gate:0,lastSecond:-1,doors:[],people:[],screens:[]};stations.push(state);
   // Gray tile floors, dark slatted ceilings, linear white lamps and station color columns.
-  for(const y of [16,6]){const half=y===16?14:5,top=y===16?5.5:4.8,columnZ=y===16?s.z-11:s.z-.4;const floor=slab(root,'#ffffff',s.x,y+.005,s.z,70,half*2);floor.material.map=tileTexture;slab(root,'#1e252d',s.x,y+top,s.z,70,y===16?30:23);for(let x=-32;x<34;x+=3)slab(root,'#afb4b3',s.x+x,y+.01,s.z,.025,half*2);for(let z=-half;z<half;z+=3)slab(root,'#afb4b3',s.x,y+.01,s.z+z,70,.025);for(let x=-32;x<=32;x+=4){slab(root,'#39434a',s.x+x,y+top-.15,s.z,.5,half*2);slab(root,'#f5ffff',s.x+x,y+top-.3,s.z,2.8,.2);}for(let x=-28;x<=28;x+=14){cube(root,s.color,s.x+x,y+2.3,columnZ,.85,4.6,.85);board(root,[s.name,'2号线 · Line 2'],s.x+x,y+2.6,columnZ+.44,2.6,1.1,'#18212a',s.color);}}
+  for(const y of [16,6]){const half=y===16?14:5,top=y===16?5.5:4.8,columnZ=y===16?s.z-11:s.z-.4;const floor=slab(root,'#ffffff',s.x,y+.005,s.z,70,half*2);floor.material.map=tileTexture;slab(root,'#1e252d',s.x,y+top,s.z,70,y===16?30:23);for(let x=-32;x<34;x+=3)slab(root,'#afb4b3',s.x+x,y+.01,s.z,.025,half*2);for(let z=-half;z<half;z+=3)slab(root,'#afb4b3',s.x,y+.01,s.z+z,70,.025);for(let x=-32;x<=32;x+=4){slab(root,'#39434a',s.x+x,y+top-.15,s.z,.5,half*2);slab(root,'#f5ffff',s.x+x,y+top-.3,s.z,2.8,.2);}for(let x=-28;x<=28;x+=14){cube(root,s.color,s.x+x,y+2.3,columnZ,.85,4.6,.85);}}
   for(const side of [-1,1]){cube(root,'#d8dede',s.x,6.7,s.z+side*11.75,70,7.1,.06);cube(root,'#315144',s.x,9.8,s.z+side*11.7,70,.45,.07);cube(root,'#d8dede',s.x,18.8,s.z+side*15.9,70,5.5,.06);}
-  stationSign([s.name+'  南京东路 ↔ 陆家嘴',s.english+' · Line 2'],s.x,20.1,s.z-15.8,15,1.05,{line2:true});
+  stationSign([s.name,s.english],s.x+7,19.2,s.z-14.92,3.8,2.45,{line2:true,layout:'station',wall:true});
+  stationSign([],s.x-4,20.25,s.z+.25,10.8,.8,{sections:[{zh:'号线',en:'Line 2',line2:true,arrow:'↑',weight:1.1},{exit:s.exits[0].number,arrow:'←'},{exit:s.exits[1].number,arrow:'→'}]});
   // Security lane in the unpaid hall. The backpack visibly passes through the X-ray belt.
   cube(root,'#555f68',s.x-22,16.45,s.z-8,5,.9,1.8);cube(root,'#252b31',s.x-22,16.98,s.z-8,5,.12,1.5);cube(root,'#9aa5a9',s.x-22,17.9,s.z-8,2.1,1.8,2);cube(root,'#111a23',s.x-20.93,17.55,s.z-8,.03,1,1.4);
   state.bag=cube(root,'#cfb064',s.x-24,17.28,s.z-8,.6,.6,.5);state.bag.visible=false;
-  stationSign(['安全检查','Security check'],s.x-22,20.25,s.z-8,4.8,.7,{line2:false,arrow:'↓'});
+  stationSign(['安全检查','Security check'],s.x-22,20.25,s.z-8,4.8,.7,{line2:false,arrow:'↓',pictogram:'bag'});
   const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐2号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],['去外滩或东方明珠怎么走？',s.id==='nanjing'?'出站后沿南京路向东走到外滩；乘浦东方向列车可到陆家嘴。':'1号方向出站后去东方明珠；乘市区方向列车到南京东路，再往东走到外滩。'],['广告上的演唱会能买票吗？','墙上展示的是玩家提供的华晨宇演唱会图片，不代表真实场次，站内也不提供售票。']]}};staff.push(employee);
   const gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
   cube(root,'#a7b4bc',gx,17,s.z-11.225,.1,1.8,9.25,.55);cube(root,'#a7b4bc',gx,17,s.z+5.775,.1,1.8,20.35,.55);
   for(const z of [gz-2,gz+2]){cube(root,'#b9c3c6',gx,16.6,z,2,1.2,.48);cube(root,'#28403e',gx,17.22,z,.8,.05,.35);}
   state.gateMesh=cube(root,'#49d5b2',gx,16.8,gz,.08,.7,1.45,.75);
-  stationSign(['进站验票 · 站台','Tickets · Platforms'],gx,20.25,gz,5.6,.75,{line2:true,arrow:'↑',yaw:-Math.PI/2});
+  stationSign(['进站检票','Tickets'],gx,20.25,gz,5.6,.75,{sections:[{zh:'进站检票',en:'Tickets',arrow:'↑',pictogram:'ticket',weight:1.7},{zh:'号线',en:'Line 2',line2:true}],yaw:-Math.PI/2});
   const paths=[[[s.x-21,s.z-4.75],[s.x-22,s.z-5.5]],[[s.x-22,s.z-5.5],[gx+2,gz]],[[gx+2,gz],[gx+2,s.z+3]]];
   state.routes=paths.map(points=>{const g=new THREE.Group();root.add(g);for(let i=1;i<points.length;i++){const [ax,az]=points[i-1],[bx,bz]=points[i];cube(g,'#72edce',(ax+bx)/2,16.045,(az+bz)/2,Math.abs(bx-ax)||.16,.025,Math.abs(bz-az)||.16);}return g;});
-  stationSign(['进站验票','Ticket gates'],s.x-22,METRO_SECURITY_GUIDANCE.y,s.z-5.5,METRO_SECURITY_GUIDANCE.width,METRO_SECURITY_GUIDANCE.height,{line2:false,arrow:'→'});
+  stationSign(['进站检票','Tickets'],s.x-22,METRO_SECURITY_GUIDANCE.y,s.z-5.5,METRO_SECURITY_GUIDANCE.width,METRO_SECURITY_GUIDANCE.height,{line2:false,arrow:'→'});
   cube(root,'#72edce',gx-1,16.05,gz,1.2,.025,.55);
   for(const side of [-1,1]){
    cube(root,'#bad787',s.x,6.025,s.z+side*4.4,69,.045,.45);cube(root,'#eed368',s.x,6.03,s.z+side*5,69,.05,.16);
    let edge=-34.5;
    for(const x of METRO_DOOR_CENTERS){const lo=x-.8;if(lo>edge)cube(root,'#85b2bf',s.x+(edge+lo)/2,6.75,s.z+side*5.55,lo-edge,1.4,.1,.32);const door=createSlidingDoor(root,cube,{x:s.x+x,z:s.z+side*5.55,y:6.75,height:1.4,screen:true});state.doors.push({...door,side});cube(root,'#c0cad0',s.x+x+.88,6.8,s.z+side*5.55,.1,1.5,.18);edge=x+.8;}
    if(edge<34.5)cube(root,'#85b2bf',s.x+(edge+34.5)/2,6.75,s.z+side*5.55,34.5-edge,1.4,.1,.32);
-   const dir=side===-1?1:-1;const screen=stationSign([dir===1?'陆家嘴 · 浦东方向':'南京东路 · 市区方向','下一班 · 计算中'],s.x+(side===1?-17:17),10,s.z+side*2.8,8.5,.75,{line2:true,arrow:side<0?'→':'←'});state.screens.push({screen,dir});
+   const dir=side===-1?1:-1;stationSign([dir===1?'陆家嘴方向':'南京东路方向',dir===1?'To Lujiazui':'To East Nanjing Road'],s.x+(side===1?-17:17),10,s.z+side*2.8,6.3,.75,{line2:true,arrow:side<0?'→':'←'});const screen=stationSign(['下一班 / NEXT TRAIN','计算中'],s.x+(side===1?-9.8:9.8),10,s.z+side*2.8,7.7,.75,{line2:false,layout:'arrival'});state.screens.push({screen,dir});
   }
   for(const x of [-28,28]){cube(root,'#91b2bd',s.x+x,6.55,s.z,4,.15,1);for(const z of [-.48,.48])cube(root,'#6e979f',s.x+x,6.95,s.z+z,4,.85,.1);}
   for(const [i,x]of [-28,-8,12,29].entries()){
@@ -78,7 +79,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
    const gx=s.x+METRO_HALL.gateX;let self=null;
    const clear=(x,y,z)=>!(y===16&&x>s.x-27&&x<s.x-10&&z<s.z-4&&z>s.z-13)&&!fixtureCollision(state.fixtures,x,y,z,.38,1.92)&&Math.abs(x-gx)>1.4&&!METRO_RAMPS.some(r=>Math.abs(r.z-z)<r.width+.4&&Math.abs(y-(metroRampFloor(x,z)??-100))<2)&&!state.people.some(p=>p!==self&&Math.abs(p.y-y)<2&&Math.abs(p.z-z)<.7&&Math.abs(p.x-x)<2);
    const spot=passengerSpot(s,x,z,y,clear);if(!spot)continue;const p=person(root,i,spot.x,y,spot.z);self={root:p,...spot,phase:i*2.173,speed:.28+(i%7)*.055,clear};state.people.push(self);}
-  for(const e of s.exits){cube(root,'#abbec0',e.x-e.dir*.8,27.8,e.z-(e.width??1.5)-.35,1.1,3.6,.13);const sign=board(root,['2 '+s.name+'  '+e.number+'号方向','↓ 自动扶梯 · V 查看乘车指引'],e.x-e.dir*.8,29,e.z,7,1.6);sign.mesh.rotation.y=Math.PI/2;const exitSign=metroExitSign(e);const exitBoard=stationSign([e.number+' 出口  '+e.label,'Exit · Street level'],exitSign.x,exitSign.y,exitSign.z,exitSign.width,exitSign.height,{line2:false,arrow:'↑',yaw:Math.PI/2});exitBoard.mesh.userData.exitSign={...exitSign};}
+  for(const e of s.exits){cube(root,'#abbec0',e.x-e.dir*.8,27.8,e.z-(e.width??1.5)-.35,1.1,3.6,.13);const sign=board(root,[s.name,s.english],e.x-e.dir*.8,29,e.z,7,1.05,'#f4f7f4','#171a1b',{separatorColor:'#f5f5ee',sections:[{zh:s.name+'站',en:s.english+' Station',line2:true,weight:3.4},{exit:e.number,zh:'号口',color:'#f5f5ee'}]});sign.mesh.rotation.y=Math.PI/2;const exitSign=metroExitSign(e);const exitBoard=stationSign(['出口','EXIT'],exitSign.x,exitSign.y,exitSign.z,exitSign.width,exitSign.height,{line2:false,exit:e.number,arrow:'↑',yaw:Math.PI/2});exitBoard.mesh.userData.exitSign={...exitSign};}
  }
  // Sloped escalator support is analytic; treads move while the walking surface stays smooth.
  const treads=[],treadBatch=new THREE.InstancedMesh(box,mat('#98a4ac'),METRO_RAMPS.length*72),treadPose=new THREE.Object3D();treadBatch.frustumCulled=false;root.add(treadBatch);
@@ -131,9 +132,10 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   if(playing&&!ride&&!metroInterior(getPos())){for(const station of stations){station.checked=false;station.paid=false;}if(scan){scan.s.bag.visible=false;scan=null;notify('已离开站内，背包已取回；再次进站请重新安检。');}}
   audioAllowed=playing&&sound&&!document.hidden;if(audioAllowed&&metroInterior(getPos()))sounds.prepare();if(!audioAllowed)suspend();clock+=dt;
   if(scan){scan.time+=dt;scan.s.bag.position.x=scan.s.x-24+scan.time*1.35;if(scan.time>=3){scan.s.checked=true;scan.s.bag.visible=false;onEvent({type:'security',station:scan.s.id});scan=null;notify('安检通过，背包已取回，全部物品保留。到绿色箭头闸机按 V。');announce('检查好了，请取回背包，往旁边闸机走。','Check complete. Collect your bag and proceed to the gates.',{cue:'pass',speaker:'安检员'});}}
-  for(const t of trains){const st=trainState(clock,t.offset,t.direction),q=trainPose(st);t.state=st;if(ride?.index===t.index&&st.phase==='travel'&&st.origin===ride.from)ride.departed=true;t.root.visible=st.visible;t.root.position.set(q.x,q.y,q.z);t.root.rotation.y=q.yaw;const part=METRO_DWELL-st.remaining;t.doorAmount=st.open?Math.min(1,(part-1.2)/.45,(METRO_DWELL-2-part)/.45):0;for(const d of t.doors)d.set(d.side===t.direction?t.doorAmount:0);exchangePassengers(t,st);const crowd=trainCrowd(st,t.index);t.passengers.forEach((p,i)=>p.visible=(crowd.crowded||i<8)&&!(st.open&&i<6&&METRO_DWELL-st.remaining>2+i*.25));
+  for(const t of trains){const previous=t.state,st=trainState(clock,t.offset,t.direction),q=trainPose(st);t.state=st;if(ride?.index===t.index&&st.phase==='travel'&&st.origin===ride.from)ride.departed=true;t.root.visible=st.visible;t.root.position.set(q.x,q.y,q.z);t.root.rotation.y=q.yaw;const part=METRO_DWELL-st.remaining;t.doorAmount=st.open?Math.min(1,(part-1.2)/.45,(METRO_DWELL-2-part)/.45):0;for(const d of t.doors)d.set(d.side===t.direction?t.doorAmount:0);exchangePassengers(t,st);const crowd=trainCrowd(st,t.index);t.passengers.forEach((p,i)=>p.visible=(crowd.crowded||i<8)&&!(st.open&&i<6&&METRO_DWELL-st.remaining>2+i*.25));
    const s=metroStationAt(getPos()),near=s&&stationIndex(s)===st.station,event=st.cycle+':'+st.station+':'+(st.phase==='dwell'?(st.open?'open':st.remaining<=3?'close':'arriving'):st.phase);
-   if(event!==t.lastEvent){if(dt>0&&(near||ride?.index===t.index)){if(st.phase==='dwell'&&st.open)announce('列车到站，'+METRO_STATIONS[st.station].name+'。右侧车门已打开。请先下后上，注意站台间隙。','This is '+METRO_STATIONS[st.station].english+'. Doors are open on the right. Please let passengers off first and mind the gap.');else if(st.phase==='dwell'&&st.remaining<=3)announce('车门即将关闭，请勿抢上抢下。','Doors are closing. Please stand clear of the doors.');else if(st.phase==='travel'&&ride?.index===t.index)announce('下一站，'+METRO_STATIONS[st.next].name+'。右侧车门将会打开。','Next station, '+METRO_STATIONS[st.next].english+'. Doors will open on the right.');}t.lastEvent=event;}
+   if(dt>0&&previous?.phase==='dwell'&&st.phase!=='dwell'&&previous.cycle===st.cycle&&(near||ride?.index===t.index))sounds.play('departure');
+   if(event!==t.lastEvent){t.route.paint([METRO_STATIONS[st.station].name,st.phase==='travel'||st.station===st.origin?METRO_STATIONS[st.next].name:'体验区外',String(t.direction),st.phase==='dwell'?'本站 '+METRO_STATIONS[st.station].name+' · 下一站':'下一站']);if(dt>0&&(near||ride?.index===t.index)){if(st.phase==='dwell'&&st.open)announce('列车到站，'+METRO_STATIONS[st.station].name+'。右侧车门已打开。请先下后上，注意站台间隙。','This is '+METRO_STATIONS[st.station].english+'. Doors are open on the right. Please let passengers off first and mind the gap.');else if(st.phase==='dwell'&&st.remaining<=3)announce('车门即将关闭，请勿抢上抢下。','Doors are closing. Please stand clear of the doors.');else if(st.phase==='travel'&&ride?.index===t.index)announce('下一站，'+METRO_STATIONS[st.next].name+'。右侧车门将会打开。','Next station, '+METRO_STATIONS[st.next].english+'. Doors will open on the right.');}t.lastEvent=event;}
    if(ride?.index===t.index&&ride.from!==st.origin&&st.remaining<2.6){end(true);notify('本车驶出体验区域 · 已安全回到站台，请到对面乘坐返程列车。');}
    if(ride?.index===t.index&&st.phase==='dwell'&&st.station!==ride.from&&st.open&&st.remaining<METRO_DWELL-3){end();notify('已到 '+METRO_STATIONS[st.station].name+' · 请从对面站台返程，或沿扶梯出站。');}
   }
@@ -152,5 +154,9 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function safeSavePoint(){if(!ride)return null;const t=trains[ride.index],s=METRO_STATIONS[t.state.phase==='dwell'?t.state.station:ride.from];return {x:s.x+3,y:6,z:s.z-3.5};}
  return {root,staff,stations,trains,tick,use,seat,collides,floorAt,tryBoard,suspend,end,isRiding:()=>!!ride,get ride(){return ride;},get clock(){return clock;},safeSavePoint,serialize:()=>({stations:stations.map(s=>({id:s.id,checked:s.checked,paid:s.paid}))}),restore(d){scan=null;ride=null;stations.forEach(s=>{const old=d?.stations?.find(a=>a.id===s.id);s.checked=!!old?.checked;s.paid=s.checked&&!!old?.paid;s.bag.visible=false;});}};
 }
+
+
+
+
 
 
