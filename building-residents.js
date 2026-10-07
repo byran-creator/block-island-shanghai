@@ -1,3 +1,4 @@
+import {styleNpc} from './npc-appearance.js';
 import * as THREE from './three.module.js';
 import {ALL_BUILDINGS,buildingEntrance} from './city-layout.js';
 import {overlaps} from './world.js';
@@ -17,7 +18,7 @@ export function createBuildingResidents({scene,world,getPos,getVehicles=()=>[]})
  const root=new THREE.Group();root.name='building-residents';scene.add(root);const people=[],geometry=new THREE.BoxGeometry(1,1,1),materials=new Map();let clock=0;
  function part(parent,color,x,y,z,w,h,d){if(!materials.has(color))materials.set(color,new THREE.MeshLambertMaterial({color}));const m=new THREE.Mesh(geometry,materials.get(color));m.position.set(x,y,z);m.scale.set(w,h,d);parent.add(m);return m;}
  for(const [i,b]of residentRoutes(world).entries()){const r=new THREE.Group(),office=['glass','steps','gold'].includes(b.kind),shirt=office?['#7e9eb6','#c7cad0','#687e98'][i%3]:['#b8816f','#89aa87','#9d8da9'][i%3];r.name='resident-'+b.id;root.add(r);part(r,shirt,0,1.05,0,.45,.65,.3);part(r,'#deb592',0,1.58,0,.33,.35,.33);part(r,'#343537',0,1.79,0,.36,.1,.35);if(office){part(r,'#e6e4da',0,1.15,-.16,.08,.34,.02);part(r,'#514839',.34,.68,0,.16,.35,.42);}else part(r,'#c4ad82',.34,.7,0,.18,.4,.3);
-  const legs=[];for(const side of [-1,1]){part(r,shirt,side*.3,1.04,0,.13,.55,.18);const leg=new THREE.Group();leg.position.set(side*.12,.7,0);part(leg,'#435365',0,-.33,0,.17,.66,.22);r.add(leg);legs.push(leg);}batchMeshes(r,staticMeshes(r,new Set(legs)),'resident-body');
+  const legs=[];for(const side of [-1,1]){part(r,shirt,side*.3,1.04,0,.13,.55,.18);const leg=new THREE.Group();leg.position.set(side*.12,.7,0);part(leg,'#435365',0,-.33,0,.17,.66,.22);r.add(leg);legs.push(leg);}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms:r.children.filter(m=>m.isMesh&&Math.abs(m.position.x)>.28&&Math.abs(m.position.x)<.32&&m.scale.y>.5),legs},i,office?'office':'resident');batchMeshes(r,staticMeshes(r,new Set(legs)),'resident-body');
   const p={root:r,person:true,npcRole:office?'楼宇职员':'附近住户',building:b.id,bank:b.bank,route:b.points,phase:fraction(i+37)*150,speed:.65+fraction(i+8)*.4,legs,guide:{intro:office?'我就在这栋楼工作，午休会出来走一走。':'我住在附近，出门买些东西，晚点就回家。',choices:[['附近怎么出行？','按 M 打开地图可去地铁、渡口和主要景点。自行车或汽车靠近按 V，公交要等停稳。'],['能在这里住下吗？','地图里有“我的外滩总统套房”和“我的汤臣一品江景套房”，床边按 V 可以休息。']]}};people.push(p);
  }
  function tick(dt){clock+=dt;const viewer=getPos(),vehicles=getVehicles();for(const [i,p]of people.entries()){const route=p.route,length=route.slice(1).reduce((sum,a,j)=>sum+Math.hypot(a.x-route[j].x,a.z-route[j].z),0),walk=length/p.speed,inside=35+fraction(i)*35,outside=12+fraction(i+10)*22,cycle=inside+2*walk+outside,t=(clock+p.phase-(p.delay??0))%cycle;
