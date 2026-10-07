@@ -17,7 +17,7 @@ export function createSlidingDoor(parent,cube,{x,z,y=1.62,height=2.9,width=METRO
  return {x,z,width,leaves,amount:0,set(amount){this.amount=Math.max(0,Math.min(1,amount));for(const l of leaves)l.mesh.position.x=l.closed+l.sign*this.amount*(width/2+.08);}};
 }
 export function createMetroTrain({parent,direction,cube,board,person}){
- const root=new THREE.Group();root.name='line-2-02A05';parent.add(root);const doors=[],passengers=[];
+ const root=new THREE.Group();root.name='line-2-02A05';parent.add(root);const doors=[],passengers=[];let route=null;
  for(const car of METRO_CARS){
   cube(root,'#a8b3b9',car,.02,0,7.75,.15,2.65);cube(root,'#cbd1d3',car,3.28,0,7.7,.16,2.72);
   cube(root,'#e5e9e8',car,3.13,0,7.5,.1,2.5);cube(root,'#edf7f5',car,3.02,0,6.5,.055,.16);
@@ -34,7 +34,7 @@ export function createMetroTrain({parent,direction,cube,board,person}){
    cube(root,'#a8c7c2',car,.48,side*.98,1.85,.15,.45);cube(root,'#90aba7',car,.82,side*1.17,1.85,.64,.1);
   }
   for(const dx of [-1,1]){cube(root,'#dbe5e7',car+dx,1.64,0,.045,2.95,.045);cube(root,'#313b44',car+dx*2.6,-.24,0,1.1,.3,2.15);}
-  const route=board(root,['2号线 · Line 2',direction===1?'→ 陆家嘴 · 浦东方向':'→ 南京东路 · 市区方向'],car,2.68,1.25,3.2,.48,'#faad54');route.mesh.rotation.y=Math.PI;
+  for(const side of [-1,1])for(const dx of [-2,2]){let panel;if(!route){route=board(root,[direction===1?'南京东路':'陆家嘴',direction===1?'陆家嘴':'南京东路',String(direction)],car+dx,2.85,side*1.25,2.7,.42,'#17201c','#fbfcf7',{layout:'route'});panel=route.mesh;}else{panel=route.mesh.clone();root.add(panel);}panel.position.set(car+dx,2.85,side*1.25);panel.rotation.y=side===1?Math.PI:0;}
   if(car!==METRO_CARS.at(-1)){for(const side of [-1,1])cube(root,'#323b42',car+4,1.55,side*1.02,.25,2.9,.14);cube(root,'#616d72',car+4,3,0,.25,.12,2.12);cube(root,'#616d72',car+4,.08,0,.25,.12,2.12);}
  }
  // Faceted, sloping black windshield and the characteristic lime headlight band.
@@ -48,5 +48,6 @@ export function createMetroTrain({parent,direction,cube,board,person}){
  }
  for(let i=0;i<24;i++){const p=person(root,i,METRO_CARS[i%8]+(i%3-1)*.7,.15,(i%2?1:-1)*.6);passengers.push(p);}
  const dynamic=new Set([...doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...passengers]);batchMeshes(root,staticMeshes(root,dynamic),'02A05-body');
- return {root,doors,passengers};
+ return {root,doors,passengers,route};
 }
+
