@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {createMetroSounds} from '../game/metro-sounds.js';
+import * as THREE from '../game/three.module.js';
+import {createMetro} from '../game/metro.js';
+import {METRO_STATIONS} from '../game/metro-layout.js';
+const nodes=[],param=()=>({value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}});
+const make=type=>{const n={type,frequency:param(),gain:param(),connect(){},disconnect(){},start(t){this.at=t;},stop(){this.stopped=true;}};nodes.push(n);return n;};
+let allowed=false,requests=0,buffers=0;
+const ctx={currentTime:1,sampleRate:8000,destination:{},resume:()=>Promise.resolve(),createOscillator:()=>make('oscillator'),createGain:()=>make('gain'),createBufferSource:()=>make('buffer'),createBiquadFilter:()=>make('filter'),createBuffer(c,n){buffers++;return {getChannelData:()=>new Float32Array(n)};}};
+const sound=createMetroSounds({getAudio:()=>{requests++;return ctx;},allowed:()=>allowed});
+assert(!sound.play('arrival'));assert.equal(requests,0,'Mute/background must not create an audio context');
+allowed=true;assert(sound.play('arrival'));assert.equal(nodes.filter(n=>n.frequency.value>0).length,0,'Approach is a rolling noise, not a jingle');assert.equal(buffers,1);assert(nodes.some(n=>n.buffer),'Arrival needs a rolling sound as well as bell');
+sound.play('arrival');assert.equal(buffers,1,'Reuse the noise buffer');sound.play('scan');sound.play('pass');
+sound.suspend();assert(nodes.filter(n=>n.at!==undefined).every(n=>n.stopped),'Pause must stop active and scheduled sound sources');
+assert(!createMetroSounds({getAudio(){throw Error('No audio');},allowed:()=>true}).play());
+let decodes=0;const recording={duration:9.56177083333333};ctx.decodeAudioData=async bytes=>{decodes++;assert.equal(bytes.byteLength,335083,'Use the verified complete source recording');return recording;};
+await sound.prepare();await sound.prepare();assert.equal(decodes,1,'Decode the recording only once');sound.play('arrival');assert(nodes.some(n=>n.buffer===recording),'Arrival must use the real recording after preparation');sound.suspend();
+const oldDocument=globalThis.document,oldSpeech=globalThis.speechSynthesis,oldUtterance=globalThis.SpeechSynthesisUtterance,spoken=[];
+globalThis.document={hidden:false,body:{append(){}},createElement:()=>({setAttribute(){},getContext:()=>({fillRect(){},fillText(){}})})};
+globalThis.speechSynthesis={getVoices:()=>[{lang:'zh-CN',name:'普通话',voiceURI:'cn'},{lang:'en-US',name:'English',voiceURI:'en'}],speak:u=>spoken.push(u.text),cancel(){}};
+globalThis.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};
+try{
+ const s=METRO_STATIONS[0],pos={x:s.x-22,y:16,z:s.z-10.4};
+ const metro=createMetro({scene:new THREE.Scene(),getPos:()=>pos,place:p=>Object.assign(pos,p),setView(){},notify(){},getAudio:()=>ctx});
+ metro.tick(0,{playing:true,sound:true});metro.use();assert(spoken.some(t=>t.includes('背包放上传送带')),'Security start voice must trigger from the actual scan action');
+ metro.tick(3.1,{playing:true,sound:true});assert(spoken.some(t=>t.includes('检查好了')),'Security completion must speak');
+ pos.y=6;pos.x=s.x+3;pos.z=s.z-3;
+ for(let i=0;i<600;i++)metro.tick(.1,{playing:true,sound:true});
+ assert(spoken.some(t=>t.includes('列车即将进站')),'Five-second approaching announcement must trigger');
+ const before=spoken.length;globalThis.document.hidden=true;metro.tick(.1,{playing:true,sound:true});assert.equal(spoken.length,before,'Background tab must not speak');
+ metro.suspend();
+}finally{globalThis.document=oldDocument;globalThis.speechSynthesis=oldSpeech;globalThis.SpeechSynthesisUtterance=oldUtterance;}
+console.log('PASS: recorded arrival/rolling fallback, lazy shared decode, actual approaching/security announcements, mute, pause cancellation and unavailable-audio fallback.');

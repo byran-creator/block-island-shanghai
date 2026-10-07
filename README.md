@@ -57,4 +57,8 @@ npm run build
 
 ## 第三方组件
 
-Three.js 的许可证保留在 [game/THREE-LICENSE.txt](game/THREE-LICENSE.txt)。游戏内参考图片未作为素材下载打包；具体参考来源见各设计文档。本仓库的项目许可证由作者另行确定。
+Three.js 的许可证保留在 [game/THREE-LICENSE.txt](game/THREE-LICENSE.txt)。部分演唱会灯箱使用作者提供的完整海报；进站轰隆声使用 Philt3r 发布的伦敦地铁录音（CC BY 4.0），署名、来源和播放修改见 [音频署名](game/audio-credits.txt)。其他实景参考来源见各设计文档。本仓库的项目许可证由作者另行确定。
+
+## 最新地铁细节修复
+
+安检设备与乘客共用碰撞边界，站内吊牌采用高位黑底中英导向，演唱会灯箱保留完整竖版海报。列车到站前加入真实轰隆声；安检员仍使用浏览器普通话/英语语音。夜影扩大身体碰撞检查。根因、实景参考与验收见 [本批说明](docs/metro-detail-update.md)。
