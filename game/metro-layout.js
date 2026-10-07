@@ -4,8 +4,16 @@ export const METRO_STATIONS=[
  {id:'nanjing',name:'南京东路',english:'East Nanjing Road',x:-94,z:66,hallY:16,platformY:6,color:'#8bc9b9',exits:[{number:1,x:-135,z:61.25,dir:1,width:.7,label:'南京东路北侧 · 河南中路'},{number:4,x:-99,z:70.75,dir:-1,width:.7,label:'南京东路南侧 · 往外滩'}]},
  {id:'lujiazui',name:'陆家嘴',english:'Lujiazui',x:174,z:31,hallY:16,platformY:6,color:'#c9b1c7',exits:[{number:1,x:153,z:24,dir:1,label:'世纪大道 · 东方明珠方向'},{number:3,x:205,z:24,dir:-1,label:'世纪大道 · 银城中路方向'}]}
 ];
-// The security conveyor and adjacent fare gate lead east into the paid hall.
-export const METRO_HALL={securityX:-22,securityZ:-8,gateX:-14,gateZ:-5.5};
+// The north entrance corridor and west security hall are unpaid; only the
+// southeast concourse contains the B2 escalator. All four street ramps land
+// outside this L-shaped fare boundary without changing their street locations.
+export const METRO_HALL={securityX:-22,securityZ:-8,gateX:-14,gateZ:0,boundaryZ:-4};
+export function metroPaidHall(s,x,z){return x>s.x+METRO_HALL.gateX&&z>s.z+METRO_HALL.boundaryZ;}
+export function metroFarePartitions(s){const gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ,north=s.z+METRO_HALL.boundaryZ,south=s.z+15.5,gap=1.1;return [
+ {x:gx,z:(north+gz-gap)/2,w:.1,d:gz-gap-north},
+ {x:gx,z:(gz+gap+south)/2,w:.1,d:south-gz-gap},
+ {x:(gx+s.x+35)/2,z:north,w:35-METRO_HALL.gateX,d:.1}
+];}
 export const METRO_RAMPS=METRO_STATIONS.flatMap(s=>[
  ...s.exits.map(e=>({station:s.id,exit:e.number,x:e.x,z:e.z,dir:e.dir,from:26,to:16,length:18,width:e.width??1.5,kind:'entrance'})),
  {station:s.id,x:s.x-12,z:s.z+3,dir:1,from:16,to:6,length:18,width:1.5,kind:'platform'}

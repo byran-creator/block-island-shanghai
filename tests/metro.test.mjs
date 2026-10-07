@@ -30,10 +30,11 @@ try{
  const gx=nanjing.x+METRO_HALL.gateX,gz=nanjing.z+METRO_HALL.gateZ;
  metro.tick(0);Object.assign(p,{x:gx-1,y:16,z:gz});metro.use();assert(!metro.stations[0].paid);assert(notes.at(-1).includes('检票闸机'));
  Object.assign(p,{x:nanjing.x-22,y:16,z:nanjing.z-5.5});assert(!metro.collides(p.x,p.y,p.z)&&!overlaps(world,p.x,p.y,p.z));metro.use();metro.tick(2.8);assert.equal(events.length,0,'Partial security scan must not count');metro.tick(.3);assert(metro.stations[0].checked);assert.deepEqual(events,[{type:'security',station:'nanjing'}]);
- assert(Math.hypot(gx-p.x,gz-p.z)<9,'Gate should be next to security');
+ assert(Math.hypot(gx-p.x,gz-p.z)<12,'Gate should be next to security');
  for(let x=p.x;x<gx-1;x+=.15)assert(!metro.collides(x,16,gz)&&!overlaps(world,x,16,gz),'Security-to-gate route blocked');
- Object.assign(p,{x:gx-1,y:16,z:gz});assert(metro.collides(gx,16,gz));metro.use();assert(metro.stations[0].paid);metro.use();metro.use();assert(metro.stations[0].paid,'Repeated V must not cancel entry ticket');
+ Object.assign(p,{x:gx-1,y:16,z:gz});assert(metro.collides(gx,16,gz));metro.use();assert(metro.stations[0].gatePass?.entering);metro.use();metro.use();assert(metro.stations[0].gatePass?.entering,'Repeated V must not cancel entry ticket');
  for(let x=gx-1;x<gx+2;x+=.1)assert(!metro.collides(x,16,gz)&&!overlaps(world,x,16,gz),'Open fare gate blocked');
+ Object.assign(p,{x:gx+1,y:16,z:gz});metro.tick(0);assert(metro.stations[0].paid);assert(metro.collides(gx,16,gz),'The fare gate must close after entry');
  for(let z=gz;z<nanjing.z+3;z+=.1)assert(!metro.collides(gx+2,16,z)&&!overlaps(world,gx+2,16,z),'Gate-to-escalator route blocked');
  const station=metro.stations[0],train=metro.trains[0],doorX=nanjing.x+2;
  assert.equal(station.doors.length,METRO_DOOR_CENTERS.length*2);
@@ -76,7 +77,7 @@ try{
  Object.assign(p,{x:176,y:6,z:25.2});metro.tick(0,{playing:true,sound:false});assert(metro.isRiding(),'A destination train with open doors must safely accept a walking passenger');
  metro.tick(9);assert(!metro.isRiding(),'Passengers must return to the platform before this train leaves the playable area');assert.equal(p.y,6);
  assert.equal(events.filter(e=>e.type==='metro').length,trips,'Forced exit and boarding a destination train must not award a trip');
- Object.assign(p,{x:gx+1,y:16,z:gz});metro.use();assert(!metro.stations[0].paid,'Arrival ticket must allow exit without new security');assert(!metro.stations[0].checked,'Leaving the paid area ends this visit');Object.assign(p,{x:gx-1,y:16,z:gz});metro.use();assert(!metro.stations[0].paid,'Re-entry must require a new security check');
+ Object.assign(p,{x:gx+1,y:16,z:gz});metro.use();assert(metro.stations[0].gatePass&&!metro.stations[0].gatePass.entering,'Arrival ticket must allow exit without new security');for(let x=gx+1;x>=gx-.9;x-=.1){assert(!metro.collides(x,16,gz),'Exit gate shut on a crossing player');Object.assign(p,{x,y:16,z:gz});metro.tick(0);}assert(!metro.stations[0].paid,'Crossing the exit gate ends this visit');assert(!metro.stations[0].checked);metro.use();assert(!metro.stations[0].gatePass,'Re-entry must require a new security check');
  const life=new SurvivalState();life.mode='survival';for(let i=0;i<100;i++)life.tick(1,{underwater:false});assert.equal(life.oxygen,40);
 }finally{globalThis.document=oldDocument;}
 console.log('PASS: sidewalk entrances, adjacent security/gates, clear escalators, aligned sliding doors and collision openings, passenger alighting, walking/V boarding, bidirectional travel, tickets, saves and mute.');
