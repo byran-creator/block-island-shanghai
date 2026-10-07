@@ -1,14 +1,15 @@
 import * as THREE from './three.module.js';
 import {createSkyGradient} from './sky-gradient.js';
-export const WEATHER_CYCLE_SECONDS=3600;
-export const DAY_CYCLE_SECONDS=2400;
+export const WEATHER_CYCLE_SECONDS=1200;
+export const DAY_CYCLE_SECONDS=1200;
 export const WEATHER_TYPES={clear:{name:'晴天',humidity:48,rain:0,fog:0},cloudy:{name:'多云',humidity:73,rain:0,fog:.2},rain:{name:'雨天',humidity:89,rain:1,fog:.48},fog:{name:'江雾',humidity:86,rain:0,fog:1}};
 export class WeatherState{
- constructor(){this.mode='auto';this.type='clear';this.elapsed=0;this.rain=0;this.fog=0;this.cloud=0;this.humidity=48;}
+ constructor(){this.mode='auto';this.type='clear';this.elapsed=0;this.cycleSeconds=WEATHER_CYCLE_SECONDS;this.rain=0;this.fog=0;this.cloud=0;this.humidity=48;}
  setMode(mode){if(!['auto','clear','cloudy','rain','fog'].includes(mode))return false;this.mode=mode;if(mode!=='auto')this.type=mode;return true;}
- tick(dt){this.elapsed+=dt;if(this.mode==='auto'){const t=(this.elapsed%WEATHER_CYCLE_SECONDS)/9;this.type=t<130?'clear':t<195?'cloudy':t<285?'rain':t<355?'fog':'cloudy';}const spec=WEATHER_TYPES[this.type],a=1-Math.exp(-dt/(this.mode==='auto'?55:7));this.rain+=(spec.rain-this.rain)*a;this.fog+=(spec.fog-this.fog)*a;this.cloud+=((this.type==='clear'?.08:this.type==='cloudy'?.65:.92)-this.cloud)*a;this.humidity+=(spec.humidity-this.humidity)*a;return {name:spec.name,humidity:Math.round(this.humidity),rain:this.rain,fog:this.fog,cloud:this.cloud};}
- serialize(){return {timing:2,mode:this.mode,elapsed:this.elapsed,type:this.type,rain:this.rain,fog:this.fog,cloud:this.cloud,humidity:this.humidity};}
- restore(d){this.mode=['auto','clear','cloudy','rain','fog'].includes(d?.mode)?d.mode:'auto';this.elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed)*(d.timing===2?1:9):0;this.type=Object.hasOwn(WEATHER_TYPES,d?.type)?d.type:'clear';this.rain=Number.isFinite(d?.rain)?Math.max(0,Math.min(1,d.rain)):0;this.fog=Number.isFinite(d?.fog)?Math.max(0,Math.min(1,d.fog)):0;this.cloud=Number.isFinite(d?.cloud)?Math.max(0,Math.min(1,d.cloud)):this.rain;this.humidity=Number.isFinite(d?.humidity)?Math.max(0,Math.min(100,d.humidity)):WEATHER_TYPES[this.type].humidity;this.tick(0);}
+ setCycle(seconds){if(![600,1200,3600].includes(seconds))return false;this.elapsed*=seconds/this.cycleSeconds;this.cycleSeconds=seconds;return true;}
+ tick(dt){this.elapsed+=dt;if(this.mode==='auto'){const t=(this.elapsed%this.cycleSeconds)/this.cycleSeconds*400;this.type=t<130?'clear':t<195?'cloudy':t<285?'rain':t<355?'fog':'cloudy';}const spec=WEATHER_TYPES[this.type],a=1-Math.exp(-dt/(this.mode==='auto'?55:7));this.rain+=(spec.rain-this.rain)*a;this.fog+=(spec.fog-this.fog)*a;this.cloud+=((this.type==='clear'?.08:this.type==='cloudy'?.65:.92)-this.cloud)*a;this.humidity+=(spec.humidity-this.humidity)*a;return {name:spec.name,humidity:Math.round(this.humidity),rain:this.rain,fog:this.fog,cloud:this.cloud};}
+ serialize(){return {timing:3,cycleSeconds:this.cycleSeconds,mode:this.mode,elapsed:this.elapsed,type:this.type,rain:this.rain,fog:this.fog,cloud:this.cloud,humidity:this.humidity};}
+ restore(d){this.mode=['auto','clear','cloudy','rain','fog'].includes(d?.mode)?d.mode:'auto';this.cycleSeconds=d?.timing===3&&[600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS;const oldCycle=d?.timing===3?([600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS):d?.timing===2?3600:400;this.elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed)*this.cycleSeconds/oldCycle:0;this.type=Object.hasOwn(WEATHER_TYPES,d?.type)?d.type:'clear';this.rain=Number.isFinite(d?.rain)?Math.max(0,Math.min(1,d.rain)):0;this.fog=Number.isFinite(d?.fog)?Math.max(0,Math.min(1,d.fog)):0;this.cloud=Number.isFinite(d?.cloud)?Math.max(0,Math.min(1,d.cloud)):this.rain;this.humidity=Number.isFinite(d?.humidity)?Math.max(0,Math.min(100,d.humidity)):WEATHER_TYPES[this.type].humidity;this.tick(0);}
 }
 export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water,terrainMaterial}){
  const skyGradient=createSkyGradient(scene,camera),state=new WeatherState(),moon=new THREE.Group(),moonMat=new THREE.MeshBasicMaterial({color:'#d4dfeb',transparent:true,opacity:.62,depthWrite:false,fog:false}),moonBody=new THREE.Mesh(new THREE.CircleGeometry(2.3,48),moonMat);moon.name='distant-moon';moon.add(moonBody);

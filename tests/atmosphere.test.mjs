@@ -16,7 +16,7 @@ const climate=new WeatherState();climate.setMode('rain');climate.tick(40);assert
 for(let minute=0;minute<1440;minute++)assert.equal(clockMinutes(phaseFromMinutes(minute)),minute);
 assert.equal(clockLabel(36),'09:36');assert.equal(clockLabel(180),'00:00');
 for(const cycleSeconds of [1200,2400,3600,7200]){const options=clockOptions({cycleSeconds,paused:false});assert.equal(advanceDay(36,cycleSeconds,options),36);assert.equal(advanceDay(36,cycleSeconds/2,options),156);assert.equal(advanceDay(36,100,{...options,paused:true}),36);assert.deepEqual(clockOptions(JSON.parse(JSON.stringify(options))),options);}
-assert.deepEqual(clockOptions({cycleSeconds:0,paused:'yes'}),{cycleSeconds:2400,paused:false});
+assert.deepEqual(clockOptions({cycleSeconds:0,paused:'yes'}),{cycleSeconds:1200,paused:false});
 const camera=new THREE.PerspectiveCamera(),scene=new THREE.Scene();camera.position.set(60,28,90);scene.fog=new THREE.Fog('#777777',48,440);scene.background=new THREE.Color();
 const sunBlock=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshBasicMaterial()),clouds=new THREE.Group(),cloudMat=new THREE.MeshBasicMaterial(),water=new THREE.Mesh(new THREE.PlaneGeometry(),new THREE.MeshBasicMaterial()),terrainMaterial=new THREE.MeshBasicMaterial();
 const sky=createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water,terrainMaterial});sky.tick(0,180);const relative=sky.moon.position.clone().sub(camera.position);
