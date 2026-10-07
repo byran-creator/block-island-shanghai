@@ -10,11 +10,12 @@ export const CITY_QUESTS=[
 ];
 const station=id=>['nanjing','lujiazui'].includes(id);
 export class CityQuestState{
- constructor(){this.progress={};this.claimed=new Set();}
+ constructor(){this.progress={};this.claimed=new Set();this.tracked=null;}
+ track(id){if(id!==null&&!CITY_QUESTS.some(q=>q.id===id)||id===this.tracked)return false;this.tracked=id;return true;}
  set(id,value){const q=CITY_QUESTS.find(q=>q.id===id);if(!q||!Number.isFinite(value))return false;const next=Math.min(q.target,Math.max(this.progress[id]??0,Math.floor(value),0));if(next===(this.progress[id]??0))return false;this.progress[id]=next;return true;}
  record(event){if(!event)return false;const {type,from,to}=event;if(type==='hello')return this.set('hello',1);if(type==='security'&&station(event.station))return this.set('security',1);if(type==='metro'&&station(from)&&station(to)&&from!==to&&event.departed===true)return this.set('metro',1);if(type==='ferry'&&[0,1].includes(from)&&to===1-from&&event.departed===true)return this.set('ferry',1);if(['shop','meal','sky'].includes(type))return this.set(type,1);return false;}
  done(id){const q=CITY_QUESTS.find(q=>q.id===id);return !!q&&(this.progress[id]??0)>=q.target;}
- claim(id){const q=CITY_QUESTS.find(q=>q.id===id);if(!q||!this.done(id)||this.claimed.has(id))return null;this.claimed.add(id);return q.reward;}
- serialize(){return {version:1,progress:{...this.progress},claimed:[...this.claimed]};}
- restore(data,legacy={}){this.progress={};this.claimed.clear();for(const q of CITY_QUESTS)this.set(q.id,Number(data?.progress?.[q.id])||0);this.set('hello',legacy.talkDone?1:0);this.set('build',Number(legacy.placed)||0);for(const id of Array.isArray(data?.claimed)?data.claimed:[])if(this.done(id))this.claimed.add(id);}
+ claim(id){const q=CITY_QUESTS.find(q=>q.id===id);if(!q||!this.done(id)||this.claimed.has(id))return null;this.claimed.add(id);if(this.tracked===id)this.tracked=null;return q.reward;}
+ serialize(){return {version:2,progress:{...this.progress},claimed:[...this.claimed],tracked:this.tracked};}
+ restore(data,legacy={}){this.progress={};this.claimed.clear();for(const q of CITY_QUESTS)this.set(q.id,Number(data?.progress?.[q.id])||0);this.set('hello',legacy.talkDone?1:0);this.set('build',Number(legacy.placed)||0);for(const id of Array.isArray(data?.claimed)?data.claimed:[])if(this.done(id))this.claimed.add(id);this.tracked=CITY_QUESTS.some(q=>q.id===data?.tracked)&&!this.claimed.has(data.tracked)?data.tracked:null;}
 }

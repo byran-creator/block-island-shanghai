@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {CityQuestState} from '../game/city-quests.js';
+import {questTarget,drawQuestTarget} from '../game/quest-guidance.js';
+import {METRO_STATIONS,metroRampFloor} from '../game/metro-layout.js';
+import {VoxelWorld,overlaps} from '../game/world.js';
+import {PEACE_DINING} from '../game/peace-restaurant.js';
+const world=new VoxelWorld(),s=METRO_STATIONS[0],station={id:s.id,checked:false,paid:false};
+const context={pos:{x:-90,y:26,z:75},stations:[station]},guide=id=>questTarget(id,context);
+assert.equal(guide('metro').stage,'entrance');
+context.pos={x:s.exits[1].x-4,y:metroRampFloor(s.exits[1].x-4,s.exits[1].z),z:s.exits[1].z};assert.equal(guide('metro').stage,'entrance-ramp');assert.equal(guide('metro').y,16);
+context.pos={x:s.x-25,y:16,z:s.z-11};assert.equal(guide('metro').stage,'security');
+station.checked=true;assert.equal(guide('metro').stage,'gate');
+station.paid=true;assert.equal(guide('metro').stage,'through-gate');context.pos={x:s.x-12,y:16,z:s.z-5.5};assert.equal(guide('metro').stage,'platform-ramp');
+context.pos={x:s.x-6,y:metroRampFloor(s.x-6,s.z+3),z:s.z+3};assert.equal(guide('metro').stage,'platform-ramp');assert.equal(guide('metro').y,6);
+context.pos={x:s.x-2,y:6,z:s.z-3.5};assert.equal(guide('metro').stage,'board');assert(guide('metro').instruction.includes('等候'));
+context.trains=[{direction:1,state:{origin:0,station:0,open:true},doorAmount:1,root:{position:{z:s.z-8}}}];assert.equal(guide('metro').z,s.z-8);assert(guide('metro').instruction.includes('走入'));
+context.ride={from:0};assert.equal(guide('metro').stage,'ride');assert(guide('metro').label.includes('陆家嘴'));context.ride=null;
+station.paid=false;assert.equal(guide('metro').stage,'return-hall');
+for(const [id,p]of [['build',questTarget('build',{pos:{x:0,y:26,z:0}})],['sky',questTarget('sky',{pos:{x:0,y:26,z:0}})],['meal',questTarget('meal',{pos:PEACE_DINING.arrival})]]){assert(!overlaps(world,p.x,p.y,p.z),id+' target cannot be inside solid blocks');assert(overlaps(world,p.x,p.y-.1,p.z),id+' target needs a floor');}
+const state=new CityQuestState();assert.equal(state.tracked,null,'Exploration does not force task tracking');assert(state.track('metro'));assert(!state.track('unknown'));assert(!state.record({type:'teleport',to:'lujiazui'}));assert(!state.done('metro'));const saved=state.serialize(),restored=new CityQuestState();restored.restore(saved);assert.equal(restored.tracked,'metro');restored.track(null);const off=new CityQuestState();off.restore(restored.serialize());assert.equal(off.tracked,null);restored.restore({version:1,progress:{hello:1},claimed:['hello']});assert.equal(restored.tracked,null);
+const calls=[],ctx={beginPath(){},moveTo(...p){calls.push(p)},lineTo(){},closePath(){},fill(){},stroke(){},strokeText(){},fillText(){}};drawQuestTarget(ctx,{x:0,z:0,label:'目标'},624,-224,624);assert.deepEqual(calls[0],[224,215]);
+console.log('PASS: entrance/escalator/security/gate/platform/open-door/travel guidance, safe targets, map marker coordinates, legacy tracking and no fabricated completion.');

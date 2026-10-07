@@ -60,6 +60,10 @@ body.in-dialogue .hud,body.in-dialogue #crosshair,body.in-dialogue #toast,body.i
 .task-card.done{border-color:#badb7b88}
 .task-card.done>button:not(:disabled){background:#d5fd87;color:#243827;font-weight:700}
 .task-card>button:disabled{cursor:default;opacity:.7}
+.task-card.tracked{border-color:#ffd45e}.task-card .task-track,.task-card .task-map{font-size:12px}.task-card .task-track{color:#ffdf85}
+.quest-tracker{position:fixed;left:18px;bottom:190px;z-index:8;width:300px;max-width:calc(100vw - 36px);padding:13px 15px;border:1px solid #ffe29888;border-radius:12px;background:#183137e8;color:#f4edce;font:13px sans-serif;pointer-events:auto}
+.quest-tracker[hidden]{display:none}.quest-tracker strong{display:block;color:#ffdf85;margin-bottom:8px}.quest-tracker div{display:flex;align-items:center;gap:8px}.quest-tracker #tracked-arrow{display:inline-block;color:#ffdf85;font-size:23px}.quest-tracker p{line-height:1.6;margin:8px 0}.quest-tracker button{background:#284448;color:#f4edce;border:1px solid #f4edce55;border-radius:6px;padding:6px 8px;font:inherit;margin-right:7px}
+@media(max-height:620px){.quest-tracker{bottom:145px;padding:9px;width:260px}.quest-tracker p{font-size:12px;margin:5px 0}}
 .main-quest{border-top:1px solid #d5fd8744;padding-top:16px;color:#dde9de}
 .main-quest h3{font-size:16px;margin:0 0 12px}
 .main-quest>strong{display:flex;justify-content:space-between;gap:12px;margin:12px 0}

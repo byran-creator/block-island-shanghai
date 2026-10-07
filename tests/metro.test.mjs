@@ -76,7 +76,7 @@ try{
  Object.assign(p,{x:176,y:6,z:25.2});metro.tick(0,{playing:true,sound:false});assert(metro.isRiding(),'A destination train with open doors must safely accept a walking passenger');
  metro.tick(9);assert(!metro.isRiding(),'Passengers must return to the platform before this train leaves the playable area');assert.equal(p.y,6);
  assert.equal(events.filter(e=>e.type==='metro').length,trips,'Forced exit and boarding a destination train must not award a trip');
- Object.assign(p,{x:gx+1,y:16,z:gz});metro.use();assert(!metro.stations[0].paid,'Arrival ticket must allow exit without new security');
+ Object.assign(p,{x:gx+1,y:16,z:gz});metro.use();assert(!metro.stations[0].paid,'Arrival ticket must allow exit without new security');assert(!metro.stations[0].checked,'Leaving the paid area ends this visit');Object.assign(p,{x:gx-1,y:16,z:gz});metro.use();assert(!metro.stations[0].paid,'Re-entry must require a new security check');
  const life=new SurvivalState();life.mode='survival';for(let i=0;i<100;i++)life.tick(1,{underwater:false});assert.equal(life.oxygen,40);
 }finally{globalThis.document=oldDocument;}
 console.log('PASS: sidewalk entrances, adjacent security/gates, clear escalators, aligned sliding doors and collision openings, passenger alighting, walking/V boarding, bidirectional travel, tickets, saves and mute.');
