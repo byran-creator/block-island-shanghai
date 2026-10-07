@@ -10,7 +10,7 @@ import {PEACE,PEACE_DINING} from '../game/peace-restaurant.js';
 import {DENSE_BUILDINGS,CAR_ROUTES} from '../game/city-layout.js';
 
 const world=new VoxelWorld(),oldDocument=globalThis.document;
-globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}})})};
+globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},clearRect(){},save(){},restore(){},translate(){},scale(){},rotate(){},fill(){},closePath(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}})})};
 try{
  const obstacles=[],city=createBund({scene:new THREE.Scene(),world,getPos:()=>({x:0,y:26,z:99}),getObstacles:()=>obstacles}),agents=city.traffic.agents,travel=new Map(agents.map(a=>[a,0])),recent=new Map(agents.map(a=>[a,0]));
  const previous=new Map(agents.map(a=>[a,{position:a.root.position.clone(),yielding:false}]));

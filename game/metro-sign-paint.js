@@ -11,6 +11,12 @@ export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow
   ctx.beginPath();points.forEach(([dx,dy],i)=>(i?ctx.lineTo:ctx.moveTo).call(ctx,x+dx,cy+dy));ctx.closePath();ctx.fill();
  }
  function badge(x){const b=h*.68,y=h*.16;ctx.fillStyle=WHITE;ctx.fillRect(x,y,b,b);ctx.fillStyle='#92c83e';ctx.fillRect(x+h*.012,y+h*.012,b-h*.024,b-h*.024);label('2',x+h*.12,h*.75,h*.61,'#152219',b);return b;}
+ if(layout==='entrance'){
+  const b=h*.36,x=pad,y=h*.13;ctx.fillStyle=WHITE;ctx.fillRect(x,y,b,b);ctx.fillStyle='#92c83e';ctx.fillRect(x+h*.012,y+h*.012,b-h*.024,b-h*.024);label('2',x+h*.065,h*.435,h*.31,'#152219',b);
+  label(lines[0],x+b+h*.1,h*.36,h*.32,WHITE,width-x-b-pad-h*.1);
+  label(lines[1],x+b+h*.1,h*.54,h*.14,WHITE,width-x-b-pad-h*.1);
+  ctx.fillStyle='#555f5b';ctx.fillRect(pad,h*.65,width-pad*2,h*.014);ctx.textAlign='center';label(lines[2]+'号口  EXIT',width/2,h*.89,h*.2,WHITE,width-pad*2);ctx.textAlign='left';return;
+ }
  if(layout==='station'){
   ctx.fillStyle='#f8f9f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#a3d43e';ctx.fillRect(0,h*.13,width,h*.11);ctx.textAlign='right';label('Line 2',width-pad,h*.225,h*.09,'#fff',h);ctx.textAlign='left';
   if(ctx.arc&&ctx.stroke){const x=pad+h*.05,y=h*.066,r=h*.05;ctx.fillStyle='#b6362b';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=h*.018;ctx.beginPath();ctx.moveTo(x-r*.7,y);ctx.lineTo(x-r*.32,y-r*.3);ctx.lineTo(x,y+r*.08);ctx.lineTo(x+r*.32,y-r*.3);ctx.lineTo(x+r*.7,y);ctx.stroke();}
@@ -21,10 +27,10 @@ export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow
   label('下一班 / NEXT TRAIN',pad,h*.33,h*.2,WHITE,width-pad*2);label(lines[1]??'',pad,h*.78,h*.38,YELLOW,width-pad*2);return;
  }
  if(layout==='route'){
-  ctx.fillStyle='#fbfcf7';ctx.fillRect(0,0,width,height);const forward=lines[2]!=='-1',names=['人民广场','南京东路','陆家嘴','东昌路','世纪大道'],english=['People\'s Square','East Nanjing Rd.','Lujiazui','Dongchang Rd.','Century Ave.'],green='#90c93d';
+  ctx.fillStyle='#fbfcf7';ctx.fillRect(0,0,width,height);const forward=lines[2]!=='-1',names=['人民广场','南京东路','陆家嘴','浦东南路','世纪大道'],english=['People\'s Square','East Nanjing Rd.','Lujiazui','Pudong Rd. (S)' ,'Century Ave.'],green='#90c93d';
   label('2号线  Line 2',pad,h*.17,h*.12,'#152219',width*.15);label(forward?'南京东路 → 陆家嘴':'陆家嘴 → 南京东路',width*.18,h*.17,h*.16,'#152219',width*.42);label('下一站 '+lines[1],width*.64,h*.17,h*.14,'#152219',width*.34);
   const start=width*.1,step=width*.2,cy=h*.52;ctx.fillStyle='#c4c8c6';ctx.fillRect(start,cy-h*.035,step*4,h*.07);ctx.fillStyle=green;ctx.fillRect(start+step,cy-h*.035,step,h*.07);
-  names.forEach((name,i)=>{const x=start+i*step,active=name===lines[0]||name===lines[1],color=i===1||i===2?'#17201c':'#737a76';ctx.fillStyle=active?green:'#b5bdb8';if(ctx.arc){ctx.beginPath();ctx.arc(x,cy,h*(name===lines[1]?.085:.055),0,Math.PI*2);ctx.fill();ctx.fillStyle='#fbfcf7';ctx.beginPath();ctx.arc(x,cy,h*.033,0,Math.PI*2);ctx.fill();}else ctx.fillRect(x-h*.05,cy-h*.05,h*.1,h*.1);ctx.textAlign='center';const y=i%2?h*.79:h*.32;label(name,x,y,h*.115,color,step*.9);label(english[i],x,y+h*.105,h*.069,color,step*.95);});ctx.textAlign='left';direction(forward?'→':'←',start+step*1.5,green,.25);label('绿色为可乘坐体验区间 · 灰色站暂未开放',pad,h*.98,h*.063,'#68706a',width-pad*2);return;
+  names.forEach((name,i)=>{const x=start+i*step,active=name===lines[0]||name===lines[1],color=i===1||i===2?'#17201c':'#737a76';ctx.fillStyle=active&&(i===1||i===2)?green:'#b5bdb8';if(ctx.arc){ctx.beginPath();ctx.arc(x,cy,h*(name===lines[1]?.085:.055),0,Math.PI*2);ctx.fill();ctx.fillStyle='#fbfcf7';ctx.beginPath();ctx.arc(x,cy,h*.033,0,Math.PI*2);ctx.fill();}else ctx.fillRect(x-h*.05,cy-h*.05,h*.1,h*.1);ctx.textAlign='center';const y=i%2?h*.79:h*.32;label(name,x,y,h*.115,color,step*.9);label(english[i],x,y+h*.105,h*.069,color,step*.95);});ctx.textAlign='left';direction(forward?'→':'←',start+step*1.5,green,.25);label('绿色为可乘坐体验区间 · 灰色站暂未开放',pad,h*.98,h*.063,'#68706a',width-pad*2);return;
  }
  const modules=sections??[{zh:lines[0]??'',en:lines[1]??'',line2,arrow,exit,pictogram}],sum=modules.reduce((n,s)=>n+(s.weight??1),0);let left=0;
  modules.forEach((s,i)=>{

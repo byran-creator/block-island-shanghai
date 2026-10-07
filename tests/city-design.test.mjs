@@ -51,7 +51,7 @@ for(const kind of ['glass','hotel','mall','brick']){
 }
 // Exercise real static batching: dark windows must not join a globally visible night batch.
 const savedDocument=globalThis.document;
-globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}})})};
+globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},clearRect(){},save(){},restore(){},translate(){},scale(){},rotate(){},fill(){},closePath(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}})})};
 try{
  const scene=new THREE.Scene(),civil=createBund({scene,world,getPos:()=>({x:0,y:26,z:84})});
  assert(civil.windows.length<130,'Occupancy batching must keep draw calls bounded');

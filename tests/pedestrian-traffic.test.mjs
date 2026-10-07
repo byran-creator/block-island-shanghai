@@ -15,7 +15,7 @@ assert(!pedestrianStepClear({x:-3,y:26,z:0},{x:3,y:26,z:0},[bus]),'Swept pedestr
 bus.root.rotation.y=Math.PI/4;assert(pedestrianBlocked({x:1,y:26,z:1},[bus]));
 assert(!pedestrianBlocked({x:0,y:6,z:0},[bus]),'Underground passengers must not collide with street buses');
 
-const previous=globalThis.document,context={fillRect(){},strokeRect(){},fillText(){},strokeText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}};
+const previous=globalThis.document,context={fillRect(){},clearRect(){},save(){},restore(){},translate(){},scale(){},rotate(){},fill(){},closePath(){},strokeRect(){},fillText(){},strokeText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}};
 const element=()=>({children:[],appendChild(e){this.children.push(e);},replaceChildren(){},addEventListener(){},getContext:()=>context});
 const ids=new Map();globalThis.document={getElementById(id){if(!ids.has(id))ids.set(id,element());return ids.get(id);},createElement:element};
 try{
