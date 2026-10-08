@@ -76,3 +76,5 @@ Three.js 的许可证保留在 [game/THREE-LICENSE.txt](game/THREE-LICENSE.txt)�
 
 
 南浦桥陆家嘴侧坡道修正横向倾斜，车辆按车头方向俯仰，桥面显示与既有物理高度对齐。上海中心塔冠广告改为正向竖排大字，修复接缝/镜像/遮挡并延长到午夜，详见 [桥面与广告验收](docs/bridge-crown-readability.md)。
+
+地铁车内支持 **WASD 走动**、跨车厢通行；靠近空座按 **F 坐下**，再按 F 起身换座。到站开门可步行下车或按 V，坐姿与站姿都会随车移动。详见 [车内走动与选座](docs/metro-cabin-walking.md)。
