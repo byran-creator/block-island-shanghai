@@ -1,5 +1,6 @@
 import {styleNpc} from './npc-appearance.js';
 import {createCustomsClock} from './customs-clock.js';
+import {roadSegmentOrientation} from './road-orientation.js';
 import * as THREE from './three.module.js';
 import {riverCenter,CITY,MAP_BOUNDS,BUND_SHIFT} from './shanghai-map.js';
 import {windowLightGroup,lightGroupVisible} from './city-lighting.js';
@@ -39,9 +40,8 @@ export function createBund({scene,world,getPos,getObstacles=()=>[]}){
  for(const s of BUND_STREETS){label(s.name+' · '+(s.kind==='pedestrian'?'步行':'车行'),roadX(s.z)-6,29,s.z);for(const x of [roadX(s.z),westSpine(s.z)])for(let i=-3;i<=3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(8,.35),mat('#faf4df',true));m.rotation.x=-Math.PI/2;m.position.set(x+.5,26.04,s.z+.5+i*.7);m.userData.range=285;scene.add(m);}}
  const bridgeFloor=(x,z=206)=>bridgeRoadFloor(world,x,z);
  const bridgeDeck=new THREE.Group();bridgeDeck.name='nanpu-continuous-carriageway';scene.add(bridgeDeck);
- const roadForward=new THREE.Vector3(0,0,1);
- function slopeSegment(ax,ay,az,bx,by,bz,width,material,thickness=.08){const a=new THREE.Vector3(ax,ay,az),b=new THREE.Vector3(bx,by,bz),direction=b.clone().sub(a),m=new THREE.Mesh(new THREE.BoxGeometry(width,thickness,direction.length()+.015),material);m.position.copy(a.add(b).multiplyScalar(.5));m.quaternion.setFromUnitVectors(roadForward,direction.normalize());m.userData.range=300;bridgeDeck.add(m);return m;}
- for(let x=120;x<282.5;x+=.5){const y=nanpuSurfaceAt(x,206.5),yy=nanpuSurfaceAt(x+.5,206.5);slopeSegment(x,y-.34,206.5,x+.5,yy-.34,206.5,7,mat('#899599'),.7);slopeSegment(x,y+.025,206.5,x+.5,yy+.025,206.5,6.35,roadMat);if(Math.floor(x)%4===0)slopeSegment(x,y+.075,206.5,x+.5,yy+.075,206.5,.13,mat('#fff0a7',true));}
+ function slopeSegment(ax,ay,az,bx,by,bz,width,material,thickness=.08){const a=new THREE.Vector3(ax,ay,az),b=new THREE.Vector3(bx,by,bz),direction=b.clone().sub(a),m=new THREE.Mesh(new THREE.BoxGeometry(width,thickness,direction.length()+.015),material);m.position.copy(a.add(b).multiplyScalar(.5));m.quaternion.copy(roadSegmentOrientation(direction));m.userData.range=300;bridgeDeck.add(m);return m;}
+ for(let x=120;x<282.5;x+=.5){const y=nanpuSurfaceAt(x,206.5),yy=nanpuSurfaceAt(x+.5,206.5);slopeSegment(x,y-.34,206.5,x+.5,yy-.34,206.5,7,mat('#899599'),.7);slopeSegment(x,y+.009,206.5,x+.5,yy+.009,206.5,6.35,roadMat,.015);if(Math.floor(x)%4===0)slopeSegment(x,y+.02,206.5,x+.5,yy+.02,206.5,.13,mat('#fff0a7',true),.006);}
  roadSegment(120.5,187.5,120.5,206.5,26.025,6.35);
  for(let z=-140;z<=234;z+=14){if(inSuzhou(promenadeX(z),z))continue;const root=new THREE.Group();root.position.set(promenadeX(z)+.5,26,z+.5);for(const dz of [-.65,.65])cube(root,'#5d6d6b',-1,.35,dz,.17,.7,.17);cube(root,'#9f7755',-1,.72,0,.7,.16,1.8);cube(root,'#bc9570',-1,1.05,-.8,.7,.7,.12);cube(root,'#687879',1,1.6,0,.15,3.2,.15);const light=cube(root,'#ffe2a1',1,3.25,0,.45,.5,.45,true);lamps.push(light);scene.add(root);}
  const warmWash=new THREE.MeshBasicMaterial({color:'#ffd58b',transparent:true,opacity:.42,depthWrite:false}),coolWash=new THREE.MeshBasicMaterial({color:'#88c5dc',transparent:true,opacity:.09,depthWrite:false}),warmWindow=new THREE.MeshBasicMaterial({color:'#ffce73',transparent:true,opacity:.88}),coolWindow=new THREE.MeshBasicMaterial({color:'#b9efff',transparent:true,opacity:.88});

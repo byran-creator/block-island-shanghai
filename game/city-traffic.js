@@ -82,7 +82,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   for(const q of c.detour.path){const length=Math.hypot(q.x-p.x,q.z-p.z),yaw=length>.001?Math.atan2(q.x-p.x,q.z-p.z)+Math.PI:p.yaw;if(d<=length)return {x:p.x+(q.x-p.x)*d/length,y:p.y,z:p.z+(q.z-p.z)*d/length,yaw};d-=length;p={...q,yaw};}return p;
  }
  function worldClear(c,p){for(const dx of [-c.halfWidth,0,c.halfWidth])for(const dz of [-c.halfLength,0,c.halfLength]){const x=p.x+dx*Math.cos(p.yaw)+dz*Math.sin(p.yaw),z=p.z-dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw),h=nanpuFloor(world,x,z),y=h!==null&&Math.abs(h-p.y)<1.5?Math.ceil(h):p.y;if(world.get(Math.floor(x),Math.floor(y),Math.floor(z))||world.get(Math.floor(x),Math.floor(y)+1,Math.floor(z)))return false;}return true;}
- function setPose(c,p){c.root.position.set(p.x,p.y,p.z);c.root.rotation.y=p.yaw;c.x=p.x-.5;c.z=p.z-.5;}
+ function setPose(c,p){c.root.position.set(p.x,p.y,p.z);c.root.rotation.order='YXZ';c.root.rotation.y=p.yaw;c.x=p.x-.5;c.z=p.z-.5;}
  // Complete-body checks verify lane 4 around both loops. Cars and buses use +/-2.2.
  // Do not silently move bicycles back to the centre of the carriageway.
  const spawnObstacles=[...getObstacles(),...officers.map(o=>({root:o.root,person:true}))];
