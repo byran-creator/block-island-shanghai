@@ -8,6 +8,7 @@ const high={x:0,y:26,z:0};creatureStep(high,5,2,-Math.PI/2,{...settings,blocked:
 const grazing=(x,y,z)=>Math.abs(z)<.29;
 assert(!grazing(0,26,.32),'Player footprint alone misses an enemy body grazing the wall');
 assert(creatureBlocked(grazing,0,26,.32),'Enemy full body must not clip a wall beside its center');
+ assert(creatureBlocked(grazing,0,26,.4),'Rotated head corners need more clearance than the axis-aligned torso');
 const chase={x:0,y:26,z:.42};creatureStep(chase,10,2,0,{...settings,blocked:grazing});assert(chase.z>=.37,'Full enemy width must remain outside the wall');
 const memory=new Map(),storage={getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v)},voices=[{name:'旧语音',voiceURI:'old',lang:'zh-CN',localService:true},{name:'Xiaoxiao Natural',voiceURI:'natural',lang:'zh-CN',localService:false}],speech={getVoices:()=>voices};
 assert.equal(chooseVoice(speech,'metro',voicePreferences(storage)).voiceURI,'natural');setVoicePreference('metro','old',storage);assert.equal(chooseVoice(speech,'metro',voicePreferences(storage)).voiceURI,'old');setVoicePreference('captionsOnly',true,storage);assert.equal(chooseVoice(speech,'metro',voicePreferences(storage)),null);assert.equal(chooseVoice({getVoices:()=>[]}),null);

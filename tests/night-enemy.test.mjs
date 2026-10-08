@@ -12,18 +12,22 @@ try{
  const life=createLife({scene,world,blocked,notify(){},pause(){},resume(){},getPos:()=>pos,getDirection:()=>new THREE.Vector3(-1,0,0),onMode(){},onHeld(){},onDeath(){},setDay(){},onProgress(){}});
  life.state.mode='survival';life.state.health=20;
  const enemies=()=>scene.children.filter(r=>r.children.some(c=>c.material?.color?.getHexString()==='42455d'));
- let checks=0;const side=new Map();
+ let checks=0;const side=new Map(),births=[];let previousCount=0;
  for(let i=0;i<1800;i++){
   life.tick(.1,{night:true,moving:false,racing:false});
+  assert(enemies().length<=2,'Survival must have at most two nearby night enemies');if(enemies().length>previousCount)births.push(i*.1);previousCount=enemies().length;
   for(const e of enemies()){const p=e.position;assert(!(p.x+.325>=0&&p.x-.325<1),'Enemy body clips the wall');if(!side.has(e))side.set(e,Math.sign(p.x-.5));assert.equal(Math.sign(p.x-.5),side.get(e),'Enemy crossed a complete wall');checks++;}
  }
  assert(checks>1000,'Night enemies must actually spawn during regression');
+ assert(births[0]>=11.8,'Nightfall must allow preparation time');assert(births[1]-births[0]>=29.8,'Do not replenish enemies every eight seconds');
  const e=enemies()[0];assert(e);wall=false;
  // A newly placed solid block overlapping an existing enemy must not leave it inside a wall.
  enclosure={x:e.position.x,z:e.position.z};life.tick(.1,{night:true,moving:false,racing:false});assert(!scene.children.includes(e),'New wall must remove an enemy trapped inside its body');
+ nodes.get('survival-toggle').onclick();assert(!life.state.survival);assert.equal(enemies().length,0,'Changing to creative must immediately clear enemies');for(let i=0;i<600;i++)life.tick(.1,{night:true,moving:false,racing:false});assert.equal(enemies().length,0,'Creative mode must never spawn night enemies');
+ life.state.mode='survival';enclosure=null;life.tick(12.1,{night:true,moving:false,racing:false});assert(enemies().length>0);world.protected=()=>true;life.tick(0,{night:true,moving:false,racing:false});assert.equal(enemies().length,0,'Entering a protected area must be safe even at night');
  // Existing model blockers are supplied live by the game; emulate a new model enclosure.
- const embedded=createLife({scene:new THREE.Scene(),world:{...world,protected:()=>true},blocked:()=>true,notify(){},pause(){},resume(){},getPos:()=>pos,getDirection:()=>new THREE.Vector3(),onMode(){},onHeld(){},onDeath(){},setDay(){},onProgress(){}});
- embedded.tick(10,{night:true,moving:false,racing:false});
+ const embedded=createLife({scene:new THREE.Scene(),world:{...world,protected:()=>false},blocked:()=>true,notify(){},pause(){},resume(){},getPos:()=>pos,getDirection:()=>new THREE.Vector3(),onMode(){},onHeld(){},onDeath(){},setDay(){},onProgress(){}});
+ embedded.state.mode='survival';embedded.tick(30,{night:true,moving:false,racing:false});
  assert.equal(embedded.state.health,20,'Blocked spawn must never damage the player');
- console.log('PASS: deterministic three-minute night chase, actual enemy spawning, full-body wall clearance and no wall crossing; blocked spawns remain harmless ('+checks+' checks).');
+ console.log('PASS: creative clears/no spawn, survival cap two/preparation/30-second spacing, protected areas safe, three-minute chase/full-body wall clearance, blocked spawns harmless ('+checks+' checks).');
 }finally{globalThis.document=oldDocument;Math.random=oldRandom;}

@@ -1,6 +1,8 @@
 // Enemy head/body extend beyond the player's collision footprint.
 export function creatureBlocked(blocked,x,y,z){
- for(const dx of [-.08,0,.08])for(const dz of [-.08,0,.08])if(blocked(x+dx,y,z+dz)||blocked(x+dx,y+.2,z+dz))return true;
+ // A rotated .6 x .6 head reaches .425m from its centre. The player's .29m
+ // half-width plus .14m margin covers that corner at every facing direction.
+ for(const dx of [-.14,0,.14])for(const dz of [-.14,0,.14])if(blocked(x+dx,y,z+dz)||blocked(x+dx,y+.2,z+dz))return true;
  return false;
 }
 // Sweep short steps so a chase cannot cross a wall during a slow frame.
