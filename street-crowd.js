@@ -19,10 +19,10 @@ export function createStreetCrowd(people,{clear=()=>true}={}){
  for(const [i,p]of walkers.entries()){p.crowd=crowdProfile(i);p.speed=p.crowd.speed;p.phase=p.crowd.phase;p.crowd.blocked=0;p.ready=false;goal(p);}
  function advance(dt,vehicles){
   for(let i=0;i<walkers.length;i++){
-   const p=walkers[(i+first)%walkers.length],state=p.crowd;let moving=false;
+   const p=walkers[(i+first)%walkers.length],state=p.crowd;let moving=false,distanceMoved=0;
    if(!p.ready){for(let attempt=0;attempt<120;attempt++){const q={x:bounds.x1+state.random()*(bounds.x2-bounds.x1),y:26,z:bounds.z1+state.random()*(bounds.z2-bounds.z1)};if(clear(q)&&othersClear(p,q)&&!pedestrianBlocked(q,vehicles)){p.root.position.set(q.x,q.y,q.z);p.ready=true;break;}}p.root.visible=p.ready;if(!p.ready)continue;}
-   state.breakIn-=dt;state.wait=Math.max(0,state.wait-dt);
-   if(state.breakIn<=0){state.wait=(p.kind==='delivery-walk'?.5:1.5)+state.random()*3.5;state.breakIn=18+state.random()*38;p.root.rotation.y=state.random()<.5?0:Math.PI;}
+   state.breakIn-=dt;state.wait=Math.max(0,state.wait-dt);state.steerTime=Math.max(0,(state.steerTime??0)-dt);
+   if(state.breakIn<=0){state.wait=(p.kind==='delivery-walk'?.5:1.5)+state.random()*3.5;state.breakIn=18+state.random()*38;state.targetYaw=state.random()<.5?0:Math.PI;}
    if(!state.wait){
     const at=p.root.position,dx=state.goal.x-at.x,dz=state.goal.z-at.z,distance=Math.hypot(dx,dz);
     if(distance<.35){state.wait=.8+state.random()*3;goal(p);}
@@ -30,8 +30,11 @@ export function createStreetCrowd(people,{clear=()=>true}={}){
      const length=Math.min(distance,state.speed*dt),nx=dx/distance,nz=dz/distance;
      // Prefer a consistent passing side. Once blocked, allow a true sidestep or
      // retreat rather than insisting on forward movement into a head-on queue.
-     const angles=state.blocked>.35?[0,.65,-.65,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]:[0,.65,-.65];
-     for(const angle of angles){const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(nx*c-nz*s)*length,y:26,z:at.z+(nx*s+nz*c)*length};if(inside(q)&&clear(q)&&othersClear(p,q)&&pedestrianStepClear(at,q,vehicles)){p.root.rotation.y=Math.atan2(q.x-at.x,q.z-at.z)+Math.PI;at.set(q.x,q.y,q.z);moving=true;break;}}
+     const options=state.blocked>.35?[0,.65,-.65,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]:[0,.65,-.65];
+     // Keep a successful passing side long enough to walk around a neighbour.
+     // Re-check its safety every step; an occupied direction never bypasses collision.
+     const angles=state.steerTime>0?[state.steerAngle,...options.filter(a=>a!==state.steerAngle)]:options;
+     for(const angle of angles){const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(nx*c-nz*s)*length,y:26,z:at.z+(nx*s+nz*c)*length};if(inside(q)&&clear(q)&&othersClear(p,q)&&pedestrianStepClear(at,q,vehicles)){state.targetYaw=Math.atan2(q.x-at.x,q.z-at.z)+Math.PI;if(angle!==state.steerAngle||state.steerTime===0){state.steerAngle=angle;state.steerTime=angle===0?0:.8;}distanceMoved=Math.hypot(q.x-at.x,q.z-at.z);at.set(q.x,q.y,q.z);moving=true;break;}}
      state.blocked=moving?0:state.blocked+dt;if(state.blocked>4){goal(p);state.blocked=0;}
     }
    }
@@ -40,8 +43,10 @@ export function createStreetCrowd(people,{clear=()=>true}={}){
    const at=p.root.position;state.anchor??={x:at.x,z:at.z};state.progressTime=(state.progressTime??0)+dt;
    if(state.wait||Math.hypot(at.x-state.anchor.x,at.z-state.anchor.z)>.5){state.anchor={x:at.x,z:at.z};state.progressTime=0;}
    else if(state.progressTime>3){retreat(p);state.anchor={x:at.x,z:at.z};state.progressTime=0;state.blocked=.4;}
-   state.state=moving?'walk':state.wait?'browse':'yield';state.phase+=dt*state.speed*4.5;
-   for(let j=0;j<2;j++){p.legs[j].rotation.x=moving?Math.sin(state.phase+p.phase)*(j?-.25:.25):0;p.arms[j].rotation.x=moving?-p.legs[j].rotation.x:Math.sin(state.phase*.35+p.phase)*.04;}
+   state.state=moving?'walk':state.wait?'browse':'yield';state.phase+=distanceMoved*4.5;
+   const delta=Math.atan2(Math.sin((state.targetYaw??p.root.rotation.y)-p.root.rotation.y),Math.cos((state.targetYaw??p.root.rotation.y)-p.root.rotation.y));p.root.rotation.y+=Math.sign(delta)*Math.min(Math.abs(delta),dt*3);
+   const blend=1-Math.exp(-dt*7);state.gait=(state.gait??0)+((moving?1:0)-(state.gait??0))*blend;
+   for(let j=0;j<2;j++){p.legs[j].rotation.x=Math.sin(state.phase+p.phase)*(j?-.25:.25)*state.gait;p.arms[j].rotation.x=-p.legs[j].rotation.x+Math.sin(state.phase*.35+p.phase)*.04*(1-state.gait);}
   }
   first=(first+1)%Math.max(1,walkers.length);
  }
