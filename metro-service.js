@@ -9,4 +9,4 @@ export function trainState(time,offset=0,direction=1){
 }
 export function trainPose(state){const a=METRO_STATIONS[state.origin],b=METRO_STATIONS[1-state.origin],dx=state.direction;let x=a.x+(b.x-a.x)*state.progress;if(state.phase==='through')x=state.tail<4?b.x+dx*state.tail*10:a.x-dx*(METRO_CYCLE-2*METRO_DWELL-METRO_TRAVEL-state.tail)*10;const z=metroLineZ(x)-dx*8,yaw=-Math.atan2(metroLineZ(x+1)-metroLineZ(x-1),2);return {x,y:6,z,yaw,direction:dx};}
 export function arrivalSeconds(time,station,offset=0,direction=1){const origin=direction===1?0:1,t=mod(time+offset),target=station===origin?0:METRO_DWELL+METRO_TRAVEL;return (target-t+METRO_CYCLE)%METRO_CYCLE;}
-export function trainCrowd(state,index=0){const wave=((state.cycle+state.station+index)%5+5)%5;return {crowded:wave===1||wave===2,passengers:wave===1||wave===2?26:12,seats:wave===1||wave===2?0:3,full:false};}
+export function trainCrowd(state,index=0){const wave=((state.cycle+state.station+index)%5+5)%5;return {crowded:wave===1||wave===2,passengers:wave===1||wave===2?48:8,seats:wave===1||wave===2?0:40,full:false};}

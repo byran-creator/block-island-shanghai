@@ -46,7 +46,7 @@ export function createMetroTrain({parent,direction,cube,board,person}){
   cube(cab,'#55636b',end*.75,.55,0,.09,.27,1.4);cube(cab,'#313c44',end*.84,.04,0,.35,.22,.42);
   const destination=board(cab,[direction===1?'浦东方向':'市区方向','2  ·  02A05'],end*.68,2.7,0,1.75,.47,'#ffb56a');destination.mesh.rotation.y=end*Math.PI/2;
  }
- for(let i=0;i<24;i++){const p=person(root,i,METRO_CARS[i%8]+(i%3-1)*.7,.15,(i%2?1:-1)*.6);passengers.push(p);}
+ for(let i=0;i<48;i++){const car=i%8,side=(car%2?1:-1)*(i<24?1:-1),j=Math.floor((i%24)/8),p=person(root,i,METRO_CARS[car]+(j-1)*.6,-.13,side*.98);p.rotation.y=side>0?0:Math.PI;p.userData.seatId=car+':'+side+':'+j;for(const index of [4,6])if(p.children[index])p.children[index].rotation.x=1;for(const index of [3,5])if(p.children[index]){p.children[index].position.x=Math.sign(p.children[index].position.x)*.22;p.children[index].rotation.x=1;}batchMeshes(p,staticMeshes(p),'seated-passenger');passengers.push(p);}
  const dynamic=new Set([...doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...passengers]);batchMeshes(root,staticMeshes(root,dynamic),'02A05-body');
  return {root,doors,passengers,route};
 }
