@@ -7,26 +7,183 @@ export class WeatherState{
  constructor(){this.mode='auto';this.type='clear';this.elapsed=0;this.cycleSeconds=WEATHER_CYCLE_SECONDS;this.rain=0;this.fog=0;this.cloud=0;this.humidity=48;}
  setMode(mode){if(!['auto','clear','cloudy','rain','fog'].includes(mode))return false;this.mode=mode;if(mode!=='auto')this.type=mode;return true;}
  setCycle(seconds){if(![600,1200,3600].includes(seconds))return false;this.elapsed*=seconds/this.cycleSeconds;this.cycleSeconds=seconds;return true;}
- tick(dt){this.elapsed+=dt;if(this.mode==='auto'){const t=(this.elapsed%this.cycleSeconds)/this.cycleSeconds*400;this.type=t<130?'clear':t<195?'cloudy':t<285?'rain':t<355?'fog':'cloudy';}const spec=WEATHER_TYPES[this.type],a=1-Math.exp(-dt/(this.mode==='auto'?55:7));this.rain+=(spec.rain-this.rain)*a;this.fog+=(spec.fog-this.fog)*a;this.cloud+=((this.type==='clear'?.08:this.type==='cloudy'?.65:.92)-this.cloud)*a;this.humidity+=(spec.humidity-this.humidity)*a;return {name:spec.name,humidity:Math.round(this.humidity),rain:this.rain,fog:this.fog,cloud:this.cloud};}
+ setFieryTier(tier){this._forcedFieryTier=[0,1,2].includes(tier)?tier:null;}
+ tick(dt){this.elapsed+=dt;if(this.mode==='auto'){const t=(this.elapsed%this.cycleSeconds)/this.cycleSeconds*400;this.type=t<130?'clear':t<195?'cloudy':t<285?'rain':t<355?'fog':'cloudy';}const spec=WEATHER_TYPES[this.type],a=1-Math.exp(-dt/(this.mode==='auto'?55:7));this.rain+=(spec.rain-this.rain)*a;this.fog+=(spec.fog-this.fog)*a;this.cloud+=((this.type==='clear'?.08:this.type==='cloudy'?.65:.92)-this.cloud)*a;this.humidity+=(spec.humidity-this.humidity)*a;return {name:spec.name,type:this.type,humidity:Math.round(this.humidity),rain:this.rain,fog:this.fog,cloud:this.cloud};}
  serialize(){return {timing:3,cycleSeconds:this.cycleSeconds,mode:this.mode,elapsed:this.elapsed,type:this.type,rain:this.rain,fog:this.fog,cloud:this.cloud,humidity:this.humidity};}
  restore(d){this.mode=['auto','clear','cloudy','rain','fog'].includes(d?.mode)?d.mode:'auto';this.cycleSeconds=d?.timing===3&&[600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS;const oldCycle=d?.timing===3?([600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS):d?.timing===2?3600:400;this.elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed)*this.cycleSeconds/oldCycle:0;this.type=Object.hasOwn(WEATHER_TYPES,d?.type)?d.type:'clear';this.rain=Number.isFinite(d?.rain)?Math.max(0,Math.min(1,d.rain)):0;this.fog=Number.isFinite(d?.fog)?Math.max(0,Math.min(1,d.fog)):0;this.cloud=Number.isFinite(d?.cloud)?Math.max(0,Math.min(1,d.cloud)):this.rain;this.humidity=Number.isFinite(d?.humidity)?Math.max(0,Math.min(100,d.humidity)):WEATHER_TYPES[this.type].humidity;this.tick(0);}
 }
-export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water,terrainMaterial}){
- const skyGradient=createSkyGradient(scene,camera),state=new WeatherState(),moon=new THREE.Group(),moonMat=new THREE.MeshBasicMaterial({color:'#d4dfeb',transparent:true,opacity:.62,depthWrite:false,fog:false}),moonBody=new THREE.Mesh(new THREE.CircleGeometry(2.3,48),moonMat);moon.name='distant-moon';moon.add(moonBody);
- // A small distant disc avoids a nearby glowing-ball silhouette and artificial volume.
- const craterMat=new THREE.MeshBasicMaterial({color:'#8295b0',transparent:true,opacity:.13,depthWrite:false,fog:false});for(const [x,y,r] of [[-.65,.45,.36],[.55,-.5,.3],[.2,.75,.23],[-.5,-.8,.16]]){const m=new THREE.Mesh(new THREE.CircleGeometry(r,18),craterMat);m.position.set(x,y,.015);moon.add(m);}sunBlock.scale.setScalar(1);sunBlock.material.fog=false;scene.add(moon);moon.children.forEach(m=>m.userData.range=320);sunBlock.userData.range=280;
- const halo=new THREE.Mesh(new THREE.SphereGeometry(8.7,24,14),new THREE.MeshBasicMaterial({color:'#ffc85b',transparent:true,opacity:.14,depthWrite:false,fog:false}));halo.userData.range=280;sunBlock.add(halo);
+
+function createMoonTexture(){
+ if(typeof document==='undefined')return null;
+ const c=document.createElement('canvas');c.width=512;c.height=512;
+ const ctx=c.getContext('2d');if(!ctx)return null;
+ const cx=256,cy=256,r=240;
+ const grad=ctx.createRadialGradient(cx,cy,r*.35,cx,cy,r);
+ grad.addColorStop(0,'#e4edf7');grad.addColorStop(.82,'#cfdcee');grad.addColorStop(1,'#b0c1d6');
+ ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ function mare(x,y,rx,ry,rot,alpha){
+  ctx.save();ctx.translate(cx+x,cy+y);ctx.rotate(rot);
+  const mg=ctx.createRadialGradient(0,0,Math.min(rx,ry)*.15,0,0,Math.max(rx,ry));
+  mg.addColorStop(0,`rgba(105,122,142,${alpha})`);mg.addColorStop(.7,`rgba(125,142,162,${alpha*.7})`);mg.addColorStop(1,'rgba(135,152,172,0)');
+  ctx.fillStyle=mg;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.restore();
+ }
+ mare(-70,-35,75,105,-.2,.68);mare(-40,-95,58,52,.1,.62);
+ mare(42,-65,48,42,.3,.58);mare(55,-15,52,44,-.1,.64);
+ mare(130,-48,26,20,-.3,.75);mare(95,30,42,34,.2,.52);mare(58,62,32,28,-.2,.50);
+ mare(-38,62,45,38,.1,.58);mare(-95,48,32,28,-.1,.54);
+ ctx.save();const tx=cx+35,ty=cy+118;
+ ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=1.5;
+ for(let a=0;a<Math.PI*2;a+=Math.PI/6){
+  ctx.beginPath();ctx.moveTo(tx,ty);
+  ctx.lineTo(tx+Math.cos(a)*(130+(Math.sin(a*3)*35)),ty+Math.sin(a)*(130+(Math.cos(a*3)*35)));
+  ctx.stroke();
+ }
+ const tg=ctx.createRadialGradient(tx,ty,1,tx,ty,10);
+ tg.addColorStop(0,'rgba(255,255,255,0.85)');tg.addColorStop(.4,'rgba(240,248,255,0.4)');tg.addColorStop(1,'rgba(255,255,255,0)');
+ ctx.fillStyle=tg;ctx.beginPath();ctx.arc(tx,ty,10,0,Math.PI*2);ctx.fill();ctx.restore();
+ const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
+}
+
+// Photorealistic continuous smooth bloom glow without artificial hard rings or spikes
+function createSunBloomTexture(){
+ if(typeof document==='undefined')return null;
+ const c=document.createElement('canvas');c.width=256;c.height=256;
+ const ctx=c.getContext('2d');if(!ctx)return null;
+ const cx=128,cy=128,r=124;
+ const grad=ctx.createRadialGradient(cx,cy,2,cx,cy,r);
+ grad.addColorStop(0,'rgba(255,255,255,1.0)');
+ grad.addColorStop(0.08,'rgba(255,252,225,0.92)');
+ grad.addColorStop(0.20,'rgba(255,238,165,0.52)');
+ grad.addColorStop(0.42,'rgba(255,205,100,0.20)');
+ grad.addColorStop(0.68,'rgba(255,170,55,0.05)');
+ grad.addColorStop(1.0,'rgba(255,140,25,0.0)');
+ ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
+}
+
+function createLunarGlowTexture(){
+ if(typeof document==='undefined')return null;
+ const c=document.createElement('canvas');c.width=256;c.height=256;
+ const ctx=c.getContext('2d');if(!ctx)return null;
+ const cx=128,cy=128,r=124;
+ const grad=ctx.createRadialGradient(cx,cy,12,cx,cy,r);
+ grad.addColorStop(0,'rgba(210,235,255,0.72)');
+ grad.addColorStop(.35,'rgba(165,205,255,0.30)');
+ grad.addColorStop(.7,'rgba(130,175,250,0.08)');
+ grad.addColorStop(1,'rgba(100,150,245,0)');
+ ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
+}
+
+export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,bellyMat,water,terrainMaterial}){
+ const skyGradient=createSkyGradient(scene,camera),state=new WeatherState();
+ const moon=new THREE.Group(),moonTex=createMoonTexture();
+ const moonMat=new THREE.MeshBasicMaterial({color:'#d8e5f5',map:moonTex,transparent:true,opacity:.62,depthWrite:false,fog:false});
+ const moonBody=new THREE.Mesh(new THREE.CircleGeometry(2.3,48),moonMat);
+ moon.name='distant-moon';moon.add(moonBody);
+ const craterMat=new THREE.MeshBasicMaterial({color:'#8295b0',transparent:true,opacity:.13,depthWrite:false,fog:false});
+ for(const [x,y,r] of [[-.65,.45,.36],[.55,-.5,.3],[.2,.75,.23],[-.5,-.8,.16],[-.25,-.15,.45],[.4,-.2,.32],[-.7,.1,.25]]){
+  const m=new THREE.Mesh(new THREE.CircleGeometry(r,18),craterMat);m.position.set(x,y,.015);moon.add(m);
+ }
+ const lunarGlowTex=createLunarGlowTexture();
+ const lunarHaloMat=new THREE.MeshBasicMaterial({color:'#b8d8ff',map:lunarGlowTex,transparent:true,opacity:.16,depthWrite:false,fog:false});
+ const lunarInnerHalo=new THREE.Mesh(new THREE.CircleGeometry(5.6,36),lunarHaloMat);lunarInnerHalo.position.z=-.01;moon.add(lunarInnerHalo);
+ const lunarOuterHaloMat=new THREE.MeshBasicMaterial({color:'#8ab4f8',map:lunarGlowTex,transparent:true,opacity:.07,depthWrite:false,fog:false});
+ const lunarOuterHalo=new THREE.Mesh(new THREE.CircleGeometry(12.8,36),lunarOuterHaloMat);lunarOuterHalo.position.z=-.02;moon.add(lunarOuterHalo);
+ scene.add(moon);moon.children.forEach(m=>m.userData.range=320);
+
+ // Clean, realistic sun core and broad radiant sunset bloom rays (matching Reference 2)
+ sunBlock.scale.setScalar(0.60);sunBlock.material.fog=false;sunBlock.userData.range=280;
+ const sunGlowTex=createSunBloomTexture();
+ let flareMesh=null;
+ if(sunGlowTex){
+  const flareMat=new THREE.MeshBasicMaterial({map:sunGlowTex,transparent:true,opacity:.85,depthWrite:false,fog:false,blending:THREE.AdditiveBlending});
+  flareMesh=new THREE.Mesh(new THREE.PlaneGeometry(108,108),flareMat);flareMesh.userData.range=280;sunBlock.add(flareMesh);
+ }
+
  const stars=new THREE.Group();for(let i=0;i<38;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.32,.32,.32),new THREE.MeshBasicMaterial({color:'#d9e9ff',fog:false}));const a=i*2.399,y=30+(i*37%115),r=Math.sqrt(180*180-y*y);m.position.set(Math.cos(a)*r,y,Math.sin(a)*r);m.userData.range=280;stars.add(m);}scene.add(stars);
  const count=180,positions=new Float32Array(count*18),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));const rainMat=new THREE.MeshBasicMaterial({color:'#c7e6ed',transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});const rainMesh=new THREE.Mesh(geometry,rainMat);rainMesh.frustumCulled=false;rainMesh.userData.range=50;scene.add(rainMesh);
  let seed=1731;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};const drops=Array.from({length:count},()=>({x:0,y:-100,z:0,roof:0}));
  function reset(d){d.x=camera.position.x+(rand()-.5)*38;d.z=camera.position.z+(rand()-.5)*38;d.y=camera.position.y+5+rand()*18;d.roof=world.ground(Math.floor(d.x),Math.floor(d.z));}
  function tick(dt,dayClock){const info=state.tick(dt),phase=dayClock/240*Math.PI*2,night=Math.sin(phase)<0,alt=Math.abs(Math.sin(phase)),cloudiness=Math.max(info.cloud,info.rain,info.fog*.75);const sunDir=new THREE.Vector3(Math.cos(phase)*125,18+alt*50,-90),elevation=.22+alt*.67,azimuth=phase-Math.PI,moonDir=new THREE.Vector3(Math.cos(azimuth)*Math.cos(elevation),Math.sin(elevation),Math.sin(azimuth)*Math.cos(elevation)).multiplyScalar(245);
-  sunBlock.position.copy(camera.position).add(sunDir);sunBlock.lookAt(camera.position);sunBlock.visible=!night&&cloudiness<.8;sunBlock.material.color.set(info.rain>.35?'#cccebd':'#fff6b0');moon.position.copy(camera.position).add(moonDir);moon.lookAt(camera.position);moon.visible=night&&cloudiness<.85;moonMat.opacity=(.35+.27*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.75);craterMat.opacity=moonMat.opacity*.19;stars.position.copy(camera.position);stars.visible=night&&cloudiness<.35;cloudMat.color.set('#586e94').lerp(new THREE.Color('#fffaf0'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#a7b4bd'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);cloudMat.opacity=1;clouds.position.y=info.rain* -8;
-  const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater);if(!underwater){const mist=new THREE.Color(night?'#3b4a59':'#b5c5cc');scene.background.copy(skyGradient.horizon).lerp(mist,info.fog*.32+info.rain*.13);scene.fog.color.copy(scene.background);scene.fog.near=48*(1-info.fog)+26*info.fog;scene.fog.far=440*(1-info.fog)+185*info.fog;scene.fog.far-=info.rain*12;}
-  terrainMaterial.color.setScalar(1-info.rain*.16);water.material.color.set('#173e5a').lerp(new THREE.Color('#3d9bab'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)).lerp(new THREE.Color('#627b85'),info.rain*.75+info.fog*.15);rainMesh.visible=info.rain>.04&&!underwater;rainMat.opacity=info.rain*.5;
+  sunBlock.position.copy(camera.position).add(sunDir);sunBlock.lookAt(camera.position);sunBlock.visible=!night&&cloudiness<.8;
+  const isSunset=dayClock>68&&dayClock<165;
+  const duskFactor=(1-THREE.MathUtils.smoothstep(Math.abs(Math.sin(phase)),.03,.38))*(Math.sin(phase)>-.2?1:0);
+  // Dramatic "火烧云" (Fiery Sunset, matching user reference photos 1, 2, 3):
+  const dayCycle=Math.floor((state.elapsed+180)/(state.cycleSeconds||1200));
+  const fieryTier=isSunset?(state._forcedFieryTier??(dayCycle%3)):-1;
+  const isFierySunset=isSunset&&(fieryTier!==2);
+  const noonSunColor=new THREE.Color('#ffffff'),duskSunColor=new THREE.Color(isFierySunset?'#ffe29a':isSunset?'#ffe4b2':'#fff1cc');
+  const baseSunColor=new THREE.Color().copy(noonSunColor).lerp(duskSunColor,duskFactor*.88);
+  sunBlock.material.color.copy(info.rain>.35?new THREE.Color('#c2c6b4'):baseSunColor);
+  if(flareMesh){
+   const sunsetFlareColor=isFierySunset?new THREE.Color('#ff5814'):new THREE.Color('#ff8824');
+   flareMesh.material.color.copy(new THREE.Color('#fff4d0').lerp(sunsetFlareColor,duskFactor*.88));
+   flareMesh.material.opacity=(.85+.22*duskFactor)*(1-cloudiness*.85);
+  }
+
+  moon.position.copy(camera.position).add(moonDir);moon.lookAt(camera.position);moon.visible=night&&cloudiness<.85;
+  moonMat.opacity=(.35+.27*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.75);
+  craterMat.opacity=moonMat.opacity*.22;
+  lunarHaloMat.opacity=(.16+.08*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.8);
+  lunarOuterHaloMat.opacity=(.07+.04*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.88);
+  stars.position.copy(camera.position);stars.visible=night&&cloudiness<.35;
+
+  // Real sky reference colors (matching user reference photos 1, 2, 3):
+  // Daytime: Crisp, airy, soft white cumulus clouds
+  const dayBodyColor=new THREE.Color('#ffffff');
+  const dayBellyColor=new THREE.Color('#eef5fc');
+
+  // Sunset "晚霞" & "火烧云" dual-tone lighting:
+  // Cloud Body: Luminous twilight mauve / coral-lavender (matching Reference 1 & 2)
+  const tintPhase=THREE.MathUtils.smoothstep(dayClock,110,120);
+  const fieryBodyTint=new THREE.Color('#b85e78').lerp(new THREE.Color('#926294'),tintPhase);
+  const roseBodyTint=new THREE.Color('#aa5876').lerp(new THREE.Color('#8e5c8a'),tintPhase);
+
+  // Cloud Belly / Illuminated underside rim: Blazing molten fire gold & incandescent salmon-amber!
+  const fieryBellyTint=new THREE.Color('#ffa832').lerp(new THREE.Color('#ff6822'),tintPhase);
+  const roseBellyTint=new THREE.Color('#ff9a44').lerp(new THREE.Color('#ff526e'),tintPhase);
+
+  const sunsetBodyTint=isFierySunset?fieryBodyTint:roseBodyTint;
+  const sunsetBellyTint=isFierySunset?fieryBellyTint:roseBellyTint;
+
+  // Body color interpolation:
+  const baseBody=new THREE.Color('#788ca0').lerp(dayBodyColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+  baseBody.lerp(sunsetBodyTint,duskFactor*0.95);
+  cloudMat.color.copy(baseBody).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
+  cloudMat.transparent=true;cloudMat.depthWrite=false;
+  // Daytime: 0.36 (light & airy); Sunset: 0.44 (translucent coral-lavender)
+  const baseBodyOpacity=THREE.MathUtils.lerp(0.36, 0.44, duskFactor);
+  cloudMat.opacity=Math.max(.16,(baseBodyOpacity-info.fog*.10)*(1-info.rain*.08));
+
+  // Belly fire color interpolation:
+  if(bellyMat){
+   const baseBelly=new THREE.Color('#8aa0b6').lerp(dayBellyColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+   baseBelly.lerp(sunsetBellyTint,duskFactor*0.98);
+   bellyMat.color.copy(baseBelly).lerp(new THREE.Color('#35424e').lerp(new THREE.Color('#8e9ca8'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
+   bellyMat.transparent=true;bellyMat.depthWrite=false;
+   // Daytime: 0.26 (subtle soft highlight); Fiery Sunset: 0.78 (molten glowing flame rim)
+   const sunsetBellyTargetOpacity=isFierySunset?0.78:0.58;
+   const baseBellyOpacity=THREE.MathUtils.lerp(0.26, sunsetBellyTargetOpacity, duskFactor);
+   bellyMat.opacity=Math.max(.16,(baseBellyOpacity-info.fog*.10)*(1-info.rain*.08));
+  }
+  clouds.position.y=info.rain* -8;
+
+  const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater,isFierySunset);if(!underwater){
+   // Warm golden-peach or fiery flame mist during sunset instead of dark apocalyptic grey
+   const sunsetMist=new THREE.Color(isFierySunset?'#f76a4a':'#f28260');
+   const mist=new THREE.Color(night?'#3b4a59':'#b5c5cc').lerp(sunsetMist,duskFactor*0.85);
+   scene.background.copy(skyGradient.horizon).lerp(mist,info.fog*.32+info.rain*.13);
+   scene.fog.color.copy(scene.background);scene.fog.near=48*(1-info.fog)+26*info.fog;scene.fog.far=440*(1-info.fog)+185*info.fog;scene.fog.far-=info.rain*12;
+  }
+  terrainMaterial.color.setScalar(1-info.rain*.16);
+  const dayWater=new THREE.Color('#173e5a').lerp(new THREE.Color('#3d9bab'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+  const sunsetWater=new THREE.Color(isFierySunset?'#462548':'#2e3256');
+  water.material.color.copy(dayWater).lerp(sunsetWater,duskFactor*0.62).lerp(new THREE.Color('#627b85'),info.rain*.75+info.fog*.15);
+  rainMesh.visible=info.rain>.04&&!underwater;rainMat.opacity=info.rain*.5;
   if(rainMesh.visible)for(let i=0;i<count;i++){const d=drops[i];d.y-=dt*17;d.x-=dt*.8;if(d.y<Math.max(d.roof,camera.position.y-14)||Math.hypot(d.x-camera.position.x,d.z-camera.position.z)>27)reset(d);const visible=d.y>d.roof&&i<count*info.rain;const x=visible?d.x:0,y=visible?d.y:-200,z=visible?d.z:0,a=i*18;positions.set([x,y,z,x+.045,y,z,x+.2,y+1.3,z,x,y,z,x+.2,y+1.3,z,x+.15,y+1.3,z],a);}
   if(rainMesh.visible)geometry.attributes.position.needsUpdate=true;
-  return {...info,night,moonVisible:moon.visible};
+  return {...info,night,moonVisible:moon.visible,isFierySunset,fieryTier,duskFactor,isSunset:Boolean(isSunset)};
  }
- return {state,tick,sun:sunBlock,moon,stars,rainMesh,serialize:()=>state.serialize(),restore:d=>state.restore(d)};
+ return {state,tick,sun:sunBlock,moon,stars,rainMesh,serialize:()=>state.serialize(),restore:d=>state.restore(d),setFieryTier:tier=>state.setFieryTier(tier)};
 }
