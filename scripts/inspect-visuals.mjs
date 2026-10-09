@@ -77,7 +77,6 @@ async function run() {
   await client.send('Page.enable');
   await client.send('Runtime.enable');
 
-  // Wait for initial load
   await delay(2500);
 
   // 1. Enter game directly via go-bund
@@ -92,27 +91,106 @@ async function run() {
   `);
   await delay(2000);
 
-  // 2. Daytime (12:00 Noon)
-  console.log('Setting time to 12:00 Noon...');
+  // 2. Daytime 12:00 + 晴天 (万里无云检验)
+  console.log('Testing 晴天 (万里无云检验) at 12:00 Noon...');
   await client.eval(`
     (() => {
       document.querySelector('[data-time="720"]')?.click();
+      const wSelect = document.getElementById('weather-choice');
+      if (wSelect) {
+        wSelect.value = 'clear';
+        wSelect.dispatchEvent(new Event('change'));
+      }
       document.getElementById('menu')?.classList.add('hidden');
+      document.body.classList.remove('in-menu');
     })()
   `);
   await delay(1500);
-  await client.screenshot('shot_daytime_clouds_and_sun.png');
+  await client.screenshot('shot_clear_daytime_cloudless.png');
 
-  // 3. Sunset / Fiery Sunset (18:00)
-  console.log('Setting time to 18:00 Sunset (火烧云)...');
+  // 2.1 Daytime 12:00 + 多云 (多云积云检验)
+  console.log('Testing 多云 (积云层检验) at 12:00 Noon...');
   await client.eval(`
     (() => {
-      document.querySelector('[data-time="1080"]')?.click();
+      const wSelect = document.getElementById('weather-choice');
+      if (wSelect) {
+        wSelect.value = 'cloudy';
+        wSelect.dispatchEvent(new Event('change'));
+      }
+    })()
+  `);
+  await delay(1500);
+  await client.screenshot('shot_cloudy_daytime.png');
+
+  // 2.2 Tilt up under 多云 to inspect cloud billow softness
+  console.log('Tilting camera upwards to inspect cloudy billow softness...');
+  await client.eval(`
+    (() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', bubbles: true }));
+    })()
+  `);
+  await delay(1600);
+  await client.eval(`
+    (() => {
+      document.dispatchEvent(new KeyboardEvent('keyup', { code: 'ArrowUp', bubbles: true }));
+    })()
+  `);
+  await delay(500);
+  await client.screenshot('shot_cloudy_upwards.png');
+  await client.screenshot('shot_clouds_upwards.png');
+
+  // 3. Reset view to Bund, set Night (22:00) + 晴天 (夜晚无云月朗星稀检验)
+  console.log('Testing 晴夜无云 (月朗星稀检验) at 22:00 Night...');
+  await client.eval(`
+    (() => {
+      document.getElementById('go-bund')?.click();
+      document.querySelector('[data-time="1320"]')?.click();
+      const wSelect = document.getElementById('weather-choice');
+      if (wSelect) {
+        wSelect.value = 'clear';
+        wSelect.dispatchEvent(new Event('change'));
+      }
       document.getElementById('menu')?.classList.add('hidden');
+      document.body.classList.remove('in-menu');
     })()
   `);
   await delay(2000);
-  await client.screenshot('shot_fiery_sunset_clouds.png');
+  await client.screenshot('shot_clear_night_cloudless.png');
+
+  // 4. Sunset 18:00 + 晴天 (纯净晚霞蓝调检验)
+  console.log('Testing 晴朗晚霞 (纯净蓝调无云检验) at 18:00 Sunset...');
+  await client.eval(`
+    (() => {
+      document.getElementById('go-bund')?.click();
+      document.querySelector('[data-time="1080"]')?.click();
+      const wSelect = document.getElementById('weather-choice');
+      if (wSelect) {
+        wSelect.value = 'clear';
+        wSelect.dispatchEvent(new Event('change'));
+      }
+      document.getElementById('menu')?.classList.add('hidden');
+      document.body.classList.remove('in-menu');
+    })()
+  `);
+  await delay(2000);
+  await client.screenshot('shot_clear_sunset_cloudless.png');
+
+  // 5. Sunset 18:00 + 多云 + Tier 0 (大火烧云天幕检验)
+  console.log('Testing 多云大火烧云天幕 (Tier 0: 好几层一大片壮丽火烧云)...');
+  await client.eval(`
+    (() => {
+      const wSelect = document.getElementById('weather-choice');
+      if (wSelect) {
+        wSelect.value = 'cloudy';
+        wSelect.dispatchEvent(new Event('change'));
+      }
+      if (window.weather?.setFieryTier) window.weather.setFieryTier(0);
+    })()
+  `);
+  await delay(1500);
+  await client.screenshot('shot_fiery_sunset_major_canopy.png');
+  await client.screenshot('shot_fiery_sunset_cinematic.png');
+  await client.screenshot('shot_fiery_sunset_skyline.png');
 
   client.close();
   chrome.kill();

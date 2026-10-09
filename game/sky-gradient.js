@@ -22,8 +22,8 @@ export function createSkyGradient(scene,camera){
 
   // Sunset & Twilight progression
   // Fiery Burning Sunset ("火烧云", matching user reference photo) vs. Gentle Rose Twilight
-  const sunsetHorizon=new THREE.Color(isSunset?(isFiery?'#ff7a22':'#ffa23e'):'#ffaa58');
-  const sunsetZenith=new THREE.Color(isSunset?(isFiery?'#25204e':'#42366e'):'#35487a');
+  const sunsetHorizon=new THREE.Color(isSunset?(isFiery?'#ffa442':'#ffa850'):'#ffaa58');
+  const sunsetZenith=new THREE.Color(isSunset?(isFiery?'#1c3876':'#223a78'):'#35487a');
 
   zenith.copy(nightZenith).lerp(dayZenith,day);
   if(dusk>0.01){
@@ -45,34 +45,44 @@ export function createSkyGradient(scene,camera){
     if(dusk>0.02&&isSunset){
      const sunsetGrad=new THREE.Color();
      if(isFiery){
-      // Dramatic "火烧云" 5-layer fiery sunset matching user reference photo:
-      // Horizon: Warm golden-peach glow -> Low-sky: Vermilion flame -> Mid-sky: Rose-magenta -> Upper-sky: Twilight violet -> Zenith: Deep sapphire indigo
-      const fireGold=new THREE.Color('#ffa248');
-      const fireCrimson=new THREE.Color('#ee384a');
-      const fireMagenta=new THREE.Color('#b8245e');
-      const fireViolet=new THREE.Color('#452c62');
-      const fireZenith=new THREE.Color('#161c38');
-      if(y<0.12){
-       sunsetGrad.copy(fireGold).lerp(fireCrimson,y/0.12);
-      }else if(y<0.36){
-       sunsetGrad.copy(fireCrimson).lerp(fireMagenta,(y-0.12)/0.24);
-      }else if(y<0.62){
-       sunsetGrad.copy(fireMagenta).lerp(fireViolet,(y-0.36)/0.26);
+      // Dramatic "火烧云 + 蓝调时刻" (Fiery Sunset & Sapphire Blue Hour) matching user reference photo:
+      // Horizon (y < 0.08): Warm glowing apricot flame ->
+      // Low sky (0.08 ~ 0.18): Fiery vermilion to radiant coral-rose ->
+      // Mid sky (0.18 ~ 0.28): Radiant coral-rose through soft twilight amethyst ->
+      // Upper sky (0.28 ~ 0.48): Luminous sapphire cobalt blue hour ->
+      // Zenith (y >= 0.48): Deep luminous sapphire twilight blue
+      const fireGold=new THREE.Color('#ffa644');
+      const fireVermilion=new THREE.Color('#f85e36');
+      const fireCoral=new THREE.Color('#e23b6c');
+      const fireAmethyst=new THREE.Color('#643a88');
+      const fireBlueHour=new THREE.Color('#224494');
+      const fireZenith=new THREE.Color('#162a64');
+      if(y<0.08){
+       sunsetGrad.copy(fireGold).lerp(fireVermilion,y/0.08);
+      }else if(y<0.18){
+       sunsetGrad.copy(fireVermilion).lerp(fireCoral,(y-0.08)/0.10);
+      }else if(y<0.28){
+       sunsetGrad.copy(fireCoral).lerp(fireAmethyst,(y-0.18)/0.10);
+      }else if(y<0.48){
+       sunsetGrad.copy(fireAmethyst).lerp(fireBlueHour,(y-0.28)/0.20);
       }else{
-       sunsetGrad.copy(fireViolet).lerp(fireZenith,(y-0.62)/0.38);
+       sunsetGrad.copy(fireBlueHour).lerp(fireZenith,(y-0.48)/0.52);
       }
      }else{
       // Romantic Rose-Purple Twilight Sunset:
-      const gold=new THREE.Color('#ffa23e');
-      const coral=new THREE.Color('#f25f54');
-      const rose=new THREE.Color('#dc407a');
-      const violet=sunsetZenith;
-      if(y<0.16){
-       sunsetGrad.copy(gold).lerp(coral,y/0.16);
-      }else if(y<0.52){
-       sunsetGrad.copy(coral).lerp(rose,(y-0.16)/0.36);
+      const gold=new THREE.Color('#ffa848');
+      const coral=new THREE.Color('#f05e52');
+      const rose=new THREE.Color('#d83e74');
+      const violet=new THREE.Color('#583e84');
+      const blueHour=new THREE.Color('#1e3a7c');
+      if(y<0.10){
+       sunsetGrad.copy(gold).lerp(coral,y/0.10);
+      }else if(y<0.22){
+       sunsetGrad.copy(coral).lerp(rose,(y-0.10)/0.12);
+      }else if(y<0.36){
+       sunsetGrad.copy(rose).lerp(violet,(y-0.22)/0.14);
       }else{
-       sunsetGrad.copy(rose).lerp(violet,(y-0.52)/0.48);
+       sunsetGrad.copy(violet).lerp(blueHour,(y-0.36)/0.64);
       }
      }
      sample.copy(horizon).lerp(zenith,t).lerp(sunsetGrad,dusk);

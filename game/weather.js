@@ -7,7 +7,8 @@ export class WeatherState{
  constructor(){this.mode='auto';this.type='clear';this.elapsed=0;this.cycleSeconds=WEATHER_CYCLE_SECONDS;this.rain=0;this.fog=0;this.cloud=0;this.humidity=48;}
  setMode(mode){if(!['auto','clear','cloudy','rain','fog'].includes(mode))return false;this.mode=mode;if(mode!=='auto')this.type=mode;return true;}
  setCycle(seconds){if(![600,1200,3600].includes(seconds))return false;this.elapsed*=seconds/this.cycleSeconds;this.cycleSeconds=seconds;return true;}
- tick(dt){this.elapsed+=dt;if(this.mode==='auto'){const t=(this.elapsed%this.cycleSeconds)/this.cycleSeconds*400;this.type=t<130?'clear':t<195?'cloudy':t<285?'rain':t<355?'fog':'cloudy';}const spec=WEATHER_TYPES[this.type],a=1-Math.exp(-dt/(this.mode==='auto'?55:7));this.rain+=(spec.rain-this.rain)*a;this.fog+=(spec.fog-this.fog)*a;this.cloud+=((this.type==='clear'?.08:this.type==='cloudy'?.65:.92)-this.cloud)*a;this.humidity+=(spec.humidity-this.humidity)*a;return {name:spec.name,humidity:Math.round(this.humidity),rain:this.rain,fog:this.fog,cloud:this.cloud};}
+ setFieryTier(tier){this._forcedFieryTier=[0,1,2].includes(tier)?tier:null;}
+ tick(dt){this.elapsed+=dt;if(this.mode==='auto'){const t=(this.elapsed%this.cycleSeconds)/this.cycleSeconds*400;this.type=t<130?'clear':t<195?'cloudy':t<285?'rain':t<355?'fog':'cloudy';}const spec=WEATHER_TYPES[this.type],a=1-Math.exp(-dt/(this.mode==='auto'?55:7));this.rain+=(spec.rain-this.rain)*a;this.fog+=(spec.fog-this.fog)*a;this.cloud+=((this.type==='clear'?.08:this.type==='cloudy'?.65:.92)-this.cloud)*a;this.humidity+=(spec.humidity-this.humidity)*a;return {name:spec.name,type:this.type,humidity:Math.round(this.humidity),rain:this.rain,fog:this.fog,cloud:this.cloud};}
  serialize(){return {timing:3,cycleSeconds:this.cycleSeconds,mode:this.mode,elapsed:this.elapsed,type:this.type,rain:this.rain,fog:this.fog,cloud:this.cloud,humidity:this.humidity};}
  restore(d){this.mode=['auto','clear','cloudy','rain','fog'].includes(d?.mode)?d.mode:'auto';this.cycleSeconds=d?.timing===3&&[600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS;const oldCycle=d?.timing===3?([600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS):d?.timing===2?3600:400;this.elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed)*this.cycleSeconds/oldCycle:0;this.type=Object.hasOwn(WEATHER_TYPES,d?.type)?d.type:'clear';this.rain=Number.isFinite(d?.rain)?Math.max(0,Math.min(1,d.rain)):0;this.fog=Number.isFinite(d?.fog)?Math.max(0,Math.min(1,d.fog)):0;this.cloud=Number.isFinite(d?.cloud)?Math.max(0,Math.min(1,d.cloud)):this.rain;this.humidity=Number.isFinite(d?.humidity)?Math.max(0,Math.min(100,d.humidity)):WEATHER_TYPES[this.type].humidity;this.tick(0);}
 }
@@ -74,7 +75,7 @@ function createLunarGlowTexture(){
  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
 
-export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water,terrainMaterial}){
+export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,bellyMat,water,terrainMaterial}){
  const skyGradient=createSkyGradient(scene,camera),state=new WeatherState();
  const moon=new THREE.Group(),moonTex=createMoonTexture();
  const moonMat=new THREE.MeshBasicMaterial({color:'#d8e5f5',map:moonTex,transparent:true,opacity:.62,depthWrite:false,fog:false});
@@ -91,13 +92,13 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
  const lunarOuterHalo=new THREE.Mesh(new THREE.CircleGeometry(12.8,36),lunarOuterHaloMat);lunarOuterHalo.position.z=-.02;moon.add(lunarOuterHalo);
  scene.add(moon);moon.children.forEach(m=>m.userData.range=320);
 
- // Clean, realistic sun core and continuous natural bloom glow
+ // Clean, realistic sun core and broad radiant sunset bloom rays (matching Reference 2)
  sunBlock.scale.setScalar(0.60);sunBlock.material.fog=false;sunBlock.userData.range=280;
  const sunGlowTex=createSunBloomTexture();
  let flareMesh=null;
  if(sunGlowTex){
   const flareMat=new THREE.MeshBasicMaterial({map:sunGlowTex,transparent:true,opacity:.85,depthWrite:false,fog:false,blending:THREE.AdditiveBlending});
-  flareMesh=new THREE.Mesh(new THREE.PlaneGeometry(68,68),flareMat);flareMesh.userData.range=280;sunBlock.add(flareMesh);
+  flareMesh=new THREE.Mesh(new THREE.PlaneGeometry(108,108),flareMat);flareMesh.userData.range=280;sunBlock.add(flareMesh);
  }
 
  const stars=new THREE.Group();for(let i=0;i<38;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.32,.32,.32),new THREE.MeshBasicMaterial({color:'#d9e9ff',fog:false}));const a=i*2.399,y=30+(i*37%115),r=Math.sqrt(180*180-y*y);m.position.set(Math.cos(a)*r,y,Math.sin(a)*r);m.userData.range=280;stars.add(m);}scene.add(stars);
@@ -108,16 +109,17 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   sunBlock.position.copy(camera.position).add(sunDir);sunBlock.lookAt(camera.position);sunBlock.visible=!night&&cloudiness<.8;
   const isSunset=dayClock>68&&dayClock<165;
   const duskFactor=(1-THREE.MathUtils.smoothstep(Math.abs(Math.sin(phase)),.03,.38))*(Math.sin(phase)>-.2?1:0);
-  // Dramatic "火烧云" (Fiery Sunset, matching user reference photo) vs Romantic Rose Twilight:
+  // Dramatic "火烧云" (Fiery Sunset, matching user reference photos 1, 2, 3):
   const dayCycle=Math.floor((state.elapsed+180)/(state.cycleSeconds||1200));
-  const isFierySunset=isSunset&&(dayCycle%2===0);
-  const noonSunColor=new THREE.Color('#ffffff'),duskSunColor=new THREE.Color(isFierySunset?'#ffe0a0':isSunset?'#ffe4b2':'#fff1cc');
+  const fieryTier=isSunset?(state._forcedFieryTier??(dayCycle%3)):-1;
+  const isFierySunset=isSunset&&(fieryTier!==2);
+  const noonSunColor=new THREE.Color('#ffffff'),duskSunColor=new THREE.Color(isFierySunset?'#ffe29a':isSunset?'#ffe4b2':'#fff1cc');
   const baseSunColor=new THREE.Color().copy(noonSunColor).lerp(duskSunColor,duskFactor*.88);
   sunBlock.material.color.copy(info.rain>.35?new THREE.Color('#c2c6b4'):baseSunColor);
   if(flareMesh){
-   const sunsetFlareColor=isFierySunset?new THREE.Color('#ff6a1e'):new THREE.Color('#ff9032');
-   flareMesh.material.color.copy(new THREE.Color('#fff4d0').lerp(sunsetFlareColor,duskFactor*.85));
-   flareMesh.material.opacity=(.85+.15*duskFactor)*(1-cloudiness*.85);
+   const sunsetFlareColor=isFierySunset?new THREE.Color('#ff5814'):new THREE.Color('#ff8824');
+   flareMesh.material.color.copy(new THREE.Color('#fff4d0').lerp(sunsetFlareColor,duskFactor*.88));
+   flareMesh.material.opacity=(.85+.22*duskFactor)*(1-cloudiness*.85);
   }
 
   moon.position.copy(camera.position).add(moonDir);moon.lookAt(camera.position);moon.visible=night&&cloudiness<.85;
@@ -127,17 +129,43 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   lunarOuterHaloMat.opacity=(.07+.04*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.88);
   stars.position.copy(camera.position);stars.visible=night&&cloudiness<.35;
 
-  // Real sky reference colors: fluffy white on clear days, vibrant fiery golden-salmon flame during 火烧云
-  const dayCloudColor=new THREE.Color('#ffffff');
-  const fieryCloudTint=new THREE.Color(dayClock>115?'#ff8f62':'#ffa858');
-  const roseCloudTint=new THREE.Color(dayClock>115?'#e8608c':'#ffa860');
-  const sunsetCloudTint=isFierySunset?fieryCloudTint:roseCloudTint;
-  const baseCloud=new THREE.Color('#586b80').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
-  baseCloud.lerp(sunsetCloudTint,duskFactor*0.96);
-  cloudMat.color.copy(baseCloud).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
+  // Real sky reference colors (matching user reference photos 1, 2, 3):
+  // Daytime: Crisp, airy, soft white cumulus clouds
+  const dayBodyColor=new THREE.Color('#ffffff');
+  const dayBellyColor=new THREE.Color('#eef5fc');
+
+  // Sunset "晚霞" & "火烧云" dual-tone lighting:
+  // Cloud Body: Luminous twilight mauve / coral-lavender (matching Reference 1 & 2)
+  const fieryBodyTint=new THREE.Color(dayClock>115?'#926294':'#b85e78');
+  const roseBodyTint=new THREE.Color(dayClock>115?'#8e5c8a':'#aa5876');
+
+  // Cloud Belly / Illuminated underside rim: Blazing molten fire gold & incandescent salmon-amber!
+  const fieryBellyTint=new THREE.Color(dayClock>115?'#ff6822':'#ffa832');
+  const roseBellyTint=new THREE.Color(dayClock>115?'#ff526e':'#ff9a44');
+
+  const sunsetBodyTint=isFierySunset?fieryBodyTint:roseBodyTint;
+  const sunsetBellyTint=isFierySunset?fieryBellyTint:roseBellyTint;
+
+  // Body color interpolation:
+  const baseBody=new THREE.Color('#788ca0').lerp(dayBodyColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+  baseBody.lerp(sunsetBodyTint,duskFactor*0.95);
+  cloudMat.color.copy(baseBody).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
   cloudMat.transparent=true;cloudMat.depthWrite=false;
-  // Substantial, clearly visible, fluffy cloud opacity (0.75 ~ 0.80) - neither razor-thin nor ghostly invisible
-  cloudMat.opacity=Math.max(.40,(.80-info.fog*.14)*(1-info.rain*.08));
+  // Daytime: 0.36 (light & airy); Sunset: 0.44 (translucent coral-lavender)
+  const baseBodyOpacity=THREE.MathUtils.lerp(0.36, 0.44, duskFactor);
+  cloudMat.opacity=Math.max(.16,(baseBodyOpacity-info.fog*.10)*(1-info.rain*.08));
+
+  // Belly fire color interpolation:
+  if(bellyMat){
+   const baseBelly=new THREE.Color('#8aa0b6').lerp(dayBellyColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+   baseBelly.lerp(sunsetBellyTint,duskFactor*0.98);
+   bellyMat.color.copy(baseBelly).lerp(new THREE.Color('#35424e').lerp(new THREE.Color('#8e9ca8'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
+   bellyMat.transparent=true;bellyMat.depthWrite=false;
+   // Daytime: 0.26 (subtle soft highlight); Fiery Sunset: 0.78 (molten glowing flame rim)
+   const sunsetBellyTargetOpacity=isFierySunset?0.78:0.58;
+   const baseBellyOpacity=THREE.MathUtils.lerp(0.26, sunsetBellyTargetOpacity, duskFactor);
+   bellyMat.opacity=Math.max(.16,(baseBellyOpacity-info.fog*.10)*(1-info.rain*.08));
+  }
   clouds.position.y=info.rain* -8;
 
   const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater,isFierySunset);if(!underwater){
@@ -154,7 +182,7 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   rainMesh.visible=info.rain>.04&&!underwater;rainMat.opacity=info.rain*.5;
   if(rainMesh.visible)for(let i=0;i<count;i++){const d=drops[i];d.y-=dt*17;d.x-=dt*.8;if(d.y<Math.max(d.roof,camera.position.y-14)||Math.hypot(d.x-camera.position.x,d.z-camera.position.z)>27)reset(d);const visible=d.y>d.roof&&i<count*info.rain;const x=visible?d.x:0,y=visible?d.y:-200,z=visible?d.z:0,a=i*18;positions.set([x,y,z,x+.045,y,z,x+.2,y+1.3,z,x,y,z,x+.2,y+1.3,z,x+.15,y+1.3,z],a);}
   if(rainMesh.visible)geometry.attributes.position.needsUpdate=true;
-  return {...info,night,moonVisible:moon.visible};
+  return {...info,night,moonVisible:moon.visible,isFierySunset,fieryTier,duskFactor,isSunset:Boolean(isSunset)};
  }
- return {state,tick,sun:sunBlock,moon,stars,rainMesh,serialize:()=>state.serialize(),restore:d=>state.restore(d)};
+ return {state,tick,sun:sunBlock,moon,stars,rainMesh,serialize:()=>state.serialize(),restore:d=>state.restore(d),setFieryTier:tier=>state.setFieryTier(tier)};
 }
