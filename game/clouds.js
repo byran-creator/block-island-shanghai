@@ -23,8 +23,9 @@ function createCloudTexture(){
  for(const [px,py,pr,palpha] of lobes){
   const g=ctx.createRadialGradient(cx+px,cy+py,pr*0.12,cx+px,cy+py,pr);
   g.addColorStop(0,`rgba(255,255,255,${palpha})`);
-  g.addColorStop(0.55,`rgba(255,255,255,${palpha*0.88})`);
-  g.addColorStop(0.80,`rgba(255,255,255,${palpha*0.35})`);
+  g.addColorStop(0.35,`rgba(255,255,255,${palpha*0.92})`);
+  g.addColorStop(0.65,`rgba(255,255,255,${palpha*0.60})`);
+  g.addColorStop(0.88,`rgba(255,255,255,${palpha*0.20})`);
   g.addColorStop(1,'rgba(255,255,255,0)');
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx+px,cy+py,pr,0,Math.PI*2);ctx.fill();
  }
@@ -43,20 +44,23 @@ export function createClouds(){
   color:'#ffffff',
   map:cloudTex,
   transparent:true,
-  opacity:.85,
+  opacity:.80,
   depthWrite:false,
   side:THREE.DoubleSide
  });
 
  const planeGeom=new THREE.PlaneGeometry(1,1);
 
- // 28 plump, rounded, billowing cumulus cloud clusters floating naturally above Shanghai
- for(let i=0;i<28;i++){
+ // 32 plump, rounded, billowing cumulus cloud clusters floating naturally above Shanghai
+ for(let i=0;i<32;i++){
   const root=new THREE.Group();
-  // Altitudes Y: 150 ~ 176m - comfortably above the towers, clearly visible in eye-level skyline
-  root.position.set(-280+i*89%680, 150+(i%5)*6.2, -280+i*119%640);
-  const s=1.0+(i%4)*.22;
-  const rot=(i*0.4)%Math.PI;
+  // Altitudes Y: 118 ~ 152m - gracefully framing Oriental Pearl (105m) and Shanghai Tower (136m)
+  const cx = -90 + (i * 47) % 360;
+  const cy = 118 + (i % 6) * 6.2;
+  const cz = -80 + (i * 59) % 350;
+  root.position.set(cx, cy, cz);
+  const s = 1.05 + (i % 5) * 0.22;
+  const rot = (i * 0.42) % Math.PI;
 
   // 5 organic billowing puffs arranged in a natural 3D dome (not a flat horizontal line!)
   const puffs=[
