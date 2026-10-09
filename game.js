@@ -55,6 +55,8 @@ for(let tile=0;tile<14;tile++){
  if(tile===3){ctx.fillStyle='#4e3b2870';for(let x=2;x<16;x+=4)ctx.fillRect(tile*16+x,0,1,16);}
  if(tile===6){ctx.fillStyle='#7a5b3966';for(let y=3;y<16;y+=4)ctx.fillRect(tile*16,y,16,1);ctx.fillRect(tile*16+5,4,1,4);ctx.fillRect(tile*16+11,12,1,4);}
  if(tile===7){ctx.fillStyle='#e5c5a1';for(let y=3;y<16;y+=4){ctx.fillRect(tile*16,y,16,1);for(let x=((y-3)%8===0?3:7);x<16;x+=8)ctx.fillRect(tile*16+x,y-3,1,3);}}
+ if(tile===5){ctx.fillStyle='rgba(130,105,65,0.22)';ctx.fillRect(tile*16,0,16,1);ctx.fillRect(tile*16,8,16,1);ctx.fillRect(tile*16+7,0,1,8);ctx.fillRect(tile*16+15,8,1,8);}
+ if(tile===10){ctx.fillStyle='rgba(65,55,45,0.25)';ctx.fillRect(tile*16,0,16,1);ctx.fillRect(tile*16,8,16,1);ctx.fillRect(tile*16+7,0,1,8);ctx.fillRect(tile*16+15,8,1,8);}
  if(tile===12){ctx.fillStyle='#effaff';ctx.fillRect(tile*16+2,2,2,7);ctx.fillRect(tile*16+4,2,6,1);}
  if(tile===13){ctx.fillStyle='#eaffd6';ctx.fillRect(tile*16+5,5,6,6);}
  if(tile===9){ctx.strokeStyle='#69492d';for(let n=2;n<8;n+=2)ctx.strokeRect(tile*16+n,n,16-n*2,16-n*2);}
@@ -217,6 +219,7 @@ npcGuides=createNpcGuides({extraPeople:[...metro.staff,...residents.people],scen
 commute=createCommute({scene,world,civil,activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!activity?.collides(x,y,z),exitBlocked:collides,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},onExit:()=>{keys.clear();pressedAt.clear();releaseAt.clear();grounded=true;},turnView:a=>{yaw+=a;},notify,allowed:()=>!adventure.state.race&&!activity.isRiding()&&!metroInterior(pos),getActors:()=>npcGuides.actors,onImpact:(actor,vx,vz,strength)=>npcGuides.impact(actor,vx,vz,strength)});
 const lujiazuiShow=createLujiazuiShow(scene);
 skyline=createSkyline({onEvent:e=>quests.record(e),scene,getPos:()=>pos,notify,pause:pauseForPanel,resume:enter,teleport,grantGlider:()=>life.grantGlider(),onProgress:()=>saves?.save('auto')});
+globalThis.__game={teleport,setPos:(x,y,z)=>{placePlayer({x,y,z});},setRotation:(y,p=-0.05)=>{yaw=y;pitch=p;},setTime:val=>{dayClock=val;updateSky(0);},getPos:()=>({...pos,yaw,pitch})};
 function captureSave(){return {version:6,mapRevision:MAP_REVISION,edits:[...savedEdits],metro:metro.serialize(),quests:quests.serialize(),pos:metro.safeSavePoint()||commute.safeSavePoint()||activity.safeSavePoint()||{...pos},yaw,pitch,flying,gliding,selected,dayClock,timeOptions:{...timeOptions},mined,placed,talkDone,followDone,celebrated,life:life.serialize(),restaurant:restaurant.serialize(),suites:privateSuites.serialize(),activity:activity.serialize(),skyline:skyline.serialize(),weather:weather.serialize(),adventure:adventure.serialize(),savedAt:new Date().toISOString()};}
 function movePersonal(p){
  if(p.x>=255&&p.x<=286&&p.z>=196&&p.z<=213&&p.y>=24){p.x-=143;p.z+=104;return true;}

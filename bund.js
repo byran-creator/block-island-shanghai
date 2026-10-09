@@ -2,6 +2,7 @@ import {styleNpc} from './npc-appearance.js';
 import {createCustomsClock} from './customs-clock.js';
 import {roadSegmentOrientation} from './road-orientation.js';
 import * as THREE from './three.module.js';
+import {getBundGraniteTexture,getPeaceCopperRoofTexture,getHistoricWindowTexture} from './shanghai-textures.js';
 import {riverCenter,CITY,MAP_BOUNDS,BUND_SHIFT} from './shanghai-map.js';
 import {windowLightGroup,lightGroupVisible} from './city-lighting.js';
 import {createCityTraffic,trafficSeed} from './city-traffic.js';
@@ -45,9 +46,12 @@ export function createBund({scene,world,getPos,getObstacles=()=>[]}){
  roadSegment(120.5,187.5,120.5,206.5,26.025,6.35);
  for(let z=-140;z<=234;z+=14){if(inSuzhou(promenadeX(z),z))continue;const root=new THREE.Group();root.position.set(promenadeX(z)+.5,26,z+.5);for(const dz of [-.65,.65])cube(root,'#5d6d6b',-1,.35,dz,.17,.7,.17);cube(root,'#9f7755',-1,.72,0,.7,.16,1.8);cube(root,'#bc9570',-1,1.05,-.8,.7,.7,.12);cube(root,'#687879',1,1.6,0,.15,3.2,.15);const light=cube(root,'#ffe2a1',1,3.25,0,.45,.5,.45,true);lamps.push(light);scene.add(root);}
  const warmWash=new THREE.MeshBasicMaterial({color:'#ffd58b',transparent:true,opacity:.42,depthWrite:false}),coolWash=new THREE.MeshBasicMaterial({color:'#88c5dc',transparent:true,opacity:.09,depthWrite:false}),warmWindow=new THREE.MeshBasicMaterial({color:'#ffce73',transparent:true,opacity:.88}),coolWindow=new THREE.MeshBasicMaterial({color:'#b9efff',transparent:true,opacity:.88});
+ function westGraniteMat(color){const key='granite:'+color;if(!materials.has(key))materials.set(key,new THREE.MeshLambertMaterial({color:color||'#dfd5bd',map:getBundGraniteTexture('warm')}));return materials.get(key);}
+ const historicWinDay=new THREE.MeshLambertMaterial({map:getHistoricWindowTexture(false)}),historicWinNight=new THREE.MeshBasicMaterial({map:getHistoricWindowTexture(true),transparent:true,opacity:.92});
  function panel(root,width,height,x,y,z,angle,material){const m=new THREE.Mesh(new THREE.PlaneGeometry(width,height),material);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=285;root.add(m);return m;}
  function architecturalFacade(r,b,s){
-  const dayGlass=mat(s.color),glow=s.modern?'#b8d9dc':'#e8c68e',nightMaterial=s.modern?coolWindow:warmWindow;
+  const west=b.bank==='west';
+  const dayGlass=west&&!s.modern?westGraniteMat(s.color):mat(s.color),glow=s.modern?'#b8d9dc':'#e8c68e',nightMaterial=s.modern?coolWindow:west?historicWinNight:warmWindow;
   // Group consecutive levels with the same outline so glass follows the actual setbacks.
   let start=s.modern?5:0;
   while(start<s.height){
@@ -65,7 +69,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[]}){
      for(let u=face.from;u<=face.to;u++){
       if((u+s.seed)%s.spacing!==0||Math.abs(u)<=1&&level<4)continue;
       const px=axis==='x'?xx+side*.015:u,pz=axis==='z'?zz+side*.015:u;
-      if(!s.modern)panel(r,.8,1.7,px,27+level,pz,angle,mat('#58747a'));
+      if(!s.modern)panel(r,.8,1.7,px,27+level,pz,angle,west?historicWinDay:mat('#58747a'));
       // Occupied rooms vary per building and floor, avoiding identical luminous grids.
       const window=panel(r,.7,1.35,axis==='x'?px+side*.02:px,27+level,axis==='z'?pz+side*.02:pz,angle,nightMaterial);window.userData.lightGroup=windowLightGroup(b,level,u,`${axis}:${side}:${face.at}`);windows.push(window);
      }
@@ -94,13 +98,35 @@ export function createBund({scene,world,getPos,getObstacles=()=>[]}){
    cube(r,'#c5b68e',0,86.7,0,rx*2+2,1.1,rz*2+2);
   }
   if(style.form!=='landmark'){architecturalFacade(r,b,style);scene.add(r);continue;}
-  for(const [xx,zz,angle,width]of [[rx+.516,0,Math.PI/2,rz*2+1],[-rx-.516,0,-Math.PI/2,rz*2+1],[0,rz+.516,0,rx*2+1],[0,-rz-.516,Math.PI,rx*2+1]]){if(west&&b.kind!=='brick'){panel(r,width,h-4,xx,30+(h-4)/2,zz,angle,mat(style.color));for(let y=33;y<26+h;y+=4)for(let u=-width/2+2;u<width/2-1;u+=3)panel(r,.8,1.7,xx?xx*1.002:u,y,zz?zz*1.002:u,angle,mat('#627e87'));}goldSurfaces.push(panel(r,width,h,xx*1.004,26+h/2,zz*1.004,angle,west||gold?warmWash:coolWash));}
-  for(let y=29;y<26+h;y+=4)for(let dz=-rz+2;dz<=rz-1;dz+=3){const window=panel(r,.78,1.5,front+.04*side,y,dz,side*Math.PI/2,west||gold?warmWindow:coolWindow);window.userData.lightGroup=windowLightGroup(b,y-26,dz,'front');windows.push(window);}
+  for(const [xx,zz,angle,width]of [[rx+.516,0,Math.PI/2,rz*2+1],[-rx-.516,0,-Math.PI/2,rz*2+1],[0,rz+.516,0,rx*2+1],[0,-rz-.516,Math.PI,rx*2+1]]){
+   if(west&&b.kind!=='brick'){
+    panel(r,width,h-4,xx,30+(h-4)/2,zz,angle,westGraniteMat(style.color));
+    for(let y=33;y<26+h;y+=4)for(let u=-width/2+2;u<width/2-1;u+=3)panel(r,.8,1.7,xx?xx*1.002:u,y,zz?zz*1.002:u,angle,historicWinDay);
+   }
+   goldSurfaces.push(panel(r,width,h,xx*1.004,26+h/2,zz*1.004,angle,west||gold?warmWash:coolWash));
+  }
+  for(let y=29;y<26+h;y+=4)for(let dz=-rz+2;dz<=rz-1;dz+=3){
+   const window=panel(r,.78,1.5,front+.04*side,y,dz,side*Math.PI/2,west?historicWinNight:gold?warmWindow:coolWindow);
+   window.userData.lightGroup=windowLightGroup(b,y-26,dz,'front');
+   windows.push(window);
+  }
   const glow=west||gold?'#ffd183':'#88daed';for(const y of [26.15,30,26+h+.15]){for(const zz of [-rz-.53,rz+.53])facadeLights.push(cube(r,glow,0,y,zz,rx*2+1.3,.18,.14,true));for(const xx of [-rx-.53,rx+.53])facadeLights.push(cube(r,glow,xx,y,0,.14,.18,rz*2+1.3,true));}
   if(west){for(const dz of [-rz+.2,-rz/2,rz/2,rz-.2])facadeLights.push(cube(r,'#ffdfa0',front+.055,26+h/2,dz,.12,h-.5,.19,true));for(const dx of [-rx+.2,rx-.2])for(const zz of [-rz-.54,rz+.54])facadeLights.push(cube(r,'#ffd795',dx,26+h/2,zz,.18,h,.13,true));
    for(const dz of [-rz+1,rz-1]){cube(r,'#c5b8a1',rx+1,27.6,dz,.55,3.2,.6);facadeLights.push(cube(r,'#ffe4a4',rx+1.32,27.6,dz,.055,3.2,.4,true));}
-   if(b.kind==='dome'){const crown=new THREE.Mesh(new THREE.SphereGeometry(5.1,16,10),new THREE.MeshBasicMaterial({color:'#efc475',transparent:true,opacity:.52}));crown.position.set(0,27+h,0);crown.userData.range=285;r.add(crown);facadeLights.push(crown);}
-   if(b.kind==='copper')for(let i=0;i<4;i++)facadeLights.push(cube(r,'#ffdc85',0,32+h+i,-4+i,9-i*2,.17,.15,true));
+   if(b.kind==='dome'){
+    cube(r,'#cfc4ab',0,26+h,0,rx*1.3,1.8,rz*1.3);
+    const crown=new THREE.Mesh(new THREE.SphereGeometry(5.1,16,10),new THREE.MeshBasicMaterial({color:'#efc475',transparent:true,opacity:.52}));crown.position.set(0,27+h,0);crown.userData.range=285;r.add(crown);facadeLights.push(crown);
+   }
+   if(b.kind==='copper'){
+    const copperMat=new THREE.MeshLambertMaterial({map:getPeaceCopperRoofTexture(),color:'#5bc8a0'});
+    const pyramid=new THREE.Mesh(new THREE.ConeGeometry(7.2,9.6,4),copperMat);
+    pyramid.rotation.y=Math.PI/4;pyramid.position.set(0,31+h+4.8,0);pyramid.userData.range=285;r.add(pyramid);
+    const spire=cube(r,'#f0cf74',0,31+h+9.6+1.5,0,.26,3.2,.26,true);facadeLights.push(spire);
+    for(let i=0;i<4;i++)facadeLights.push(cube(r,'#ffdc85',0,32+h+i,-4+i,9-i*2,.17,.15,true));
+   }
+   if(b.kind==='clock'){
+    for(const dx of [-2,0,2])for(const dz of [-2,2])cube(r,'#d5cca8',dx,27+h+3,dz,.45,5.8,.45);
+   }
   }scene.add(r);
  }
  const cc=CITY_BUILDINGS.find(b=>b.id==='convention');for(const dx of [-4,4]){const orb=new THREE.Mesh(new THREE.SphereGeometry(3.2,20,12),new THREE.MeshPhongMaterial({color:'#9bcbd3',shininess:85}));orb.position.set(cc.x+dx,26+cc.h+1,cc.z);orb.userData.range=285;scene.add(orb);const ring=new THREE.Mesh(new THREE.TorusGeometry(3.25,.06,4,28),mat('#dbe5d7',true));ring.position.copy(orb.position);ring.rotation.x=Math.PI/2;ring.userData.range=285;scene.add(ring);}
