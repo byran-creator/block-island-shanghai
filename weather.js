@@ -127,17 +127,17 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   lunarOuterHaloMat.opacity=(.07+.04*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.88);
   stars.position.copy(camera.position);stars.visible=night&&cloudiness<.35;
 
-  // Real sky reference colors: fluffy white on clear days, vibrant fiery coral/ruby during 火烧云
+  // Real sky reference colors: fluffy white on clear days, vibrant fiery golden-salmon flame during 火烧云
   const dayCloudColor=new THREE.Color('#ffffff');
-  const fieryCloudTint=new THREE.Color(dayClock>110?'#df2868':'#ff7450');
-  const roseCloudTint=new THREE.Color(dayClock>110?'#e8457c':'#ffa050');
+  const fieryCloudTint=new THREE.Color(dayClock>115?'#ff8f62':'#ffa858');
+  const roseCloudTint=new THREE.Color(dayClock>115?'#e8608c':'#ffa860');
   const sunsetCloudTint=isFierySunset?fieryCloudTint:roseCloudTint;
   const baseCloud=new THREE.Color('#586b80').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
-  baseCloud.lerp(sunsetCloudTint,duskFactor*0.95);
+  baseCloud.lerp(sunsetCloudTint,duskFactor*0.96);
   cloudMat.color.copy(baseCloud).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
   cloudMat.transparent=true;cloudMat.depthWrite=false;
-  // Substantial, clearly visible, fluffy cloud opacity (0.75 ~ 0.82) - neither razor-thin nor ghostly invisible
-  cloudMat.opacity=Math.max(.38,(.82-info.fog*.14)*(1-info.rain*.08));
+  // Substantial, clearly visible, fluffy cloud opacity (0.75 ~ 0.80) - neither razor-thin nor ghostly invisible
+  cloudMat.opacity=Math.max(.40,(.80-info.fog*.14)*(1-info.rain*.08));
   clouds.position.y=info.rain* -8;
 
   const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater,isFierySunset);if(!underwater){

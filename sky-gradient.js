@@ -45,18 +45,21 @@ export function createSkyGradient(scene,camera){
     if(dusk>0.02&&isSunset){
      const sunsetGrad=new THREE.Color();
      if(isFiery){
-      // Dramatic "火烧云" 4-layer fiery sunset (Image reference):
-      // Horizon: Molten fire orange -> Low-sky: Vermilion flame -> Mid-sky: Burning ruby-magenta -> Zenith: Royal indigo
-      const fireGold=new THREE.Color('#ff8424');
-      const fireCrimson=new THREE.Color('#ee3246');
-      const fireMagenta=new THREE.Color('#c21a58');
-      const fireZenith=sunsetZenith;
-      if(y<0.15){
-       sunsetGrad.copy(fireGold).lerp(fireCrimson,y/0.15);
-      }else if(y<0.50){
-       sunsetGrad.copy(fireCrimson).lerp(fireMagenta,(y-0.15)/0.35);
+      // Dramatic "火烧云" 5-layer fiery sunset matching user reference photo:
+      // Horizon: Warm golden-peach glow -> Low-sky: Vermilion flame -> Mid-sky: Rose-magenta -> Upper-sky: Twilight violet -> Zenith: Deep sapphire indigo
+      const fireGold=new THREE.Color('#ffa248');
+      const fireCrimson=new THREE.Color('#ee384a');
+      const fireMagenta=new THREE.Color('#b8245e');
+      const fireViolet=new THREE.Color('#452c62');
+      const fireZenith=new THREE.Color('#161c38');
+      if(y<0.12){
+       sunsetGrad.copy(fireGold).lerp(fireCrimson,y/0.12);
+      }else if(y<0.36){
+       sunsetGrad.copy(fireCrimson).lerp(fireMagenta,(y-0.12)/0.24);
+      }else if(y<0.62){
+       sunsetGrad.copy(fireMagenta).lerp(fireViolet,(y-0.36)/0.26);
       }else{
-       sunsetGrad.copy(fireMagenta).lerp(fireZenith,(y-0.50)/0.50);
+       sunsetGrad.copy(fireViolet).lerp(fireZenith,(y-0.62)/0.38);
       }
      }else{
       // Romantic Rose-Purple Twilight Sunset:
