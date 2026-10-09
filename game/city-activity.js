@@ -8,8 +8,9 @@ import {riverWestEdge,riverEastEdge,MAGNOLIA} from './shanghai-map.js';
 import {overlaps} from './world.js';
 import {boatWorld} from './boat-support.js';
 import {shopSignAnchor} from './shop-sign-layout.js';
+import {drawHeritageSign,getStripedAwningTexture,getShowcaseDisplayTexture,HERITAGE_BRANDS} from './shanghai-textures.js';
 
-export const SHOP_NAMES=['永安百货','先施商厦','上海时装','老字号眼镜','沪上书店','光影唱片','海派咖啡','鲜肉月饼','小笼生煎','南京路礼品'];
+export const SHOP_NAMES=['永安百货','先施公司','沈大成','老凤祥','泰康食品','亨达利钟表','朵云轩','和平饭店','第一食品','培丽丝绸'];
 export const NEON_COLORS=['#ff4f9c','#42eaff','#ab71ff','#ffe176','#49efbb'];
 export const FERRY_STOPS=[{name:'金陵东路渡口',x:riverWestEdge(185)-11,z:185,y:26},{name:'东昌路渡口',x:riverEastEdge(136)+8,z:136,y:26}];
 export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:0,u:0};if(t<47)return {port:null,u:(t-12)/35};if(t<59)return {port:1,u:1};return {port:null,u:1-(t-59)/35};}
@@ -20,34 +21,46 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map();let clock=0,ride=null,panel=false,cooldown=0,purchases=0;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,material(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=240;parent.add(m);return m;}
- function board(text,color,x,y,z,w,h,angle=0,graffiti=false){
-  const compact=graffiti&&[...text].length===1,c=document.createElement('canvas');c.width=compact?128:512;c.height=graffiti?128:512;const ctx=c.getContext('2d');ctx.fillStyle='#172232';ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle=color;ctx.lineWidth=10;ctx.strokeRect(12,12,c.width-24,c.height-24);ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`bold ${graffiti?70:86}px sans-serif`;ctx.strokeStyle='#050b16';ctx.lineWidth=7;ctx.shadowColor=color;ctx.shadowBlur=12;ctx.fillStyle=color;
-  if(graffiti){ctx.strokeText(text,c.width/2,64);ctx.fillText(text,c.width/2,64);}else{const letters=[...text];letters.slice(0,5).forEach((c,i)=>{ctx.strokeText(c,256,60+i*92);ctx.fillText(c,256,60+i*92);});}
-  const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;const day=new THREE.MeshLambertMaterial({map,side:THREE.DoubleSide}),night=new THREE.MeshBasicMaterial({map,side:THREE.DoubleSide});const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;root.add(m);signs.push({mesh:m,day,night});return m;
+ function board(text,color,x,y,z,w,h,angle=0,graffiti=false,brandIndex=-1){
+  const compact=graffiti&&[...text].length===1,cDay=document.createElement('canvas');cDay.width=compact?128:512;cDay.height=graffiti?128:512;
+  const cNight=document.createElement('canvas');cNight.width=cDay.width;cNight.height=cDay.height;
+  if(text==='H'){
+   const drawH=(c,col)=>{const ctx=c.getContext('2d');ctx.fillStyle='#232c33';ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle=col;ctx.lineWidth=14;ctx.strokeRect(10,10,c.width-20,c.height-20);ctx.font='bold 80px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',c.width/2,c.height/2);};
+   drawH(cDay,'#f9f2c6');drawH(cNight,'#ffe66d');
+  }else{
+   const bIdx=brandIndex>=0?brandIndex:(typeof color==='number'?color:0);
+   drawHeritageSign(cDay,text,bIdx,false,false,color);
+   drawHeritageSign(cNight,text,bIdx,false,true,color);
+  }
+  const mapDay=new THREE.CanvasTexture(cDay);mapDay.colorSpace=THREE.SRGBColorSpace;const mapNight=new THREE.CanvasTexture(cNight);mapNight.colorSpace=THREE.SRGBColorSpace;
+  const day=new THREE.MeshLambertMaterial({map:mapDay,side:THREE.DoubleSide}),night=new THREE.MeshBasicMaterial({map:mapNight,side:THREE.DoubleSide});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;root.add(m);signs.push({mesh:m,day,night});return m;
  }
  const fronts=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-'));
  for(const [i,b]of fronts.entries()){
   const side=b.entranceSide,name=i%3===0&&i%12!==0?(i%2?'海派文创':'老字号月饼'):SHOP_NAMES[i%SHOP_NAMES.length],color=NEON_COLORS[i%5],front=shopSignAnchor(b,30.3),{z,angle}=front;
-  board(name,color,front.x,front.y,z,Math.min(b.rx*2,front.width-.2),1.3,angle,true);
+  board(name,color,front.x,front.y,z,Math.min(b.rx*2,front.width-.2),1.3,angle,true,i);
   // Individual letters follow each storey's wall; a tall plane formerly floated in
   // front of the recessed upper floors or even above the building's roof.
   for(const [j,letter]of [...(i%2?'沪上好物':'海派食光')].entries()){
    const a=shopSignAnchor(b,32.5+j,b.rx-1.1);
-   board(letter,NEON_COLORS[(i+2)%5],a.x,a.y,a.z,1,.85,a.angle,true);
+   board(letter,NEON_COLORS[(i+2)%5],a.x,a.y,a.z,1,.85,a.angle,true,i+j);
   }
   const crown=shopSignAnchor(b,25.3+b.h);
-  board(name,NEON_COLORS[(i+1)%5],crown.x,crown.y,crown.z,Math.min(b.rx*2,crown.width-.2),1.3,crown.angle,true);
+  board(name,NEON_COLORS[(i+1)%5],crown.x,crown.y,crown.z,Math.min(b.rx*2,crown.width-.2),1.3,crown.angle,true,i);
   for(let level=1;level<Math.min(b.h,13);level++)for(const dx of [-b.rx+1,b.rx-1]){const a=shopSignAnchor(b,26+level,dx);neons.push(cube(root,color,a.x,a.y,a.z,.09,.95,.06,true));}
   if(i%4===0){const light=new THREE.PointLight(color,7,12,1.5);light.position.set(b.x+.5,29,z+side*2);root.add(light);shopLights.push(light);}
  }
  function person(i,parent=root,role='visitor'){const r=new THREE.Group(),shirt=['#6cd9de','#d66c8e','#eee5d4','#8f9fc9','#dfad5b'][i%5];cube(r,shirt,0,1,0,.45,.64,.28);cube(r,'#dcb08d',0,1.52,0,.34,.35,.33);cube(r,'#40352e',0,1.72,0,.36,.08,.35);const arms=[],legs=[];for(const side of [-1,1]){const arm=cube(r,shirt,side*.29,1.02,0,.15,.55,.18);arms.push(arm);legs.push(cube(r,'#43516b',side*.13,.36,0,.17,.7,.2));}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms,legs},i,role);parent.add(r);return {root:r,arms,legs};}
  for(let i=0;i<fronts.length;i+=3){const b=fronts[i],side=b.entranceSide,indoor=i%12!==0,x=b.x+2.4,z=indoor?b.z:side>0?63.1:69.9;
   if(overlaps(world,x,26,z))continue;
-  const food=i%2===0,product=food?(indoor?'mooncake':'bun'):'gift',stall=new THREE.Group();stall.name=indoor?'indoor-shop-counter':'street-food-stall';stall.position.set(x,26,z);root.add(stall);cube(stall,food?'#996e47':'#668c99',0,.9,0,2.4,.18,1.2);for(const dx of [-1.05,1.05])cube(stall,'#765c46',dx,.44,0,.12,.88,1);
+  const food=i%2===0,product=food?(indoor?'mooncake':'bun'):'gift',stall=new THREE.Group();stall.name=indoor?'indoor-shop-counter':'street-food-stall';stall.position.set(x,26,z);root.add(stall);const counterBase=cube(stall,food?'#996e47':'#668c99',0,.9,0,2.4,.18,1.2);
+  if(indoor){counterBase.material=new THREE.MeshLambertMaterial({map:getShowcaseDisplayTexture(false)});}
+  for(const dx of [-1.05,1.05])cube(stall,'#765c46',dx,.44,0,.12,.88,1);
   if(indoor){for(const dz of [-.59,.59]){const glass=cube(stall,'#b9dde2',0,1.3,dz,2.4,.6,.025);glass.material=new THREE.MeshLambertMaterial({color:'#d2eef2',transparent:true,opacity:.16,depthWrite:false});}const lid=cube(stall,'#d2eef2',0,1.61,0,2.45,.025,1.25);lid.material=new THREE.MeshLambertMaterial({color:'#d2eef2',transparent:true,opacity:.12,depthWrite:false});cube(stall,'#fff0ce',0,3.3,0,2.1,.06,.7,true);}
-  else{cube(stall,NEON_COLORS[i%5],0,2.5,0,2.6,.16,1.5);for(const dx of [-1.1,1.1])cube(stall,'#7b8e99',dx,1.7,.6,.07,1.5,.07);}
+  else{const awning=cube(stall,NEON_COLORS[i%5],0,2.5,0,2.6,.16,1.5);awning.material=new THREE.MeshLambertMaterial({map:getStripedAwningTexture(NEON_COLORS[i%5],'#fefcf5')});for(const dx of [-1.1,1.1])cube(stall,'#7b8e99',dx,1.7,.6,.07,1.5,.07);}
   const stock=[];for(let j=0;j<6;j++){const unit=createProduct(product);unit.scale.setScalar(.52);unit.position.set((j%3-1)*.7,1.01,(Math.floor(j/3)-.5)*.5);stall.add(unit);stock.push(unit);}
-  stalls.push({x,z,rx:1.5,rz:.9});const vendor=person(i,root,'vendor');vendor.root.position.set(x,26,z-side*.95);vendor.root.rotation.y=side>0?Math.PI:0;vendors.push({id:b.id,x,z,name:indoor?(food?'老字号月饼 · 店内柜台':'海派文创 · 店内柜台'):'街边生煎摊',food,product,indoor,building:b,stock,remaining:6,root:vendor.root});board(food?(indoor?'鲜肉月饼':'小笼生煎'):'海派好物',NEON_COLORS[i%5],x,indoor?28.6:28.05,z-side*.8,2.6,.7,side>0?0:Math.PI,true);
+  stalls.push({x,z,rx:1.5,rz:.9});const vendor=person(i,root,'vendor');vendor.root.position.set(x,26,z-side*.95);vendor.root.rotation.y=side>0?Math.PI:0;vendors.push({id:b.id,x,z,name:indoor?(food?'老字号月饼 · 店内柜台':'海派文创 · 店内柜台'):'街边生煎摊',food,product,indoor,building:b,stock,remaining:6,root:vendor.root});board(food?(indoor?'鲜肉月饼':'小笼生煎'):'海派好物',NEON_COLORS[i%5],x,indoor?28.6:28.05,z-side*.8,2.6,.7,side>0?0:Math.PI,true,i);
   const customer=person(i+7);customer.root.position.set(x,26,z+side*1.3);customer.root.rotation.y=side>0?0:Math.PI;const parcel=createProduct(product);parcel.scale.setScalar(.5);parcel.position.set(.38,food?1.35:.6,-.1);customer.root.add(parcel);tourists.push({...customer,kind:food?'eat':'shop',parcel,stationary:true,phase:i});
  }
  for(let i=0;i<40;i++){const p=person(i+13),bag=cube(p.root,['#fc869b','#50caca','#d4b572'][i%3],.35,.57,0,.3,.38,.2);tourists.push({...p,kind:'walk',bag,t:i*8.1,phase:i*.8});}
