@@ -125,13 +125,13 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
 
   // Real sky reference colors: sunny white on clear days, vibrant rosy magenta & golden amber at sunset (like Image 2!)
   const dayCloudColor=new THREE.Color('#ffffff');
-  const sunsetCloudTint=new THREE.Color(isSunset?(dayClock>110?'#e8487e':'#ff9045'):'#ffb865');
+  const sunsetCloudTint=new THREE.Color(isSunset?(dayClock>110?'#e8457c':'#ff903c'):'#ffb865');
   const baseCloud=new THREE.Color('#687b92').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
-  baseCloud.lerp(sunsetCloudTint,duskFactor*0.88);
+  baseCloud.lerp(sunsetCloudTint,duskFactor*0.92);
   cloudMat.color.copy(baseCloud).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
   cloudMat.transparent=true;cloudMat.depthWrite=false;
-  // Natural translucent cloud opacity: 0.62 ~ 0.68 on clear days
-  cloudMat.opacity=Math.max(.22,(.66-info.fog*.14)*(1-info.rain*.08));
+  // Delicate, light, highly translucent cloud opacity (0.48 ~ 0.52) so sky and sunset shine through
+  cloudMat.opacity=Math.max(.18,(.50-info.fog*.12)*(1-info.rain*.08));
   clouds.position.y=info.rain* -8;
 
   const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater);if(!underwater){

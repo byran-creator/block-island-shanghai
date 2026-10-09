@@ -45,11 +45,22 @@ export function createSkyGradient(scene,camera){
    for(let i=0;i<colors.count;i++){
     const y=Math.max(0,geometry.attributes.normal.getY(i));
     const t=Math.pow(y,0.52);
-    sample.copy(horizon).lerp(zenith,t);
-    // At sunset (Image 2): add the magical middle rosy-magenta glow band!
-    if(dusk>0.05&&isSunset&&y>0.08&&y<0.75){
-     const midFactor=Math.sin((y-0.08)/0.67*Math.PI)*dusk;
-     sample.lerp(sunsetMid,midFactor*0.62);
+    if(dusk>0.04&&isSunset){
+     // Rich 4-layer sunset progression matching user reference photo:
+     // Horizon: Golden amber -> Low-sky: Coral gold -> Mid-sky: Rosy magenta -> Zenith: Twilight violet
+     const gold=new THREE.Color('#ffa23e');
+     const coral=new THREE.Color('#f25f54');
+     const rose=new THREE.Color('#dc407a');
+     const violet=sunsetZenith;
+     if(y<0.16){
+      sample.copy(gold).lerp(coral,y/0.16);
+     }else if(y<0.52){
+      sample.copy(coral).lerp(rose,(y-0.16)/0.36);
+     }else{
+      sample.copy(rose).lerp(violet,(y-0.52)/0.48);
+     }
+    }else{
+     sample.copy(horizon).lerp(zenith,t);
     }
     colors.setXYZ(i,sample.r,sample.g,sample.b);
    }
