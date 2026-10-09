@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
 export function createClouds(){
- const clouds=new THREE.Group(),material=new THREE.MeshLambertMaterial({color:'#ffffff',vertexColors:true}),geometry=new THREE.SphereGeometry(1,12,8);
+ const clouds=new THREE.Group(),material=new THREE.MeshLambertMaterial({color:'#ffffff',vertexColors:true,transparent:true,opacity:.74,depthWrite:false}),geometry=new THREE.SphereGeometry(1,12,8);
  const colors=[];for(let i=0;i<geometry.attributes.normal.count;i++){const shade=.72+.28*Math.max(0,geometry.attributes.normal.getY(i));colors.push(shade,shade,Math.min(1,shade+.04));}geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
  // Each cumulus has a shallow, connected base and a varied round crown.
  for(let i=0;i<22;i++){const root=new THREE.Group();root.position.set(-145+i*89%490,147+i%4*5,-125+i*137%450);const s=.75+i%5*.12;
