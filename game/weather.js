@@ -11,6 +11,7 @@ export class WeatherState{
  serialize(){return {timing:3,cycleSeconds:this.cycleSeconds,mode:this.mode,elapsed:this.elapsed,type:this.type,rain:this.rain,fog:this.fog,cloud:this.cloud,humidity:this.humidity};}
  restore(d){this.mode=['auto','clear','cloudy','rain','fog'].includes(d?.mode)?d.mode:'auto';this.cycleSeconds=d?.timing===3&&[600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS;const oldCycle=d?.timing===3?([600,1200,3600].includes(d.cycleSeconds)?d.cycleSeconds:WEATHER_CYCLE_SECONDS):d?.timing===2?3600:400;this.elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed)*this.cycleSeconds/oldCycle:0;this.type=Object.hasOwn(WEATHER_TYPES,d?.type)?d.type:'clear';this.rain=Number.isFinite(d?.rain)?Math.max(0,Math.min(1,d.rain)):0;this.fog=Number.isFinite(d?.fog)?Math.max(0,Math.min(1,d.fog)):0;this.cloud=Number.isFinite(d?.cloud)?Math.max(0,Math.min(1,d.cloud)):this.rain;this.humidity=Number.isFinite(d?.humidity)?Math.max(0,Math.min(100,d.humidity)):WEATHER_TYPES[this.type].humidity;this.tick(0);}
 }
+
 function createMoonTexture(){
  if(typeof document==='undefined')return null;
  const c=document.createElement('canvas');c.width=512;c.height=512;
@@ -42,26 +43,20 @@ function createMoonTexture(){
  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
 
-function createSunFlareTexture(){
+// Photorealistic continuous smooth bloom glow without artificial hard rings or spikes
+function createSunBloomTexture(){
  if(typeof document==='undefined')return null;
  const c=document.createElement('canvas');c.width=256;c.height=256;
  const ctx=c.getContext('2d');if(!ctx)return null;
  const cx=128,cy=128,r=124;
- const grad=ctx.createRadialGradient(cx,cy,4,cx,cy,r);
- grad.addColorStop(0,'rgba(255,255,255,1)');
- grad.addColorStop(.12,'rgba(255,248,205,0.88)');
- grad.addColorStop(.32,'rgba(255,200,85,0.42)');
- grad.addColorStop(.62,'rgba(255,145,40,0.15)');
- grad.addColorStop(1,'rgba(255,100,20,0)');
+ const grad=ctx.createRadialGradient(cx,cy,2,cx,cy,r);
+ grad.addColorStop(0,'rgba(255,255,255,1.0)');
+ grad.addColorStop(0.08,'rgba(255,252,225,0.92)');
+ grad.addColorStop(0.20,'rgba(255,238,165,0.52)');
+ grad.addColorStop(0.42,'rgba(255,205,100,0.20)');
+ grad.addColorStop(0.68,'rgba(255,170,55,0.05)');
+ grad.addColorStop(1.0,'rgba(255,140,25,0.0)');
  ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
- ctx.save();ctx.translate(cx,cy);
- ctx.strokeStyle='rgba(255,235,160,0.15)';ctx.lineWidth=2;
- for(let i=0;i<8;i++){
-  const a=i*Math.PI/4;
-  ctx.beginPath();ctx.moveTo(-Math.cos(a)*r*.85,-Math.sin(a)*r*.85);
-  ctx.lineTo(Math.cos(a)*r*.85,Math.sin(a)*r*.85);ctx.stroke();
- }
- ctx.restore();
  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
 
@@ -72,8 +67,8 @@ function createLunarGlowTexture(){
  const cx=128,cy=128,r=124;
  const grad=ctx.createRadialGradient(cx,cy,12,cx,cy,r);
  grad.addColorStop(0,'rgba(210,235,255,0.72)');
- grad.addColorStop(.35,'rgba(165,205,255,0.32)');
- grad.addColorStop(.7,'rgba(130,175,250,0.1)');
+ grad.addColorStop(.35,'rgba(165,205,255,0.30)');
+ grad.addColorStop(.7,'rgba(130,175,250,0.08)');
  grad.addColorStop(1,'rgba(100,150,245,0)');
  ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
@@ -96,15 +91,13 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
  const lunarOuterHalo=new THREE.Mesh(new THREE.CircleGeometry(12.8,36),lunarOuterHaloMat);lunarOuterHalo.position.z=-.02;moon.add(lunarOuterHalo);
  scene.add(moon);moon.children.forEach(m=>m.userData.range=320);
 
- sunBlock.scale.setScalar(1);sunBlock.material.fog=false;sunBlock.userData.range=280;
- const innerHalo=new THREE.Mesh(new THREE.SphereGeometry(11.5,24,14),new THREE.MeshBasicMaterial({color:'#fff3b5',transparent:true,opacity:.28,depthWrite:false,fog:false}));innerHalo.userData.range=280;sunBlock.add(innerHalo);
- const midHalo=new THREE.Mesh(new THREE.SphereGeometry(22,24,14),new THREE.MeshBasicMaterial({color:'#ffb44a',transparent:true,opacity:.15,depthWrite:false,fog:false}));midHalo.userData.range=280;sunBlock.add(midHalo);
- const outerHalo=new THREE.Mesh(new THREE.SphereGeometry(46,24,14),new THREE.MeshBasicMaterial({color:'#ffa035',transparent:true,opacity:.07,depthWrite:false,fog:false}));outerHalo.userData.range=280;sunBlock.add(outerHalo);
- const sunFlareTex=createSunFlareTexture();
+ // Clean, realistic sun core and continuous natural bloom glow
+ sunBlock.scale.setScalar(0.60);sunBlock.material.fog=false;sunBlock.userData.range=280;
+ const sunGlowTex=createSunBloomTexture();
  let flareMesh=null;
- if(sunFlareTex){
-  const flareMat=new THREE.MeshBasicMaterial({map:sunFlareTex,transparent:true,opacity:.72,depthWrite:false,fog:false,blending:THREE.AdditiveBlending});
-  flareMesh=new THREE.Mesh(new THREE.PlaneGeometry(88,88),flareMat);flareMesh.userData.range=280;sunBlock.add(flareMesh);
+ if(sunGlowTex){
+  const flareMat=new THREE.MeshBasicMaterial({map:sunGlowTex,transparent:true,opacity:.85,depthWrite:false,fog:false,blending:THREE.AdditiveBlending});
+  flareMesh=new THREE.Mesh(new THREE.PlaneGeometry(68,68),flareMat);flareMesh.userData.range=280;sunBlock.add(flareMesh);
  }
 
  const stars=new THREE.Group();for(let i=0;i<38;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.32,.32,.32),new THREE.MeshBasicMaterial({color:'#d9e9ff',fog:false}));const a=i*2.399,y=30+(i*37%115),r=Math.sqrt(180*180-y*y);m.position.set(Math.cos(a)*r,y,Math.sin(a)*r);m.userData.range=280;stars.add(m);}scene.add(stars);
@@ -115,16 +108,13 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   sunBlock.position.copy(camera.position).add(sunDir);sunBlock.lookAt(camera.position);sunBlock.visible=!night&&cloudiness<.8;
   const isSunset=dayClock>70&&dayClock<160;
   const duskFactor=(1-THREE.MathUtils.smoothstep(Math.abs(Math.sin(phase)),.03,.38))*(Math.sin(phase)>-.2?1:0);
-  const noonSunColor=new THREE.Color('#fffef4'),duskSunColor=new THREE.Color(isSunset?'#ff6324':'#ff9242');
-  const baseSunColor=new THREE.Color().copy(noonSunColor).lerp(duskSunColor,duskFactor*.85);
-  sunBlock.material.color.copy(info.rain>.35?new THREE.Color('#cccebd'):baseSunColor);
-  innerHalo.material.color.set(isSunset?'#ff8035':'#fff2a8').lerp(new THREE.Color('#a8b0b8'),cloudiness*.6);
-  innerHalo.material.opacity=(.28+.12*duskFactor)*(1-cloudiness*.75);
-  midHalo.material.color.set(isSunset?'#f4521e':'#ffa638').lerp(new THREE.Color('#909aa5'),cloudiness*.7);
-  midHalo.material.opacity=(.15+.09*duskFactor)*(1-cloudiness*.8);
-  outerHalo.material.color.set(isSunset?'#e84014':'#ff9225').lerp(new THREE.Color('#808892'),cloudiness*.7);
-  outerHalo.material.opacity=(.07+.05*duskFactor)*(1-cloudiness*.85);
-  if(flareMesh){flareMesh.material.opacity=(.72+.18*duskFactor)*(1-cloudiness*.85);}
+  const noonSunColor=new THREE.Color('#ffffff'),duskSunColor=new THREE.Color(isSunset?'#ffe4b2':'#fff1cc');
+  const baseSunColor=new THREE.Color().copy(noonSunColor).lerp(duskSunColor,duskFactor*.88);
+  sunBlock.material.color.copy(info.rain>.35?new THREE.Color('#c2c6b4'):baseSunColor);
+  if(flareMesh){
+   flareMesh.material.color.copy(new THREE.Color('#fff4d0').lerp(new THREE.Color(isSunset?'#ff8228':'#ffa03a'),duskFactor*.85));
+   flareMesh.material.opacity=(.85+.15*duskFactor)*(1-cloudiness*.85);
+  }
 
   moon.position.copy(camera.position).add(moonDir);moon.lookAt(camera.position);moon.visible=night&&cloudiness<.85;
   moonMat.opacity=(.35+.27*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.75);
@@ -133,12 +123,15 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   lunarOuterHaloMat.opacity=(.07+.04*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.88);
   stars.position.copy(camera.position);stars.visible=night&&cloudiness<.35;
 
-  const dayCloudColor=new THREE.Color('#fffaf0'),sunsetCloudTint=new THREE.Color(isSunset?'#ffad8a':'#ffc4a2');
-  const baseCloud=new THREE.Color('#586e94').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
-  baseCloud.lerp(sunsetCloudTint,duskFactor*.55);
-  cloudMat.color.copy(baseCloud).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#a7b4bd'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
+  // Real sky reference colors: sunny white on clear days, golden-amber / rosy-coral at sunset
+  const dayCloudColor=new THREE.Color('#ffffff');
+  const sunsetCloudTint=new THREE.Color(isSunset?(dayClock>115?'#f78ea7':'#ffae58'):'#ffc080');
+  const baseCloud=new THREE.Color('#788ba3').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+  baseCloud.lerp(sunsetCloudTint,duskFactor*.82);
+  cloudMat.color.copy(baseCloud).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
   cloudMat.transparent=true;cloudMat.depthWrite=false;
-  cloudMat.opacity=Math.max(.2,(.74-info.fog*.12)*(1-info.rain*.08));
+  // Natural translucent cloud opacity: 0.60 ~ 0.68 on clear days so blue sky shines through
+  cloudMat.opacity=Math.max(.22,(.66-info.fog*.14)*(1-info.rain*.08));
   clouds.position.y=info.rain* -8;
 
   const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater);if(!underwater){const mist=new THREE.Color(night?'#3b4a59':'#b5c5cc');scene.background.copy(skyGradient.horizon).lerp(mist,info.fog*.32+info.rain*.13);scene.fog.color.copy(scene.background);scene.fog.near=48*(1-info.fog)+26*info.fog;scene.fog.far=440*(1-info.fog)+185*info.fog;scene.fog.far-=info.rain*12;}
