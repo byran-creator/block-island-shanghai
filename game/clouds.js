@@ -6,28 +6,25 @@ function createCloudTexture(){
  const c=document.createElement('canvas');c.width=512;c.height=512;
  const ctx=c.getContext('2d');if(!ctx)return null;
  const cx=256,cy=256;
- // Generate organic, fluffy cloud puffs with multi-layered soft Gaussian falloff
- // Natural cumulus silhouette with fluffy upper bumps, softer base, and airy feathered wisps
- const puffs=[
-  [0, 20, 140, 0.65],
-  [-70, 28, 110, 0.58],
-  [70, 28, 110, 0.58],
-  [-130, 35, 85, 0.45],
-  [130, 35, 85, 0.45],
-  [-45, -35, 115, 0.62],
-  [45, -30, 110, 0.62],
-  [0, -65, 95, 0.55],
-  [-95, -15, 90, 0.50],
-  [95, -10, 90, 0.50],
-  [-170, 42, 60, 0.32],
-  [170, 42, 60, 0.32],
-  [0, 55, 110, 0.50]
+ // Plump, organic, round cumulus puff: substantial core opacity and soft natural feathered edges
+ const lobes=[
+  [0, 0, 185, 0.98],
+  [-50, -25, 140, 0.94],
+  [50, -25, 140, 0.94],
+  [-70, 30, 125, 0.90],
+  [70, 30, 125, 0.90],
+  [0, 65, 130, 0.92],
+  [0, -65, 130, 0.92],
+  [-35, 45, 120, 0.90],
+  [35, 45, 120, 0.90],
+  [-45, -50, 115, 0.88],
+  [45, -50, 115, 0.88]
  ];
- for(const [px,py,pr,palpha] of puffs){
-  const g=ctx.createRadialGradient(cx+px,cy+py,pr*0.08,cx+px,cy+py,pr);
+ for(const [px,py,pr,palpha] of lobes){
+  const g=ctx.createRadialGradient(cx+px,cy+py,pr*0.12,cx+px,cy+py,pr);
   g.addColorStop(0,`rgba(255,255,255,${palpha})`);
-  g.addColorStop(0.42,`rgba(255,255,255,${palpha*0.65})`);
-  g.addColorStop(0.75,`rgba(255,255,255,${palpha*0.18})`);
+  g.addColorStop(0.55,`rgba(255,255,255,${palpha*0.88})`);
+  g.addColorStop(0.80,`rgba(255,255,255,${palpha*0.35})`);
   g.addColorStop(1,'rgba(255,255,255,0)');
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx+px,cy+py,pr,0,Math.PI*2);ctx.fill();
  }
@@ -41,44 +38,67 @@ function createCloudTexture(){
 export function createClouds(){
  const clouds=new THREE.Group();
  const cloudTex=createCloudTexture();
- // Soft, high-transparency cloud material with zero polygonal facets
+ // Clearly visible, fluffy, soft cloud material (not ghostly/invisible)
  const material=new THREE.MeshBasicMaterial({
   color:'#ffffff',
   map:cloudTex,
   transparent:true,
-  opacity:.52,
+  opacity:.85,
   depthWrite:false,
   side:THREE.DoubleSide
  });
 
  const planeGeom=new THREE.PlaneGeometry(1,1);
 
- // 34 scattered, high-altitude, lighter cloud clusters across the Shanghai sky
- for(let i=0;i<34;i++){
+ // 28 plump, rounded, billowing cumulus cloud clusters floating naturally above Shanghai
+ for(let i=0;i<28;i++){
   const root=new THREE.Group();
-  // Elevated higher up in the sky (Y: 185 ~ 225) so they feel lofty, deep, and atmospheric
-  root.position.set(-260+i*79%680, 185+(i%6)*6.8, -260+i*113%650);
-  const s=0.85+(i%5)*.22;
+  // Altitudes Y: 150 ~ 176m - comfortably above the towers, clearly visible in eye-level skyline
+  root.position.set(-280+i*89%680, 150+(i%5)*6.2, -280+i*119%640);
+  const s=1.0+(i%4)*.22;
+  const rot=(i*0.4)%Math.PI;
 
-  // Multi-angle intersecting soft quads (Cross-Quads):
-  // Never looks like a razor line from ANY viewing angle, always rounded and soft!
-  const cluster=[
-   // [x, y, z, w, h, rx, ry, rz]
-   [0, 0, 0, 48*s, 32*s, Math.PI/2, (i*0.5)%Math.PI, 0],
-   [-12*s, 1.5*s, 4*s, 38*s, 26*s, Math.PI/2+0.22, (i*0.5+0.4)%Math.PI, 0.1],
-   [14*s, 1.2*s, -3*s, 40*s, 27*s, Math.PI/2-0.18, (i*0.5-0.3)%Math.PI, -0.1],
-   // Tilted quads giving volumetric 3D presence without edge-on collapse
-   [0, 3.5*s, 0, 44*s, 24*s, Math.PI/3, (i*0.5+0.8)%Math.PI, 0.15],
-   [2*s, -2.5*s, 0, 42*s, 22*s, Math.PI/1.5, (i*0.5-0.7)%Math.PI, -0.15]
+  // 5 organic billowing puffs arranged in a natural 3D dome (not a flat horizontal line!)
+  const puffs=[
+   [0, 3.5*s, 0, 34*s],          // Top central billowing dome
+   [-13*s, -1*s, 9*s, 27*s],     // South-West lobe
+   [14*s, -0.5*s, 8*s, 28*s],    // South-East lobe
+   [-9*s, -1.8*s, -13*s, 26*s],  // North-West lobe
+   [11*s, -1.2*s, -11*s, 27*s]   // North-East lobe
   ];
 
-  for(const [x,y,z,w,h,rx,ry,rz] of cluster){
-   const m=new THREE.Mesh(planeGeom,material);
-   m.position.set(x,y,z);
-   m.rotation.set(rx,ry,rz);
-   m.scale.set(w,h,1);
-   m.userData.range=360;
-   root.add(m);
+  for(const [ox,oy,oz,rad] of puffs){
+   // 1. Horizontal plane (for view from underneath)
+   const p1=new THREE.Mesh(planeGeom,material);
+   p1.position.set(ox,oy,oz);
+   p1.rotation.set(Math.PI/2, rot, 0);
+   p1.scale.set(rad, rad, 1);
+   p1.userData.range=360;
+   root.add(p1);
+
+   // 2. Upright vertical plane 1 (faces angle rot: preserves full vertical height from ground view!)
+   const p2=new THREE.Mesh(planeGeom,material);
+   p2.position.set(ox,oy,oz);
+   p2.rotation.set(0, rot, 0);
+   p2.scale.set(rad, rad*0.92, 1);
+   p2.userData.range=360;
+   root.add(p2);
+
+   // 3. Upright vertical plane 2 (faces perpendicular angle: cross-billow structure)
+   const p3=new THREE.Mesh(planeGeom,material);
+   p3.position.set(ox,oy,oz);
+   p3.rotation.set(0, rot + Math.PI/2, 0);
+   p3.scale.set(rad, rad*0.92, 1);
+   p3.userData.range=360;
+   root.add(p3);
+
+   // 4. Diagonal inclined plane (45° pitch: bridges oblique ground angles smoothly)
+   const p4=new THREE.Mesh(planeGeom,material);
+   p4.position.set(ox,oy,oz);
+   p4.rotation.set(Math.PI/4, rot + Math.PI/4, 0);
+   p4.scale.set(rad, rad*0.92, 1);
+   p4.userData.range=360;
+   root.add(p4);
   }
   clouds.add(root);
  }
