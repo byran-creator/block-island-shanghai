@@ -123,18 +123,24 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,water
   lunarOuterHaloMat.opacity=(.07+.04*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.88);
   stars.position.copy(camera.position);stars.visible=night&&cloudiness<.35;
 
-  // Real sky reference colors: sunny white on clear days, golden-amber / rosy-coral at sunset
+  // Real sky reference colors: sunny white on clear days, vibrant rosy magenta & golden amber at sunset (like Image 2!)
   const dayCloudColor=new THREE.Color('#ffffff');
-  const sunsetCloudTint=new THREE.Color(isSunset?(dayClock>115?'#f78ea7':'#ffae58'):'#ffc080');
-  const baseCloud=new THREE.Color('#788ba3').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
-  baseCloud.lerp(sunsetCloudTint,duskFactor*.82);
+  const sunsetCloudTint=new THREE.Color(isSunset?(dayClock>110?'#e8487e':'#ff9045'):'#ffb865');
+  const baseCloud=new THREE.Color('#687b92').lerp(dayCloudColor,THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));
+  baseCloud.lerp(sunsetCloudTint,duskFactor*0.88);
   cloudMat.color.copy(baseCloud).lerp(new THREE.Color('#394754').lerp(new THREE.Color('#94a2ae'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)),cloudiness);
   cloudMat.transparent=true;cloudMat.depthWrite=false;
-  // Natural translucent cloud opacity: 0.60 ~ 0.68 on clear days so blue sky shines through
+  // Natural translucent cloud opacity: 0.62 ~ 0.68 on clear days
   cloudMat.opacity=Math.max(.22,(.66-info.fog*.14)*(1-info.rain*.08));
   clouds.position.y=info.rain* -8;
 
-  const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater);if(!underwater){const mist=new THREE.Color(night?'#3b4a59':'#b5c5cc');scene.background.copy(skyGradient.horizon).lerp(mist,info.fog*.32+info.rain*.13);scene.fog.color.copy(scene.background);scene.fog.near=48*(1-info.fog)+26*info.fog;scene.fog.far=440*(1-info.fog)+185*info.fog;scene.fog.far-=info.rain*12;}
+  const underwater=camera.position.y<22.25;skyGradient.tick(dayClock,cloudiness,info.fog,!underwater);if(!underwater){
+   // Warm golden-peach mist during sunset instead of dark apocalyptic grey
+   const sunsetMist=new THREE.Color('#f28260');
+   const mist=new THREE.Color(night?'#3b4a59':'#b5c5cc').lerp(sunsetMist,duskFactor*0.85);
+   scene.background.copy(skyGradient.horizon).lerp(mist,info.fog*.32+info.rain*.13);
+   scene.fog.color.copy(scene.background);scene.fog.near=48*(1-info.fog)+26*info.fog;scene.fog.far=440*(1-info.fog)+185*info.fog;scene.fog.far-=info.rain*12;
+  }
   terrainMaterial.color.setScalar(1-info.rain*.16);water.material.color.set('#173e5a').lerp(new THREE.Color('#3d9bab'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45)).lerp(new THREE.Color('#627b85'),info.rain*.75+info.fog*.15);rainMesh.visible=info.rain>.04&&!underwater;rainMat.opacity=info.rain*.5;
   if(rainMesh.visible)for(let i=0;i<count;i++){const d=drops[i];d.y-=dt*17;d.x-=dt*.8;if(d.y<Math.max(d.roof,camera.position.y-14)||Math.hypot(d.x-camera.position.x,d.z-camera.position.z)>27)reset(d);const visible=d.y>d.roof&&i<count*info.rain;const x=visible?d.x:0,y=visible?d.y:-200,z=visible?d.z:0,a=i*18;positions.set([x,y,z,x+.045,y,z,x+.2,y+1.3,z,x,y,z,x+.2,y+1.3,z,x+.15,y+1.3,z],a);}
   if(rainMesh.visible)geometry.attributes.position.needsUpdate=true;
