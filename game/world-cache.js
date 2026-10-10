@@ -1,6 +1,6 @@
 import {VoxelWorld,SIZE,HEIGHT} from './world.js';
 // Base-world cache is separate from player saves. Bump this when generation changes.
-export const WORLD_CACHE_REVISION='nanjing-shop-aisles-2026-10-05-v11';
+export const WORLD_CACHE_REVISION='nanjing-shop-aisles-2026-10-10-v12';
 export const validWorldCache=r=>r?.revision===WORLD_CACHE_REVISION&&r.data instanceof Uint8Array&&r.data.length===SIZE*SIZE*HEIGHT&&r.surface instanceof Uint16Array&&r.surface.length===SIZE*SIZE;
 function database(){return new Promise((resolve,reject)=>{const request=indexedDB.open('block-island-city-cache',1);request.onupgradeneeded=()=>request.result.createObjectStore('base');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);request.onblocked=()=>reject(new Error('Cache blocked'));});}
 async function read(){const db=await database();try{return await new Promise((resolve,reject)=>{const t=db.transaction('base'),r=t.objectStore('base').get('city');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}finally{db.close();}}
