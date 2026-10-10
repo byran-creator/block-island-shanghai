@@ -303,11 +303,13 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    if(bw.waitTimer>0){bw.waitTimer-=dt;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.2;bw.arms[1].rotation.x=-.2;continue;}
    // 1. Obey Pedestrian Traffic Light with crosswalk clearance
    let redWait=false;
-   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&p.x>=12.0&&p.x<=24.0&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
-   const canStartCrossing=ewGreen&&bPhase.remaining>=12&&!nearCar;
+   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.0&&p.x<=24.0)||(p.x>=-33.0&&p.x<=-23.0))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
+   const canStartCrossing=ewGreen&&bPhase.remaining>=10&&!nearCar;
    if(!canStartCrossing){
     if(bw.dir===1&&bw.x>=11.5&&bw.x<=13.4){redWait=true;bw.x=12.2;}
     else if(bw.dir===-1&&bw.x<=24.5&&bw.x>=22.6){redWait=true;bw.x=23.8;}
+    else if(bw.dir===1&&bw.x>=-33.5&&bw.x<=-31.2){redWait=true;bw.x=-32.5;}
+    else if(bw.dir===-1&&bw.x<=-23.5&&bw.x>=-25.5){redWait=true;bw.x=-24.5;}
    }
    if(redWait){
     bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;
