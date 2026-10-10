@@ -1,7 +1,7 @@
 // Geographic relationships retained at the existing city's compressed scale.
 // 2号线: 南京东路（河南中路）— 黄浦江江底 — 陆家嘴（世纪大道、国金北侧）.
 export const METRO_STATIONS=[
- {id:'nanjing',name:'南京东路',english:'East Nanjing Road',x:-94,z:66,hallY:16,platformY:6,color:'#8bc9b9',exits:[{number:1,x:-135,z:61.25,dir:1,width:.7,label:'南京东路北侧 · 河南中路'},{number:4,x:-99,z:70.75,dir:-1,width:.7,label:'南京东路南侧 · 往外滩'}]},
+ {id:'nanjing',name:'南京东路',english:'East Nanjing Road',x:-94,z:66,hallY:16,platformY:6,color:'#8bc9b9',exits:[{number:1,x:-135,z:61.35,dir:1,width:.7,label:'南京东路北侧 · 河南中路'},{number:4,x:-107,z:70.65,dir:-1,width:.7,label:'南京东路南侧 · 往外滩'}]},
  {id:'lujiazui',name:'陆家嘴',english:'Lujiazui',x:174,z:31,hallY:16,platformY:6,color:'#c9b1c7',exits:[{number:1,x:153,z:24,dir:1,label:'世纪大道 · 东方明珠方向'},{number:3,x:205,z:24,dir:-1,label:'世纪大道 · 银城中路方向'}]}
 ];
 // The north entrance corridor and west security hall are unpaid; only the
@@ -31,8 +31,38 @@ export function buildMetro(w){
  // Open both track portals through the station end walls.
  for(const s of METRO_STATIONS)for(const x of [s.x-36,s.x+36])for(const side of [-1,1])w.fill(x,3,s.z+side*8-2,x,10,s.z+side*8+2,0);
  // A continuous analytic slope carries walkers. Clear its headroom and use mesh treads.
- for(const r of METRO_RAMPS)for(let i=-3;i<=r.length+3;i++){const x=r.x+i*r.dir,y=r.from+(r.to-r.from)*Math.max(0,Math.min(1,i/r.length)),landing=i<=0||i>=r.length;
-  w.fill(x,Math.floor(y)-(landing?0:1),Math.floor(r.z)-1,x,Math.ceil(y)+3,Math.floor(r.z)+1,0);
-  if(landing)w.fill(x,Math.floor(y)-1,Math.floor(r.z)-1,x,Math.floor(y)-1,Math.floor(r.z)+1,9);
+ for(const r of METRO_RAMPS)for(let i=-3;i<=r.length+3;i++){
+  const x=r.x+i*r.dir,y=r.from+(r.to-r.from)*Math.max(0,Math.min(1,i/r.length)),landing=i<=0||i>=r.length;
+  const isNarrow=r.kind==='entrance'&&(r.width??1.5)<1,zWalk=Math.floor(r.z);
+  if(isNarrow){
+   const minSideZ=zWalk===61?59:68,maxSideZ=zWalk===61?63:73;
+   if(i<=0){
+    w.fill(x,26,zWalk-1,x,29,zWalk+1,0);
+    w.fill(x,20,minSideZ,x,25,maxSideZ,9);
+   }else if(i>=r.length){
+    w.fill(x,15,zWalk-1,x,15,zWalk+1,9);
+    w.fill(x,16,zWalk-1,x,21,zWalk+1,0);
+    w.fill(x,22,minSideZ,x,25,maxSideZ,9);
+   }else{
+    w.fill(x,26,zWalk,x,29,zWalk,0);
+    for(let sz=minSideZ;sz<=maxSideZ;sz++){
+     if(sz===zWalk)continue;
+     w.set(x,25,sz,9);
+     const bottomY=Math.max(20,Math.floor(y)-1);
+     if(bottomY<=24)w.fill(x,bottomY,sz,x,24,sz,9);
+    }
+    if(i<=6){
+     w.fill(x,Math.floor(y)-1,zWalk,x,Math.ceil(y)+3,zWalk,0);
+    }else{
+     w.set(x,25,zWalk,9);
+     const tunnelRoof=Math.min(24,Math.ceil(y)+3);
+     w.fill(x,Math.floor(y)-1,zWalk,x,tunnelRoof,zWalk,0);
+     if(tunnelRoof<24)w.fill(x,tunnelRoof+1,zWalk,x,24,zWalk,3);
+    }
+   }
+  }else{
+   w.fill(x,Math.floor(y)-(landing?0:1),Math.floor(r.z)-1,x,Math.ceil(y)+3,Math.floor(r.z)+1,0);
+   if(landing)w.fill(x,Math.floor(y)-1,Math.floor(r.z)-1,x,Math.floor(y)-1,Math.floor(r.z)+1,9);
+  }
  }
 }

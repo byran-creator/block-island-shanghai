@@ -70,3 +70,47 @@ body.in-dialogue .hud,body.in-dialogue #crosshair,body.in-dialogue #toast,body.i
 .main-quest>p{font-size:13px;line-height:1.6}
 @media(max-width:600px){.quest-launcher{width:165px;padding:8px}.quest-launcher p{display:none}#tasks-dialog{padding:18px;max-height:90dvh}#task-list{grid-template-columns:1fr}#tasks-dialog h2{font-size:20px}#tasks-close{padding:8px;font-size:12px}.task-card{padding:14px}}
 @media(max-height:580px){.quest-launcher{display:block;top:90px}.quest-launcher p{display:none}}
+/* Luxury Glassmorphism Start Menu & Settings Modal */
+.glass-luxury{background:rgba(12,24,32,0.78);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,0.16);box-shadow:0 28px 75px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.2);border-radius:22px;padding:34px 38px 28px;max-width:495px}
+.badge-dot{width:8px;height:8px;border-radius:50%;background:#d5fd87;box-shadow:0 0 10px #d5fd87;display:inline-block}
+.hero-cta{background:linear-gradient(135deg,#e3ff8c 0%,#b8f75b 60%,#8ae434 100%)!important;color:#173220!important;border:1px solid #f6ffcb!important;font-size:18px!important;font-weight:800!important;letter-spacing:1px!important;padding:17px 22px!important;border-radius:12px!important;box-shadow:0 6px 20px rgba(184,247,91,0.35),0 3px 0 #689e22!important;transition:all .2s cubic-bezier(0.2,0.8,0.2,1)!important;margin-bottom:14px}
+.hero-cta:hover:not(:disabled){transform:translateY(-2px) scale(1.01)!important;box-shadow:0 10px 28px rgba(184,247,91,0.5),0 4px 0 #689e22!important;background:linear-gradient(135deg,#edffaa 0%,#c4fa6e 60%,#99ea42 100%)!important}
+.mode-entry{display:flex;gap:10px;margin:0 0 14px}
+.mode-pill{flex:1;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:10px;padding:11px 12px;font-size:13px;font-weight:600;color:#edf6f0;transition:all .15s;text-align:center}
+.mode-pill:hover{background:rgba(255,255,255,0.16);border-color:rgba(213,253,135,0.5);color:#fff;transform:translateY(-1px)}
+.settings-pill{background:rgba(212,175,55,0.15)!important;border-color:rgba(240,206,110,0.35)!important;color:#f7e7be!important}
+.settings-pill:hover{background:rgba(212,175,55,0.28)!important;border-color:#f0ce6e!important;color:#fff!important}
+.teleport-pills{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 14px;font-size:12px}
+.teleport-title{color:#a9c5be;font-size:12px}
+.tp-btn{border:1px solid rgba(255,255,255,0.16);background:rgba(18,42,50,0.7);color:#d6e8e5;border-radius:14px;padding:6px 11px;font-size:12px;transition:all .15s}
+.tp-btn:hover{border-color:#d5fd87;color:#fff;background:rgba(30,65,75,0.85);transform:translateY(-1px)}
+.instructions-card{border-top:1px solid rgba(255,255,255,0.12);padding-top:14px;margin-top:12px}
+.key-guide-title{font-size:11px;letter-spacing:1.5px;color:#9ebdb5;margin-bottom:8px;font-weight:600}
+.settings-dialog{width:min(840px,94vw);max-height:88dvh;padding:26px 30px;background:#11232bee;border:1px solid #3d6368;backdrop-filter:blur(24px)}
+.settings-dialog header{border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:14px}
+.settings-content{display:flex;flex-direction:column;gap:18px;margin-top:16px}
+.settings-group{border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);border-radius:12px;padding:16px 18px}
+.settings-group h3{margin:0 0 12px;font-size:15px;color:#d6eed8;font-weight:600;letter-spacing:.5px}
+.weather-celestial{display:flex;gap:10px;margin-top:8px}
+
+/* Alt free cursor & In-Game Settings button */
+.cursor-pill{cursor:pointer;user-select:none;transition:all .15s;pointer-events:auto;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#d5e8e4}
+.cursor-pill:hover{background:rgba(255,255,255,0.2);color:#fff}
+.cursor-pill.active{background:rgba(217,83,79,0.85)!important;border-color:#ff9e9e!important;color:#fff!important;box-shadow:0 0 12px rgba(255,90,90,0.5)}
+body.cursor-free,body.cursor-free #world{cursor:default!important}
+#settings-quick{background:rgba(212,175,55,0.18);border:1px solid rgba(240,206,110,0.45);color:#f7e7be;transition:all .15s;cursor:pointer}
+#settings-quick:hover{background:rgba(212,175,55,0.36);color:#fff;border-color:#fedb84}
+
+/* In-Game Conspicuous Time Scrubber in HUD */
+.day-status{pointer-events:auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.day-time-bar{display:inline-flex;align-items:center;gap:10px;background:rgba(16,36,44,0.82);border:1px solid rgba(212,175,55,0.45);padding:5px 12px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.4);backdrop-filter:blur(10px)}
+#clock-quick{background:transparent;border:none;color:#fedb84;font-weight:700;font-size:13px;cursor:pointer;padding:0;letter-spacing:.3px;transition:color .15s;white-space:nowrap}
+#clock-quick:hover{color:#fff;text-shadow:0 0 8px rgba(254,219,132,0.6)}
+.hud-time-scrubber{display:inline-flex;align-items:center;gap:6px}
+.hud-sun-icon,.hud-moon-icon{font-size:12px;user-select:none;opacity:.9}
+#hud-time-slider{-webkit-appearance:none;appearance:none;width:120px;height:6px;border-radius:3px;background:linear-gradient(90deg,#182848 0%,#ff8c42 22%,#4facfe 50%,#f6d365 78%,#182848 100%);outline:none;cursor:pointer;box-shadow:inset 0 1px 2px rgba(0,0,0,0.6);vertical-align:middle}
+#hud-time-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:#fedb84;border:2px solid #ffffff;box-shadow:0 0 5px rgba(0,0,0,0.5);cursor:pointer;transition:transform .1s}
+#hud-time-slider::-webkit-slider-thumb:hover{transform:scale(1.2);background:#fff}
+#hud-time-slider::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#fedb84;border:2px solid #ffffff;box-shadow:0 0 5px rgba(0,0,0,0.5);cursor:pointer}
+
+

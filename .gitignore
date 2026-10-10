@@ -4,3 +4,4 @@ dist/.openai/
 dist/
 
 .local-data/
+preview/
