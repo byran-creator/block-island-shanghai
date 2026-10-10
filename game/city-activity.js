@@ -17,7 +17,7 @@ export const FERRY_STOPS=[{name:'金陵东路渡口',x:riverWestEdge(185)-11,z:1
 export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:0,u:0};if(t<47)return {port:null,u:(t-12)/35};if(t<59)return {port:1,u:1};return {port:null,u:1-(t-59)/35};}
 export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestEdge(185)+7,z:185},b={x:riverEastEdge(136)-13,z:136};return {...phase,x:a.x+(b.x-a.x)*phase.u,z:a.z+(b.z-a.z)*phase.u,y:22.3,yaw:Math.atan2(b.x-a.x,b.z-a.z)+(time%94<59?Math.PI:0)};}
 
-export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[]}){
+export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],getTrafficTime=null}){
  const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map();let clock=0,ride=null,panel=false,cooldown=0,purchases=0;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
@@ -279,14 +279,6 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    const stopLine=cube(parent,'#fffaed',18,26.045,z,9.8,.02,.22);
    stopLine.userData.range=240;
   }
-  // Pedestrian crossing signal poles on east and west sidewalks
-  for(const px of [12.2,23.8]){
-   cube(parent,'#3b4850',px,27.5,63.2,.12,3.0,.12);
-   cube(parent,'#1c252d',px,28.6,63.2,.3,.62,.24);
-   const pedRed=cube(parent,'#ff4943',px,28.76,63.2,.2,.22,.26,true);
-   const pedGreen=cube(parent,'#42f59e',px,28.46,63.2,.2,.22,.26,true);
-   neons.push(pedRed,pedGreen);
-  }
  }
  createNanjingStele(root);
  function close(){if(!panel)return;panel=false;$('city-dialog').close();resume();}
@@ -299,18 +291,20 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  }
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
  const crowd=createStreetCrowd([...tourists,...sharedWalkers],{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29)});
- function tick(dt,{night=false}={}){clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
+ function tick(dt,{night=false}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
+  const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
+
   if(getPos){const p=getPos();for(const l of shopLights)l.userData.distSq=(l.position.x-p.x)**2+(l.position.z-p.z)**2;shopLights.sort((a,b)=>a.userData.distSq-b.userData.distSq);for(let idx=0;idx<shopLights.length;idx++)shopLights[idx].visible=night&&idx<4&&shopLights[idx].userData.distSq<1600;}else{for(const m of shopLights)m.visible=night;}
   for(const m of ferryLamps)m.visible=night;const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
   crowd.tick(dt,vehicles);
-  const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
   for(const bw of bundWalkers){
    if(bw.waitTimer>0){bw.waitTimer-=dt;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.2;bw.arms[1].rotation.x=-.2;continue;}
    // 1. Obey Pedestrian Traffic Light with crosswalk clearance
    let redWait=false;
-   const canStartCrossing=ewGreen&&bPhase.remaining>=14;
+   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&p.x>=12.0&&p.x<=24.0&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
+   const canStartCrossing=ewGreen&&bPhase.remaining>=12&&!nearCar;
    if(!canStartCrossing){
     if(bw.dir===1&&bw.x>=11.5&&bw.x<=13.4){redWait=true;bw.x=12.2;}
     else if(bw.dir===-1&&bw.x<=24.5&&bw.x>=22.6){redWait=true;bw.x=23.8;}
@@ -322,7 +316,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
     continue;
    }
    // 2. Advance walker along corridor connecting Bund and Commercial Street
-   const onRoadway=bw.x>13.0&&bw.x<23.0;const currentSpeed=onRoadway?Math.max(bw.speed,1.4):bw.speed;bw.x+=bw.dir*currentSpeed*dt;
+   const onRoadway=bw.x>13.0&&bw.x<23.0;const currentSpeed=onRoadway?Math.max(bw.speed,1.8):bw.speed;bw.x+=bw.dir*currentSpeed*dt;
    if(bw.x>=34){bw.x=34;bw.dir=-1;bw.waitTimer=3.5+(bw.phase%3)*1.5;}
    else if(bw.x<=-85){bw.x=-85;bw.dir=1;bw.waitTimer=3+(bw.phase%2)*1.5;}
    // 3. Smooth S-curve bypass around the Nanjing Road Monument Stele (at x = -35, z = 66)
@@ -369,5 +363,5 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  }
  const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons,shopLights));
  batchMeshes(root,staticMeshes(root,moving),'street-furniture');neons.splice(0,neons.length,...batchMeshes(root,neons,'street-neon'));
- tick(0);return {tick,use,close,signs,neons,vendors,tourists,stalls,ferry,heli,landings,goods,isPanelOpen:()=>panel,isRiding:()=>!!ride,cancelRide:()=>{if(ride){teleport(landings[ride.from]);ride=null;}},safeSavePoint:()=>ride?{...landings[ride.from]}:null,serialize:()=>({cooldown,purchases,goods:{...goods},stock:Object.fromEntries(vendors.map(v=>[v.id,v.remaining]))}),restore:d=>{ride=null;for(const id of Object.keys(SHOP_PRODUCTS))goods[id]=Math.max(0,Math.min(99999,Math.floor(Number(d?.goods?.[id])||0)));for(const v of vendors){const count=d?.stock?.[v.id];v.remaining=Number.isFinite(count)?Math.max(0,Math.min(6,Math.floor(count))):6;showStock(v);}cooldown=Math.max(0,Math.min(30,Number(d?.cooldown)||0));purchases=Math.max(0,Math.floor(Number(d?.purchases)||0));},collides:(x,y,z)=>y<28.5&&y+1.75>26&&(stalls.some(s=>Math.abs(x-s.x)<s.rx&&Math.abs(z-s.z)<s.rz)||(Math.abs(x-(-35))<.65&&Math.abs(z-66)<1.85))||!heli.userData.piloted&&y<heli.position.y+2.5&&y+1.75>heli.position.y&&Math.abs(x-heli.position.x)<1.6&&Math.abs(z-heli.position.z)<2.1};
+ tick(0);return {tick,use,close,signs,neons,vendors,tourists,bundWalkers,stalls,ferry,heli,landings,goods,isPanelOpen:()=>panel,isRiding:()=>!!ride,cancelRide:()=>{if(ride){teleport(landings[ride.from]);ride=null;}},safeSavePoint:()=>ride?{...landings[ride.from]}:null,serialize:()=>({cooldown,purchases,goods:{...goods},stock:Object.fromEntries(vendors.map(v=>[v.id,v.remaining]))}),restore:d=>{ride=null;for(const id of Object.keys(SHOP_PRODUCTS))goods[id]=Math.max(0,Math.min(99999,Math.floor(Number(d?.goods?.[id])||0)));for(const v of vendors){const count=d?.stock?.[v.id];v.remaining=Number.isFinite(count)?Math.max(0,Math.min(6,Math.floor(count))):6;showStock(v);}cooldown=Math.max(0,Math.min(30,Number(d?.cooldown)||0));purchases=Math.max(0,Math.floor(Number(d?.purchases)||0));},collides:(x,y,z)=>y<28.5&&y+1.75>26&&(stalls.some(s=>Math.abs(x-s.x)<s.rx&&Math.abs(z-s.z)<s.rz)||(Math.abs(x-(-35))<.65&&Math.abs(z-66)<1.85))||!heli.userData.piloted&&y<heli.position.y+2.5&&y+1.75>heli.position.y&&Math.abs(x-heli.position.x)<1.6&&Math.abs(z-heli.position.z)<2.1};
 }
