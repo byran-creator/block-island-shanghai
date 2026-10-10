@@ -38,7 +38,7 @@ export function createChunkQueue({has,create,commit,now=()=>performance.now()}){
  function setDesired(keys,point,chunk,force=false){
   desired=keys;for(const key of pending.keys())if(!desired.has(key))cancel(key);
   for(const key of desired)if(force||!has(key)&&!pending.has(key))request(key);
-  const distance=key=>{const [x,z]=key.split(',').map(Number);const isSkyline=(x>=7&&x<=14&&z>=2&&z<=8);const d=((x+.5)*chunk-point.x)**2+((z+.5)*chunk-point.z)**2;return isSkyline?d-500000:d;};
+  const distance=key=>{const [x,z]=key.split(',').map(Number);const isSkyline=(x>=7&&x<=18&&z>=1&&z<=14);const d=((x+.5)*chunk-point.x)**2+((z+.5)*chunk-point.z)**2;return isSkyline?d-500000:d;};
   const ordered=[...pending].sort((a,b)=>distance(a[0])-distance(b[0]));pending.clear();for(const entry of ordered)pending.set(...entry);
  }
  function process(budget=5){

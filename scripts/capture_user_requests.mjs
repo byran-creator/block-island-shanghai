@@ -81,7 +81,7 @@ async function main() {
     '--ignore-gpu-blocklist',
     '--use-gl=angle',
     '--use-angle=d3d11',
-    'http://localhost:5218/game/'
+    'http://localhost:5218/'
   ]);
 
   let versionData = null;
@@ -172,6 +172,32 @@ async function main() {
   })()`);
   await delay(4000);
   await cdp.screenshot('shot_lujiazui_skyline_bund_view.png');
+
+  // Shot 5: Bund looking Southeast across Huangpu River at Tomson Riviera / BEA ground
+  console.log('Shot 5: Bund promenade looking Southeast at South Pudong & Tomson Riviera ground...');
+  await cdp.eval(`(() => {
+    if (!window.__game) return;
+    window.__game.setActive(true);
+    window.__game.setPos(24.0, 27.5, 75.0);
+    window.__game.setRotation(-1.15, 0.05);
+    window.__game.setTime(65);
+    window.__game.render();
+  })()`);
+  await delay(4000);
+  await cdp.screenshot('shot_tomson_south_pudong_ground_rendered.png');
+
+  // Shot 6: Exit 1 shop entrance where user repaired floor tiles with Pearl Silver-White
+  console.log('Shot 6: Exit 1 shop entrance floor repaired with Pearl Silver-White...');
+  await cdp.eval(`(() => {
+    if (!window.__game) return;
+    window.__game.setActive(true);
+    window.__game.setPos(-130.0, 26.5, 64.0);
+    window.__game.setRotation(0.0, -0.4);
+    window.__game.setTime(65);
+    window.__game.render();
+  })()`);
+  await delay(3000);
+  await cdp.screenshot('shot_shop_entrance_exit1_solid_ground.png');
 
   console.log('All verification screenshots captured successfully!');
   try { chrome.kill(); } catch {}
