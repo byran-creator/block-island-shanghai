@@ -10,8 +10,15 @@ import {createJunctionControl} from './traffic-junctions.js';
 export function signalPhase(time,offset=0){const t=((time+offset)%46+46)%46;return {ns:t<18?'green':t<21?'amber':'red',ew:t>=23&&t<41?'green':t>=41&&t<44?'amber':'red',remaining:Math.ceil(t<18?18-t:t<21?21-t:t<23?23-t:t<41?41-t:t<44?44-t:46-t)};}
 export function routeCrossings(samples,signals){const out=[];for(const signal of signals){let cluster=[];const flush=()=>{if(!cluster.length)return;const p=cluster.reduce((a,b)=>a.dist<b.dist?a:b);const i=p.index,a=samples[Math.max(0,i-2)],b=samples[Math.min(samples.length-1,i+2)];out.push({signal,d:p.d,axis:Math.abs(b.z-a.z)>Math.abs(b.x-a.x)?'ns':'ew'});cluster=[];};for(let i=0;i<samples.length;i++){const p=samples[i],dist=Math.hypot(p.x-signal.x,p.z-signal.z);if(dist<3)cluster.push({...p,index:i,dist});else flush();}flush();}return out;}
 export function forwardDistance(from,to,length,dir=1){return ((to-from)*dir%length+length)%length;}
-export function trafficTravel(agent,dt,time,agents=[],getPose,onFollow=()=>{}){let distance=(agent.currentSpeed??agent.speed)*dt;const length=agent.route.lengthMeters,half=agent.halfLength??1.25,gapBuffer=Math.max(2.8,(agent.speed??0)*1.7);
- for(const crossing of agent.crossings??[]){if(signalPhase(time,crossing.signal.offset)[crossing.axis]==='green')continue;const ahead=forwardDistance(agent.t,crossing.d,length,agent.dir),stop=6+half;if(ahead>=stop-.05&&ahead<stop+distance+1)distance=Math.min(distance,Math.max(0,ahead-stop));}
+export function trafficTravel(agent,dt,time,agents=[],getPose,onFollow=()=>{},crosswalkOccupied=false){let distance=(agent.currentSpeed??agent.speed)*dt;const length=agent.route.lengthMeters,half=agent.halfLength??1.25,gapBuffer=Math.max(2.8,(agent.speed??0)*1.7);
+ for(const crossing of agent.crossings??[]){
+  const isBund=crossing.signal?.id==='bund-66';
+  const green=isBund&&crosswalkOccupied?false:signalPhase(time,crossing.signal.offset)[crossing.axis]==='green';
+  const ahead=forwardDistance(agent.t,crossing.d,length,agent.dir),stop=6+half;
+  if(!green){
+   if(ahead>=stop-.05&&ahead<stop+distance+2)distance=Math.min(distance,Math.max(0,ahead-stop));
+  }
+ }
  for(const other of agents){if(other===agent||other.route!==agent.route||other.dir!==agent.dir||Math.abs(other.lane-agent.lane)>.5)continue;const gap=forwardDistance(agent.t,other.t,length,agent.dir);if(gap<length/2){const limit=Math.max(0,gap-half-(other.halfLength??1.25)-gapBuffer);if(limit<1e-6)onFollow(other);distance=Math.min(distance,limit);}}
  // Route IDs do not define a lane: buses and cars from different loops share
  // the same carriageway. Follow the vehicle ahead in physical space as well.
@@ -33,7 +40,69 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  function board(parent,text,x,y,z,w,h,angle=0){const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle='#9cf1da';ctx.font='bold 29px sans-serif';ctx.textAlign='center';ctx.fillText(text,128,43);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;m.userData.panel=true;parent.add(m);return {mesh:m,canvas:c,ctx,texture};}
  function clearPoint(x,z){return !world.get(Math.floor(x),26,Math.floor(z))&&!world.get(Math.floor(x),27,Math.floor(z))&&!!world.get(Math.floor(x),25,Math.floor(z));}
  const signals=[66,99,162].map((z,i)=>({x:roadX(z),z,offset:i*5,id:'bund-'+z})).concat({x:westSpine(99),z:99,offset:8,id:'rear-99'});
- for(const signal of signals){signal.heads=[];for(const axis of ['ns','ew'])for(const side of [-1,1]){const r=new THREE.Group();r.position.set(signal.x+.5+(axis==='ns'?side*4.4:side*6),26,signal.z+.5+(axis==='ns'?side*6:side*4.4));r.rotation.y=axis==='ns'?(side>0?0:Math.PI):(side>0?Math.PI/2:-Math.PI/2);root.add(r);cube(r,'#687a7e',0,2.5,0,.12,5,.12);cube(r,'#192731',0,4.9,0,.55,1.65,.28);const lamps=[];for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));m.rotation.x=Math.PI/2;m.position.set(0,5.4-i*.5,.18);m.userData.range=220;r.add(m);lamps.push(m);}const counter=board(r,'18',0,6.1,.18,.75,.4);signal.heads.push({axis,lamps,counter});}
+ for(const signal of signals){
+  signal.heads=[];
+  if(signal.id==='bund-66'){
+   for(const [side,px] of [[-1, 12.5], [1, 23.5]]){
+    const r=new THREE.Group();
+    r.position.set(px, 26, signal.z);
+    root.add(r);
+    cube(r,'#3e4a52',0,2.7,0,.15,5.4,.15);
+    const armDir=side<0?1:-1;
+    cube(r,'#3e4a52',armDir*1.2,5.1,0,2.4,.12,.12);
+    const v=new THREE.Group();
+    v.position.set(armDir*2.2,4.8,0);
+    r.add(v);
+    cube(v,'#192731',0,0,0,.55,1.65,.28);
+    const vLamps=[];
+    for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
+     const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));
+     m.rotation.x=Math.PI/2;
+     m.position.set(0,.5-i*.5,.18);
+     m.userData.range=220;
+     v.add(m);
+     vLamps.push(m);
+    }
+    const vCounter=board(v,'18',0,1.15,.18,.75,.4);
+    signal.heads.push({axis:'ns',lamps:vLamps,counter:vCounter});
+    const p=new THREE.Group();
+    p.position.set(0,2.6,0);
+    p.rotation.y=armDir>0?Math.PI/2:-Math.PI/2;
+    r.add(p);
+    cube(p,'#192731',0,0,0,.45,1.4,.24);
+    const pLamps=[];
+    for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
+     const m=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.06,12),mat(color,true));
+     m.rotation.x=Math.PI/2;
+     m.position.set(0,.42-i*.42,.15);
+     m.userData.range=220;
+     p.add(m);
+     pLamps.push(m);
+    }
+    const pCounter=board(p,'18',0,.98,.15,.65,.35);
+    signal.heads.push({axis:'ew',lamps:pLamps,counter:pCounter});
+   }
+  }else{
+   for(const axis of ['ns','ew'])for(const side of [-1,1]){
+    const r=new THREE.Group();
+    r.position.set(signal.x+.5+(axis==='ns'?side*4.4:side*6),26,signal.z+.5+(axis==='ns'?side*6:side*4.4));
+    r.rotation.y=axis==='ns'?(side>0?0:Math.PI):(side>0?Math.PI/2:-Math.PI/2);
+    root.add(r);
+    cube(r,'#687a7e',0,2.5,0,.12,5,.12);
+    cube(r,'#192731',0,4.9,0,.55,1.65,.28);
+    const lamps=[];
+    for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
+     const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));
+     m.rotation.x=Math.PI/2;
+     m.position.set(0,5.4-i*.5,.18);
+     m.userData.range=220;
+     r.add(m);
+     lamps.push(m);
+    }
+    const counter=board(r,'18',0,6.1,.18,.75,.4);
+    signal.heads.push({axis,lamps,counter});
+   }
+  }
   // Stop lines and zebra crossing remain on the road, leaving the sidewalk passable.
   for(const dz of [-6,6]){const m=new THREE.Mesh(new THREE.PlaneGeometry(6,.15),mat('#f5eee0'));m.rotation.x=-Math.PI/2;m.position.set(signal.x+.5,26.055,signal.z+.5+dz);m.userData.range=220;root.add(m);}
  }
@@ -119,7 +188,15 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   const other=state.other,clear=Math.hypot(other.root.position.x-state.start.x,other.root.position.z-state.start.z)>6;
   if(clear||state.age>12)state.returning=true;c.waitTime+=step;
  }
- function advance(step){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}const obstacles=getObstacles().filter(o=>!o.root.userData.piloted);for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
+ function advance(step){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}
+  const playerPos=getPos?getPos():null;
+  const obstacles=getObstacles().filter(o=>!o.root.userData.piloted);
+  const playerRiding=playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
+  const playerCrossing=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28&&playerPos.x>=12.0&&playerPos.x<=24.0&&Math.abs(playerPos.z-66)<=4.2;
+  const pedCrossing=obstacles.some(o=>{const p=o.root?.position;return p&&p.x>=12.0&&p.x<=24.0&&Math.abs(p.z-66)<=4.2;});
+  const crosswalkOccupied=playerCrossing||pedCrossing;
+  const allObstacles=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28?[...obstacles,{root:{position:playerPos},person:true,height:1.85}]:obstacles;
+  for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(c.yielding){reverseYield(c,step,obstacles);continue;}
    // If two different turns have already met, one driver backs up physically
    // and hands over its junction ticket. Collision guards still apply while
@@ -139,7 +216,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
      for(const delta of [1.3,-1.3]){const old=c.lane;c.lane=c.baseLane+delta;const ahead=pose(c,c.t+c.dir*3);c.lane=old;if(worldClear(c,ahead)&&![...agents,...obstacles].some(o=>vehicleContact(c,ahead.x,ahead.y,ahead.z,ahead.yaw,o))){c.avoidLane=c.baseLane+delta;c.avoidStart=c.t;shiftLane(c,c.avoidLane,step,obstacles);break;}}
     }else if(c.waitTime<.1&&Math.abs(c.lane-c.baseLane)>.02)shiftLane(c,c.baseLane,step,obstacles);
    }
-   const ahead=pose(c,c.t+c.dir*3),bend=Math.abs(Math.atan2(Math.sin(ahead.yaw-c.root.rotation.y),Math.cos(ahead.yaw-c.root.rotation.y))),target=c.speed*(.91+.09*Math.sin(clock*.19+c.phase))*(bend>.35?.65:1);c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,target,2,step);c.following=null;let travel=trafficTravel(c,step,clock,agents,pose,o=>{c.following=o;});if(travel<1e-6){travel=0;c.waitReason='traffic';}
+   const ahead=pose(c,c.t+c.dir*3),bend=Math.abs(Math.atan2(Math.sin(ahead.yaw-c.root.rotation.y),Math.cos(ahead.yaw-c.root.rotation.y))),target=c.speed*(.91+.09*Math.sin(clock*.19+c.phase))*(bend>.35?.65:1);c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,target,2,step);c.following=null;let travel=trafficTravel(c,step,clock,agents,pose,o=>{c.following=o;},crosswalkOccupied);if(travel<1e-6){travel=0;c.waitReason='traffic';}
    if(c.kind==='bus'){c.stopCooldown=Math.max(0,c.stopCooldown-step);if(c.dwell>0){c.dwell=Math.max(0,c.dwell-step);travel=0;}else if(!c.stopCooldown){const gap=forwardDistance(c.t,c.stopD,c.route.lengthMeters,c.dir);if(gap<=travel+.03){travel=gap;c.dwell=6+(c.phase%1)*1.5;c.stopCooldown=14;}}}
    if(c.kind==='delivery'){
     c.deliveryCooldown=Math.max(0,c.deliveryCooldown-step);
@@ -150,7 +227,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
    // A lane offset travels a longer arc than the centreline on tight bends.
    // Limit the rider's actual displacement instead of jumping around that arc.
    if(['delivery','bicycle'].includes(c.kind)&&travel>0){const p=c.root.position,budget=c.currentSpeed*step*1.15;if(Math.hypot(at.x-p.x,at.z-p.z)>budget){let low=0,high=travel;for(let k=0;k<10;k++){const mid=(low+high)/2,q=pose(c,c.t+c.dir*mid);if(Math.hypot(q.x-p.x,q.z-p.z)<=budget)low=mid;else high=mid;}travel=low;t=(c.t+c.dir*travel+c.route.lengthMeters)%c.route.lengthMeters;at=pose(c,t);}}
-   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||[...agents,...obstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o)))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
+   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||[...agents,...allObstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o)))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
   }first=(first+1)%agents.length;
  }
  function tick(dt,{night=false,rain=0}={}){if(dt>0)processDetours();let remaining=dt;const travelled=new Map(agents.map(c=>[c,0]));while(remaining>1e-8){const step=Math.min(remaining,1/30);remaining-=step;advance(step);for(const c of agents)travelled.set(c,travelled.get(c)+c.travelSpeed*step);}if(dt>0)for(const c of agents)c.travelSpeed=travelled.get(c)/dt;for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
