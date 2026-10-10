@@ -1,7 +1,7 @@
 // Geographic relationships retained at the existing city's compressed scale.
 // 2号线: 南京东路（河南中路）— 黄浦江江底 — 陆家嘴（世纪大道、国金北侧）.
 export const METRO_STATIONS=[
- {id:'nanjing',name:'南京东路',english:'East Nanjing Road',x:-94,z:66,hallY:16,platformY:6,color:'#8bc9b9',exits:[{number:1,x:-135,z:61.25,dir:1,width:.7,label:'南京东路北侧 · 河南中路'},{number:4,x:-99,z:70.75,dir:-1,width:.7,label:'南京东路南侧 · 往外滩'}]},
+ {id:'nanjing',name:'南京东路',english:'East Nanjing Road',x:-94,z:66,hallY:16,platformY:6,color:'#8bc9b9',exits:[{number:1,x:-135,z:61.25,dir:1,width:.7,label:'南京东路北侧 · 河南中路'},{number:4,x:-107,z:70.75,dir:-1,width:.7,label:'南京东路南侧 · 往外滩'}]},
  {id:'lujiazui',name:'陆家嘴',english:'Lujiazui',x:174,z:31,hallY:16,platformY:6,color:'#c9b1c7',exits:[{number:1,x:153,z:24,dir:1,label:'世纪大道 · 东方明珠方向'},{number:3,x:205,z:24,dir:-1,label:'世纪大道 · 银城中路方向'}]}
 ];
 // The north entrance corridor and west security hall are unpaid; only the
