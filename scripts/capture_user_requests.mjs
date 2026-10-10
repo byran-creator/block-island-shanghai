@@ -127,10 +127,9 @@ async function main() {
   await cdp.eval(`(() => {
     if (!window.__game) return;
     window.__game.setActive(true);
-    // Stand east of the road looking west towards the Stele and the new signal mast
-    window.__game.teleport({x: -20.0, y: 26.5, z: 66.0});
-    window.__game.setRotation(Math.PI * 0.5, -0.04);
-    window.__game.setTime(65); // Daytime
+    window.__game.setPos(-21.5, 26.5, 66.0);
+    window.__game.setRotation(Math.PI * 0.5, 0.0);
+    window.__game.setTime(65);
     window.__game.render();
   })()`);
   await delay(3000);
@@ -141,8 +140,7 @@ async function main() {
   await cdp.eval(`(() => {
     if (!window.__game) return;
     window.__game.setActive(true);
-    // Stand outside Lao Feng Xiang doorway at x = -113, looking south down at shop entrance & pavement
-    window.__game.teleport({x: -113.0, y: 26.5, z: 68.5});
+    window.__game.setPos(-113.0, 26.5, 68.5);
     window.__game.setRotation(Math.PI, -0.28);
     window.__game.setTime(65);
     window.__game.render();
@@ -155,9 +153,8 @@ async function main() {
   await cdp.eval(`(() => {
     if (!window.__game) return;
     window.__game.setActive(true);
-    // Stand east of Exit 4 canopy looking west along Nanjing Road
-    window.__game.teleport({x: -101.5, y: 26.5, z: 67.5});
-    window.__game.setRotation(Math.PI * 0.5, -0.08);
+    window.__game.setPos(-102.0, 26.5, 67.5);
+    window.__game.setRotation(Math.PI * 0.5, -0.06);
     window.__game.setTime(65);
     window.__game.render();
   })()`);
@@ -167,12 +164,11 @@ async function main() {
   // Shot 4: Bund looking East across Huangpu River at Lujiazui skyline
   console.log('Shot 4: Bund promenade looking East at Lujiazui Skyline...');
   await cdp.eval(`(() => {
-    if (!window.__game) return;
-    window.__game.setActive(true);
-    window.__game.teleport({x: 23.5, y: 27.0, z: 66.0});
-    window.__game.setRotation(-Math.PI * 0.5, 0.08);
-    window.__game.setTime(65);
-    window.__game.render();
+    document.getElementById('go-bund')?.click();
+    if (window.__game) {
+      window.__game.setTime(65);
+      window.__game.render();
+    }
   })()`);
   await delay(4000);
   await cdp.screenshot('shot_lujiazui_skyline_bund_view.png');

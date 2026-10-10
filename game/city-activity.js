@@ -303,18 +303,18 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    if(bw.waitTimer>0){bw.waitTimer-=dt;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.2;bw.arms[1].rotation.x=-.2;continue;}
    // 1. Obey Pedestrian Traffic Light with crosswalk clearance
    let redWait=false;
-   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.0&&p.x<=24.0)||(p.x>=-33.0&&p.x<=-23.0))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
+   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.8&&p.x<=23.2)||(p.x>=-30.8&&p.x<=-25.2))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
    const canStartCrossing=ewGreen&&bPhase.remaining>=10&&!nearCar;
    if(!canStartCrossing){
-    if(bw.dir===1&&bw.x>=11.5&&bw.x<=13.4){redWait=true;bw.x=12.2;}
-    else if(bw.dir===-1&&bw.x<=24.5&&bw.x>=22.6){redWait=true;bw.x=23.8;}
-    else if(bw.dir===1&&bw.x>=-33.5&&bw.x<=-31.2){redWait=true;bw.x=-32.5;}
-    else if(bw.dir===-1&&bw.x<=-23.5&&bw.x>=-25.5){redWait=true;bw.x=-24.5;}
+    if(bw.dir===1&&bw.x>=11.0&&bw.x<=13.0){redWait=true;bw.x=11.2;}
+    else if(bw.dir===-1&&bw.x<=25.0&&bw.x>=23.0){redWait=true;bw.x=24.8;}
+    else if(bw.dir===1&&bw.x>=-34.0&&bw.x<=-31.5){redWait=true;bw.x=-33.5;}
+    else if(bw.dir===-1&&bw.x<=-23.5&&bw.x>=-26.0){redWait=true;bw.x=-23.5;}
    }
    if(redWait){
     bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;
     bw.arms[0].rotation.x=-.15+Math.sin(clock*2+bw.phase)*.05;bw.arms[1].rotation.x=-.15-Math.sin(clock*2+bw.phase)*.05;
-    bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=bw.dir>0?Math.PI/2:-Math.PI/2;
+    bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=bw.dir>0?-Math.PI/2:Math.PI/2;
     continue;
    }
    // 2. Advance walker along corridor connecting Bund and Commercial Street
@@ -322,16 +322,17 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    if(bw.x>=34){bw.x=34;bw.dir=-1;bw.waitTimer=3.5+(bw.phase%3)*1.5;}
    else if(bw.x<=-85){bw.x=-85;bw.dir=1;bw.waitTimer=3+(bw.phase%2)*1.5;}
    // 3. Smooth S-curve bypass around the Nanjing Road Monument Stele (at x = -35, z = 66)
-   let curZ=bw.baseZ,yaw=bw.dir>0?Math.PI/2:-Math.PI/2;
+   let curZ=bw.baseZ,curDZ=0;
    if(bw.x>=-41&&bw.x<=-29){
     const progress=(bw.x-(-41))/12;
     const bell=Math.sin(progress*Math.PI);
     const lateralShift=bw.isNorth?-2.55:2.45;
     curZ=bw.baseZ+lateralShift*bell;
     const dZdx=lateralShift*(Math.PI/12)*Math.cos(progress*Math.PI);
-    yaw=Math.atan2(dZdx*bw.dir,bw.dir);
+    curDZ=dZdx*bw.dir;
    }
    bw.z=curZ;
+   const yaw=Math.atan2(bw.dir,curDZ)+Math.PI;
    bw.phase+=dt*bw.speed*5;const gait=Math.sin(bw.phase);
    bw.legs[0].rotation.x=gait*.3;bw.legs[1].rotation.x=-gait*.3;
    bw.arms[0].rotation.x=-gait*.3;bw.arms[1].rotation.x=gait*.3;
