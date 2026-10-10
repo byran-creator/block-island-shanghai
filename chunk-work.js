@@ -10,7 +10,7 @@ const faces=[
 // Work on a few columns at a time, without copying the voxel world.
 export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false}){
  const data={p:[],norm:[],uv:[],col:[],indices:[]};let column=0;
- function step(count=8){
+ function step(count=32){
   const end=Math.min(chunk*chunk,column+count);
   for(;column<end;column++){
    const x=cx*chunk+Math.floor(column/chunk),z=cz*chunk+column%chunk;
@@ -38,14 +38,14 @@ export function createChunkQueue({has,create,commit,now=()=>performance.now()}){
  function setDesired(keys,point,chunk,force=false){
   desired=keys;for(const key of pending.keys())if(!desired.has(key))cancel(key);
   for(const key of desired)if(force||!has(key)&&!pending.has(key))request(key);
-  const distance=key=>{const [x,z]=key.split(',').map(Number);return ((x+.5)*chunk-point.x)**2+((z+.5)*chunk-point.z)**2;};
+  const distance=key=>{const [x,z]=key.split(',').map(Number);const isSkyline=(x>=7&&x<=14&&z>=2&&z<=8);const d=((x+.5)*chunk-point.x)**2+((z+.5)*chunk-point.z)**2;return isSkyline?d-500000:d;};
   const ordered=[...pending].sort((a,b)=>distance(a[0])-distance(b[0]));pending.clear();for(const entry of ordered)pending.set(...entry);
  }
- function process(budget=3){
+ function process(budget=5){
   if(!pending.size)return;const start=now();
   do{
    if(!current){const key=pending.keys().next().value;current={key,task:create(key)};}
-   if(current.task.step(8)){
+   if(current.task.step(32)){
     const {key,task}=current;pending.delete(key);current=null;
     if(desired.has(key))commit(key,task.data);
     // Limit GPU uploads and temporary allocations to one finished chunk per frame.

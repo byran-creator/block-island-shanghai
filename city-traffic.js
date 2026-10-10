@@ -43,46 +43,48 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  for(const signal of signals){
   signal.heads=[];
   if(signal.id==='bund-66'){
-   for(const [side,px] of [[-1, 12.5], [1, 23.5]]){
-    const r=new THREE.Group();
-    r.position.set(px, 26, signal.z);
-    root.add(r);
-    cube(r,'#3e4a52',0,2.7,0,.15,5.4,.15);
-    const armDir=side<0?1:-1;
-    cube(r,'#3e4a52',armDir*1.2,5.1,0,2.4,.12,.12);
-    const v=new THREE.Group();
-    v.position.set(armDir*2.2,4.8,0);
-    r.add(v);
-    cube(v,'#192731',0,0,0,.55,1.65,.28);
-    const vLamps=[];
-    for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-     const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));
-     m.rotation.x=Math.PI/2;
-     m.position.set(0,.5-i*.5,.18);
-     m.userData.range=220;
-     v.add(m);
-     vLamps.push(m);
+    // Exactly TWO posts across Nanjing Road:
+    // Post 1: At the Bund promenade (px = 23.5, z = 66, armDir = -1 facing West over x = 18)
+    // Post 2: In front of Nanjing Stele (px = -31.5, z = 66, armDir = 1 facing East over x = -28)
+    for(const {px, armDir} of [{px: 23.5, armDir: -1}, {px: -31.5, armDir: 1}]){
+     const r=new THREE.Group();
+     r.position.set(px, 26, signal.z);
+     root.add(r);
+     cube(r,'#3e4a52',0,2.7,0,.15,5.4,.15);
+     cube(r,'#3e4a52',armDir*1.2,5.1,0,2.4,.12,.12);
+     const v=new THREE.Group();
+     v.position.set(armDir*2.2,4.8,0);
+     r.add(v);
+     cube(v,'#192731',0,0,0,.55,1.65,.28);
+     const vLamps=[];
+     for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
+      const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));
+      m.rotation.x=Math.PI/2;
+      m.position.set(0,.5-i*.5,.18);
+      m.userData.range=220;
+      v.add(m);
+      vLamps.push(m);
+     }
+     const vCounter=board(v,'18',0,1.15,.18,.75,.4);
+     signal.heads.push({axis:'ns',lamps:vLamps,counter:vCounter});
+     const p=new THREE.Group();
+     p.position.set(0,2.6,0);
+     p.rotation.y=armDir>0?Math.PI/2:-Math.PI/2;
+     r.add(p);
+     cube(p,'#192731',0,0,0,.45,1.4,.24);
+     const pLamps=[];
+     for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
+      const m=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.06,12),mat(color,true));
+      m.rotation.x=Math.PI/2;
+      m.position.set(0,.42-i*.42,.15);
+      m.userData.range=220;
+      p.add(m);
+      pLamps.push(m);
+     }
+     const pCounter=board(p,'18',0,.98,.15,.65,.35);
+     signal.heads.push({axis:'ew',lamps:pLamps,counter:pCounter});
     }
-    const vCounter=board(v,'18',0,1.15,.18,.75,.4);
-    signal.heads.push({axis:'ns',lamps:vLamps,counter:vCounter});
-    const p=new THREE.Group();
-    p.position.set(0,2.6,0);
-    p.rotation.y=armDir>0?Math.PI/2:-Math.PI/2;
-    r.add(p);
-    cube(p,'#192731',0,0,0,.45,1.4,.24);
-    const pLamps=[];
-    for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-     const m=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.06,12),mat(color,true));
-     m.rotation.x=Math.PI/2;
-     m.position.set(0,.42-i*.42,.15);
-     m.userData.range=220;
-     p.add(m);
-     pLamps.push(m);
-    }
-    const pCounter=board(p,'18',0,.98,.15,.65,.35);
-    signal.heads.push({axis:'ew',lamps:pLamps,counter:pCounter});
-   }
-  }else{
+   }else{
    for(const axis of ['ns','ew'])for(const side of [-1,1]){
     const r=new THREE.Group();
     r.position.set(signal.x+.5+(axis==='ns'?side*4.4:side*6),26,signal.z+.5+(axis==='ns'?side*6:side*4.4));
@@ -192,9 +194,9 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   const playerPos=getPos?getPos():null;
   const obstacles=getObstacles().filter(o=>!o.root.userData.piloted);
   const playerRiding=playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
-  const playerCrossing=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28&&playerPos.x>=12.0&&playerPos.x<=24.0&&Math.abs(playerPos.z-66)<=4.2;
-  const pedCrossing=obstacles.some(o=>{const p=o.root?.position;return p&&p.x>=12.0&&p.x<=24.0&&Math.abs(p.z-66)<=4.2;});
-  const crosswalkOccupied=playerCrossing||pedCrossing;
+  const playerCrossing=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28&&((playerPos.x>=12.0&&playerPos.x<=24.0)||(playerPos.x>=-33.5&&playerPos.x<=-23.5))&&Math.abs(playerPos.z-66)<=4.5;
+   const pedCrossing=obstacles.some(o=>{const p=o.root?.position;return p&&((p.x>=12.0&&p.x<=24.0)||(p.x>=-33.5&&p.x<=-23.5))&&Math.abs(p.z-66)<=4.5;});
+   const crosswalkOccupied=playerCrossing||pedCrossing;
   const allObstacles=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28?[...obstacles,{root:{position:playerPos},person:true,height:1.85}]:obstacles;
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(c.yielding){reverseYield(c,step,obstacles);continue;}

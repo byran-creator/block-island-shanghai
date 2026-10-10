@@ -42,6 +42,7 @@ export function buildMetro(w){
    }else if(i>=r.length){
     w.fill(x,15,zWalk-1,x,15,zWalk+1,9);
     w.fill(x,16,zWalk-1,x,21,zWalk+1,0);
+    w.fill(x,22,minSideZ,x,25,maxSideZ,9);
    }else{
     w.fill(x,26,zWalk,x,29,zWalk,0);
     for(let sz=minSideZ;sz<=maxSideZ;sz++){
@@ -50,7 +51,14 @@ export function buildMetro(w){
      const bottomY=Math.max(20,Math.floor(y)-1);
      if(bottomY<=24)w.fill(x,bottomY,sz,x,24,sz,9);
     }
-    w.fill(x,Math.floor(y)-1,zWalk,x,Math.ceil(y)+3,zWalk,0);
+    if(i<=6){
+     w.fill(x,Math.floor(y)-1,zWalk,x,Math.ceil(y)+3,zWalk,0);
+    }else{
+     w.set(x,25,zWalk,9);
+     const tunnelRoof=Math.min(24,Math.ceil(y)+3);
+     w.fill(x,Math.floor(y)-1,zWalk,x,tunnelRoof,zWalk,0);
+     if(tunnelRoof<24)w.fill(x,tunnelRoof+1,zWalk,x,24,zWalk,3);
+    }
    }
   }else{
    w.fill(x,Math.floor(y)-(landing?0:1),Math.floor(r.z)-1,x,Math.ceil(y)+3,Math.floor(r.z)+1,0);
