@@ -40,14 +40,15 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=285;parent.add(m);return m;}
  function board(parent,text,x,y,z,w,h,angle=0){const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle='#9cf1da';ctx.font='bold 29px sans-serif';ctx.textAlign='center';ctx.fillText(text,128,43);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;m.userData.panel=true;parent.add(m);return {mesh:m,canvas:c,ctx,texture};}
  function clearPoint(x,z){return !world.get(Math.floor(x),26,Math.floor(z))&&!world.get(Math.floor(x),27,Math.floor(z))&&!!world.get(Math.floor(x),25,Math.floor(z));}
- const signals=[66,99,162].map((z,i)=>({x:roadX(z),z,offset:i*5,id:'bund-'+z})).concat({x:westSpine(99),z:99,offset:8,id:'rear-99'});
+ const signals=[66,99,162].map((z,i)=>({x:roadX(z),z,offset:i*5,id:'bund-'+z})).concat(
+  {x:westSpine(66),z:66,offset:0,id:'stele-66'},
+  {x:westSpine(99),z:99,offset:8,id:'rear-99'});
  for(const signal of signals){
   signal.heads=[];
-  if(signal.id==='bund-66'){
-    // Exactly TWO posts across Nanjing Road:
-    // Post 1: At the Bund promenade (px = 23.5, z = 66, armDir = -1 facing West over x = 18)
-    // Post 2: In front of Nanjing Stele (px = -31.5, z = 66, armDir = 1 facing East over x = -28)
-    for(const {px, armDir} of [{px: 23.5, armDir: -1}, {px: -31.5, armDir: 1}]){
+  if(signal.id==='bund-66'||signal.id==='stele-66'){
+    // One control per physical crossing: moving a lamp to the rear road must
+    // also register that crossing on every passing car, bus and rider route.
+    const {px,armDir}=signal.id==='bund-66'?{px:23.5,armDir:-1}:{px:-31.5,armDir:1};
      const r=new THREE.Group();
      r.position.set(px, 26, signal.z);
      root.add(r);
@@ -84,7 +85,6 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
      }
      const pCounter=board(p,'18',0,.98,.15,.65,.35);
      signal.heads.push({axis:'ew',lamps:pLamps,counter:pCounter});
-    }
    }else{
    for(const axis of ['ns','ew'])for(const side of [-1,1]){
     const r=new THREE.Group();
@@ -110,7 +110,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   for(const dz of [-6,6]){const m=new THREE.Mesh(new THREE.PlaneGeometry(6,.15),mat('#f5eee0'));m.rotation.x=-Math.PI/2;m.position.set(signal.x+.5,26.055,signal.z+.5+dz);m.userData.range=220;root.add(m);}
  }
  function officer(signal,i){let point;for(const [dx,dz]of [[5.5,-8],[-5.5,8],[8,-8]])if(clearPoint(signal.x+dx,signal.z+dz)&&!roadContains(signal.x+dx,signal.z+dz)){point={x:signal.x+dx,z:signal.z+dz};break;}if(!point)return;const r=new THREE.Group();r.position.set(point.x,26,point.z);root.add(r);cube(r,'#88b4d5',0,1,0,.46,.7,.3);cube(r,'#d4eb69',0,1.06,-.17,.45,.53,.08);for(const y of [.86,1.23])cube(r,'#eef6ed',0,y,-.22,.47,.06,.03);cube(r,'#e3b38b',0,1.61,0,.34,.34,.33);cube(r,'#f0f2ee',0,1.83,0,.43,.15,.42);cube(r,'#243649',0,1.77,-.17,.4,.06,.14);for(const x of [-.12,.12])cube(r,'#293a52',x,.38,0,.18,.76,.23);const arm=new THREE.Group();arm.position.set(.31,1.3,0);cube(arm,'#88b4d5',0,-.22,0,.16,.45,.18);cube(arm,'#f2efdf',0,-.49,0,.17,.18,.18);r.add(arm);cube(r,'#88b4d5',-.3,1,0,.16,.58,.18);styleNpc({root:r,torso:r.children[0],head:r.children[4],arms:[arm,r.children[10]],legs:[r.children[7],r.children[8]]},i,'officer');officers.push({root:r,arm,signal,phase:i});}
- signals.filter((s,i)=>i!==2).forEach(officer);
+ signals.filter((s,i)=>i!==2&&s.id!=='stele-66').forEach(officer);
  function bus(route,i){const r=new THREE.Group();r.name='blue-white-city-bus';root.add(r);cube(r,'#e7eeed',0,1.1,0,1.65,1.65,4.8);cube(r,'#287aad',0,.42,0,1.7,.38,4.82);cube(r,'#273d4a',0,1.56,-2.43,1.45,.92,.05);cube(r,'#395866',0,1.5,2.43,1.45,.85,.05);cube(r,'#e8eeed',0,2.02,0,1.7,.15,4.9);for(const x of [-.83,.83]){for(let z=-1.65;z<=1.75;z+=.8)cube(r,'#578b9b',x,1.48,z,.05,.8,.67);for(const z of [-1.5,1.5])cube(r,'#202d35',x,.3,z,.18,.6,.6);}for(const z of [-1.45,.9])cube(r,'#213b49',.85,1,z,.05,1.3,.6);cube(r,'#a3cad1',.88,1.2,-1.45,.03,.82,.46);board(r,route.id==='bund'?'滨江环线':'陆家嘴',0,1.87,-2.47,1.35,.24);const lights=[-.54,.54].map(x=>cube(r,'#fff4ae',x,.66,-2.48,.24,.17,.06,true));const t=80+i*route.samples.lengthMeters/2;return {root:r,lights,route:route.samples,t:t%route.samples.lengthMeters,dir:1,lane:2.2,speed:2.6,halfLength:2.45,halfWidth:.93,height:2.1,kind:'bus',stopD:80,stopCooldown:0,dwell:0,crossings:routeCrossings(route.samples,signals)};}
  for(const route of CAR_ROUTES.filter(r=>['bund','pudong'].includes(r.id)))for(let i=0;i<2;i++)buses.push(bus(route,i));
  // Follow the street block around instead of turning across both live traffic lanes.
