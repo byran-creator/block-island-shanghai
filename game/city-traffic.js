@@ -120,7 +120,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  for(const route of [rear,outer]){
   const count=Math.ceil(route.lengthMeters/2),paint=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1,1),mat('#426b62'),count),edge=new THREE.InstancedMesh(new THREE.PlaneGeometry(.07,.8),mat('#c4dcc3'),count),stamp=new THREE.Object3D();
   paint.name='curb-cycle-lane';edge.name='cycle-lane-divider';
-  for(let i=0;i<count;i++){const d=i*2,a=routePose(route,d,4),b=routePose(route,Math.min(d+2,route.lengthMeters-.001),4);stamp.position.set((a.x+b.x)/2+.5,26.065,(a.z+b.z)/2+.5);stamp.rotation.set(-Math.PI/2,0,-Math.atan2(b.x-a.x,b.z-a.z));stamp.scale.set(1,Math.max(.1,Math.hypot(b.x-a.x,b.z-a.z)),1);stamp.updateMatrix();paint.setMatrixAt(i,stamp.matrix);const p=routePose(route,d,3.4);stamp.position.set(p.x+.5,26.075,p.z+.5);stamp.scale.set(1,1,1);stamp.updateMatrix();edge.setMatrixAt(i,stamp.matrix);}
+  for(let i=0;i<count;i++){const d=i*2,a=routePose(route,d,4),b=routePose(route,Math.min(d+2,route.lengthMeters-.001),4);stamp.position.set((a.x+b.x)/2+.5,26.065,(a.z+b.z)/2+.5);stamp.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stamp.scale.set(1,Math.max(.1,Math.hypot(b.x-a.x,b.z-a.z)),1);stamp.updateMatrix();paint.setMatrixAt(i,stamp.matrix);const p=routePose(route,d,3.4);stamp.position.set(p.x+.5,26.075,p.z+.5);stamp.scale.set(1,1,1);stamp.updateMatrix();edge.setMatrixAt(i,stamp.matrix);}
   for(const mesh of [paint,edge]){mesh.userData.range=285;mesh.computeBoundingSphere();root.add(mesh);}
  }
  function rider(route,i){
