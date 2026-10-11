@@ -1,7 +1,7 @@
 // Original artwork based on Shanghai Metro's 2025 Lujiazui wayfinding photos.
 export function metroSignCanvasSize(w,h){const height=Math.min(256,Math.round(4096*h/w));return {width:Math.round(height*w/h),height};}
 const WHITE='#f5f5ee',YELLOW='#ffdb43';
-export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow='',exit=null,pictogram='',sections=null,layout='guide',separatorColor=YELLOW}={}){
+export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow='',exit=null,pictogram='',sections=null,layout='guide',mirrorRoute=false,separatorColor=YELLOW}={}){
  ctx.fillStyle='#171a1b';ctx.fillRect(0,0,width,height);ctx.textAlign='left';ctx.textBaseline='alphabetic';
  const h=height,pad=h*.14;
  function label(text,x,y,size,color,max){ctx.font=`${size}px "Microsoft YaHei",Arial,sans-serif`;const measured=ctx.measureText?.(text).width??text.length*size*.58;if(measured>max)ctx.font=`${size*max/measured}px "Microsoft YaHei",Arial,sans-serif`;ctx.fillStyle=color;ctx.fillText(text,x,y);}
@@ -27,10 +27,10 @@ export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow
   label('下一班 / NEXT TRAIN',pad,h*.33,h*.2,WHITE,width-pad*2);label(lines[1]??'',pad,h*.78,h*.38,YELLOW,width-pad*2);return;
  }
  if(layout==='route'){
-  ctx.fillStyle='#fbfcf7';ctx.fillRect(0,0,width,height);const forward=lines[2]!=='-1',names=['人民广场','南京东路','陆家嘴','浦东南路','世纪大道'],english=['People\'s Square','East Nanjing Rd.','Lujiazui','Pudong Rd. (S)' ,'Century Ave.'],green='#90c93d';
-  label('2号线  Line 2',pad,h*.17,h*.12,'#152219',width*.15);label(forward?'南京东路 → 陆家嘴':'陆家嘴 → 南京东路',width*.18,h*.17,h*.16,'#152219',width*.42);label('下一站 '+lines[1],width*.64,h*.17,h*.14,'#152219',width*.34);
-  const start=width*.1,step=width*.2,cy=h*.52;ctx.fillStyle='#c4c8c6';ctx.fillRect(start,cy-h*.035,step*4,h*.07);ctx.fillStyle=green;ctx.fillRect(start+step,cy-h*.035,step,h*.07);
-  names.forEach((name,i)=>{const x=start+i*step,active=name===lines[0]||name===lines[1],color=i===1||i===2?'#17201c':'#737a76';ctx.fillStyle=active&&(i===1||i===2)?green:'#b5bdb8';if(ctx.arc){ctx.beginPath();ctx.arc(x,cy,h*(name===lines[1]?.085:.055),0,Math.PI*2);ctx.fill();ctx.fillStyle='#fbfcf7';ctx.beginPath();ctx.arc(x,cy,h*.033,0,Math.PI*2);ctx.fill();}else ctx.fillRect(x-h*.05,cy-h*.05,h*.1,h*.1);ctx.textAlign='center';const y=i%2?h*.79:h*.32;label(name,x,y,h*.115,color,step*.9);label(english[i],x,y+h*.105,h*.069,color,step*.95);});ctx.textAlign='left';direction(forward?'→':'←',start+step*1.5,green,.25);label('绿色为可乘坐体验区间 · 灰色站暂未开放',pad,h*.98,h*.063,'#68706a',width-pad*2);return;
+  ctx.fillStyle='#fbfcf7';ctx.fillRect(0,0,width,height);const forward=(lines[2]!=='-1')!==mirrorRoute,names=['人民广场','南京东路','陆家嘴','浦东南路','世纪大道'],english=['People\'s Square','East Nanjing Rd.','Lujiazui','Pudong Rd. (S)' ,'Century Ave.'],green='#90c93d';if(mirrorRoute){names.reverse();english.reverse();}const origin=lines[2]==='-1'?'陆家嘴':'南京东路',destination=lines[2]==='-1'?'南京东路':'陆家嘴',playableIndex=names.map((n,i)=>n==='南京东路'||n==='陆家嘴'?i:-1).filter(i=>i>=0),mid=(playableIndex[0]+playableIndex[1])/2;
+  label('2号线  Line 2',pad,h*.17,h*.12,'#152219',width*.15);label(forward?origin+' → '+destination:destination+' ← '+origin,width*.18,h*.17,h*.16,'#152219',width*.42);label('下一站 '+lines[1],width*.64,h*.17,h*.14,'#152219',width*.34);
+  const start=width*.1,step=width*.2,cy=h*.52;ctx.fillStyle='#c4c8c6';ctx.fillRect(start,cy-h*.035,step*4,h*.07);ctx.fillStyle=green;ctx.fillRect(start+step*playableIndex[0],cy-h*.035,step,h*.07);
+  names.forEach((name,i)=>{const x=start+i*step,active=name===lines[0]||name===lines[1],color=playableIndex.includes(i)?'#17201c':'#737a76';ctx.fillStyle=active&&playableIndex.includes(i)?green:'#b5bdb8';if(ctx.arc){ctx.beginPath();ctx.arc(x,cy,h*(name===lines[1]?.085:.055),0,Math.PI*2);ctx.fill();ctx.fillStyle='#fbfcf7';ctx.beginPath();ctx.arc(x,cy,h*.033,0,Math.PI*2);ctx.fill();}else ctx.fillRect(x-h*.05,cy-h*.05,h*.1,h*.1);ctx.textAlign='center';const y=i%2?h*.79:h*.32;label(name,x,y,h*.115,color,step*.9);label(english[i],x,y+h*.105,h*.069,color,step*.95);});ctx.textAlign='left';direction(forward?'→':'←',start+step*mid,green,.25);label('绿色为可乘坐体验区间 · 灰色站暂未开放',pad,h*.98,h*.063,'#68706a',width-pad*2);return;
  }
  const modules=sections??[{zh:lines[0]??'',en:lines[1]??'',line2,arrow,exit,pictogram}],sum=modules.reduce((n,s)=>n+(s.weight??1),0);let left=0;
  modules.forEach((s,i)=>{

@@ -1,7 +1,7 @@
 import {createMetroSounds} from './metro-sounds.js';
 import {METRO_SEATS,cabinBlocked,nearbyCabinSeat} from './metro-cabin.js';
 import {createMetroEntrance,metroEntranceLayout} from './metro-entrance.js';
-import {metroPlatformDirection} from './metro-directions.js';
+import {metroPlatformDirection,metroBackOptions} from './metro-directions.js';
 import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
 import {paintMetroSign,metroSignCanvasSize} from './metro-sign-paint.js';
 import {METRO_POSTER_SRC,METRO_POSTER_ASPECT} from './metro-poster-art.js';
@@ -32,8 +32,13 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  }
  function board(parent,lines,x,y,z,w,h,color='#c4ef67',bg='#18212a',options=null){
   const c=document.createElement('canvas');const size=options?metroSignCanvasSize(w,h):{width:768,height:256};c.width=size.width;c.height=size.height;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
-  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),material=new THREE.MeshBasicMaterial({map:tex});const front=new THREE.Mesh(geometry,material),back=new THREE.Mesh(geometry,material);front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.04:.012;back.position.z=options?.transit?-.04:-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);parent.add(m);
-  const paint=text=>{if(options){paintMetroSign(ctx,text,{...options,width:c.width,height:c.height,color,bg});tex.needsUpdate=true;return;}ctx.fillStyle=bg;ctx.fillRect(0,0,768,256);ctx.fillStyle=color;ctx.textAlign='center';text.forEach((line,i)=>{ctx.font=`${i===0?'bold ':''}${text.length>2?48:64}px sans-serif`;ctx.fillText(line,384,55+i*(text.length>2?68:110),746);});tex.needsUpdate=true;};paint(lines);return {mesh:m,paint,texture:tex};
+  const different=options?.layout==='route'||['←','→'].includes(options?.arrow)||options?.sections?.some(s=>['←','→'].includes(s.arrow));
+  const backOptions=options?metroBackOptions(options):null,bc=different?document.createElement('canvas'):c;bc.width=c.width;bc.height=c.height;
+  const bctx=different?bc.getContext('2d'):ctx,btex=different?new THREE.CanvasTexture(bc):tex;btex.colorSpace=THREE.SRGBColorSpace;btex.anisotropy=4;
+  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),front=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:tex})),back=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:btex}));
+  front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.04:.012;back.position.z=options?.transit?-.04:-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);m.userData.signFaces={front:options,back:backOptions};parent.add(m);
+  const draw=(context,text,settings)=>{if(settings){paintMetroSign(context,text,{...settings,width:c.width,height:c.height,color,bg});return;}context.fillStyle=bg;context.fillRect(0,0,768,256);context.fillStyle=color;context.textAlign='center';text.forEach((line,i)=>{context.font=(i===0?'bold ':'')+(text.length>2?48:64)+'px sans-serif';context.fillText(line,384,55+i*(text.length>2?68:110),746);});};
+  const paint=text=>{draw(ctx,text,options);tex.needsUpdate=true;if(different){draw(bctx,text,backOptions);btex.needsUpdate=true;}};paint(lines);return {mesh:m,paint,texture:tex,textures:[...new Set([tex,btex])]};
  }
  function person(parent,index,x,y,z,uniform){const r=new THREE.Group();r.position.set(x,y,z);parent.add(r);const shirt=uniform??['#a98ad3','#dde8eb','#dd9d72','#799cc4','#789f91'][index%5];cube(r,shirt,0,1.04,0,.42,.65,.29);cube(r,'#dcb08d',0,1.55,0,.34,.35,.33);cube(r,'#302b30',0,1.76,0,.35,.08,.34);for(const side of [-1,1]){cube(r,shirt,side*.29,1.04,0,.14,.56,.19);cube(r,'#344053',side*.12,.39,0,.17,.74,.22);}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms:[r.children[3],r.children[5]],legs:[r.children[4],r.children[6]]},index,uniform?'staff':'visitor');return r;}
  const sounds=createMetroSounds({getAudio,allowed:()=>audioAllowed&&getSound()&&!document.hidden});

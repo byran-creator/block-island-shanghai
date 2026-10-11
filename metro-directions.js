@@ -4,3 +4,5 @@ export function metroPlatformDirection(station,direction){
  const [next,english,playable]=east?(atNanjing?['陆家嘴','Lujiazui',true]:['浦东南路','Pudong Road (South)',false]):(atNanjing?['人民广场',"People's Square",false]:['南京东路','East Nanjing Road',true]);
  return {next,english,playable,zh:next+'方向',en:'To '+english};
 }
+const reverseArrow=arrow=>arrow==='→'?'←':arrow==='←'?'→':arrow;
+export function metroBackOptions(options){return {...options,arrow:reverseArrow(options.arrow),...(options.sections?{sections:options.sections.map(s=>({...s,arrow:reverseArrow(s.arrow)}))}:{}),...(options.layout==='route'?{mirrorRoute:!options.mirrorRoute}:{})};}
