@@ -348,12 +348,20 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',()=>{try{$('settings-dialog').showModal();}catch{}});
 $('settings-close')?.addEventListener('click',()=>{try{$('settings-dialog').close();}catch{}});
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
+const UPDATE_NOTICE_KEY='block-island-update-v18-seen';
+const updateDialog=$('update-dialog');
+function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
+$('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
+$('update-close')?.addEventListener('click',dismissUpdateNotice);
+$('update-start-btn')?.addEventListener('click',dismissUpdateNotice);
+updateDialog?.addEventListener('cancel',e=>{e.preventDefault();dismissUpdateNotice();});
+try{if(!localStorage.getItem(UPDATE_NOTICE_KEY)){updateDialog?.showModal();}}catch{}
 refreshTimeControls();
 mountVoiceSettings();
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
 requestAnimationFrame(frame);
-globalThis.__game={setPos(x,y,z){pos.x=x;pos.y=y;pos.z=z;camera.position.set(x,y+1.62,z);ensureChunks(pos,true,true);},setRotation(y,p=0){yaw=y;pitch=p;camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();},lookAt(tx,ty,tz){lookTowards({x:tx,y:ty,z:tz});camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();},setTime(val){dayClock=val;updateSky(0);},setActive(val=true){active=val;started=true;fallback=true;document.body.classList.remove('in-menu');$('menu')?.classList.add('hidden');},render(){camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();renderer.render(scene,camera);},getPos:()=>({x:pos.x,y:pos.y,z:pos.z,yaw,pitch,active,started}),teleport};
+globalThis.__game={setPos(x,y,z){pos.x=x;pos.y=y;pos.z=z;camera.position.set(x,y+1.62,z);ensureChunks(pos,true,true);},setRotation(y,p=0){yaw=y;pitch=p;camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();},lookAt(tx,ty,tz){lookTowards({x:tx,y:ty,z:tz});camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();},setTime(val){dayClock=val;updateSky(0);},setActive(val=true){active=val;started=true;fallback=true;document.body.classList.remove('in-menu');$('menu')?.classList.add('hidden');},render(){camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();renderer.render(scene,camera);},getPos:()=>({x:pos.x,y:pos.y,z:pos.z,yaw,pitch,active,started}),teleport,scene,camera,sunBlock,clouds,THREE,weather};
 
 

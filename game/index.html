@@ -42,6 +42,7 @@
   <div class="mode-entry">
    <button id="start-survival" class="mode-pill">🏕️ 生存挑战 · 采集建家</button>
    <button id="settings-open" class="mode-pill settings-pill" aria-haspopup="dialog" aria-controls="settings-dialog">⚙️ 系统设置与偏好</button>
+    <button id="update-open" class="mode-pill update-pill" aria-haspopup="dialog" aria-controls="update-dialog">📋 查看更新通知</button>
   </div>
   <div class="teleport-pills">
    <span class="teleport-title">快速探索：</span>
@@ -158,5 +159,63 @@
 <dialog id="npc-dialog" class="game-dialog" aria-labelledby="npc-title"><header><h2 id="npc-title">街区向导</h2><button id="npc-close">结束对话</button></header><p id="npc-answer" aria-live="polite"></p><div id="npc-actions" class="recipe-grid"></div></dialog>
 <aside id="quest-tracker" class="quest-tracker" hidden><strong id="tracked-title"></strong><div><span id="tracked-arrow">↑</span><span id="tracked-place"></span></div><p id="tracked-step"></p><button id="quest-map">M 地图看目标</button><button id="quest-stop">停止追踪</button></aside>
 <dialog id="tasks-dialog" class="game-dialog" aria-labelledby="tasks-title"><header><div><small>CITY JOURNAL / I 任务</small><h2 id="tasks-title">两岸城市任务</h2></div><button id="tasks-close">返回游戏</button></header><p id="task-summary" aria-live="polite"></p><p>引导默认关闭，可以自由探索。需要帮助时点“追踪目标”，再按 M 看黄色菱形。目标会按操作步骤更新；到达地点不会代替实际操作。</p><p>奖励加入当前存档的背包；创造模式也可领取，切到生存模式仍可使用。每项只领取一次。</p><div id="task-list"></div><section class="main-quest"><h3>主线委托</h3><div class="quest-eyebrow">奶龙的委托 · PEARL QUEST</div><strong><span id="quest-title">寻找 5 枚灵感晶体</span><span id="quest-count">0 / 5</span></strong><div class="quest-track"><i id="quest-fill"></i></div><p id="quest-description">让东方明珠亮起来。</p><div class="gem-list"><span id="gem-village"></span><span id="gem-gallery"></span><span id="gem-forest"></span><span id="gem-deck"></span><span id="gem-race"></span></div></section></dialog>
+<dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title">
+ <header>
+  <div>
+   <small>VERSION UPDATE · V1.8</small>
+   <h2 id="update-title">✨ 版本更新通知 · 沪上云端漫步</h2>
+  </div>
+  <button id="update-close" aria-label="关闭更新通知">关闭并返回</button>
+ </header>
+ <div class="update-body">
+  <p class="update-intro">欢迎来到《方块小岛 · 上海天际线》全新版本！本次更新重点对<b>南京路步行街夜景风貌</b>、<b>街区交通治理</b>、<b>陆家嘴天际线与动态落日晚霞</b>进行了全面升级重塑：</p>
+  
+  <article class="update-section">
+   <div class="update-badge-row">
+    <span class="update-tag">核心亮点 01</span>
+    <h3>🌃 南京路步行街夜景 · 招牌霓虹与街区治理</h3>
+   </div>
+   <div class="update-figure">
+    <img src="./assets/updates/nanjing_night_compare.jpg" alt="南京路夜景更新前后对比图" class="update-img" loading="eager">
+   </div>
+   <ul class="update-list">
+    <li><strong>百年老字号立体霓虹</strong>：老凤祥、泰康食品、吴良材眼镜、第一食品等名店新增双面立体发光招牌与立面泛光，告别空旷黑盒假店。</li>
+    <li><strong>首层开放式沉浸旺铺</strong>：商铺一楼门面全面实心通透化，店内陈列精美糕点、钟表珠宝与百货展柜，可自由步入选购互动。</li>
+    <li><strong>石碑十字红绿灯与实心铺装</strong>：步行街石碑与外滩路口正式启用十字红绿灯，机动车与行人交替通行；地铁扶梯旁商铺门前全面铺设坚实「明珠银白」地砖，彻底消除悬空断层。</li>
+   </ul>
+  </article>
+
+  <article class="update-section">
+   <div class="update-badge-row">
+    <span class="update-tag">核心亮点 02</span>
+    <h3>🌇 陆家嘴天际线 · 动态天空与岸线实体化</h3>
+   </div>
+   <div class="update-figure">
+    <img src="./assets/updates/lujiazui_sky_compare.jpg" alt="陆家嘴天空更新前后对比图" class="update-img" loading="eager">
+   </div>
+   <ul class="update-list">
+    <li><strong>告别早期单调白球日照</strong>：彻底重构早期太阳月亮雷同且缺乏光晕的简陋外观，引入真实多重径向光晕与柔和大气散射，太阳与月相特色分明、自然通透。</li>
+    <li><strong>多层壮丽动态晚霞与轻盈浮云</strong>：升级三阶平滑落日霞光与轻盈半透明体积感浮云，真实还原外滩落日与浦江晚霞的震撼层次。</li>
+    <li><strong>浦东远景天际线与岸线实化</strong>：扩展远景天际线区块生成与保留范围，彻底消除汤臣一品、东亚银行、南浦大桥引桥等南段滨江高楼下方悬空与断层问题。</li>
+   </ul>
+  </article>
+
+  <article class="update-section">
+   <div class="update-badge-row">
+    <span class="update-tag">核心亮点 03</span>
+    <h3>🎮 自由建造权限与交互体验优化</h3>
+   </div>
+   <ul class="update-list">
+    <li><strong>场景自由建造与修补</strong>：开放创造模式下场景地砖与方块放置权限，玩家可随时修补路面或搭建专属景观。</li>
+    <li><strong>游览与操作提示</strong>：按 <kbd>M</kbd> 开启城市地图查看黄色导航目标；按 <kbd>I</kbd> 追踪两岸任务；在「⚙️ 系统设置」中可自由调整昼夜时间与天气模式。</li>
+   </ul>
+  </article>
+
+  <div class="update-footer">
+   <div class="update-hint">💡 提示：此更新通知可在开始菜单点击「📋 查看更新通知」随时再次回顾。</div>
+   <button id="update-start-btn" class="update-cta-btn">知道了，立即进入游戏 <span>→</span></button>
+  </div>
+ </div>
+</dialog>
 <script type="module" src="./game.js"></script>
 </body></html>
