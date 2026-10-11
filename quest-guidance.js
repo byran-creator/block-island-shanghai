@@ -5,8 +5,10 @@ import {buildingEntrance} from './city-layout.js';
 
 const point=(p,label,instruction,stage)=>({...p,label,instruction,stage});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
-export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,trains=[],landings=[],ferryRiding=false}){
+export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,trains=[],landings=[],ferryRiding=false,life=null}){
  if(!pos)return null;
+ if(id==='survival-fish')return point(LANDMARKS.dock,'潜水补给码头 · 水边','先切生存模式，C 制作鱼竿；站在码头看向开阔水面按 G，等咬钩提示后再 G 收竿。','fish');
+ if(id==='survival-cook'){const fire=(life?.furniture??[]).filter(f=>f.type==='campfire').reduce((a,b)=>!a||distance(b,pos)<distance(a,pos)?b:a,null);return point(fire?{x:fire.x+1.5,y:fire.y,z:fire.z}:LANDMARKS.survivalCamp,fire?'你的篝火':'生存营地 · 野炊',fire?'靠近篝火按 G 放肉；等30秒，G 领取熟食后任务才完成。':'C 制作篝火，在营地平整空地按 E 放置；钓鱼获得生鱼，再 G 放入烤制。','cook');}
  if(id==='hello'){const n=npcs.reduce((a,b)=>!a||distance(b.root.position,pos)<distance(a.root.position,pos)?b:a,null);return point(n?.root.position??LANDMARKS.village,'奶龙 · 生活岛','按 M 查看黄色目标；可先点地图下方的生活岛名称传送，再走近奶龙、看向它并按 G。','hello');}
  if(id==='build')return point(LANDMARKS.survivalCamp,'生存营地 · 可搭建草坪','在普通草坪选择方块，右键或 E 放置。成功放置10块才计入；受保护区域不计。','build');
  if(id==='security'||id==='metro'){

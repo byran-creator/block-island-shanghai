@@ -135,6 +135,18 @@ body.cursor-free,body.cursor-free #world{cursor:default!important}
 .update-cta-btn:hover{background:#deffa3;transform:translateY(-1px)}
 .update-pill{background:#1f3f3c;border-color:#71a89c;color:#dcfaea}
 .update-pill:hover{background:#2a534f;color:#fff}
+.player-tools{right:25px;top:368px;display:flex;gap:6px}
+body.in-menu .player-tools{display:none}
+.player-tools button{background:#173038dd;border:1px solid #a4c9b777;border-radius:9px;padding:10px 12px;font-size:13px}
+.player-dialog{width:min(740px,94vw);max-height:85dvh;overflow:auto}
+.player-dialog details{border:1px solid #8bbb9b55;border-radius:10px;padding:14px;margin:12px 0;background:#18383566}
+.player-dialog summary{cursor:pointer;font-weight:700;color:#d7ffab}
+.player-dialog p,.player-dialog li{line-height:1.75;color:#d5e6e0;font-size:14px}
+.player-dialog li{margin:8px 0}
+.backpack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:12px 0 22px}
+.backpack-item{display:flex;flex-direction:column;gap:7px;text-align:left;background:#254849;border:1px solid #82ada866;border-radius:8px;padding:12px;min-height:76px}
+.backpack-item span{font-size:12px;color:#c7dbd2}.backpack-item:disabled{cursor:default;opacity:.5}
+@media(max-width:700px){.player-tools{right:14px;top:280px}.player-tools button{padding:7px;font-size:11px}.player-dialog{padding:16px}.player-dialog ol{padding-left:22px}}
 @media(max-width:700px){.update-dialog{padding:18px 16px}.update-dialog header h2{font-size:18px}.update-section{padding:14px}.update-badge-row h3{font-size:14px}.update-list{font-size:12px}.update-footer{flex-direction:column;align-items:stretch}.update-cta-btn{text-align:center}}
 
 

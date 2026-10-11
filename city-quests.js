@@ -6,14 +6,16 @@ export const CITY_QUESTS=[
  {id:'ferry',title:'黄浦江摆渡人',description:'在渡口登船，随轮渡航行并抵达另一岸。',target:1,reward:{blocks:{11:12},pearls:1}},
  {id:'shop',title:'南京路逛吃',description:'与南京路商贩交易，成功购买一份餐点或纪念品。',target:1,reward:{food:3}},
  {id:'meal',title:'和平饭店江景午餐',description:'进入八楼龙凤厅，成功点一份餐。只进入餐厅不计。',target:1,reward:{blocks:{7:12},wool:1}},
- {id:'sky',title:'上海中心登顶',description:'使用上海中心观光电梯到达巅峰观景台。',target:1,reward:{blocks:{12:8},pearls:1}}
+ {id:'sky',title:'上海中心登顶',description:'使用上海中心观光电梯到达巅峰观景台。',target:1,reward:{blocks:{12:8},pearls:1}},
+ {id:'survival-fish',title:'生存 · 江边第一条鱼',description:'生存模式 C 制作鱼竿，站在水岸看向水面按 G 抛线，等咬钩后 G 收竿。',target:1,reward:{blocks:{3:3,4:2}}},
+ {id:'survival-cook',title:'生存 · 第一份野炊',description:'C 制作并 E 放置篝火，G 放入生肉/鱼，等30秒后 G 实际领取熟食。',target:1,reward:{blocks:{7:5},wool:1}}
 ];
 const station=id=>['nanjing','lujiazui'].includes(id);
 export class CityQuestState{
  constructor(){this.progress={};this.claimed=new Set();this.tracked=null;}
  track(id){if(id!==null&&!CITY_QUESTS.some(q=>q.id===id)||id===this.tracked)return false;this.tracked=id;return true;}
  set(id,value){const q=CITY_QUESTS.find(q=>q.id===id);if(!q||!Number.isFinite(value))return false;const next=Math.min(q.target,Math.max(this.progress[id]??0,Math.floor(value),0));if(next===(this.progress[id]??0))return false;this.progress[id]=next;return true;}
- record(event){if(!event)return false;const {type,from,to}=event;if(type==='hello')return this.set('hello',1);if(type==='security'&&station(event.station))return this.set('security',1);if(type==='metro'&&station(from)&&station(to)&&from!==to&&event.departed===true)return this.set('metro',1);if(type==='ferry'&&[0,1].includes(from)&&to===1-from&&event.departed===true)return this.set('ferry',1);if(['shop','meal','sky'].includes(type))return this.set(type,1);return false;}
+ record(event){if(!event)return false;const {type,from,to}=event;if(type==='survival-fish'&&event.survival===true&&event.caught===true)return this.set(type,1);if(type==='survival-cook'&&event.survival===true&&Number.isInteger(event.count)&&event.count>0)return this.set(type,1);if(type==='hello')return this.set('hello',1);if(type==='security'&&station(event.station))return this.set('security',1);if(type==='metro'&&station(from)&&station(to)&&from!==to&&event.departed===true)return this.set('metro',1);if(type==='ferry'&&[0,1].includes(from)&&to===1-from&&event.departed===true)return this.set('ferry',1);if(['shop','meal','sky'].includes(type))return this.set(type,1);return false;}
  done(id){const q=CITY_QUESTS.find(q=>q.id===id);return !!q&&(this.progress[id]??0)>=q.target;}
  claim(id){const q=CITY_QUESTS.find(q=>q.id===id);if(!q||!this.done(id)||this.claimed.has(id))return null;this.claimed.add(id);if(this.tracked===id)this.tracked=null;return q.reward;}
  serialize(){return {version:2,progress:{...this.progress},claimed:[...this.claimed],tracked:this.tracked};}
