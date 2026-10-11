@@ -86,3 +86,5 @@ Three.js 的许可证保留在 [game/THREE-LICENSE.txt](game/THREE-LICENSE.txt)�
 飞行闪烁与行人恢复：恢复 Gemini 原深度缓冲配置和整套行人逻辑，保留已授权的店招尺寸优化。[恢复说明](docs/pedestrian-render-rollback.md)。
 
 地铁站厅补砖遮挡已修复：恢复原B1空间，街面补砖不再填入地下；地铁内的零散方块编辑统一恢复到系统布局，其他区域存档保留。[修复说明](docs/metro-infill-clearance.md)。
+
+两站对向列车错开5秒到站，站台背面左右箭头反转；车内两侧路线图按实际观看方向排列并同步下一站。[方向与错时说明](docs/metro-direction-time.md)。

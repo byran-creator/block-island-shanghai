@@ -19,7 +19,7 @@ for(const s of METRO_STATIONS){assert(!overlaps(world,s.x+3,16,s.z-5));assert(!o
 for(let x=-58;x<=138;x++){for(const side of [-1,1])assert(!world.get(x,7,Math.round(metroLineZ(x))+side*8),'Track portal blocked');assert(world.get(x,0,Math.round(metroLineZ(x))),'Riverbed bedrock missing');}
 assert.equal(swimVelocity({feet:6,velocity:0,space:true,grounded:true,dt:.01,dry:true}),8);
 assert.equal(METRO_CYCLE,60);
-for(const dir of [-1,1]){let previous;for(let time=0;time<METRO_CYCLE;time+=.1){const st=trainState(time,0,dir),q=trainPose(st);assert.equal(Math.sign(metroLineZ(q.x)-q.z),dir);if(previous?.st.visible&&st.visible&&previous.st.phase===st.phase)assert(Math.abs(q.x-previous.q.x)<3,'Train teleported');previous={st,q};}assert(trainState(METRO_DWELL+METRO_TRAVEL+3,0,dir).open);assert.equal(arrivalSeconds(METRO_DWELL,dir===1?1:0,0,dir),METRO_TRAVEL);}
+for(const dir of [-1,1]){let previous;for(let time=0;time<METRO_CYCLE;time+=.1){const st=trainState(time,0,dir),q=trainPose(st);assert.equal(Math.sign(metroLineZ(q.x)-q.z),dir);if(previous?.st.visible&&st.visible&&previous.st.phase===st.phase)assert(Math.abs(q.x-previous.q.x)<Math.max(3,Math.abs(METRO_STATIONS[1].x-METRO_STATIONS[0].x)*1.5/METRO_TRAVEL*.1+1e-5),'Train motion exceeds its smoothstep speed bound');previous={st,q};}assert(trainState(METRO_DWELL+METRO_TRAVEL+3,0,dir).open);assert.equal(arrivalSeconds(METRO_DWELL,dir===1?1:0,0,dir),METRO_TRAVEL);}
 const crowds=Array.from({length:5},(_,i)=>trainCrowd({cycle:i,station:0}));
 assert(crowds.every(c=>!c.full),'Crowding must not prevent standing passengers from boarding');
 assert(crowds.some(c=>c.crowded&&c.seats===0),'Crowded services should still have standing passengers');

@@ -34,7 +34,7 @@ export function createMetroTrain({parent,direction,cube,board,person}){
    cube(root,'#a8c7c2',car,.48,side*.98,1.85,.15,.45);cube(root,'#90aba7',car,.82,side*1.17,1.85,.64,.1);
   }
   for(const dx of [-1,1]){cube(root,'#dbe5e7',car+dx,1.64,0,.045,2.95,.045);cube(root,'#313b44',car+dx*2.6,-.24,0,1.1,.3,2.15);}
-  for(const side of [-1,1])for(const dx of [-2,2]){let panel;if(!route){route=board(root,[direction===1?'南京东路':'陆家嘴',direction===1?'陆家嘴':'南京东路',String(direction)],car+dx,2.85,side*1.25,2.7,.42,'#17201c','#fbfcf7',{layout:'route'});panel=route.mesh;}else{panel=route.mesh.clone();root.add(panel);}panel.position.set(car+dx,2.85,side*1.25);panel.rotation.y=side===1?Math.PI:0;}
+  for(const side of [-1,1])for(const dx of [-2,2]){let panel;if(!route){route=board(root,[direction===1?'南京东路':'陆家嘴',direction===1?'陆家嘴':'南京东路',String(direction)],car+dx,2.85,side*1.25,2.7,.42,'#17201c','#fbfcf7',{layout:'route'});panel=route.mesh;}else{panel=route.mesh.clone();root.add(panel);}if(side===1){const [front,back]=panel.children;const material=front.material;front.material=back.material;back.material=material;panel.userData.signFaces={front:route.mesh.userData.signFaces.back,back:route.mesh.userData.signFaces.front};}panel.position.set(car+dx,2.85,side*1.25);panel.rotation.y=side===1?Math.PI:0;}
   if(car!==METRO_CARS.at(-1)){for(const side of [-1,1])cube(root,'#323b42',car+4,1.55,side*1.02,.25,2.9,.14);cube(root,'#616d72',car+4,3,0,.25,.12,2.12);cube(root,'#616d72',car+4,.08,0,.25,.12,2.12);}
  }
  // Faceted, sloping black windshield and the characteristic lime headlight band.

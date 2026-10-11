@@ -1,5 +1,8 @@
 import {METRO_STATIONS,metroLineZ} from './metro-layout.js';
-export const METRO_CYCLE=60,METRO_DWELL=12,METRO_TRAVEL=16;
+export const METRO_CYCLE=60,METRO_DWELL=12,METRO_ARRIVAL_GAP=5;
+// Both directions share a cycle and half-cycle offset. This gives a five-second
+// arrival gap at either station without extending the waiting interval.
+export const METRO_TRAVEL=METRO_CYCLE/2-METRO_DWELL-METRO_ARRIVAL_GAP;
 const mod=t=>((t%METRO_CYCLE)+METRO_CYCLE)%METRO_CYCLE;
 export function trainState(time,offset=0,direction=1){
  const t=mod(time+offset),origin=direction===1?0:1,destination=1-origin,cycle=Math.floor((time+offset)/METRO_CYCLE),arrival=METRO_DWELL+METRO_TRAVEL,end=arrival+METRO_DWELL;
