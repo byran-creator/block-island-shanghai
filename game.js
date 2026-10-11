@@ -39,7 +39,7 @@ document.body.classList.add('in-menu');
 const touch=matchMedia('(pointer:coarse)').matches;
 if(touch){document.body.classList.add('touch');$('device-note').textContent='左侧方向键移动 · 在画面右侧滑动环顾';}
 let renderer;
-try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});}catch(e){renderer=new CanvasRenderer({canvas});$('render-mode').textContent='兼容画质 · 无需显卡加速';}
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance',logarithmicDepthBuffer:true});}catch(e){renderer=new CanvasRenderer({canvas});$('render-mode').textContent='兼容画质 · 无需显卡加速';}
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.fog=new THREE.Fog('#a0d6ed',48,190);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,360);camera.rotation.order='YXZ';
