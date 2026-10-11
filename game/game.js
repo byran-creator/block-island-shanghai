@@ -1,3 +1,4 @@
+import {createSettingsPanel} from './settings-panel.js';
 import {createChunkMesher,createChunkQueue} from './chunk-work.js';
 import {createQuestJournal} from './quest-journal.js';
 import {mountVoiceSettings} from './voice-settings.js';
@@ -38,7 +39,7 @@ document.body.classList.add('in-menu');
 const touch=matchMedia('(pointer:coarse)').matches;
 if(touch){document.body.classList.add('touch');$('device-note').textContent='左侧方向键移动 · 在画面右侧滑动环顾';}
 let renderer;
-try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance',logarithmicDepthBuffer:true});}catch(e){renderer=new CanvasRenderer({canvas});$('render-mode').textContent='兼容画质 · 无需显卡加速';}
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});}catch(e){renderer=new CanvasRenderer({canvas});$('render-mode').textContent='兼容画质 · 无需显卡加速';}
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.fog=new THREE.Fog('#a0d6ed',48,190);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,360);camera.rotation.order='YXZ';
@@ -75,8 +76,8 @@ function installChunk(key,{p,norm,uv,col,indices}){
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(norm,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));geo.setIndex(indices);geo.computeBoundingSphere();
  const mesh=new THREE.Mesh(geo,terrainMaterial);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;if(old){scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);
 }
-function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',').map(Number);if(Math.abs(x-cx)<=6&&Math.abs(z-cz)<=6)return true;if(x>=7&&x<=14&&z>=2&&z<=8)return true;const chunkX=(x+.5)*CHUNK,chunkZ=(z+.5)*CHUNK;const buildings=nearbyBuildings||ALL_BUILDINGS;if(buildings.some(b=>Math.abs(chunkX-b.x)<24&&Math.abs(chunkZ-b.z)<24&&(!nearbyBuildings||Math.hypot(point.x-b.x,point.z-b.z)<315)))return true;if(Object.values(CITY).some(p=>Math.abs(chunkX-p.x)<28&&Math.abs(chunkZ-p.z)<28&&Math.hypot(point.x-p.x,point.z-p.z)<380))return true;return false;}
-function ensureChunks(point,force=false,immediate=false){const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();for(let x=cx-5;x<=cx+5;x++)for(let z=cz-5;z<=cz+5;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<360)for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<340)for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<275)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<245){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<315);for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}chunkWork.setDesired(needed,point,CHUNK,force);const isSkylineChunk=(x,z)=>(x>=7&&x<=14&&z>=2&&z<=8)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate)for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);if(!force&&(Math.abs(x-cx)>3||Math.abs(z-cz)>3)&&!isSkylineChunk(x,z))continue;rebuild(x,z);}}
+function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',').map(Number);if(Math.abs(x-cx)<=6&&Math.abs(z-cz)<=6)return true;if(x>=7&&x<=18&&z>=1&&z<=14)return true;const chunkX=(x+.5)*CHUNK,chunkZ=(z+.5)*CHUNK;const buildings=nearbyBuildings||ALL_BUILDINGS;if(buildings.some(b=>Math.abs(chunkX-b.x)<24&&Math.abs(chunkZ-b.z)<24&&(!nearbyBuildings||Math.hypot(point.x-b.x,point.z-b.z)<315)))return true;if(Object.values(CITY).some(p=>Math.abs(chunkX-p.x)<28&&Math.abs(chunkZ-p.z)<28&&Math.hypot(point.x-p.x,point.z-p.z)<380))return true;return false;}
+function ensureChunks(point,force=false,immediate=false){const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();for(let x=cx-5;x<=cx+5;x++)for(let z=cz-5;z<=cz+5;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<360)for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<340)for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<360)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<360){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<380);for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}chunkWork.setDesired(needed,point,CHUNK,force);const isSkylineChunk=(x,z)=>(x>=7&&x<=18&&z>=1&&z<=14)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate)for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);if(!force&&(Math.abs(x-cx)>3||Math.abs(z-cz)>3)&&!isSkylineChunk(x,z))continue;rebuild(x,z);}}
 await new Promise(requestAnimationFrame);
 ensureChunks(LANDMARKS.bund,false,true);
 function updateBlock(x,y,z,id){world.set(x,y,z,id);savedEdits.set(`${x},${y},${z}`,id);const affected=new Set([[x,z],[x-1,z],[x+1,z],[x,z-1],[x,z+1]].map(([a,b])=>Math.floor(a/CHUNK)+','+Math.floor(b/CHUNK)));for(const key of affected){chunkWork.invalidate(key);if(chunks.has(key))rebuild(...key.split(',').map(Number));}}
@@ -120,7 +121,7 @@ function toggleFly(){if(metro?.seat())return;if(commute?.isRiding()){notify('先
 function openMenu(){refreshTimeControls();sceneAudio.suspend();metro?.suspend();if(active)saves?.save('auto');pendingMine=null;active=false;keys.clear();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;$('menu').classList.remove('hidden');document.body.classList.add('in-menu');$('menu-title').innerHTML=started?'歇一会儿。<br><em>世界在等你。</em>':'你的世界。<br><em>由你搭建。</em>';$('menu-description').innerHTML=started?`已挖掘 ${mined} 块 · 已放置 ${placed} 块<br>你的下一座建筑，会是什么？`:'和奶龙找回 5 枚灵感晶体。<br>涂鸦、跑酷、登塔，点亮属于你的天际线。';$('play').innerHTML=(started?'继续探索':'进入我的世界')+'';$('play').focus();}
 function enter(){active=true;if(!started){teleport(LANDMARKS.bund);lookTowards({x:201,y:76,z:88});started=true;}document.body.classList.remove('in-menu');$('menu').classList.add('hidden');beep(1);music.start();sceneAudio.start();canvas.focus();if(!touch&&!dragMode){try{const result=canvas.requestPointerLock?.();if(result?.catch)result.catch(()=>{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');});if(!canvas.requestPointerLock){fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}catch{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}}
 $('play').onclick=async()=>{if(started){enter();return;}$('play').disabled=true;$('play').textContent='正在找回你的小岛…';try{if(!await saves.continueLatest())enter();}finally{$('play').disabled=false;$('play').textContent='继续探索';}};$('pause').onclick=()=>{document.exitPointerLock?.();openMenu()};$('respawn').onclick=()=>{respawn();enter()};$('sound').onclick=()=>{sound=!sound;music.setSound(sound);if(!sound){sceneAudio.suspend();metro?.suspend();}$('sound').textContent='声音：'+(sound?'开':'关');$('sound').setAttribute('aria-pressed',String(sound))};
-let cursorFree=false;
+let cursorFree=false,settingsPanel;
 function isAnyDialogOpen(){return Boolean($('settings-dialog')?.open||$('tasks-dialog')?.open||quests?.isPanelOpen?.()||npcGuides?.isPanelOpen?.()||activity?.isPanelOpen?.()||restaurant?.isPanelOpen?.()||skyline?.isPanelOpen?.()||life?.isPanelOpen?.()||adventure?.isPanelOpen?.()||document.querySelector?.('dialog[open]'));}
 function setFreeCursor(free){
  cursorFree=Boolean(free);
@@ -134,7 +135,7 @@ function setFreeCursor(free){
  if(cursorFree){
   document.exitPointerLock?.();
  }else if(active&&!touch&&!dragMode){
-  try{canvas.requestPointerLock?.();}catch{}
+  try{const result=canvas.requestPointerLock?.();result?.catch?.(()=>{fallback=true;});}catch{fallback=true;}
  }
 }
 function toggleFreeCursor(){setFreeCursor(!cursorFree);}
@@ -154,10 +155,10 @@ function look(dx,dy){yaw-=dx*.0023;pitch=Math.max(-1.52,Math.min(1.52,pitch-dy*.
 document.addEventListener('mousemove',e=>{if(cursorFree)return;if(active&&(document.pointerLockElement===canvas||dragging))look(e.movementX,e.movementY)});
 function edit(place){
  if(!active)return;if(metro?.isRiding()){notify('先到站下车，再拆建方块。');return;}if(commute?.isRiding()){notify('先下车，再拆建方块。');return;}if(adventure?.state.race){notify('跑酷中不能拆建；按 V 退出后恢复创造模式。');return;}camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);if(!place&&life?.attack()){pendingMine=null;lastAction=performance.now();return;}if(place&&life?.state.held){life.place(target?.place);return;}if(!target)return;
- if(place){const p=target.place;if(!p||!world.valid(p.x,p.y,p.z)){notify('这里已经是世界边界');return;}
+ if(place){const p=target.place;if(!p||p.y<1||!world.valid(p.x,p.y,p.z)){notify('这里已经是世界边界');return;}
   if(p.x+1>pos.x-.3&&p.x<pos.x+.3&&p.y+1>pos.y&&p.y<pos.y+1.76&&p.z+1>pos.z-.3&&p.z<pos.z+.3)return;
-  if(world.protected(p.x,p.y,p.z)){notify('这里是地标或挑战区域，请在周边自由搭建。');return;}if(life?.occupied(p)){notify('这里有家具，Q 可以先回收家具。');return;}if(companions.occupied(p)){notify('这里是奶龙站的位置，换一格吧');return;}if(!life.state.consume(selected)){notify('这个方块用完了，先挖掘收集，或 C 制作木板。');return;}updateBlock(p.x,p.y,p.z,selected);life.refresh();placed++;updateTasks();beep(1);
- }else{if(world.protected(target.x,target.y,target.z)){notify('地标和挑战赛道受到保护，其他地方可以自由挖掘。');lastAction=performance.now();return;}const key=target.x+','+target.y+','+target.z;if(pendingMine?.key===key)return;const duration=life.state.miningTime(target.id);if(duration){pendingMine={...target,key,progress:0,duration};}else breakBlock(target);}
+  if(world.protected(p.x,p.y,p.z)&&life?.state.survival){notify('生存模式下地标受到保护；可在菜单切换创造模式自由搭建。');return;}if(life?.occupied(p)){notify('这里有家具，Q 可以先回收家具。');return;}if(companions.occupied(p)){notify('这里是奶龙站的位置，换一格吧');return;}if(life?.state.survival&&!life.state.consume(selected)){notify('这个方块用完了，先挖掘收集，或 C 制作木板。');return;}updateBlock(p.x,p.y,p.z,selected);life.refresh();placed++;updateTasks();beep(1);
+ }else{if(target.y<1)return;if(world.protected(target.x,target.y,target.z)&&life?.state.survival){notify('生存模式下地标受到保护；可在菜单切换创造模式自由挖掘。');lastAction=performance.now();return;}const key=target.x+','+target.y+','+target.z;if(pendingMine?.key===key)return;const duration=life?.state.survival?life.state.miningTime(target.id):0;if(duration){pendingMine={...target,key,progress:0,duration};}else breakBlock(target);}
 
  lastAction=performance.now();
 }
@@ -249,7 +250,6 @@ npcGuides=createNpcGuides({extraPeople:[...metro.staff,...residents.people],scen
 commute=createCommute({scene,world,civil,activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!activity?.collides(x,y,z),exitBlocked:collides,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},onExit:()=>{keys.clear();pressedAt.clear();releaseAt.clear();grounded=true;},turnView:a=>{yaw+=a;},notify,allowed:()=>!adventure.state.race&&!activity.isRiding()&&!metroInterior(pos),getActors:()=>npcGuides.actors,onImpact:(actor,vx,vz,strength)=>npcGuides.impact(actor,vx,vz,strength)});
 const lujiazuiShow=createLujiazuiShow(scene);
 skyline=createSkyline({onEvent:e=>quests.record(e),scene,getPos:()=>pos,notify,pause:pauseForPanel,resume:enter,teleport,grantGlider:()=>life.grantGlider(),onProgress:()=>saves?.save('auto')});
-globalThis.__game={teleport,setPos:(x,y,z)=>{placePlayer({x,y,z});},setRotation:(y,p=-0.05)=>{yaw=y;pitch=p;},setTime:val=>{dayClock=val;updateSky(0);},getPos:()=>({...pos,yaw,pitch})};
 function captureSave(){return {version:6,mapRevision:MAP_REVISION,edits:[...savedEdits],metro:metro.serialize(),quests:quests.serialize(),pos:metro.safeSavePoint()||commute.safeSavePoint()||activity.safeSavePoint()||{...pos},yaw,pitch,flying,gliding,selected,dayClock,timeOptions:{...timeOptions},mined,placed,talkDone,followDone,celebrated,life:life.serialize(),restaurant:restaurant.serialize(),suites:privateSuites.serialize(),activity:activity.serialize(),skyline:skyline.serialize(),weather:weather.serialize(),adventure:adventure.serialize(),savedAt:new Date().toISOString()};}
 function movePersonal(p){
  if(p.x>=255&&p.x<=286&&p.z>=196&&p.z<=213&&p.y>=24){p.x-=143;p.z+=104;return true;}
@@ -279,7 +279,7 @@ function migrateBundPoint(p){
 function applySave(data){try{
  if(![3,4,6].includes(data?.version)||!Array.isArray(data.edits)||data.edits.length>50000)throw new Error('Invalid save');
  metro?.end(true);metro?.restore(data.metro);commute?.end(true);activity?.cancelRide();data=migrateWestBankSave(data);pendingMine=null;gliding=false;adventure.cancelRace();world.data.set(initialWorld);savedEdits.clear();const shift=data.version<6?WORLD_SHIFT:0;
- for(const [key,id] of data.edits){if(typeof key!=='string'||!Number.isInteger(id)||id<0||id>=BLOCKS.length)continue;const xyz=key.split(',').map(Number);xyz[1]+=shift;if((data.mapRevision||0)<5){const p={x:xyz[0],y:xyz[1],z:xyz[2]};movePersonal(p);xyz[0]=p.x;xyz[2]=p.z;}if(xyz.length!==3||!xyz.every(Number.isInteger)||!world.valid(...xyz)||world.protected(...xyz))continue;world.set(...xyz,id);savedEdits.set(xyz.join(','),id);}
+ for(const [key,id] of data.edits){if(typeof key!=='string'||!Number.isInteger(id)||id<0||id>=BLOCKS.length)continue;const xyz=key.split(',').map(Number);xyz[1]+=shift;if((data.mapRevision||0)<5){const p={x:xyz[0],y:xyz[1],z:xyz[2]};movePersonal(p);xyz[0]=p.x;xyz[2]=p.z;}if(xyz.length!==3||!xyz.every(Number.isInteger)||!world.valid(...xyz)||(xyz[1]<1))continue;const blockId=(id===6&&['-130,25,60','-130,25,61','-129,25,61','-131,25,61','-112,25,70','-113,25,70','-111,25,70'].includes(key))?9:id;world.set(...xyz,blockId);savedEdits.set(xyz.join(','),blockId);}
  const p=data.pos?{...data.pos,y:data.pos.y+shift}:null;if(p&&(data.mapRevision||0)<2){if(p.x>=125&&p.x<=148&&p.z>=25&&p.z<=52&&p.y>=25){p.x-=20;p.z+=47;}else if(p.x>=113&&p.x<=132&&p.z>=59&&p.z<=65&&p.y<25){p.x=LANDMARKS.dock.x;p.y=LANDMARKS.dock.y;p.z=LANDMARKS.dock.z;}}if(p&&(data.mapRevision||0)<3&&p.x>=110&&p.x<=124&&p.z>=116&&p.z<=121&&p.y<25){p.x=LANDMARKS.dock.x;p.y=23;p.z=LANDMARKS.dock.z;}if(p&&(data.mapRevision||0)<4){
  const rooms=[{x:116.5,z:85.5,dx:55,dz:44},{x:123.5,z:62.5,dx:64,dz:21},{x:145.5,z:71.5,dx:86,dz:30}],room=rooms.find(r=>Math.abs(p.x-r.x)<=12&&Math.abs(p.z-r.z)<=13&&p.y>=25);
  if(room){p.x+=room.dx;p.z+=room.dz;}
@@ -328,11 +328,8 @@ if(hudSlider){
  });
  hudSlider.addEventListener('change',e=>applyTime(Number(e.target.value)));
 }
-$('settings-quick')?.addEventListener('click',()=>{
- if(cursorFree)setFreeCursor(false);
- document.exitPointerLock?.();
- try{$('settings-dialog').showModal();}catch{}
-});
+settingsPanel=createSettingsPanel({dialog:$('settings-dialog'),isPlaying:()=>active,pause:pauseForPanel,resume:enter,onOpen:()=>{if(cursorFree)setFreeCursor(false);refreshTimeControls();}});
+$('settings-quick')?.addEventListener('click',settingsPanel.open);
 $('day-length').onchange=e=>{timeOptions=clockOptions({...timeOptions,cycleSeconds:Number(e.target.value)});saves?.save('auto');};
 $('time-paused').onchange=e=>{timeOptions.paused=e.target.checked;saves?.save('auto');};
 $('clock-quick').onclick=()=>{
@@ -340,20 +337,27 @@ $('clock-quick').onclick=()=>{
   toggleFreeCursor();
  }else{
   document.exitPointerLock?.();
-  try{$('settings-dialog')?.showModal?.();}catch{}
+  settingsPanel.open();
   $('time-controls')?.scrollIntoView?.({block:'center'});
   $('time-choice')?.focus?.();
  }
 };
-$('settings-open')?.addEventListener('click',()=>{try{$('settings-dialog').showModal();}catch{}});
-$('settings-close')?.addEventListener('click',()=>{try{$('settings-dialog').close();}catch{}});
+$('settings-open')?.addEventListener('click',settingsPanel.open);
+$('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
+const UPDATE_NOTICE_KEY='block-island-update-v18-seen';
+const updateDialog=$('update-dialog');
+function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
+$('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
+$('update-close')?.addEventListener('click',dismissUpdateNotice);
+$('update-start-btn')?.addEventListener('click',dismissUpdateNotice);
+updateDialog?.addEventListener('cancel',e=>{e.preventDefault();dismissUpdateNotice();});
+try{if(!localStorage.getItem(UPDATE_NOTICE_KEY)){updateDialog?.showModal();}}catch{}
 refreshTimeControls();
 mountVoiceSettings();
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
 requestAnimationFrame(frame);
-globalThis.__game={setPos(x,y,z){pos.x=x;pos.y=y;pos.z=z;camera.position.set(x,y+1.62,z);ensureChunks(pos,true,true);},setRotation(y,p=0){yaw=y;pitch=p;camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();},lookAt(tx,ty,tz){lookTowards({x:tx,y:ty,z:tz});camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();},setTime(val){dayClock=val;updateSky(0);},setActive(val=true){active=val;started=true;fallback=true;document.body.classList.remove('in-menu');$('menu')?.classList.add('hidden');},render(){camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();renderer.render(scene,camera);},getPos:()=>({x:pos.x,y:pos.y,z:pos.z,yaw,pitch,active,started}),teleport};
 
 

@@ -23,10 +23,10 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,material(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=240;parent.add(m);return m;}
  function board(text,color,x,y,z,w,h,angle=0,graffiti=false,brandIndex=-1,style='horizontal'){
-  let cw=1024,ch=288;
-  if(style==='vertical-blade'){cw=384;ch=1024;}
-  else if(style==='medallion'||graffiti){cw=512;ch=512;}
-  else if(style==='arch'){cw=1024;ch=384;}
+  let cw=512,ch=144;
+  if(style==='vertical-blade'){cw=192;ch=512;}
+  else if(style==='medallion'||graffiti){cw=256;ch=256;}
+  else if(style==='arch'){cw=512;ch=192;}
   const compact=graffiti&&[...text].length===1;
   const cDay=document.createElement('canvas');cDay.width=compact?128:cw;cDay.height=compact?128:ch;
   const cNight=document.createElement('canvas');cNight.width=cDay.width;cNight.height=cDay.height;
@@ -226,9 +226,14 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const p=person(i+200,root,'visitor'),dir=i%2===0?1:-1;
   const x=-80+i*5.8,baseZ=65.2+(i%3)*.7,isNorth=i%2===0;
   p.root.position.set(x,26,baseZ);
-  p.root.rotation.y=dir>0?Math.PI/2:-Math.PI/2;
+  p.root.rotation.y=dir>0?-Math.PI/2:Math.PI/2;
   const bag=i%3===0?cube(p.root,['#fc869b','#50caca','#d4b572'][i%3],.35,.57,0,.3,.38,.2):null;
-  bundWalkers.push({...p,x,baseZ,z:baseZ,dir,speed:0.85+(i%5)*.09,phase:i*1.15,bag,waitTimer:0,isNorth});
+  const walker={...p,x,baseZ,z:baseZ,dir,speed:0.85+(i%5)*.09,phase:i*1.15,bag,waitTimer:0,isNorth};walker.z=bundLaneZ(walker,x);p.root.position.z=walker.z;bundWalkers.push(walker);
+ }
+ function bundLaneZ(bw,x){
+  if(x<-39||x>-31)return bw.baseZ;
+  const lane=Math.round((bw.baseZ-65.2)/.7),target=bw.isNorth?61.2+lane*1.1:68.6+lane*1.1;
+  return bw.baseZ+(target-bw.baseZ)*Math.sin((x+39)/8*Math.PI);
  }
  const landings=FERRY_STOPS.map(stop=>{for(let r=0;r<=12;r++)for(const [dx,dz]of [[r,0],[-r,0],[0,r],[0,-r]]){const p={...stop,x:Math.floor(stop.x+dx)+.5,z:Math.floor(stop.z+dz)+.5};if(!overlaps(world,p.x,26,p.z)&&overlaps(world,p.x,25.9,p.z))return p;}throw new Error('No safe ferry landing: '+stop.name);});
  for(const [i,p]of landings.entries()){
@@ -290,7 +295,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const v=nearestVendor();if(!v)return false;pause();panel=true;$('city-title').textContent=v.name;$('city-result').textContent='柜台现货 '+v.remaining+' 份 · 购物袋已有 '+(goods[v.product]??0)+' 份'+SHOP_PRODUCTS[v.product].name+'。';$('city-actions').replaceChildren();const button=document.createElement('button');button.className='recipe-card';const label=()=>button.textContent=v.remaining?'购买'+SHOP_PRODUCTS[v.product].name+' · 库存 '+v.remaining:'已售罄';label();button.disabled=!v.remaining;button.onclick=()=>{if(!v.remaining)return;if(cooldown>0){$('city-result').textContent='刚买过一份，稍后再来。';return;}if(v.food){const state=getState();state.food+=2;if(state.hunger<20)state.eat();}v.remaining--;goods[v.product]=(goods[v.product]??0)+1;showStock(v);label();button.disabled=!v.remaining;purchases++;cooldown=30;onEvent({type:'shop'});$('city-result').textContent='已购买'+SHOP_PRODUCTS[v.product].name+'，柜台少一份；购物袋共 '+goods[v.product]+' 份'+(v.food?'，食物已加入背包。':'。');onProgress();};$('city-actions').appendChild(button);$('city-dialog').showModal();return true;
  }
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
- const crowd=createStreetCrowd([...tourists,...sharedWalkers],{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29)});
+ const crowd=createStreetCrowd([...tourists,...sharedWalkers,...bundWalkers.map(p=>({root:p.root,stationary:true}))],{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29)});
  function tick(dt,{night=false}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
 
@@ -299,43 +304,25 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
   crowd.tick(dt,vehicles);
+  const pedestrians=[...bundWalkers,...tourists,...sharedWalkers,...vendors];
+  const safeWalker=(bw,x,z)=>!overlaps(world,x,26,z)&&overlaps(world,x,25.9,z)&&!(Math.abs(x+35)<.94&&Math.abs(z-66)<2.14)&&pedestrians.every(p=>p===bw||p.root.visible===false||Math.abs(p.root.position.y-26)>2||(p.root.position.x-x)**2+(p.root.position.z-z)**2>.81)&&vehicles.every(v=>{const p=v.root?.position;if(!p||Math.abs(p.y-26)>2)return true;const dx=x-p.x,dz=z-p.z,a=v.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))>(v.halfWidth??.8)+.4||Math.abs(dx*Math.sin(a)+dz*Math.cos(a))>(v.halfLength??1.4)+.4;});
   for(const bw of bundWalkers){
-   if(bw.waitTimer>0){bw.waitTimer-=dt;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.2;bw.arms[1].rotation.x=-.2;continue;}
-   // 1. Obey Pedestrian Traffic Light with crosswalk clearance
-   let redWait=false;
-   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.0&&p.x<=24.0)||(p.x>=-33.0&&p.x<=-23.0))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
-   const canStartCrossing=ewGreen&&bPhase.remaining>=10&&!nearCar;
-   if(!canStartCrossing){
-    if(bw.dir===1&&bw.x>=11.5&&bw.x<=13.4){redWait=true;bw.x=12.2;}
-    else if(bw.dir===-1&&bw.x<=24.5&&bw.x>=22.6){redWait=true;bw.x=23.8;}
-    else if(bw.dir===1&&bw.x>=-33.5&&bw.x<=-31.2){redWait=true;bw.x=-32.5;}
-    else if(bw.dir===-1&&bw.x<=-23.5&&bw.x>=-25.5){redWait=true;bw.x=-24.5;}
+   if(dt<=0)continue;
+   if(bw.waitTimer>0){bw.waitTimer=Math.max(0,bw.waitTimer-dt);bw.legs.forEach(l=>l.rotation.x=0);continue;}
+   const west=bw.x<0,nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.z-66)<3.8&&(west?p.x>=-31&&p.x<=-25:p.x>=13&&p.x<=23)&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
+   const canStart=ewGreen&&bPhase.remaining>=10&&!nearCar;
+   const waiting=!canStart&&(bw.dir===1&&(bw.x>=11&&bw.x<=13||bw.x>=-34&&bw.x<=-31.5)||bw.dir===-1&&(bw.x<=25&&bw.x>=23||bw.x<=-23.5&&bw.x>=-26));
+   if(waiting){bw.legs.forEach(l=>l.rotation.x=0);continue;}
+   const onRoad=bw.x>13&&bw.x<23||bw.x>-31&&bw.x<-25,speed=onRoad?Math.max(bw.speed,1.8):bw.speed;
+   let dx=bw.dir*speed*dt,dz=bundLaneZ(bw,bw.x+dx)-bw.z,n=Math.hypot(dx,dz);if(n>speed*dt){dx*=speed*dt/n;dz*=speed*dt/n;}
+   bw.steerTime=Math.max(0,(bw.steerTime??0)-dt);let move=null;
+   const preferred=bw.isNorth?.65:-.65,angles=bw.steerTime>0?[bw.steerAngle,0,preferred,-preferred,Math.PI/2,-Math.PI/2]:[0,preferred,-preferred,Math.PI/2,-Math.PI/2];
+   for(const angle of angles){const c=Math.cos(angle),s=Math.sin(angle),mx=dx*c-dz*s,mz=dx*s+dz*c,x=bw.x+mx,z=bw.z+mz;
+    if(x>=-85&&x<=34&&z>=61&&z<=71.2&&safeWalker(bw,x,z)){move={x,z,mx,mz};if(Math.abs(angle)>.01&&bw.steerTime===0){bw.steerAngle=angle;bw.steerTime=.8;}break;}
    }
-   if(redWait){
-    bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;
-    bw.arms[0].rotation.x=-.15+Math.sin(clock*2+bw.phase)*.05;bw.arms[1].rotation.x=-.15-Math.sin(clock*2+bw.phase)*.05;
-    bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=bw.dir>0?Math.PI/2:-Math.PI/2;
-    continue;
-   }
-   // 2. Advance walker along corridor connecting Bund and Commercial Street
-   const onRoadway=bw.x>13.0&&bw.x<23.0;const currentSpeed=onRoadway?Math.max(bw.speed,1.8):bw.speed;bw.x+=bw.dir*currentSpeed*dt;
-   if(bw.x>=34){bw.x=34;bw.dir=-1;bw.waitTimer=3.5+(bw.phase%3)*1.5;}
-   else if(bw.x<=-85){bw.x=-85;bw.dir=1;bw.waitTimer=3+(bw.phase%2)*1.5;}
-   // 3. Smooth S-curve bypass around the Nanjing Road Monument Stele (at x = -35, z = 66)
-   let curZ=bw.baseZ,yaw=bw.dir>0?Math.PI/2:-Math.PI/2;
-   if(bw.x>=-41&&bw.x<=-29){
-    const progress=(bw.x-(-41))/12;
-    const bell=Math.sin(progress*Math.PI);
-    const lateralShift=bw.isNorth?-2.55:2.45;
-    curZ=bw.baseZ+lateralShift*bell;
-    const dZdx=lateralShift*(Math.PI/12)*Math.cos(progress*Math.PI);
-    yaw=Math.atan2(dZdx*bw.dir,bw.dir);
-   }
-   bw.z=curZ;
-   bw.phase+=dt*bw.speed*5;const gait=Math.sin(bw.phase);
-   bw.legs[0].rotation.x=gait*.3;bw.legs[1].rotation.x=-gait*.3;
-   bw.arms[0].rotation.x=-gait*.3;bw.arms[1].rotation.x=gait*.3;
-   bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=yaw;
+   if(move){bw.x=move.x;bw.z=move.z;bw.phase+=Math.hypot(move.mx,move.mz)*5;const yaw=Math.atan2(-move.mx,-move.mz),delta=Math.atan2(Math.sin(yaw-bw.root.rotation.y),Math.cos(yaw-bw.root.rotation.y));bw.root.rotation.y+=Math.max(-dt*3,Math.min(dt*3,delta));}
+   if(bw.dir>0&&bw.x>33.8||bw.dir<0&&bw.x<-84.8){bw.dir*=-1;bw.waitTimer=3+(bw.phase%2)*1.5;}
+   const gait=move?Math.sin(bw.phase)*.3:0;bw.legs[0].rotation.x=gait;bw.legs[1].rotation.x=-gait;bw.arms[0].rotation.x=-gait;bw.arms[1].rotation.x=gait;bw.root.position.set(bw.x,26,bw.z);
   }
   for(const p of tourists){
    if(p.stationary){

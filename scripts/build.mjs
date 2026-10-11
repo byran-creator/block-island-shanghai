@@ -1,7 +1,7 @@
 import {transform} from 'esbuild';
 import {readFile,readdir,mkdir,writeFile,cp,rm} from 'node:fs/promises';
-const assets={};
-for(const entry of await readdir('game',{withFileTypes:true})){if(!entry.isFile()||! /\.(html|js|css|txt)$/.test(entry.name))continue;assets['/'+entry.name]={body:await readFile('game/'+entry.name,'utf8'),type:entry.name.endsWith('.html')?'text/html; charset=utf-8':entry.name.endsWith('.css')?'text/css; charset=utf-8':entry.name.endsWith('.js')?'text/javascript; charset=utf-8':'text/plain; charset=utf-8'};}
+import {collectSiteAssets} from './site-assets.mjs';
+const assets=await collectSiteAssets();
 for(const asset of Object.values(assets))if(asset.type.startsWith('text/javascript'))asset.body=(await transform(asset.body,{minify:true,format:'esm',target:'es2022',legalComments:'inline'})).code;
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist/server',{recursive:true});await mkdir('dist/.openai',{recursive:true});

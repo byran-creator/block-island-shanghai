@@ -12,8 +12,9 @@ export function routeCrossings(samples,signals){const out=[];for(const signal of
 export function forwardDistance(from,to,length,dir=1){return ((to-from)*dir%length+length)%length;}
 export function trafficTravel(agent,dt,time,agents=[],getPose,onFollow=()=>{},crosswalkOccupied=false){let distance=(agent.currentSpeed??agent.speed)*dt;const length=agent.route.lengthMeters,half=agent.halfLength??1.25,gapBuffer=Math.max(2.8,(agent.speed??0)*1.7);
  for(const crossing of agent.crossings??[]){
-  const isBund=crossing.signal?.id==='bund-66';
-  const green=isBund&&crosswalkOccupied?false:signalPhase(time,crossing.signal.offset)[crossing.axis]==='green';
+  const isBund=crossing.signal?.id==='bund-66'||crossing.signal?.id==='stele-66';
+  const carGreen=signalPhase(time,crossing.signal.offset)[crossing.axis]==='green';
+  const green=carGreen&&!(isBund&&crosswalkOccupied);
   const ahead=forwardDistance(agent.t,crossing.d,length,agent.dir),stop=6+half;
   if(!green){
    if(ahead>=stop-.05&&ahead<stop+distance+2)distance=Math.min(distance,Math.max(0,ahead-stop));
@@ -194,8 +195,10 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   const playerPos=getPos?getPos():null;
   const obstacles=getObstacles().filter(o=>!o.root.userData.piloted);
   const playerRiding=playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
-  const playerCrossing=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28&&((playerPos.x>=12.0&&playerPos.x<=24.0)||(playerPos.x>=-33.5&&playerPos.x<=-23.5))&&Math.abs(playerPos.z-66)<=4.5;
-   const pedCrossing=obstacles.some(o=>{const p=o.root?.position;return p&&((p.x>=12.0&&p.x<=24.0)||(p.x>=-33.5&&p.x<=-23.5))&&Math.abs(p.z-66)<=4.5;});
+   const inBundRoad=(x,z)=>x>=13.0&&x<=23.0&&Math.abs(z-66)<=3.8;
+   const inSteleRoad=(x,z)=>x>=-31.0&&x<=-25.0&&Math.abs(z-66)<=3.8;
+   const playerCrossing=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28&&(inBundRoad(playerPos.x,playerPos.z)||inSteleRoad(playerPos.x,playerPos.z));
+   const pedCrossing=obstacles.some(o=>{const p=o.root?.position;return p&&(inBundRoad(p.x,p.z)||inSteleRoad(p.x,p.z));});
    const crosswalkOccupied=playerCrossing||pedCrossing;
   const allObstacles=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28?[...obstacles,{root:{position:playerPos},person:true,height:1.85}]:obstacles;
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];

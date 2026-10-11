@@ -80,3 +80,5 @@ Three.js 的许可证保留在 [game/THREE-LICENSE.txt](game/THREE-LICENSE.txt)�
 地铁车内支持 **WASD 走动**、跨车厢通行；靠近空座按 **F 坐下**，再按 F 起身换座。到站开门可步行下车或按 V，坐姿与站姿都会随车移动。详见 [车内走动与选座](docs/metro-cabin-walking.md)。
 
 合并 Gemini 天空更新：三层云与晚霞、晴天无云和柔和天体光晕，补齐实例合批、渐变连续性与存档回归。[工程审核](docs/gemini-sky-review.md)。
+
+南京路与外滩改造已完成工程审核，补齐图片发布、设置暂停、行人避让和店招资源预算。车辆与红绿灯保持已试玩分支版本，后续结合道路扩宽优化。详见 [工程审核](docs/gemini-city-review.md)。
