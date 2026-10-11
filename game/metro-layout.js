@@ -38,7 +38,7 @@ export function buildMetro(w){
    const minSideZ=zWalk===61?59:68,maxSideZ=zWalk===61?63:73;
    if(i<=0){
     w.fill(x,26,zWalk-1,x,29,zWalk+1,0);
-    w.fill(x,20,minSideZ,x,25,maxSideZ,9);
+    w.fill(x,25,minSideZ,x,25,maxSideZ,9);
    }else if(i>=r.length){
     w.fill(x,15,zWalk-1,x,15,zWalk+1,9);
     w.fill(x,16,zWalk-1,x,21,zWalk+1,0);
@@ -48,8 +48,6 @@ export function buildMetro(w){
     for(let sz=minSideZ;sz<=maxSideZ;sz++){
      if(sz===zWalk)continue;
      w.set(x,25,sz,9);
-     const bottomY=Math.max(20,Math.floor(y)-1);
-     if(bottomY<=24)w.fill(x,bottomY,sz,x,24,sz,9);
     }
     if(i<=6){
      w.fill(x,Math.floor(y)-1,zWalk,x,Math.ceil(y)+3,zWalk,0);
@@ -65,4 +63,8 @@ export function buildMetro(w){
    if(landing)w.fill(x,Math.floor(y)-1,Math.floor(r.z)-1,x,Math.floor(y)-1,Math.floor(r.z)+1,9);
   }
  }
+ // Street paving must never extend down into the original B1 concourse.
+ // Ramp roofs/side infill can overlap it, so re-open the original room last.
+ // Keep its floor, ceiling and boundary walls intact.
+ for(const s of METRO_STATIONS)w.fill(s.x-35,16,s.z-15,s.x+35,21,s.z+15,0);
 }
