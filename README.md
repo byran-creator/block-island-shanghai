@@ -82,3 +82,5 @@ Three.js 的许可证保留在 [game/THREE-LICENSE.txt](game/THREE-LICENSE.txt)�
 合并 Gemini 天空更新：三层云与晚霞、晴天无云和柔和天体光晕，补齐实例合批、渐变连续性与存档回归。[工程审核](docs/gemini-sky-review.md)。
 
 南京路与外滩改造已完成工程审核，补齐图片发布、设置暂停、行人避让和店招资源预算。车辆与红绿灯保持已试玩分支版本，后续结合道路扩宽优化。详见 [工程审核](docs/gemini-city-review.md)。
+
+飞行闪烁与行人恢复：恢复 Gemini 原深度缓冲配置和整套行人逻辑，保留已授权的店招尺寸优化。[恢复说明](docs/pedestrian-render-rollback.md)。
