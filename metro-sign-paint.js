@@ -1,7 +1,7 @@
 // Original artwork based on Shanghai Metro's 2025 Lujiazui wayfinding photos.
 export function metroSignCanvasSize(w,h){const height=Math.min(256,Math.round(4096*h/w));return {width:Math.round(height*w/h),height};}
 const WHITE='#f5f5ee',YELLOW='#ffdb43';
-export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow='',exit=null,pictogram='',sections=null,layout='guide',mirrorRoute=false,separatorColor=YELLOW}={}){
+export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow='',exit=null,pictogram='',sections=null,layout='guide',mirrorRoute=false,separatorColor=YELLOW,lineNumber=2,lineColor='#92c83e',routeNames=null,routeEnglish=null,routePair=['南京东路','陆家嘴']}={}){
  ctx.fillStyle='#171a1b';ctx.fillRect(0,0,width,height);ctx.textAlign='left';ctx.textBaseline='alphabetic';
  const h=height,pad=h*.14;
  function label(text,x,y,size,color,max){ctx.font=`${size}px "Microsoft YaHei",Arial,sans-serif`;const measured=ctx.measureText?.(text).width??text.length*size*.58;if(measured>max)ctx.font=`${size*max/measured}px "Microsoft YaHei",Arial,sans-serif`;ctx.fillStyle=color;ctx.fillText(text,x,y);}
@@ -10,15 +10,15 @@ export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow
   const points=a==='←'?[[r,-t],[0,-t],[0,-r],[-r,0],[0,r],[0,t],[r,t]]:a==='→'?[[-r,-t],[0,-t],[0,-r],[r,0],[0,r],[0,t],[-r,t]]:a==='↓'?[[-t,-r],[t,-r],[t,0],[r,0],[0,r],[-r,0],[-t,0]]:[[-t,r],[t,r],[t,0],[r,0],[0,-r],[-r,0],[-t,0]];
   ctx.beginPath();points.forEach(([dx,dy],i)=>(i?ctx.lineTo:ctx.moveTo).call(ctx,x+dx,cy+dy));ctx.closePath();ctx.fill();
  }
- function badge(x){const b=h*.68,y=h*.16;ctx.fillStyle=WHITE;ctx.fillRect(x,y,b,b);ctx.fillStyle='#92c83e';ctx.fillRect(x+h*.012,y+h*.012,b-h*.024,b-h*.024);label('2',x+h*.12,h*.75,h*.61,'#152219',b);return b;}
+ function badge(x){const b=h*.68,y=h*.16;ctx.fillStyle=WHITE;ctx.fillRect(x,y,b,b);ctx.fillStyle=lineColor;ctx.fillRect(x+h*.012,y+h*.012,b-h*.024,b-h*.024);label(String(lineNumber),x+h*.12,h*.75,h*.61,'#152219',b);return b;}
  if(layout==='entrance'){
-  const b=h*.36,x=pad,y=h*.13;ctx.fillStyle=WHITE;ctx.fillRect(x,y,b,b);ctx.fillStyle='#92c83e';ctx.fillRect(x+h*.012,y+h*.012,b-h*.024,b-h*.024);label('2',x+h*.065,h*.435,h*.31,'#152219',b);
+  const b=h*.36,x=pad,y=h*.13;ctx.fillStyle=WHITE;ctx.fillRect(x,y,b,b);ctx.fillStyle=lineColor;ctx.fillRect(x+h*.012,y+h*.012,b-h*.024,b-h*.024);label(String(lineNumber),x+h*.065,h*.435,h*.31,'#152219',b);
   label(lines[0],x+b+h*.1,h*.36,h*.32,WHITE,width-x-b-pad-h*.1);
   label(lines[1],x+b+h*.1,h*.54,h*.14,WHITE,width-x-b-pad-h*.1);
   ctx.fillStyle='#555f5b';ctx.fillRect(pad,h*.65,width-pad*2,h*.014);ctx.textAlign='center';label(lines[2]+'号口  EXIT',width/2,h*.89,h*.2,WHITE,width-pad*2);ctx.textAlign='left';return;
  }
  if(layout==='station'){
-  ctx.fillStyle='#f8f9f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#a3d43e';ctx.fillRect(0,h*.13,width,h*.11);ctx.textAlign='right';label('Line 2',width-pad,h*.225,h*.09,'#fff',h);ctx.textAlign='left';
+  ctx.fillStyle='#f8f9f5';ctx.fillRect(0,0,width,height);ctx.fillStyle=lineColor;ctx.fillRect(0,h*.13,width,h*.11);ctx.textAlign='right';label('Line '+lineNumber,width-pad,h*.225,h*.09,'#fff',h);ctx.textAlign='left';
   if(ctx.arc&&ctx.stroke){const x=pad+h*.05,y=h*.066,r=h*.05;ctx.fillStyle='#b6362b';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=h*.018;ctx.beginPath();ctx.moveTo(x-r*.7,y);ctx.lineTo(x-r*.32,y-r*.3);ctx.lineTo(x,y+r*.08);ctx.lineTo(x+r*.32,y-r*.3);ctx.lineTo(x+r*.7,y);ctx.stroke();}
   label('上海地铁  Shanghai Metro',pad+h*.14,h*.105,h*.075,'#1a2121',width-pad*2-h*.14);
   ctx.textAlign='center';label(lines[0],width/2,h*.63,h*.32,'#11191a',width-pad*2);label(lines[1]??'',width/2,h*.89,h*.17,'#11191a',width-pad*2);ctx.textAlign='left';return;
@@ -27,8 +27,8 @@ export function paintMetroSign(ctx,lines,{width=1024,height=256,line2=true,arrow
   label('下一班 / NEXT TRAIN',pad,h*.33,h*.2,WHITE,width-pad*2);label(lines[1]??'',pad,h*.78,h*.38,YELLOW,width-pad*2);return;
  }
  if(layout==='route'){
-  ctx.fillStyle='#fbfcf7';ctx.fillRect(0,0,width,height);const forward=(lines[2]!=='-1')!==mirrorRoute,names=['人民广场','南京东路','陆家嘴','浦东南路','世纪大道'],english=['People\'s Square','East Nanjing Rd.','Lujiazui','Pudong Rd. (S)' ,'Century Ave.'],green='#90c93d';if(mirrorRoute){names.reverse();english.reverse();}const origin=lines[2]==='-1'?'陆家嘴':'南京东路',destination=lines[2]==='-1'?'南京东路':'陆家嘴',playableIndex=names.map((n,i)=>n==='南京东路'||n==='陆家嘴'?i:-1).filter(i=>i>=0),mid=(playableIndex[0]+playableIndex[1])/2;
-  label('2号线  Line 2',pad,h*.17,h*.12,'#152219',width*.15);label(forward?origin+' → '+destination:destination+' ← '+origin,width*.18,h*.17,h*.16,'#152219',width*.42);label('下一站 '+lines[1],width*.64,h*.17,h*.14,'#152219',width*.34);
+  ctx.fillStyle='#fbfcf7';ctx.fillRect(0,0,width,height);const forward=(lines[2]!=='-1')!==mirrorRoute,names=routeNames?[...routeNames]:['人民广场','南京东路','陆家嘴','浦东南路','世纪大道'],english=routeEnglish?[...routeEnglish]:['People\'s Square','East Nanjing Rd.','Lujiazui','Pudong Rd. (S)' ,'Century Ave.'],green=lineColor;if(mirrorRoute){names.reverse();english.reverse();}const origin=routePair[lines[2]==='-1'?1:0],destination=routePair[lines[2]==='-1'?0:1],playableIndex=names.map((n,i)=>routePair.includes(n)?i:-1).filter(i=>i>=0),mid=(playableIndex[0]+playableIndex[1])/2;
+  label(lineNumber+'号线  Line '+lineNumber,pad,h*.17,h*.12,'#152219',width*.15);label(forward?origin+' → '+destination:destination+' ← '+origin,width*.18,h*.17,h*.16,'#152219',width*.42);label('下一站 '+lines[1],width*.64,h*.17,h*.14,'#152219',width*.34);
   const start=width*.1,step=width*.2,cy=h*.52;ctx.fillStyle='#c4c8c6';ctx.fillRect(start,cy-h*.035,step*4,h*.07);ctx.fillStyle=green;ctx.fillRect(start+step*playableIndex[0],cy-h*.035,step,h*.07);
   names.forEach((name,i)=>{const x=start+i*step,active=name===lines[0]||name===lines[1],color=playableIndex.includes(i)?'#17201c':'#737a76';ctx.fillStyle=active&&playableIndex.includes(i)?green:'#b5bdb8';if(ctx.arc){ctx.beginPath();ctx.arc(x,cy,h*(name===lines[1]?.085:.055),0,Math.PI*2);ctx.fill();ctx.fillStyle='#fbfcf7';ctx.beginPath();ctx.arc(x,cy,h*.033,0,Math.PI*2);ctx.fill();}else ctx.fillRect(x-h*.05,cy-h*.05,h*.1,h*.1);ctx.textAlign='center';const y=i%2?h*.79:h*.32;label(name,x,y,h*.115,color,step*.9);label(english[i],x,y+h*.105,h*.069,color,step*.95);});ctx.textAlign='left';direction(forward?'→':'←',start+step*mid,green,.25);label('绿色为可乘坐体验区间 · 灰色站暂未开放',pad,h*.98,h*.063,'#68706a',width-pad*2);return;
  }

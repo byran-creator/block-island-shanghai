@@ -1,10 +1,11 @@
 import {METRO_CARS} from './metro-train.js';
 
-export const METRO_SEATS=METRO_CARS.flatMap((car,i)=>[-1,1].flatMap(side=>[-.6,0,.6].map((offset,j)=>({id:i+':'+side+':'+j,x:car+offset,z:side*.98,side,standZ:side*.32}))));
-export function cabinBlocked(x,z,passengers=[]){
- if(Math.abs(x)>30.75||Math.abs(z)>1.03)return true;
- for(const car of METRO_CARS){if(Math.abs(x-car)<1.16&&Math.abs(z)>.51)return true;for(const offset of [-1,1])if(Math.hypot(x-car-offset,z)<.27)return true;
-  if(car!==METRO_CARS.at(-1)&&Math.abs(x-car-4)<.37&&Math.abs(z)>.72)return true;
+export const makeMetroSeats=cars=>cars.flatMap((car,i)=>[-1,1].flatMap(side=>[-.6,0,.6].map((offset,j)=>({id:i+':'+side+':'+j,x:car+offset,z:side*.98,side,standZ:side*.32}))));
+export const METRO_SEATS=makeMetroSeats(METRO_CARS);
+export function cabinBlocked(x,z,passengers=[],cars=METRO_CARS){
+ if(Math.abs(x)>cars.at(-1)+2.75||Math.abs(z)>1.03)return true;
+ for(const car of cars){if(Math.abs(x-car)<1.16&&Math.abs(z)>.51)return true;for(const offset of [-1,1])if(Math.hypot(x-car-offset,z)<.27)return true;
+  if(car!==cars.at(-1)&&Math.abs(x-car-4)<.37&&Math.abs(z)>.72)return true;
  }
  return passengers.some(p=>p.visible!==false&&Math.hypot(x-p.position.x,z-p.position.z)<.46);
 }
