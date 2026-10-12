@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../game/three.module.js';
+import {overlaps} from '../game/world.js';
+import {createLife} from '../game/life.js';
+import {runPlayerInteraction} from '../game/interaction-routing.js';
+const previous=globalThis.document,nodes=new Map(),node=()=>({children:[],appendChild(c){this.children.push(c);},replaceChildren(){this.children=[];},addEventListener(){},classList:{toggle(){}},getContext:()=>({fillRect(){},fillText(){}})});
+globalThis.document={createElement:node,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);}};
+try{
+ const pos={x:4,y:26,z:0},scene=new THREE.Scene(),messages=[];let direction=new THREE.Vector3(-1,0,0),wall=false,life,npcCalls=0,nearestCalls=0;
+ const world={surfaceAt:()=>26,protected:()=>false,get:(x,y,z)=>wall&&x===3&&y>=26&&y<30?3:x>=6?(y<20?3:0):(y<26?1:0)};
+ const blocked=(x,y,z,ignore=null)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z,ignore);
+ life=createLife({scene,world,blocked:(x,y,z)=>blocked(x,y,z),interactionBlocked:blocked,getPos:()=>pos,getDirection:()=>direction,notify:m=>messages.push(m),pause(){},resume(){},onMode(){},onHeld(){},onDeath(){},setDay(){},onProgress(){}});
+ const npc={follow:false},companions={nearest:()=>{nearestCalls++;return npc;},interact:(p,c,follow)=>{npcCalls++;if(follow)npc.follow=!npc.follow;}};
+ const use=(options={})=>runPlayerInteraction({life,companions,pos,camera:{},notify:m=>messages.push(m),...options});
+ life.state.setMode('survival');life.state.held='campfire';life.place({x:1,y:26,z:0});const fire=life.state.furniture[0];life.state.raw=1;
+ assert(life.collides(fire.x,fire.y,fire.z),'Furniture still blocks physical movement');
+ assert(!life.collides(fire.x,fire.y,fire.z,fire),'Only the explicitly targeted furniture is excluded');
+ assert.equal(use(),'life','A real game-style blocker must not make the fire occlude itself');assert.equal(npcCalls,0);assert.equal(nearestCalls,0);assert(fire.cooking);
+ life.tick(.3,{night:false,moving:false,racing:false});assert(life.hasUseTarget());assert(nodes.get('life-prompt').textContent.includes('烤制剩余'));
+ assert.equal(use(),'life');assert.equal(npcCalls,0,'Waiting at the fire does not feed or talk to a nearby NPC');
+ life.tick(30,{night:false,moving:false,racing:false});assert.equal(use(),'life');assert(!fire.cooking);
+ const food=life.state.food;assert.equal(use(),'life');assert.equal(life.state.food,food,'An empty fire gives its own instruction without repeating rewards');
+ wall=true;life.state.raw=1;assert(!life.use(),'A real wall still blocks cooking');assert.equal(life.state.raw,1);wall=false;
+ let followed=false;assert.equal(use({follow:true,onFollow:()=>followed=true}),'companion');assert(followed,'H still explicitly follows companions');
+ direction=new THREE.Vector3(1,0,0);assert(life.state.craft('fishingrod'));assert.equal(use(),'life');const before=life.state.raw;assert.equal(use(),'life');assert.equal(life.state.raw,before,'An early reel stays in the fishing action');
+ pos.x=6;assert.equal(use(),'life','Invalidated fishing consumes G and explains cancellation');assert(messages.at(-1).includes('鱼线已收起'));pos.x=4;
+ assert.equal(use(),'life');life.tick(10,{night:false,moving:false,racing:false});assert.equal(use(),'life');assert.equal(life.state.raw,before+1);assert.equal(npcCalls,1,'Only explicit H invoked the NPC during all cooking/fishing actions');
+ direction=new THREE.Vector3(0,1,0);const missing={nearest:()=>null,interact:()=>{throw Error('No phantom companion action');}};
+ assert.equal(use({companions:missing}),'none');assert(messages.at(-1).includes('没有可互动的目标'));
+ console.log('PASS: actual furniture-inclusive blockers, targeted exclusion without losing movement/wall collision, G cooking/fishing/cancel priorities, H follows and no phantom NPC fallback.');
+}finally{globalThis.document=previous;}

@@ -41,4 +41,4 @@ export function swimVelocity({feet,velocity,space,down,grounded,dt,dry=false,sho
 }
 
 export function furnitureBounds(f){let [x,y,z]=({bed:[1,.9,1.8],chair:[.9,1.35,.9],table:[1.3,1.06,1.3],lamp:[.65,1.85,.65],chest:[1.05,.95,.9],campfire:[.9,.6,.9],bookshelf:[1.1,1.4,.6],planter:[1.1,.55,1.1]})[f.type]||[1,1,1];if(Math.abs(Math.sin(f.rotation||0))>.7)[x,z]=[z,x];return {x1:f.x-x/2,x2:f.x+x/2,y1:f.y,y2:f.y+y,z1:f.z-z/2,z2:f.z+z/2};}
-export function furnitureCollides(items,x,y,z){return items.some(f=>{const b=furnitureBounds(f);return x+.29>b.x1&&x-.29<b.x2&&z+.29>b.z1&&z-.29<b.z2&&y+1.75>b.y1+.001&&y+.002<b.y2;});}
+export function furnitureCollides(items,x,y,z,ignore=null){return items.some(f=>{if(f===ignore)return false;const b=furnitureBounds(f);return x+.29>b.x1&&x-.29<b.x2&&z+.29>b.z1&&z-.29<b.z2&&y+1.75>b.y1+.001&&y+.002<b.y2;});}
