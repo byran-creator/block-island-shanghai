@@ -1,5 +1,6 @@
 import {riverCenter,inRiver,CITY,PEARL,MAGNOLIA,MAP_BOUNDS,BUND_SHIFT,BRIDGES} from './shanghai-map.js';
 import {buildingStyle,buildArchitecture} from './city-architecture.js';
+import {yuyuanReserved} from './yuyuan-layout.js';
 import {roundedRoad} from './road-geometry.js';
 import {WAIBAIDU,inSuzhou} from './waibaidu-layout.js';
 
@@ -232,6 +233,10 @@ for(const list of [BUND_BUILDINGS,PUDONG_BUILDINGS,BACK_BUILDINGS,WING_BUILDINGS
  const roadPlot=ROADS.some(r=>r.samples.some((p,j)=>j%3===0&&Math.abs(p.x-b.x)<=b.rx+r.width+.8&&Math.abs(p.z-b.z)<=b.rz+r.width+.8));
  if(riverPlot||roadPlot&&/back|infill|front|density/.test(b.id)&&b.id!=='pudong-infill-southeast-2'){REPLACED_BUILDING_IDS.add(b.id);list.splice(i,1);}
 }
+// Only replace generated filler plots needed for the new garden and walking entrances.
+// Keep surviving shop brands and vendor slots stable when one parcel makes way.
+for(const [index,b]of DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-')).entries())b.streetIndex=index;
+for(const list of [BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];if(!/back|infill|density/.test(b.id))continue;let hit=false;for(let x=b.x-b.rx-1;x<=b.x+b.rx+1&&!hit;x++)for(let z=b.z-b.rz-1;z<=b.z+b.rz+1;z++)if(yuyuanReserved(x,z)){hit=true;break;}if(hit){REPLACED_BUILDING_IDS.add(b.id);list.splice(i,1);}}
 export const CITY_BUILDINGS=[...PUDONG_BUILDINGS,...BACK_BUILDINGS,...WING_BUILDINGS,...DENSE_BUILDINGS];
 export const ALL_BUILDINGS=[...BUND_BUILDINGS,...CITY_BUILDINGS];
 export function buildingEntrance(b,distance=2.5){const side=b.entranceSide??1;return b.entranceAxis==='z'?{x:b.x+.5,z:b.z+side*(b.rz+distance)}:{x:b.x+side*(b.rx+distance),z:b.z+.5};}

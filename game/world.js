@@ -1,7 +1,9 @@
 import {buildBund,bundProtected,promenadeX} from './bund.js';
 import {roadContains} from './city-layout.js';
 import {buildPeaceDining} from './peace-restaurant.js';
-import {buildMetro,metroProtected} from './metro-layout.js';
+import {buildLine10} from './metro-line10-layout.js';
+import {buildYuyuan,YUYUAN,yuyuanReserved} from './yuyuan-layout.js';
+import {buildMetro,metroProtected,METRO_STATIONS} from './metro-layout.js';
 import {buildPrivateSuites,suiteProtected} from './private-suite-layout.js';
 import {buildWaibaidu,waibaiduProtected,WAIBAIDU} from './waibaidu-layout.js';
 import {ROADS} from './city-layout.js';
@@ -17,7 +19,7 @@ export const COURSES=[
 ];
 export const COURSE=COURSES[0].platforms;
 export const courseById=id=>COURSES.find(c=>c.id===id)||COURSES[0];
-export const LANDMARKS={waibaidu:{x:WAIBAIDU.x+5.2,y:26,z:WAIBAIDU.south-1,name:'外白渡桥 · 苏州河口'},village:{x:75,y:26,z:329,name:'奶龙村'},gallery:{x:92,y:26,z:329,name:'涂鸦街'},tower:{x:126,y:26,z:54,name:'东方明珠'},deck:{x:126,y:70,z:49,name:'云端观景台'},race:{...COURSES[0].start,name:'海港跑酷'},spring:{x:95,y:26,z:339,name:'弹跳广场'},dock:{x:260.5,y:23,z:228.5,name:'潜水补给站'},reef:{x:284,y:9,z:287,name:'珊瑚花园'},temple:{x:273.5,y:9,z:301.5,name:'海底神殿'},forest:{x:331,y:35,z:240,name:'翡翠林岛'},desert:{x:65,y:29,z:230,name:'金沙岛'},shanghai:{x:CITY.shanghai.x,y:26,z:CITY.shanghai.z+10,name:'上海中心大厦'},skyGarden:{x:CITY.shanghai.x,y:86,z:CITY.shanghai.z+4,name:'上海中心 · 空中花园'},skyDeck:{x:CITY.shanghai.x,y:136,z:CITY.shanghai.z,name:'上海中心 · 巅峰观景台'},jinmao:{x:CITY.jinmao.x,y:26,z:CITY.jinmao.z+9,name:'金茂大厦'},jinmaoDeck:{x:CITY.jinmao.x,y:91,z:CITY.jinmao.z,name:'金茂 · 观景台'},swfc:{x:CITY.swfc.x+11,y:26,z:CITY.swfc.z,name:'环球金融中心'},swfcDeck:{x:CITY.swfc.x,y:104,z:CITY.swfc.z,name:'环球 · 云端天桥'},magnolia:{x:MAGNOLIA.x+10.5,y:26,z:MAGNOLIA.z+.5,name:'白玉兰广场'},helipad:{x:MAGNOLIA.x+4.5,y:83,z:MAGNOLIA.z+4.5,name:'白玉兰 · 直升机平台'},northBund:{x:145.5,y:26,z:-130.5,name:'北外滩观景点'},bund:{x:promenadeX(84)-10.5,y:26,z:84.5,name:'外滩观景步道'},nanpu:{x:236.5,y:31,z:206.5,name:'南浦风格斜拉桥'},bankStreet:{x:29.5,y:26,z:94.5,name:'外滩万国建筑街'},southPark:{x:195.5,y:26,z:48.5,name:'陆家嘴中心绿地'},survivalCamp:{x:130.5,y:26,z:309.5,name:'生存营地'}};
+export const LANDMARKS={yuyuan:YUYUAN.arrival,waibaidu:{x:WAIBAIDU.x+5.2,y:26,z:WAIBAIDU.south-1,name:'外白渡桥 · 苏州河口'},village:{x:75,y:26,z:329,name:'奶龙村'},gallery:{x:92,y:26,z:329,name:'涂鸦街'},tower:{x:126,y:26,z:54,name:'东方明珠'},deck:{x:126,y:70,z:49,name:'云端观景台'},race:{...COURSES[0].start,name:'海港跑酷'},spring:{x:95,y:26,z:339,name:'弹跳广场'},dock:{x:260.5,y:23,z:228.5,name:'潜水补给站'},reef:{x:284,y:9,z:287,name:'珊瑚花园'},temple:{x:273.5,y:9,z:301.5,name:'海底神殿'},forest:{x:331,y:35,z:240,name:'翡翠林岛'},desert:{x:65,y:29,z:230,name:'金沙岛'},shanghai:{x:CITY.shanghai.x,y:26,z:CITY.shanghai.z+10,name:'上海中心大厦'},skyGarden:{x:CITY.shanghai.x,y:86,z:CITY.shanghai.z+4,name:'上海中心 · 空中花园'},skyDeck:{x:CITY.shanghai.x,y:136,z:CITY.shanghai.z,name:'上海中心 · 巅峰观景台'},jinmao:{x:CITY.jinmao.x,y:26,z:CITY.jinmao.z+9,name:'金茂大厦'},jinmaoDeck:{x:CITY.jinmao.x,y:91,z:CITY.jinmao.z,name:'金茂 · 观景台'},swfc:{x:CITY.swfc.x+11,y:26,z:CITY.swfc.z,name:'环球金融中心'},swfcDeck:{x:CITY.swfc.x,y:104,z:CITY.swfc.z,name:'环球 · 云端天桥'},magnolia:{x:MAGNOLIA.x+10.5,y:26,z:MAGNOLIA.z+.5,name:'白玉兰广场'},helipad:{x:MAGNOLIA.x+4.5,y:83,z:MAGNOLIA.z+4.5,name:'白玉兰 · 直升机平台'},northBund:{x:145.5,y:26,z:-130.5,name:'北外滩观景点'},bund:{x:promenadeX(84)-10.5,y:26,z:84.5,name:'外滩观景步道'},nanpu:{x:236.5,y:31,z:206.5,name:'南浦风格斜拉桥'},bankStreet:{x:29.5,y:26,z:94.5,name:'外滩万国建筑街'},southPark:{x:195.5,y:26,z:48.5,name:'陆家嘴中心绿地'},survivalCamp:{x:130.5,y:26,z:309.5,name:'生存营地'}};
 export const SHANGHAI={...CITY.shanghai,base:26};
 export function towerProfile(y,a){const t=Math.max(0,Math.min(1,(y-26)/110)),radius=9*(1-.43*t),rotation=t*Math.PI*2/3;return radius*(.87+.13*Math.cos((a-rotation)*3));}
 export const CRYSTALS=[{id:'village',name:'出发之光',x:78.5,y:27.5,z:327.5},{id:'gallery',name:'涂鸦之光',x:93,y:27.5,z:329,requires:'paint'},{id:'forest',name:'森林之光',x:63.5,y:30.5,z:339.5},{id:'deck',name:'云端之光',x:128,y:71.5,z:48},{id:'race',name:'跃动之光',x:COURSE.at(-1).x,y:COURSE.at(-1).y+1.5,z:COURSE.at(-1).z}];
@@ -28,7 +30,7 @@ export class VoxelWorld {
  get(x,y,z){return this.valid(x,y,z)?this.data[this.index(x,y,z)]:0}
  set(x,y,z,id){if(!this.valid(x,y,z))return false;this.data[this.index(x,y,z)]=id;return true}
  ground(x,z){for(let y=HEIGHT-1;y>=0;y--)if(this.get(x,y,z))return y+1;return 0}
- protected(x,y,z){return y===0||waibaiduProtected(x,y,z)||suiteProtected(x,y,z)||metroProtected(x,y,z)||bundProtected(x,y,z)||cityProtected(x,y,z)||(x>=113&&x<=139&&z>=29&&z<=56&&y>=25)||(x>=86&&x<=98&&z>=323&&z<=328&&y>=25)||COURSES.some(c=>x>=c.bounds.x1&&x<=c.bounds.x2&&z>=c.bounds.z1&&z<=c.bounds.z2&&y>=c.fallY-2)||(x>=61&&x<=66&&z>=337&&z<=342&&y>=25)||(x>=94&&x<=97&&z>=338&&z<=341&&y>=25)||(x>=257&&x<=263&&z>=214&&z<=230&&y>=21)||(x>=262&&x<=278&&z>=292&&z<=308&&y>=6);}
+ protected(x,y,z){return y===0||y>=25&&yuyuanReserved(x,z)||waibaiduProtected(x,y,z)||suiteProtected(x,y,z)||metroProtected(x,y,z)||bundProtected(x,y,z)||cityProtected(x,y,z)||(x>=113&&x<=139&&z>=29&&z<=56&&y>=25)||(x>=86&&x<=98&&z>=323&&z<=328&&y>=25)||COURSES.some(c=>x>=c.bounds.x1&&x<=c.bounds.x2&&z>=c.bounds.z1&&z<=c.bounds.z2&&y>=c.fallY-2)||(x>=61&&x<=66&&z>=337&&z<=342&&y>=25)||(x>=94&&x<=97&&z>=338&&z<=341&&y>=25)||(x>=257&&x<=263&&z>=214&&z<=230&&y>=21)||(x>=262&&x<=278&&z>=292&&z<=308&&y>=6);}
  surfaceAt(x,z){return this.valid(Math.floor(x),0,Math.floor(z))?this.surface[(Math.floor(z)-WORLD_MIN)*SIZE+Math.floor(x)-WORLD_MIN]||1:1;}
  fill(x1,y1,z1,x2,y2,z2,id){for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)for(let z=z1;z<=z2;z++)this.set(x,y,z,id)}
  disc(cx,y,cz,r,id){for(let x=Math.ceil(cx-r);x<=cx+r;x++)for(let z=Math.ceil(cz-r);z<=cz+r;z++)if(Math.hypot(x-cx,z-cz)<=r)this.set(x,y,z,id)}
@@ -101,7 +103,7 @@ export class VoxelWorld {
   for(let i=0;i<55;i++){const x=115+i*13%60,z=103+i*19%55,y=sea.surfaceAt(x,z);if(y<WATER_LEVEL-7)for(let h=0;h<2+i%4;h++)sea.set(x,y+h,z,5);}
   // A clear arrival pocket inside the coral garden keeps equipment teleport safe.
   this.fill(283,8,286,285,8,288,6);this.fill(283,9,286,285,12,288,0);
-  buildRiverfront(this);buildBund(this);buildBridges(this,roadContains);buildWaibaidu(this,ROADS);buildPeaceDining(this);buildMetro(this);buildPrivateSuites(this);
+  buildRiverfront(this);buildBund(this);buildBridges(this,roadContains);buildWaibaidu(this,ROADS);buildPeaceDining(this);buildYuyuan(this);buildMetro(this);buildLine10(this,buildMetro,METRO_STATIONS);buildPrivateSuites(this);
 
  }
 }

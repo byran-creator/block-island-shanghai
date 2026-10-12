@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../game/three.module.js';
+import {CanvasRenderer} from '../game/canvas-renderer.js';
+const strokes=[],ctx={fillRect(){},beginPath(){},moveTo(x,y){strokes.push([x,y]);},lineTo(){},closePath(){},fill(){},stroke(){}};
+const renderer=new CanvasRenderer({canvas:{getContext:()=>ctx}});renderer.setSize(400,300);
+const scene=new THREE.Scene();scene.background=new THREE.Color('black');scene.fog=new THREE.Fog('black',50,100);
+const camera=new THREE.PerspectiveCamera(60,4/3,.1,100);camera.position.z=10;camera.lookAt(0,0,0);
+const geometry=new THREE.BoxGeometry(1,1,1),material=new THREE.MeshBasicMaterial({color:'white',side:THREE.DoubleSide});
+const ordinary=new THREE.Mesh(geometry,material);scene.add(ordinary);renderer.last=-100;renderer.render(scene,camera);assert.equal(strokes.length,12);
+ordinary.removeFromParent();strokes.length=0;const instances=new THREE.InstancedMesh(geometry,material,2);instances.position.x=1;instances.setMatrixAt(0,new THREE.Matrix4().makeTranslation(-2,0,0));instances.setMatrixAt(1,new THREE.Matrix4().makeTranslation(2,0,0));scene.add(instances);renderer.last=-100;renderer.render(scene,camera);
+assert.equal(strokes.length,24,'Both fountain instances must be drawn in the CPU fallback');assert.equal(strokes.filter(([x])=>x<200).length,12);assert.equal(strokes.filter(([x])=>x>230).length,12,'Instance and parent transforms must place the two meshes on distinct sides');
+console.log('PASS: ordinary mesh rendering retained; every instance uses its own matrix and parent transform in compatibility rendering.');

@@ -44,7 +44,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;root.add(m);signs.push({mesh:m,day,night});return m;
  }
  const fronts=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-'));
- for(const [i,b]of fronts.entries()){
+ for(const [index,b]of fronts.entries()){
+  const i=b.streetIndex??index;
   const side=b.entranceSide,brand=HERITAGE_BRANDS[i%HERITAGE_BRANDS.length],name=brand.name,color=brand.color,front=shopSignAnchor(b,30.3),{angle}=front;
   // Mount signs cleanly at side * 0.32 in front of the wall, clear of all pilasters and cornices
   const signZ=front.z+side*.32;
@@ -187,7 +188,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(i%4===0){const light=new THREE.PointLight(color,7,12,1.5);light.position.set(b.x+.5,29,front.z+side*2);root.add(light);shopLights.push(light);}
  }
  function person(i,parent=root,role='visitor'){const r=new THREE.Group(),shirt=['#6cd9de','#d66c8e','#eee5d4','#8f9fc9','#dfad5b'][i%5];cube(r,shirt,0,1,0,.45,.64,.28);cube(r,'#dcb08d',0,1.52,0,.34,.35,.33);cube(r,'#40352e',0,1.72,0,.36,.08,.35);const arms=[],legs=[];for(const side of [-1,1]){const arm=cube(r,shirt,side*.29,1.02,0,.15,.55,.18);arms.push(arm);legs.push(cube(r,'#43516b',side*.13,.36,0,.17,.7,.2));}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms,legs},i,role);parent.add(r);return {root:r,arms,legs};}
- for(let i=0;i<fronts.length;i+=3){const b=fronts[i],side=b.entranceSide,indoor=i%12!==0,x=b.x+2.4,z=indoor?b.z:side>0?63.1:69.9;
+ for(const [index,b]of fronts.entries()){const i=b.streetIndex??index;if(i%3!==0)continue;const side=b.entranceSide,indoor=i%12!==0,x=b.x+2.4,z=indoor?b.z:side>0?63.1:69.9;
   if(overlaps(world,x,26,z))continue;
   const brand=HERITAGE_BRANDS[i%HERITAGE_BRANDS.length];
   const bp=BRAND_PRODUCTS[brand.name]??(i%2===0?{product:'pastry',name:brand.name+'名点',food:2,craft:'海派老字号'}:{product:'gift',name:brand.name+'礼盒',food:0,craft:'海派老字号'});
