@@ -36,13 +36,13 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function board(parent,lines,x,y,z,w,h,color='#c4ef67',bg='#18212a',options=null){
   if(options)options={...signOptions,...options};
   const c=document.createElement('canvas');const size=options?metroSignCanvasSize(w,h):{width:768,height:256};c.width=size.width;c.height=size.height;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
-  const different=options?.layout==='route'||['←','→'].includes(options?.arrow)||options?.sections?.some(s=>['←','→'].includes(s.arrow));
-  const backOptions=options?metroBackOptions(options):null,bc=different?document.createElement('canvas'):c;bc.width=c.width;bc.height=c.height;
+  const different=!!options?.backLines||options?.layout==='route'||['←','→'].includes(options?.arrow)||options?.sections?.some(s=>['←','→'].includes(s.arrow));
+  const backOptions=options?{...metroBackOptions(options),...options.backOptions}:null,bc=different?document.createElement('canvas'):c;bc.width=c.width;bc.height=c.height;
   const bctx=different?bc.getContext('2d'):ctx,btex=different?new THREE.CanvasTexture(bc):tex;btex.colorSpace=THREE.SRGBColorSpace;btex.anisotropy=4;
   const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),front=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:tex})),back=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:btex}));
   front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.04:.012;back.position.z=options?.transit?-.04:-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);m.userData.signFaces={front:options,back:backOptions};parent.add(m);
   const draw=(context,text,settings)=>{if(settings){paintMetroSign(context,text,{...settings,width:c.width,height:c.height,color,bg});return;}context.fillStyle=bg;context.fillRect(0,0,768,256);context.fillStyle=color;context.textAlign='center';text.forEach((line,i)=>{context.font=(i===0?'bold ':'')+(text.length>2?48:64)+'px sans-serif';context.fillText(line,384,55+i*(text.length>2?68:110),746);});};
-  const paint=text=>{draw(ctx,text,options);tex.needsUpdate=true;if(different){draw(bctx,text,backOptions);btex.needsUpdate=true;}};paint(lines);return {mesh:m,paint,texture:tex,textures:[...new Set([tex,btex])]};
+  const paint=text=>{m.userData.signText={front:[...text],back:[...(options?.backLines??text)]};draw(ctx,text,options);tex.needsUpdate=true;if(different){draw(bctx,options?.backLines??text,backOptions);btex.needsUpdate=true;}};paint(lines);return {mesh:m,paint,texture:tex,textures:[...new Set([tex,btex])]};
  }
  function person(parent,index,x,y,z,uniform){const r=new THREE.Group();r.position.set(x,y,z);parent.add(r);const shirt=uniform??['#a98ad3','#dde8eb','#dd9d72','#799cc4','#789f91'][index%5];cube(r,shirt,0,1.04,0,.42,.65,.29);cube(r,'#dcb08d',0,1.55,0,.34,.35,.33);cube(r,'#302b30',0,1.76,0,.35,.08,.34);for(const side of [-1,1]){cube(r,shirt,side*.29,1.04,0,.14,.56,.19);cube(r,'#344053',side*.12,.39,0,.17,.74,.22);}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms:[r.children[3],r.children[5]],legs:[r.children[4],r.children[6]]},index,uniform?'staff':'visitor');return r;}
  const sounds=createMetroSounds({getAudio,allowed:()=>audioAllowed&&getSound()&&!document.hidden});
@@ -59,7 +59,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   for(const side of [-1,1]){cube(root,'#d8dede',s.x,6.7,s.z+side*11.75,70,7.1,.06);cube(root,'#315144',s.x,9.8,s.z+side*11.7,70,.45,.07);const gaps=(config?.wallOpenings??[]).filter(o=>o.station===s.id&&o.side===side).sort((a,b)=>a.x-b.x);let edge=s.x-35;for(const o of gaps){const end=o.x-o.width/2;if(end>edge)cube(root,'#d8dede',(edge+end)/2,18.8,s.z+side*15.9,end-edge,5.5,.06);edge=o.x+o.width/2;}if(edge<s.x+35)cube(root,'#d8dede',(edge+s.x+35)/2,18.8,s.z+side*15.9,s.x+35-edge,5.5,.06);}
   stationSign([s.name,s.english],s.x+7,19.2,s.z-14.92,3.8,2.45,{line2:true,layout:'station',wall:true});
   stationSign([],s.x-4,20.25,s.z+.25,10.8,.8,{sections:[{zh:'站台',en:'Platforms',line2:true,arrow:'↓',weight:1.1},{zh:'出站检票',en:'Exit via gates',arrow:'←',weight:1.8}]});
-  stationSign([],s.x+4,20.25,s.z-7,9.5,.75,{sections:[{zh:'安检 / 进站',en:'Security / Entry',arrow:'←',weight:1.8},{exit:s.exits[0].number,arrow:'←'},{exit:s.exits[1].number,arrow:'→'}]});
+  if(s.exits.length)stationSign([],s.x+4,20.25,s.z-7,9.5,.75,{sections:[{zh:'安检 / 进站',en:'Security / Entry',arrow:'←',weight:1.8},...s.exits.map((e,i)=>({exit:e.number,arrow:i?'→':'←'}))]});
   // Security lane in the unpaid hall. The backpack visibly passes through the X-ray belt.
   cube(root,'#555f68',s.x-22,16.45,s.z-8,5,.9,1.8);cube(root,'#252b31',s.x-22,16.98,s.z-8,5,.12,1.5);cube(root,'#9aa5a9',s.x-22,17.9,s.z-8,2.1,1.8,2);cube(root,'#111a23',s.x-20.93,17.55,s.z-8,.03,1,1.4);
   state.bag=cube(root,'#cfb064',s.x-24,17.28,s.z-8,.6,.6,.5);state.bag.visible=false;
@@ -86,7 +86,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
    const height=4.1,width=height*METRO_POSTER_ASPECT;if((config?.wallOpenings??[]).some(o=>o.station===s.id&&o.side===1&&Math.abs(o.x-s.x-x)<(o.width+width)/2))continue;cube(root,'#edf2ed',s.x+x,18.65,s.z+15.78,width+.18,height+.18,.08);
    const poster=new THREE.Mesh(new THREE.PlaneGeometry(width,height),posterMaterial);poster.rotation.y=Math.PI;poster.position.set(s.x+x,18.65,s.z+15.72);poster.userData.panel=true;root.add(poster);
   }
-  decorateMetroStation(root,s,{cube,slab,board});
+  decorateMetroStation(root,s,{cube,slab,board,direction:metroPlatformDirection});
   // Different phases and destinations prevent passengers marching in identical rows.
   for(let i=0;i<34;i++){const y=i<14?16:6,z=i<14?s.z-11+(i%4)*2.4:s.z-3.4+(i%5)*1.3,x=s.x-31+(i*7.73)%62;
    const gx=s.x+METRO_HALL.gateX;let self=null;

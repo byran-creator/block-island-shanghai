@@ -13,9 +13,8 @@ try{
  let p={x:0,y:26,z:66},progress=0;const state=new SurvivalState(),events=[];state.setMode('survival');state.hunger=20;state.food=0;
  const scene=new THREE.Scene(),options={scene,world,getPos:()=>p,getState:()=>state,teleport:q=>p={...q},notify(){},pause(){},resume(){},onProgress:()=>progress++,onEvent:e=>events.push(e)};
  const activity=createCityActivity(options),shops=activity.vendors;
- // One generated southern shop makes room for the Line 10 street entrance.
- // Surviving brand/vendor indices stay stable instead of shifting after removal.
- assert.equal(shops.filter(v=>v.indoor).length,5);assert.equal(shops.filter(v=>!v.indoor).length,2);assert(shops.every(v=>v.building.streetIndex%3===0));
+ // Original Nanjing street frontage and all six indoor vendors are restored.
+ assert.equal(shops.filter(v=>v.indoor).length,6);assert.equal(shops.filter(v=>!v.indoor).length,2);assert(shops.every(v=>v.building.streetIndex%3===0));
  for(const v of shops){assert.equal(v.stock.length,6);assert(v.stock.every(s=>s.children.length>0&&s.parent&&s.userData.product===v.product));if(!v.indoor)continue;const b=v.building;for(let dz=b.rz+.7;dz>=1.3;dz-=.15){p={x:b.x+.5,y:26,z:b.z+b.entranceSide*dz};assert(!overlaps(world,p.x,p.y,p.z),'Shop entrance aisle: '+b.id);assert(!activity.collides(p.x,p.y,p.z));}for(let x=b.x+.5;x<=v.x;x+=.1){p={x,y:26,z:v.z+b.entranceSide*1.3};assert(!overlaps(world,p.x,p.y,p.z));assert(!activity.collides(p.x,p.y,p.z));}assert(activity.use(),'Indoor counter reachable');activity.close();}
  const v=shops.find(v=>v.food);p={x:v.x,y:26,z:v.z+v.building.entranceSide*1.3};assert(activity.use());let button=ids.get('city-actions').children[0];button.onclick();assert.equal(v.remaining,5);assert.equal(v.stock.filter(s=>s.visible).length,5);assert.equal(state.food,2);assert.equal(activity.goods[v.product],1);button.onclick();assert.equal(v.remaining,5);assert.equal(events.length,1);activity.close();
  const snapshot=activity.serialize();activity.restore(snapshot);assert.deepEqual(activity.serialize(),snapshot);assert.equal(v.stock.filter(s=>s.visible).length,5);

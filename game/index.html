@@ -163,13 +163,30 @@
 <dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title">
  <header>
   <div>
-   <small>VERSION UPDATE · V1.8</small>
-   <h2 id="update-title">✨ 版本更新通知 · 沪上云端漫步</h2>
+   <small>VERSION UPDATE · V52 / 2026.10.13</small>
+   <h2 id="update-title">✨ 版本更新通知 · 江南园林与老城商街</h2>
   </div>
   <button id="update-close" aria-label="关闭更新通知">关闭并返回</button>
  </header>
  <div class="update-body">
-  <p class="update-intro">欢迎来到《方块小岛 · 上海天际线》全新版本！本次更新重点对<b>南京路步行街夜景风貌</b>、<b>街区交通治理</b>、<b>陆家嘴天际线与动态落日晚霞</b>进行了全面升级重塑：</p>
+
+  <p class="update-intro">2026年10月13日 · 本次带来<b>豫园江南园林与老城商街</b>，完善<b>2号线 / 10号线换乘</b>。同学打开原网址即可游玩；已有存档、背包和建造记录继续保留。</p>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">新景观 01</span><h3>🏯 曲径通幽 · 清池锦鲤与月洞框景</h3></div><div class="update-figure"><img src="./assets/updates/yuyuan_garden52.jpg" alt="豫园内园的曲径、假山、树木和月洞门游戏实景" class="update-img" loading="lazy"></div><ul class="update-list">
+   <li><strong>园林扩建</strong>：内园游览面积约扩大一倍，增设东翼池畔小亭、分层湖石假山、错落树竹、曲折石径、粉墙灰瓦与圆形透窗。</li>
+   <li><strong>清绿透明池水</strong>：20条锦鲤在三处池面下巡游；水上长廊与九曲桥可步行，夜间窗灯、曲檐金线和灯笼亮起。</li>
+   <li><strong>海上名园</strong>：西门前设置题字景石。内园月洞门旁按 <kbd>V</kbd> 领取免费游戏体验票，再检票走过闸机；离园开闸，再入园需重新领票。湖心亭、九曲桥和商街自由游览。</li>
+  </ul></article>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">新街区 02</span><h3>🏮 老城商街 · 逛店选购与灯火夜色</h3></div><div class="update-figure"><img src="./assets/updates/yuyuan_street52.jpg" alt="密集的豫园老城商铺与游客游戏实景" class="update-img" loading="lazy"></div><ul class="update-list">
+   <li><strong>9间新增店铺</strong>：木格橱窗、室内货架、暖灯与柜台陈列糕点、糖豆、折扇、茶具和花灯，每家独立6份商品；购买后展示少一份，库存与收藏随存档保存。</li>
+   <li><strong>热闹在街外，安静在园内</strong>：增加逛商街的游客与店员，另有游客从南京路沿街巷往返；内园只增加少量散步游人。</li>
+   <li><strong>操作与任务</strong>：店内柜台 <kbd>V</kbd> 选购，<kbd>Z</kbd> 食用，<kbd>O</kbd> 看收藏；<kbd>I</kbd> 追踪乘车、品茶与灯谜任务。新手手册已补充游园和检票说明。</li>
+  </ul></article>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">出行修复 03</span><h3>🚇 南京东路换乘 · 原街面与站口恢复</h3></div><ul class="update-list">
+   <li><strong>2 → 10号线</strong>：南京东路B1付费区沿紫色导向进入换乘通道，不出闸、不重复安检；前往豫园乘虹桥火车站 / 航中路方向，返回乘基隆路方向。</li>
+   <li><strong>通道与双面导向</strong>：修复死路和误写陆家嘴的换乘牌，正反面分别指向10号线与2号线；地下暂停、对话保持站内环境。</li>
+   <li><strong>街区恢复</strong>：南京路两侧建筑、原两个地铁口和室内商店恢复。豫园只有园门附近两处地面站口；取消为游客拆楼的直穿通道，石碑旁滨江环线公交增加停靠点。</li>
+  </ul></article>
+  <details class="update-history" open><summary>📚 上一版 · 沪上云端漫步（V1.8）</summary>  <p class="update-intro">欢迎来到《方块小岛 · 上海天际线》全新版本！本次更新重点对<b>南京路步行街夜景风貌</b>、<b>街区交通治理</b>、<b>陆家嘴天际线与动态落日晚霞</b>进行了全面升级重塑：</p>
   
   <article class="update-section">
    <div class="update-badge-row">
@@ -212,6 +229,7 @@
    </ul>
   </article>
 
+</details>
   <div class="update-footer">
    <div class="update-hint">💡 提示：此更新通知可在开始菜单点击「📋 查看更新通知」随时再次回顾。</div>
    <button id="update-start-btn" class="update-cta-btn">知道了，立即进入游戏 <span>→</span></button>
@@ -224,7 +242,7 @@
  <details><summary>生活岛：资源与家园</summary><p>M 地图可前往奶龙村生活岛、生存营地和潜水补给码头。营地周围有平整草地；生活岛树木可采集，挖开草地和泥土可找石头。靠近浆果 G 采摘（60秒再生），小羊 G 收羊毛；不要拆村里的房屋来获取材料。</p><p>C 制作木镐/石镐可加快采集，有耐久；菜圃60秒成熟后 G 收获。床、箱子、篝火都是玩家自己制作和摆放；公共地标在生存模式受保护。家具 Q 回收后进随身家具，C 重新取出，不重复花材料。</p></details>
  <details><summary>背包、整理和制作</summary><p>O 或画面上的“背包”打开分类库存：方块、食材、装备、家具。同种材料自动堆叠为数量，无需逐个拖动整理。点击方块可选中；生存模式零库存不能选择使用。C 打开配方，Z 食用熟食，L 穿脱潜水装备，P 展开滑翔伞。</p><p>手持家具 E 放置，Q 回收；箱子 G 打开，存入/取回方块。食材和装备留在随身背包。创造模式可无限使用方块，但仍保留真实收集数量，切回生存时使用这些库存。</p></details>
  <details><summary>城市游览与地铁</summary><p>I 可选任务追踪，M 看黄色目标；也可以不追踪自由探索。V 用于商店、地铁、载具和建筑服务，G 用于生活岛采食、家具和奶龙互动。</p><p>地铁：从入口扶梯下到 B1 → V 放背包安检，等检查结束 → 到旁边闸机 V 刷票并走过 → 下扶梯到站台 → 看清方向，门开后走入列车（V 为辅助上车）。车内 WASD 走动，靠近空座位 F 坐下/起身。到站下车，返回 B1 刷出站闸机再上地面。</p><p>去豫园：2号线在南京东路下车，上扶梯到B1付费区，跟紫色10号线导向走换乘通道，无需出闸和重复安检。再下扶梯乘「虹桥火车站 / 航中路方向」，下一站豫园；返回乘「基隆路方向」到南京东路。站名旁的小字标出下一站；灰色延伸站暂未开放。I 可追踪这趟旅程。</p></details>
- <details><summary>豫园 · 喝茶、逛店和赏灯</summary><p>从南京路石碑附近沿向南的「豫园步行支路」走，或坐10号线到豫园站，出闸上地面后沿导向到北门/西门。M 也可直接传送到豫园，传送不计乘车任务。</p><p>走九曲桥进湖心亭，靠近茶席 V 品茶。南侧南翔小笼和江南手作、北侧湖畔茶坊都是可进入的店铺；靠近店内柜台 V 购买，买一份就少一份展示商品，20秒后可再买。食物 Z 食用，纪念品与茶具 O 背包查看，库存随存档保存。</p><p>灯谜向导处 V 答三道题，I 领取任务奖励。夜晚檐线、窗灯与红灯笼自动亮起；池边有临水长廊、柳树竹木、花岛和喷泉。点右上角时钟可调整时间来看夜景。</p></details>
+ <details><summary>豫园 · 喝茶、逛店和赏灯</summary><p>从南京路石碑附近沿现有道路与巷道向南走（M 可看步行路线），石碑旁有停站的滨江环线公交，或坐10号线到豫园站，出闸上地面后从园门旁的两处入口进入西北门/西门。M 也可直接传送到豫园，传送不计乘车任务。</p><p>走九曲桥进湖心亭，靠近茶席 V 品茶。南侧南翔小笼和江南手作、北侧湖畔茶坊都是可进入的店铺；靠近店内柜台 V 购买，买一份就少一份展示商品，20秒后可再买。食物 Z 食用，纪念品与茶具 O 背包查看，库存随存档保存。</p><p>内园由粉墙灰瓦围合，月洞门旁 V 领取免费游戏体验票，再 V 检票，走过闸机入园；离园也要开闸，再次入园需重新领票。九曲桥、湖心亭和商街可自由逛。池水清绿，锦鲤在水下巡游；沿曲径看假山、错落花木和圆窗框景，西门前有“海上名园”题石。灯谜向导处 V 答三道题，I 领取任务奖励。夜晚檐线、窗灯与红灯笼自动亮起；池中有实心桥面的水廊、柳竹花草、湖石、粉墙花窗、水榭、花岛和喷泉。点右上角时钟可调整时间来看夜景。</p></details>
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>

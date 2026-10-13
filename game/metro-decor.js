@@ -1,7 +1,8 @@
 import * as THREE from './three.module.js';
+import {metroPlatformDirection} from './metro-directions.js';
 // Original geometry/textures observed from Baycrest's 2017 Lujiazui platform photo.
 export function terrazzoTexture(){const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#9b9c97';ctx.fillRect(0,0,128,128);let seed=319;for(let i=0;i<1900;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const x=seed%128,y=(seed>>>8)%128;ctx.fillStyle=['#bebdb5','#7f8583','#a6aba5','#d1cec2'][i%4];ctx.fillRect(x,y,1,1);}ctx.fillStyle='#727974';ctx.fillRect(0,0,128,1);ctx.fillRect(0,0,1,128);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
-export function decorateMetroStation(root,s,{cube,slab,board}){
+export function decorateMetroStation(root,s,{cube,slab,board,direction=metroPlatformDirection}){
  for(const y of [6,16]){
   const half=y===6?5:14,top=y===6?4.8:5.5;
   for(const z of [-1.85,1.85])slab(root,'#534b41',s.x,y+.025,s.z+z,69,.28);
@@ -10,7 +11,7 @@ export function decorateMetroStation(root,s,{cube,slab,board}){
  }
  for(const side of [-1,1]){
   for(let x=-34;x<35;x+=1.5)for(const z of [-.14,0,.14])cube(root,'#b1ca7c',s.x+x,6.06,s.z+side*4.4+z,1.4,.025,.035);
-  const guidance=board(root,[side<0?'→ 陆家嘴':'← 南京东路','出口 Exit ↑ · 先下后上'],s.x+(side<0?9:-9),10.1,s.z+side*10.9,6,.55,'#f4f7f4','#171a1b',{line2:false,sections:[{exit:s.exits[0].number,arrow:'←'},{exit:s.exits[1].number,arrow:'→'}]});
+  const next=direction(s,side<0?1:-1);const guidance=board(root,[next.zh,next.en],s.x+(side<0?9:-9),10.1,s.z+side*10.9,6,.55,'#f4f7f4','#171a1b',{line2:true,arrow:side<0?'→':'←'});
   guidance.mesh.userData.stationSign=true;
  }
 }

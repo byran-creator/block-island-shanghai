@@ -7,6 +7,8 @@ import {createQuestJournal} from './quest-journal.js';
 import {mountVoiceSettings} from './voice-settings.js';
 import * as THREE from './three.module.js';
 import {createYuyuan} from './yuyuan.js';
+import {createRiverWaterGeometry} from './yuyuan-water.js';
+import {GARDEN_PONDS,YUYUAN_SHIFT} from './yuyuan-layout.js';
 import {createMetroNetwork as createMetro} from './metro-network.js';
 import {boatSurfaces,boatSupport,boatSolid,boatWorld} from './boat-support.js';
 import {createPrivateSuites} from './private-suites.js';
@@ -85,7 +87,7 @@ function ensureChunks(point,force=false,immediate=false){const cx=Math.floor(poi
 await new Promise(requestAnimationFrame);
 ensureChunks(LANDMARKS.bund,false,true);
 function updateBlock(x,y,z,id){world.set(x,y,z,id);savedEdits.set(`${x},${y},${z}`,id);const affected=new Set([[x,z],[x-1,z],[x+1,z],[x,z-1],[x,z+1]].map(([a,b])=>Math.floor(a/CHUNK)+','+Math.floor(b/CHUNK)));for(const key of affected){chunkWork.invalidate(key);if(chunks.has(key))rebuild(...key.split(',').map(Number));}}
-const water=new THREE.Mesh(new THREE.PlaneGeometry(SIZE*1.4,SIZE*1.4,16,16),new THREE.MeshPhongMaterial({color:'#3daabe',transparent:true,opacity:.67,shininess:90,depthWrite:false,side:THREE.DoubleSide}));water.rotation.x=-Math.PI/2;water.position.set((WORLD_MIN+WORLD_MAX)/2,WATER_LEVEL,(WORLD_MIN+WORLD_MAX)/2);scene.add(water);scene.userData.water=water;
+const water=new THREE.Mesh(createRiverWaterGeometry({size:SIZE*1.4,centerX:(WORLD_MIN+WORLD_MAX)/2,centerZ:(WORLD_MIN+WORLD_MAX)/2,ponds:GARDEN_PONDS,shift:YUYUAN_SHIFT}),new THREE.MeshPhongMaterial({color:'#3daabe',transparent:true,opacity:.67,shininess:90,depthWrite:false,side:THREE.DoubleSide}));water.rotation.x=-Math.PI/2;water.position.set((WORLD_MIN+WORLD_MAX)/2,WATER_LEVEL,(WORLD_MIN+WORLD_MAX)/2);scene.add(water);scene.userData.water=water;
 const {clouds,cloudMat,bellyMat}=createClouds(camera);clouds.visible=!renderer.isSoftware;scene.add(clouds);
 const sunBlock=new THREE.Mesh(new THREE.SphereGeometry(7,32,20),new THREE.MeshBasicMaterial({color:'#fff8ce'}));sunBlock.position.set(-12,43,-20);scene.add(sunBlock);
 const outline=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.008,1.008,1.008)),new THREE.LineBasicMaterial({color:'#172e33',transparent:true,opacity:.8}));scene.add(outline);outline.visible=false;
@@ -100,7 +102,7 @@ const cityMedia=createCityMedia({scene});
 const companions=createCompanions(scene,world,notify,()=>{talkDone=true;updateTasks();beep(1)});
 function updateTasks(){if(talkDone)quests?.record({type:'hello'});quests?.setBuildCount(placed);}
 function interact(follow=false){runPlayerInteraction({life,companions,pos,camera,follow,notify,onFollow:()=>{followDone=true;updateTasks();}})}
-function updateSky(dt){dayClock=advanceDay(dayClock,dt,timeOptions);const label=clockLabel(dayClock);if(label!==lastClockLabel){$('clock-quick').textContent=label+' · 调整时间';lastClockLabel=label;}const phase=dayClock/240,alt=Math.sin(phase*Math.PI*2),day=Math.max(0,alt);sun.intensity=.15+day*1.7;ambient.intensity=.48+day*1.2;sun.position.set(40+Math.cos(phase*Math.PI*2)*50,10+alt*65,30);sunBlock.position.copy(sun.position);scene.userData.softwareLight=.38+day*.62;const sky=new THREE.Color('#14233f').lerp(new THREE.Color('#9fd4e8'),Math.max(.08,day));if(alt>0&&alt<.3)sky.lerp(new THREE.Color('#eaae8c'),.3);const underground=metroInterior(pos)&&active;const underwater=!underground&&camera.position.y<WATER_LEVEL&&active;scene.fog.near=underwater?0:48;scene.fog.far=underwater?(life?.state.equipped?55:20):440;scene.fog.color.copy(underwater?new THREE.Color('#3296a7'):sky);if(underground){scene.fog.near=8;scene.fog.far=105;scene.fog.color.set('#202c36');}water.visible=!underground;scene.background.copy(scene.fog.color);const segment=Math.floor(dayClock/60);if(segment!==lastSky){$('daytime').textContent=['晴朗 · 上午','暖阳 · 午后','宁静 · 夜晚','夜色 · 深夜'][segment];lastSky=segment;}}
+function updateSky(dt){dayClock=advanceDay(dayClock,dt,timeOptions);const label=clockLabel(dayClock);if(label!==lastClockLabel){$('clock-quick').textContent=label+' · 调整时间';lastClockLabel=label;}const phase=dayClock/240,alt=Math.sin(phase*Math.PI*2),day=Math.max(0,alt);sun.intensity=.15+day*1.7;ambient.intensity=.48+day*1.2;sun.position.set(40+Math.cos(phase*Math.PI*2)*50,10+alt*65,30);sunBlock.position.copy(sun.position);scene.userData.softwareLight=.38+day*.62;const sky=new THREE.Color('#14233f').lerp(new THREE.Color('#9fd4e8'),Math.max(.08,day));if(alt>0&&alt<.3)sky.lerp(new THREE.Color('#eaae8c'),.3);const underground=metroInterior(pos)&&started;const underwater=!underground&&camera.position.y<WATER_LEVEL&&active;scene.fog.near=underwater?0:48;scene.fog.far=underwater?(life?.state.equipped?55:20):440;scene.fog.color.copy(underwater?new THREE.Color('#3296a7'):sky);if(underground){scene.fog.near=8;scene.fog.far=105;scene.fog.color.set('#202c36');}water.visible=!underground;scene.background.copy(scene.fog.color);const segment=Math.floor(dayClock/60);if(segment!==lastSky){$('daytime').textContent=['晴朗 · 上午','暖阳 · 午后','宁静 · 夜晚','夜色 · 深夜'][segment];lastSky=segment;}}
 
 function notify(msg){$('toast').textContent=msg;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),2400)}
 function getAudio(){audioCtx??=new (window.AudioContext||window.webkitAudioContext)();return audioCtx;}
@@ -354,7 +356,7 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-update-v18-seen';
+const UPDATE_NOTICE_KEY='block-island-update-v52-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
