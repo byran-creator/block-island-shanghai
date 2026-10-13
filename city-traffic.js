@@ -116,6 +116,11 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  // Follow the street block around instead of turning across both live traffic lanes.
  const rear=CAR_ROUTES.find(r=>r.id==='bund').samples;
  const outer=CAR_ROUTES.find(r=>r.id==='lujiazui').samples;
+ // Add a real stop on the existing carriageway beside the Nanjing stele.
+ // This remains the game's riverside loop, not a fictitious real-world route.
+ const steleStop=rear.reduce((best,s)=>{const p=routePose(rear,s.d,4.8),distance=Math.hypot(p.x+35,p.z-73);return !best||distance<best.distance?{d:s.d,p,distance}:best;},null);
+ const bundBuses=buses.filter(b=>b.route===rear);for(const [i,b]of bundBuses.entries()){b.stopDs=[80,steleStop.d];if(i===1){b.t=steleStop.d;b.stopD=steleStop.d;}}
+ if(clearPoint(steleStop.p.x,steleStop.p.z)){const r=new THREE.Group();r.position.set(steleStop.p.x+.5,26,steleStop.p.z+.5);root.add(r);cube(r,'#73868b',0,1.4,0,.12,2.8,.12);board(r,'南京路石碑 · 滨江环线',0,3,0,3.4,.7,steleStop.p.yaw);stops.push({root:r,route:rear,d:steleStop.d,name:'南京路石碑'});}
  // Painted cycle lanes sit beside the motor lanes; markings add no physical barriers.
  for(const route of [rear,outer]){
   const count=Math.ceil(route.lengthMeters/2),paint=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1,1),mat('#426b62'),count),edge=new THREE.InstancedMesh(new THREE.PlaneGeometry(.07,.8),mat('#c4dcc3'),count),stamp=new THREE.Object3D();
@@ -222,7 +227,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
     }else if(c.waitTime<.1&&Math.abs(c.lane-c.baseLane)>.02)shiftLane(c,c.baseLane,step,obstacles);
    }
    const ahead=pose(c,c.t+c.dir*3),bend=Math.abs(Math.atan2(Math.sin(ahead.yaw-c.root.rotation.y),Math.cos(ahead.yaw-c.root.rotation.y))),target=c.speed*(.91+.09*Math.sin(clock*.19+c.phase))*(bend>.35?.65:1);c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,target,2,step);c.following=null;let travel=trafficTravel(c,step,clock,agents,pose,o=>{c.following=o;},crosswalkOccupied);if(travel<1e-6){travel=0;c.waitReason='traffic';}
-   if(c.kind==='bus'){c.stopCooldown=Math.max(0,c.stopCooldown-step);if(c.dwell>0){c.dwell=Math.max(0,c.dwell-step);travel=0;}else if(!c.stopCooldown){const gap=forwardDistance(c.t,c.stopD,c.route.lengthMeters,c.dir);if(gap<=travel+.03){travel=gap;c.dwell=6+(c.phase%1)*1.5;c.stopCooldown=14;}}}
+   if(c.kind==='bus'){c.stopCooldown=Math.max(0,c.stopCooldown-step);if(c.dwell>0){c.dwell=Math.max(0,c.dwell-step);travel=0;}else if(!c.stopCooldown){if(c.stopDs)c.stopD=c.stopDs.reduce((a,b)=>forwardDistance(c.t,b,c.route.lengthMeters,c.dir)<forwardDistance(c.t,a,c.route.lengthMeters,c.dir)?b:a);const gap=forwardDistance(c.t,c.stopD,c.route.lengthMeters,c.dir);if(gap<=travel+.03){travel=gap;c.dwell=6+(c.phase%1)*1.5;c.stopCooldown=14;}}}
    if(c.kind==='delivery'){
     c.deliveryCooldown=Math.max(0,c.deliveryCooldown-step);
     if(c.deliveryDwell>0){c.deliveryDwell=Math.max(0,c.deliveryDwell-step);travel=0;c.waitReason='delivery';}
