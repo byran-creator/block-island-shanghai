@@ -119,22 +119,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
 
  // 2. Wide Open Commercial Pedestrian Sky (开阔视野，无遮挡步行天街)
 
- // 3. Bazaar Outdoor Ancient Stage (商圈露天古戏台 & 市集广场)
- const stX=-86,stZ=156;
- // Raised stage platform
- box(root,'#6c4935',stX,27.1,stZ,7.2,2.2,6.2);
- fixtures.push({x:stX,z:stZ,rx:3.6,rz:3.1,y:26,h:2.2});
- // Stage four vermilion pillars
- for(const dx of [-3,3])for(const dz of [-2.4,2.4]){
-  box(root,'#8e2f27',stX+dx,29.6,stZ+dz,.28,3.2,.28);
-  fixtures.push({x:stX+dx,z:stZ+dz,rx:.18,rz:.18,y:27,h:3.2});
- }
- // Stage backdrop screen
- box(root,'#42291d',stX,29.3,stZ+2.3,5.6,2.6,.15);
- board('藻井欢歌 · 戏曲华章',stX,30.5,stZ-2.45,4.5,.6,0);
- // Double flying eaves roof
- box(root,'#39453e',stX,31.4,stZ,8.4,.35,7.4);
- box(root,'#53635a',stX,31.62,stZ,8,.15,.4);
+ // 3. Bazaar Open Plaza (露天市集开阔集散广场，地铁口完全畅通无阻)
 
  // 4. Market Plaza Stalls (露天民俗市集木质榫卯摊位)
  for(let i=0;i<4;i++){
