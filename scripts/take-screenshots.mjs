@@ -155,62 +155,62 @@ await new Promise(r => setTimeout(r, 1500));
 
 const shots = [
   {
-    name: 'shot1_east_street.png',
-    title: '东侧商业步行街（全景精修商铺、金字牌匾、落地橱窗、彩灯天幕、如织人流）',
+    name: 'shot1_compact_east_street.png',
+    title: '紧凑繁华东市商业街（街道缩窄至9米更显热闹、两侧开敞步入式商铺、南京路同款3D悬挑招牌与幌子、彩灯人流）',
     setup: `
       window.__game.setFlight(true);
-      window.__game.setPos(18, 26, 218);
-      window.__game.lookAt(18, 27, 280);
+      window.__game.setPos(16.5, 26.2, 225);
+      window.__game.lookAt(16.5, 27.5, 285);
       window.__game.render();
     `
   },
   {
-    name: 'shot2_huxinting_pavilion.png',
-    title: '九曲桥与湖心水榭小亭（轻巧通透仿古亭、美人靠长椅、无封闭房间、游人赏鱼）',
+    name: 'shot2_compact_west_street.png',
+    title: '西市老街紧凑繁荣街景（街道缩窄至11米、两边老字号商铺、飘动商幌、随风摇曳灯火与穿梭游客）',
+    setup: `
+      window.__game.setFlight(true);
+      window.__game.setPos(-96.5, 26.2, 225);
+      window.__game.lookAt(-96.5, 27.5, 285);
+      window.__game.render();
+    `
+  },
+  {
+    name: 'shot3_walk_in_shop_interior.png',
+    title: '老字号商铺豪华内部（玩家可走入店内：通顶金边多宝格、陈列奇珍名品、祥云红毯木地板、掌柜迎客服务台）',
+    setup: `
+      window.__game.setFlight(true);
+      window.__game.setPos(9.0, 26.2, 264);
+      window.__game.lookAt(4.45, 27.2, 264);
+      window.__game.render();
+    `
+  },
+  {
+    name: 'shot4_shopfront_3d_signage_details.png',
+    title: '立面对齐南京路高规格门头（3D立体雕花横匾带大红绸花、双面悬挑式竖向招牌、燕尾织锦商幌、开敞门洞）',
+    setup: `
+      window.__game.setFlight(true);
+      window.__game.setPos(15.5, 26.5, 227);
+      window.__game.lookAt(12, 28.2, 232);
+      window.__game.render();
+    `
+  },
+  {
+    name: 'shot5_walk_in_west_shop.png',
+    title: '西街名酿老坊内部步入视角（老酒坛封坛美酒、多宝格陈列、红木曲尺柜台与算盘、青砖门槛）',
+    setup: `
+      window.__game.setFlight(true);
+      window.__game.setPos(-104, 26.2, 296);
+      window.__game.lookAt(-109.5, 27.0, 296);
+      window.__game.render();
+    `
+  },
+  {
+    name: 'shot6_huxinting_and_garden.png',
+    title: '九曲桥湖心亭水榭与核心园林（单层通透开放休息亭、全域青翠草毯环抱、湖面锦鲤倒影）',
     setup: `
       window.__game.setFlight(true);
       window.__game.setPos(-56, 26.2, 234);
       window.__game.lookAt(-46, 27.2, 238);
-      window.__game.render();
-    `
-  },
-  {
-    name: 'shot3_metro_exit1.png',
-    title: '10号线豫园站1号口（畅通集散广场、房屋彻底移开、标牌清晰直通商街）',
-    setup: `
-      window.__game.setFlight(true);
-      window.__game.setPos(-86, 26, 210);
-      window.__game.lookAt(-86, 27.2, 226);
-      window.__game.render();
-    `
-  },
-  {
-    name: 'shot4_garden_green_overview.png',
-    title: '核心古典园林全域绿毯俯瞰（100%全绿草地覆盖，无裸露黄土，商铺外围退让）',
-    setup: `
-      window.__game.setFlight(true);
-      window.__game.setPos(-50, 42, 310);
-      window.__game.lookAt(-50, 26, 240);
-      window.__game.render();
-    `
-  },
-  {
-    name: 'shot5_west_shops_no_dividing_wall.png',
-    title: '西侧老字号商铺（梨膏糖坊、国药堂、名酿酒庄、遮阳棚、红木柜台与人流）',
-    setup: `
-      window.__game.setFlight(true);
-      window.__game.setPos(-104, 26, 212);
-      window.__game.lookAt(-114, 27.5, 216);
-      window.__game.render();
-    `
-  },
-  {
-    name: 'shot6_shop_interior_close_up.png',
-    title: '商铺内部特写（老饭店名点：老字号牌匾、展示橱窗、红木柜台、精美点心、掌柜迎客）',
-    setup: `
-      window.__game.setFlight(true);
-      window.__game.setPos(15, 26.2, 264.5);
-      window.__game.lookAt(8, 26.5, 264.5);
       window.__game.render();
     `
   }

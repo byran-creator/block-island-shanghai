@@ -37,8 +37,8 @@ export function createYuyuanCrowd({scene,world,blocked}){
  // pond, while the three inner-garden walkers visit different garden rooms.
  let navigationError=null;
  function addCircuit(points,count,id){try{circuit(points,count,id);}catch(e){navigationError=e.message;}}
- addCircuit([[15,156],[21,156],[21,246],[15,246],[15,156]],24,300);
- addCircuit([[-104,156],[-96,156],[-96,246],[-104,246],[-104,156]],18,350);
+ addCircuit([[15,156],[18.5,156],[18.5,246],[15,246],[15,156]],24,300);
+ addCircuit([[-99,156],[-94.5,156],[-94.5,246],[-99,246],[-99,156]],18,350);
  addCircuit([[-70,261],[-26,261],[-26,263],[-70,263],[-70,261]],12,370);
  addCircuit([[-68,168],[-65,168],[-65,192],[-68,192],[-68,168]],8,390);
  const inner=INNER_GARDEN_EAST_PATH.slice(1,-1);addCircuit([...inner,inner[0]],1,400);

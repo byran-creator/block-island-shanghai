@@ -75,15 +75,15 @@ export const YUYUAN_BUILDINGS=[
  {id:'nanxiang',x:-26,z:214,rx:6,rz:4,levels:2},      // 南翔馒头店
  {id:'craft-shop',x:-62,z:214,rx:6,rz:4,levels:2},    // 江南手作丝绸
 
- // 2. West Commercial Pedestrian Street (西侧宽阔商业街：全长115米，两边商铺、中间18米宽敞步行街、上空彩灯天幕)
+ // 2. West Commercial Pedestrian Street (西侧宽阔商业街：全长115米，两边商铺、中间11米紧凑繁华步行街、上空彩灯天幕)
  // West Outer Row (x = -114, rx = 5, spans x in [-119, -109]):
- {id:'bazaar-west-candy',x:-114,z:156,rx:5,rz:4,levels:2}, // 梨膏糖老街铺
- {id:'bazaar-stage',x:-114,z:172,rx:5,rz:4,levels:2},      // 民俗古戏台
- {id:'old-city-west',x:-114,z:188,rx:5,rz:6,levels:3},     // 百年老城厢
- {id:'bazaar-west-herbs',x:-114,z:204,rx:5,rz:5,levels:2}, // 童涵春堂老药铺
- {id:'west-craft-hall',x:-114,z:220,rx:5,rz:4,levels:2},   // 西市手作坊
- {id:'west-wine-shop',x:-114,z:236,rx:5,rz:4,levels:2},    // 海上名酿坊
- {id:'west-tea-house',x:-114,z:252,rx:5,rz:4,levels:2},    // 西市老茶庄
+ {id:'bazaar-west-candy',x:-107,z:156,rx:5,rz:4,levels:2}, // 梨膏糖老街铺
+ {id:'bazaar-stage',x:-107,z:172,rx:5,rz:4,levels:2},      // 民俗古戏台
+ {id:'old-city-west',x:-107,z:188,rx:5,rz:6,levels:3},     // 百年老城厢
+ {id:'bazaar-west-herbs',x:-107,z:204,rx:5,rz:5,levels:2}, // 童涵春堂老药铺
+ {id:'west-craft-hall',x:-107,z:220,rx:5,rz:4,levels:2},   // 西市手作坊
+ {id:'west-wine-shop',x:-107,z:236,rx:5,rz:4,levels:2},    // 海上名酿坊
+ {id:'west-tea-house',x:-107,z:252,rx:5,rz:4,levels:2},    // 西市老茶庄
 
  // West Inner Row (x = -86, rx = 5, spans x in [-91, -81]):
  {id:'huabao-lou',x:-86,z:172,rx:5,rz:6,levels:3},         // 华宝楼: 3-tier grand antique & art hall
@@ -94,7 +94,7 @@ export const YUYUAN_BUILDINGS=[
  {id:'west-bazaar-4',x:-86,z:250,rx:5,rz:3,levels:2},      // 老城厢食肆
  // (West Walkway in between: x in [-109, -91], centered at x = -100, width 18m!)
 
- // 3. East Commercial Pedestrian Street (东侧宽阔商业街：全长115米，两边商铺、中间12米宽敞步行街、上空彩灯天幕)
+ // 3. East Commercial Pedestrian Street (东侧宽阔商业街：全长115米，两边商铺、中间9米紧凑繁华步行街、上空彩灯天幕)
  // East Inner Row (x = 8, rx = 4, spans x in [4, 12]):
  {id:'old-city-northeast',x:8,z:156,rx:4,rz:5,levels:2},
  {id:'tianyu-lou',x:8,z:172,rx:4,rz:6,levels:3},          // 天裕楼: 3-tier towering commercial pavilion
@@ -105,7 +105,7 @@ export const YUYUAN_BUILDINGS=[
  {id:'bazaar-east-gold',x:8,z:252,rx:4,rz:4,levels:2},     // 老庙黄金传统银楼
 
  // East Outer Row (x = 28, rx = 4, spans x in [24, 32]):
- ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:28,z:162+i*12,rx:4,rz:4,levels:2})),
+ ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:25,z:162+i*12,rx:4,rz:4,levels:2})),
  // (East Walkway in between: x in [12, 24], centered at x = 18, width 12m!)
 
  // 4. South Connecting Pedestrian Street (后方连通步行街商铺, z = 268)
