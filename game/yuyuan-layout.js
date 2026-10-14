@@ -107,8 +107,9 @@ export const YUYUAN_BUILDINGS=[
 ];
 
 export function buildYuyuan(world){
- // 1. Solid terrain foundation for the expanded urban footprint
- for(let x=-120;x<=35;x++)for(let z=80;z<=340;z++)if(!world.get(x,25,z)){world.fill(x,1,z,x,25,z,3);world.set(x,25,z,9);}
+ // 1. Solid terrain foundation for the expanded urban footprint & approach walkway
+ for(let x=-55;x<=-25;x++)for(let z=80;z<=210;z++)if(!world.get(x,25,z)){world.fill(x,18,z,x,24,z,3);world.set(x,25,z,9);}
+ for(let x=YUYUAN_LOCAL.minX-2;x<=YUYUAN_LOCAL.maxX+2;x++)for(let z=YUYUAN_LOCAL.minZ+YUYUAN_SHIFT-2;z<=YUYUAN_LOCAL.maxZ+YUYUAN_SHIFT+2;z++)if(!world.get(x,25,z)){world.fill(x,18,z,x,24,z,3);world.set(x,25,z,9);}
  
  for(const points of [YUYUAN_STATION_WALK,YUYUAN_STATION_WALK_SOUTH])for(let i=1;i<points.length;i++){
   const a=points[i-1],b=points[i];
@@ -117,9 +118,9 @@ export function buildYuyuan(world){
  }
  const w={set:(x,y,z,id)=>world.set(x,y,z+YUYUAN_SHIFT,id),fill:(x1,y1,z1,x2,y2,z2,id)=>world.fill(x1,y1,z1+YUYUAN_SHIFT,x2,y2,z2+YUYUAN_SHIFT,id)};
 
- // 2. Grade and clear the expanded district plot
- w.fill(YUYUAN_LOCAL.minX,1,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,25,YUYUAN_LOCAL.maxZ,3);
- w.fill(YUYUAN_LOCAL.minX,26,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,49,YUYUAN_LOCAL.maxZ,0);
+ // 2. Grade and clear the expanded district plot (low-computation: clear y=26..32 only)
+ w.fill(YUYUAN_LOCAL.minX,18,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,24,YUYUAN_LOCAL.maxZ,3);
+ w.fill(YUYUAN_LOCAL.minX,26,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,32,YUYUAN_LOCAL.maxZ,0);
  w.fill(YUYUAN_LOCAL.minX,25,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,25,YUYUAN_LOCAL.maxZ,9);
 
  // 3. Central Huxinting Pond depression and Jiuqu bridge
@@ -170,10 +171,10 @@ export function buildYuyuan(world){
  const g=INNER_GARDEN;
  for(let x=g.minX+1;x<g.maxX;x++)for(let z=g.minZ+1;z<g.maxZ;z++)if(gardenPathContains(x+.5,z+.5,1.2))w.set(x,25,z,9);
 
- // 10. Construct building brick solids and doorway voids
+ // 10. Construct building brick solids and doorway voids (Codex low-computation pattern)
  for(const b of YUYUAN_BUILDINGS){
   w.fill(b.x-b.rx,25,b.z-b.rz,b.x+b.rx,25,b.z+b.rz,7);
-  for(let y=26;y<26+b.levels*4;y++)for(let x=b.x-b.rx;x<=b.x+b.rx;x++)for(let z=b.z-b.rz;z<=b.z+b.rz;z++)if(x===b.x-b.rx||x===b.x+b.rx||z===b.z-b.rz||z===b.z+b.rz)w.set(x,y,z,9);
+  for(let y=26;y<=28;y++)for(let x=b.x-b.rx;x<=b.x+b.rx;x++)for(let z=b.z-b.rz;z<=b.z+b.rz;z++)if(x===b.x-b.rx||x===b.x+b.rx||z===b.z-b.rz||z===b.z+b.rz)w.set(x,y,z,9);
   if(b.id.startsWith('yuyuan-street-')){
    w.fill(b.x-b.rx,26,b.z-1,b.x-b.rx,28,b.z+1,0);
    for(const sign of [-1,1])w.fill(b.x-b.rx,27,b.z+sign*2+(sign<0?-2:0),b.x-b.rx,28,b.z+sign*2+(sign>0?2:0),0);
@@ -186,9 +187,6 @@ export function buildYuyuan(world){
    w.fill(b.x-b.rx,26,b.z-1,b.x-b.rx,28,b.z+1,0);
    w.fill(b.x+b.rx,26,b.z-1,b.x+b.rx,28,b.z+1,0);
   }
-  if(b.levels>=2)w.fill(b.x-b.rx+1,29,b.z-b.rz+1,b.x+b.rx-1,29,b.z+b.rz-1,7);
-  if(b.levels===3)w.fill(b.x-b.rx+1,33,b.z-b.rz+1,b.x+b.rx-1,33,b.z+b.rz-1,7);
-  for(let level=1;level<=b.levels;level++)w.fill(b.x-b.rx-1,25+level*4,b.z-b.rz-1,b.x+b.rx+1,25+level*4,b.z+b.rz+1,7);
  }
 }
 
