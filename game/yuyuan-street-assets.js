@@ -3,7 +3,7 @@ import {YUYUAN_BUILDINGS,GARDEN_PONDS} from './yuyuan-layout.js';
 
 // Geometry stays in district-local coordinates; the district root supplies Z+60.
 export function createYuyuanStreetAssets(root,{cube,mat,board}){
- const fixtures=[],dynamicRoots=new Set(),shops=[],goods={},stockCaps={};
+ const fixtures=[],dynamicRoots=new Set(),shops=[],extraShops=[],goods={},stockCaps={};
  const specs=[
   ['yuyuan-street-0','宁波汤团店','street-cakes','传统手工汤团礼盒','pastry',2,'#852f36'],
   ['yuyuan-street-1','上海梨膏糖','street-candy','百年非遗梨膏糖礼盒','candy',1,'#91533a'],
@@ -92,6 +92,204 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
    const shop=shops[shops.length-1],dx=shop.x-x,dz=shop.z-z;shop.x=x+dz;shop.z=z-dx;
   }
  }
+
+   const BAZAAR_EXTRA_SHOPS = [
+   // West Outer Row (x = -114, rx = 5, facing East towards street at x = -100)
+   {id:'bazaar-west-candy', title:'百年老字号 · 豫园梨膏糖', facing:'east', type:'candy', accent:'#963a34', awning:'#8a2824'},
+   {id:'bazaar-stage', title:'古戏台 · 评弹清音茶社', facing:'east', type:'tea', accent:'#795232', awning:'#43665a'},
+   {id:'old-city-west', title:'老城厢 · 泥塑剪纸非遗馆', facing:'east', type:'fan', accent:'#a24a35', awning:'#a24a35'},
+   {id:'bazaar-west-herbs', title:'童涵春堂 · 百草国药老铺', facing:'east', type:'herbs', accent:'#466b53', awning:'#2e543b'},
+   {id:'west-craft-hall', title:'江南织造 · 蓝印花布坊', facing:'east', type:'silk', accent:'#2e5a88', awning:'#204369'},
+   {id:'west-wine-shop', title:'海上名酿 · 绍兴花雕酒坊', facing:'east', type:'wine', accent:'#844322', awning:'#773315'},
+   {id:'west-tea-house', title:'豫园春 · 龙井碧螺名茶庄', facing:'east', type:'tea', accent:'#4a6c42', awning:'#395b32'},
+
+   // West Inner Row (x = -86, rx = 5, facing West towards street at x = -100)
+   {id:'huabao-lou', title:'华宝楼 · 海派金石文玩馆', facing:'west', type:'antique', accent:'#8e6832', awning:'#6b491e'},
+   {id:'tonghanchun', title:'童涵春堂 · 参茸滋补名号', facing:'west', type:'herbs', accent:'#4a6b52', awning:'#2c543a'},
+   {id:'west-bazaar-2', title:'顾绣名锦 · 苏绣艺术阁', facing:'west', type:'silk', accent:'#914867', awning:'#7b3353'},
+   {id:'west-bazaar-3', title:'翠宝斋 · 和田玉翡翠行', facing:'west', type:'jade', accent:'#3f7a63', awning:'#29604c'},
+   {id:'west-bazaar-4', title:'豫园老号 · 弄堂生煎锅贴', facing:'west', type:'pastry', accent:'#8c3d2e', awning:'#792e21'},
+
+   // East Inner Row (x = 8, rx = 4, facing East towards street at x = 18)
+   {id:'old-city-northeast', title:'百年老城厢 · 传统糕团汇', facing:'east_inner', type:'pastry', accent:'#8b3a42', awning:'#74262d'},
+   {id:'tianyu-lou', title:'天裕楼 · 景泰蓝掐丝珐琅阁', facing:'east_inner', type:'antique', accent:'#28587b', awning:'#194263'},
+   {id:'hefeng-lou', title:'和丰楼 · 海派美食雅集', facing:'east_inner', type:'pastry', accent:'#9c4e2b', awning:'#843818'},
+   {id:'shanghai-hotel', title:'上海老饭店 · 百年名菜馆', facing:'east_inner', type:'wine', accent:'#8e2f2b', awning:'#781f1c'},
+   {id:'ningbo-tangtuan', title:'宁波汤团店 · 现包现煮名点', facing:'east_inner', type:'pastry', accent:'#79523a', awning:'#5e3a24'},
+   {id:'old-city-east', title:'景容楼 · 古法传世金楼', facing:'east_inner', type:'jade', accent:'#a68238', awning:'#8c6822'},
+   {id:'bazaar-east-gold', title:'老庙黄金 · 百年祥瑞金楼', facing:'east_inner', type:'jade', accent:'#b89139', awning:'#977320'},
+
+   // South Row (z = 268, facing North towards walkway at z = 264)
+   {id:'old-city-south', title:'豫园风味南市 · 传统民俗集', facing:'north', type:'fan', accent:'#a64234', awning:'#8e2d20'},
+
+   // Lakeside Pavilions
+   {id:'tea-gallery', title:'湖畔茶坊 · 临水雅座', facing:'lake_south', type:'tea', accent:'#4d6f46', awning:'#3a5b34'},
+   {id:'lubolang', title:'绿波廊 · 国宾宴饮名楼', facing:'lake_west', type:'pastry', accent:'#923429', awning:'#7b2319'}
+  ];
+
+  function decorateThemedGoods(parent, type, x, y, z){
+   if(type==='wine'){
+    for(let i=0;i<3;i++){
+     const ox=(i-1)*.26;
+     disk(parent,'#5e3c23',x+ox,y+.18,z,.15,.36);
+     disk(parent,'#c92d24',x+ox,y+.37,z,.11,.06);
+     disk(parent,gold,x+ox,y+.34,z,.12,.02);
+    }
+   }else if(type==='herbs'){
+    box(parent,'#4a3324',x,y+.24,z,.72,.48,.32);
+    for(let r=0;r<3;r++)for(let c=0;c<4;c++){
+     box(parent,'#684933',x+(c-1.5)*.16,y+.1+(2-r)*.14,z+.155,.12,.11,.02);
+     disk(parent,gold,x+(c-1.5)*.16,y+.1+(2-r)*.14,z+.167,.015,.015);
+    }
+    disk(parent,'#eee3cb',x+.22,y+.52,z,.08,.16);
+    disk(parent,'#4a6b52',x+.22,y+.61,z,.06,.03);
+   }else if(type==='jade'){
+    box(parent,'#9b2426',x,y+.05,z,.68,.08,.42);
+    box(parent,gold,x,y+.05,z,.71,.04,.45);
+    for(let i=-1;i<=1;i++){
+     disk(parent,'#449b78',x+i*.2,y+.11,z,.07,.03);
+     box(parent,gold,x+i*.2,y+.13,z,.04,.02,.04);
+    }
+   }else if(type==='silk'){
+    const silkColors=['#2a5a88','#a8325a','#387a56','#99782a'];
+    for(let i=0;i<4;i++){
+     const oz=(i-1.5)*.15;
+     disk(parent,silkColors[i],x,y+.12,z+oz,.085,.46);
+     disk(parent,gold,x,y+.12,z+oz,.09,.025);
+    }
+   }else if(type==='antique'){
+    disk(parent,'#5c6858',x-.18,y+.16,z,.13,.32);
+    box(parent,'#5c6858',x-.18,y+.34,z,.22,.06,.22);
+    mesh(parent,sphere,'#7bb59c',x+.18,y+.2,z,.14,.18,.14);
+    disk(parent,'#7bb59c',x+.18,y+.36,z,.06,.15);
+   }else if(type==='pastry'){
+    for(let i=0;i<2;i++){
+     const ox=(i-.5)*.36;
+     disk(parent,'#ba9560',x+ox,y+.1,z,.18,.16);
+     disk(parent,'#75522b',x+ox,y+.18,z,.185,.02);
+     mesh(parent,sphere,'#fff5d6',x+ox,y+.23,z,.11,.08,.11);
+    }
+   }else if(type==='candy'){
+    box(parent,'#98382f',x-.18,y+.14,z,.28,.26,.26);
+    box(parent,gold,x-.18,y+.275,z,.22,.02,.22);
+    disk(parent,'#c99548',x+.18,y+.18,z,.12,.34);
+    disk(parent,timber,x+.18,y+.36,z,.13,.04);
+   }else if(type==='fan'){
+    box(parent,cream,x,y+.22,z,.32,.44,.02);
+    disk(parent,timber,x,y+.01,z,.024,.4);
+    disk(parent,timber,x,y+.44,z,.024,.4);
+    for(let i=-2;i<=2;i++)box(parent,'#ba382d',x+i*.05,y+.22,z+.012,.03,.08,.01);
+   }else{
+    disk(parent,'#784c2a',x-.16,y+.12,z,.14,.24);
+    mesh(parent,sphere,'#784c2a',x-.16,y+.26,z,.12,.09,.12);
+    for(let i=0;i<2;i++)disk(parent,'#e8dfce',x+.18,y+.08,z+(i-.5)*.18,.06,.14);
+   }
+  }
+
+  function decorateBuildingShop(conf){
+   const b=YUYUAN_BUILDINGS.find(building=>building.id===conf.id);
+   if(!b) return;
+   const {x,z,rx,rz}=b,{facing,title,type,accent,awning}=conf;
+   let doorX=x,doorZ=z,signX=x,signZ=z,signAngle=0,signW=rx*1.5;
+   let awningX=x,awningZ=z,awningW=rx*2-.4,awningD=1.1;
+   let counterX=x,counterZ=z,counterW=rx*1.2,counterD=1.1;
+   let sc1X=x,sc1Z=z,sc1W=1,sc1D=.8,sc2X=x,sc2Z=z,sc2W=1,sc2D=.8;
+   let l1X=x,l1Z=z,l2X=x,l2Z=z,isXAxis=false;
+
+   if(facing==='east'||facing==='east_inner'){
+    isXAxis=true;doorX=x+rx;doorZ=z;
+    signX=x+rx+.06;signZ=z;signAngle=Math.PI/2;signW=Math.min(rz*1.6,6.5);
+    awningX=x+rx+.35;awningZ=z;awningW=1.1;awningD=rz*2-.5;
+    counterX=x+rx-2.1;counterZ=z;counterW=1.1;counterD=Math.min(rz*1.3,4.2);
+    sc1X=x+rx-.18;sc1Z=z-Math.min(rz*.55,2.2);sc1W=.75;sc1D=Math.min(rz*.65,1.8);
+    sc2X=x+rx-.18;sc2Z=z+Math.min(rz*.55,2.2);sc2W=.75;sc2D=Math.min(rz*.65,1.8);
+    l1X=x+rx+.35;l1Z=z-1.8;l2X=x+rx+.35;l2Z=z+1.8;
+   }else if(facing==='west'||facing==='lake_west'){
+    isXAxis=true;doorX=x-rx;doorZ=z;
+    signX=x-rx-.06;signZ=z;signAngle=-Math.PI/2;signW=Math.min(rz*1.6,6.5);
+    awningX=x-rx-.35;awningZ=z;awningW=1.1;awningD=rz*2-.5;
+    counterX=x-rx+2.1;counterZ=z;counterW=1.1;counterD=Math.min(rz*1.3,4.2);
+    sc1X=x-rx+.18;sc1Z=z-Math.min(rz*.55,2.2);sc1W=.75;sc1D=Math.min(rz*.65,1.8);
+    sc2X=x-rx+.18;sc2Z=z+Math.min(rz*.55,2.2);sc2W=.75;sc2D=Math.min(rz*.65,1.8);
+    l1X=x-rx-.35;l1Z=z-1.8;l2X=x-rx-.35;l2Z=z+1.8;
+   }else if(facing==='lake_south'){
+    doorX=x;doorZ=z+rz;
+    signX=x;signZ=z+rz+.06;signAngle=0;signW=Math.min(rx*1.6,6.5);
+    awningX=x;awningZ=z+rz+.35;awningW=rx*2-.5;awningD=1.1;
+    counterX=x;counterZ=z+rz-2.1;counterW=Math.min(rx*1.3,4.2);counterD=1.1;
+    sc1X=x-Math.min(rx*.55,2.2);sc1Z=z+rz-.18;sc1W=Math.min(rx*.65,1.8);sc1D=.75;
+    sc2X=x+Math.min(rx*.55,2.2);sc2Z=z+rz-.18;sc2W=Math.min(rx*.65,1.8);sc2D=.75;
+    l1X=x-1.8;l1Z=z+rz+.35;l2X=x+1.8;l2Z=z+rz+.35;
+   }else{
+    doorX=x;doorZ=z-rz;
+    signX=x;signZ=z-rz-.06;signAngle=Math.PI;signW=Math.min(rx*1.6,6.5);
+    awningX=x;awningZ=z-rz-.35;awningW=rx*2-.5;awningD=1.1;
+    counterX=x;counterZ=z-rz+2.1;counterW=Math.min(rx*1.3,4.2);counterD=1.1;
+    sc1X=x-Math.min(rx*.55,2.2);sc1Z=z-rz+.18;sc1W=Math.min(rx*.65,1.8);sc1D=.75;
+    sc2X=x+Math.min(rx*.55,2.2);sc2Z=z-rz+.18;sc2W=Math.min(rx*.65,1.8);sc2D=.75;
+    l1X=x-1.8;l1Z=z-rz-.35;l2X=x+1.8;l2Z=z-rz-.35;
+   }
+
+   // 1. Floor Inlay & Carpet
+   cube('#e8dbbe',x,26.035,z,rx*2-.8,.025,rz*2-.8);
+   cube(accent,x,26.055,z,rx*1.3,.018,rz*1.3);
+   cube(gold,x,26.068,z,rx*1.34,.01,rz*1.34);
+
+   // 2. Cloth Awning Canopy over entrance
+   cube(awning,awningX,29.18,awningZ,awningW,.22,awningD);
+   cube(gold,awningX,29.07,awningZ,awningW+.06,.05,awningD+.06);
+
+   // 3. Traditional Calligraphy Board
+   board(title,signX,29.28,signZ,signW,.72,signAngle);
+
+   // 4. Entrance Portal Pillars
+   if(isXAxis){
+    for(const sz of [-1.5,1.5]){
+     cube(timber,doorX,27.5,z+sz,.22,3,.22);
+     cube(gold,doorX,27.5,z+sz,.03,2.94,.26);
+    }
+   }else{
+    for(const sx of [-1.5,1.5]){
+     cube(timber,x+sx,27.5,doorZ,.22,3,.22);
+     cube(gold,x+sx,27.5,doorZ,.26,2.94,.03);
+    }
+   }
+
+   // 5. Red Festive Entrance Lanterns
+   for(const [lx,lz] of [[l1X,l1Z],[l2X,l2Z]]){
+    cube('#e83424',lx,28.5,lz,.34,.52,.34,true);
+    disk(root,gold,lx,28.78,lz,.16,.04);
+    disk(root,gold,lx,28.22,lz,.16,.04);
+    cube('#d82d22',lx,28.02,lz,.035,.26,.035);
+   }
+
+   // 6. Two Display Showcases flanking entrance
+   for(const sc of [{x:sc1X,z:sc1Z,w:sc1W,d:sc1D},{x:sc2X,z:sc2Z,w:sc2W,d:sc2D}]){
+    cube(timber,sc.x,26.55,sc.z,sc.w,1.1,sc.d);
+    mesh(root,boxGeometry,glassMaterial,sc.x,27.75,sc.z,sc.w,1.3,sc.d);
+    for(const y of [27.12,28.42])cube(gold,sc.x,y,sc.z,sc.w+.04,.05,sc.d+.04);
+    decorateThemedGoods(root,type,sc.x,27.15,sc.z);
+    fixtures.push({x:sc.x,z:sc.z,rx:sc.w/2,rz:sc.d/2,y:26,h:2.4});
+   }
+
+   // 7. Interior Service Counter & Themed Goods
+   cube(timber,counterX,26.55,counterZ,counterW,1.1,counterD);
+   cube(gold,counterX,27.12,counterZ,counterW+.06,.05,counterD+.06);
+   cube(accent,counterX,27.15,counterZ,counterW-.12,.02,counterD-.12);
+   decorateThemedGoods(root,type,counterX,27.17,counterZ);
+   fixtures.push({x:counterX,z:counterZ,rx:counterW/2,rz:counterD/2,y:26,h:1.2});
+
+   // 8. Warm Glowing Ceiling Lantern Chandelier
+   cube('#fff2c4',x,28.85,z,.72,.48,.72,true);
+   cube(gold,x,29.11,z,.82,.05,.82);
+   cube(gold,x,28.59,z,.82,.05,.82);
+   cube('#6b4c30',x,29.35,z,.06,.52,.06);
+
+   extraShops.push({id:conf.id,x:doorX,z:doorZ,title:conf.title,type:conf.type,accent:conf.accent});
+  }
+
+  for(const conf of BAZAAR_EXTRA_SHOPS) decorateBuildingShop(conf);
+
 
  // 1. Traditional Carved Stone Paifang Archways (石牌坊)
  function paifang(x,z,yaw=0,title='豫园商城 · 老城厢'){
@@ -219,6 +417,6 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
  }
 
  function setStocks(stocks={}){for(const [key,units]of Object.entries(goods)){const count=Number.isFinite(stocks[key])?Math.max(0,Math.min(units.length,Math.floor(stocks[key]))):units.length;units.forEach((group,i)=>{group.visible=i<count;});}}
- setStocks();return {fixtures,dynamicRoots,shops,goods,stockCaps,setStocks};
+ setStocks();return {fixtures,dynamicRoots,shops,extraShops,goods,stockCaps,setStocks};
 }
 

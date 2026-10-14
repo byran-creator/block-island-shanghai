@@ -52,7 +52,7 @@ const browserProcess = spawn(browserPath, [
   '--headless=new',
   '--remote-debugging-port=9222',
   '--disable-gpu',
-  '--window-size=1280,720',
+  '--window-size=1280,800',
   '--no-first-run',
   '--no-default-browser-check',
   `http://localhost:${PORT}/index.html`
@@ -123,7 +123,23 @@ for (let i = 0; i < 40; i++) {
   await new Promise(r => setTimeout(r, 500));
 }
 
-// Close dialogs, enter game, enable flight mode, set golden hour dusk
+// 1. Capture Login Update Dialog
+console.log('Setting up shot: 登录前版本更新展示弹窗（展示两张精修图片与V54更新公告）');
+await evalCode(`
+  const dlg = document.getElementById('update-dialog');
+  if (dlg) {
+    dlg.showModal();
+    dlg.scrollTop = 0;
+  }
+`);
+await new Promise(r => setTimeout(r, 1200));
+
+const updateScreenshot = await send('Page.captureScreenshot', { format: 'png' });
+const updateOutPath = join(ARTIFACT_DIR, 'shot0_login_update_dialog.png');
+writeFileSync(updateOutPath, Buffer.from(updateScreenshot.data, 'base64'));
+console.log(`Saved screenshot to ${updateOutPath}`);
+
+// 2. Close dialogs, enter game, enable flight mode, set golden hour dusk
 await evalCode(`
   document.querySelectorAll('dialog').forEach(d => { try { d.close(); } catch(e){} d.style.display = 'none'; });
   const menu = document.getElementById('menu');
@@ -140,7 +156,7 @@ await new Promise(r => setTimeout(r, 1500));
 const shots = [
   {
     name: 'shot1_east_street.png',
-    title: '东侧商业步行街（开阔大道、无阻挡石盒墙壁、彩灯天幕高悬）',
+    title: '东侧商业步行街（全景精修商铺、金字牌匾、落地橱窗、彩灯天幕、如织人流）',
     setup: `
       window.__game.setFlight(true);
       window.__game.setPos(18, 26, 218);
@@ -150,7 +166,7 @@ const shots = [
   },
   {
     name: 'shot2_huxinting_pavilion.png',
-    title: '九曲桥与湖心亭（精致小巧开放式水榭，无封闭房间，四面通透配美人靠坐凳）',
+    title: '九曲桥与湖心水榭小亭（轻巧通透仿古亭、美人靠长椅、无封闭房间、游人赏鱼）',
     setup: `
       window.__game.setFlight(true);
       window.__game.setPos(-56, 26.2, 234);
@@ -160,7 +176,7 @@ const shots = [
   },
   {
     name: 'shot3_metro_exit1.png',
-    title: '10号线豫园站1号口（戏台已彻底移开，站口开阔集散广场畅通无阻）',
+    title: '10号线豫园站1号口（畅通集散广场、房屋彻底移开、标牌清晰直通商街）',
     setup: `
       window.__game.setFlight(true);
       window.__game.setPos(-86, 26, 210);
@@ -170,21 +186,31 @@ const shots = [
   },
   {
     name: 'shot4_garden_green_overview.png',
-    title: '核心古典园林全域绿化俯瞰（100%全绿草毯覆盖，无黄土地，外围商铺围合内园）',
+    title: '核心古典园林全域绿毯俯瞰（100%全绿草地覆盖，无裸露黄土，商铺外围退让）',
     setup: `
       window.__game.setFlight(true);
-      window.__game.setPos(-50, 42, 310); // Elevated aerial position overlooking the whole garden
-      window.__game.lookAt(-50, 26, 240); // Looking north across the emerald green lawn, trees, rockeries and ponds
+      window.__game.setPos(-50, 42, 310);
+      window.__game.lookAt(-50, 26, 240);
       window.__game.render();
     `
   },
   {
     name: 'shot5_west_shops_no_dividing_wall.png',
-    title: '西侧老字号商铺（对应用户图3：围墙已往外扩退，石壁不再切割商铺，店铺融于街区）',
+    title: '西侧老字号商铺（梨膏糖坊、国药堂、名酿酒庄、遮阳棚、红木柜台与人流）',
     setup: `
       window.__game.setFlight(true);
-      window.__game.setPos(-104, 26, 212); // Facing Shanghai Pear Syrup Candy shop
-      window.__game.lookAt(-114, 27.5, 216); // Looking directly at the storefront and wide street
+      window.__game.setPos(-104, 26, 212);
+      window.__game.lookAt(-114, 27.5, 216);
+      window.__game.render();
+    `
+  },
+  {
+    name: 'shot6_shop_interior_close_up.png',
+    title: '商铺内部特写（老饭店名点：老字号牌匾、展示橱窗、红木柜台、精美点心、掌柜迎客）',
+    setup: `
+      window.__game.setFlight(true);
+      window.__game.setPos(15, 26.2, 264.5);
+      window.__game.lookAt(8, 26.5, 264.5);
       window.__game.render();
     `
   }
@@ -206,4 +232,4 @@ for (const shot of shots) {
 ws.close();
 browserProcess.kill();
 server.close();
-console.log('All 5 screenshots captured successfully!');
+console.log('All screenshots captured successfully!');
