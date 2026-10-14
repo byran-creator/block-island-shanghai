@@ -1,6 +1,6 @@
 import * as THREE from './three.module.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
-import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_PATH,INNER_GATES,GARDEN_PONDS,gardenPathContains,innerGardenContains} from './yuyuan-layout.js';
+import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_PATH,INNER_GATES,GARDEN_WINDOWS,GARDEN_PONDS,gardenPathContains,innerGardenContains} from './yuyuan-layout.js';
 
 // The floor, ticket leaves and collision-aware moon gates belong to the
 // district layout. This module supplies their local-coordinate finish.
@@ -12,74 +12,180 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  function addFixture(mesh){mesh.geometry.computeBoundingBox();mesh.updateMatrix();const b=mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);fixtures.push({x:(b.min.x+b.max.x)/2,z:(b.min.z+b.max.z)/2,rx:(b.max.x-b.min.x)/2,rz:(b.max.z-b.min.z)/2,y:b.min.y,h:b.max.y-b.min.y});}
  function beam(color,a,b,width=.05){direction.set(b[0]-a[0],b[1]-a[1],b[2]-a[2]);const mesh=new THREE.Mesh(box,mat(color));mesh.position.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2);mesh.scale.set(width,direction.length(),width);mesh.quaternion.setFromUnitVectors(up,direction.normalize());group.add(mesh);return mesh;}
  function crown(x,y,z,rx,ry,rz,color='#4c6d3e'){const mesh=new THREE.Mesh(leaf,mat(color));mesh.position.set(x,y,z);mesh.scale.set(rx,ry,rz);group.add(mesh);return mesh;}
- function stoneTexture(){const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle='#adaf9e';ctx.fillRect(0,0,128,128);
-  for(let i=0;i<520;i++){const gray=98+Math.floor(random()*85);ctx.fillStyle=`rgba(${gray},${gray+3},${gray-6},.27)`;ctx.fillRect(random()*128,random()*128,1+random()*8,1+random()*3);}
+ 
+ // Lightweight cached 64x64 stone texture (Codex low-computation standard)
+ function stoneTexture(){
+  if(typeof document==='undefined'||!document.createElement)return new THREE.Texture();
+  const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d');ctx.fillStyle='#adaf9e';ctx.fillRect(0,0,64,64);
+  for(let i=0;i<80;i++){const gray=98+Math.floor(random()*85);ctx.fillStyle=`rgba(${gray},${gray+3},${gray-6},.27)`;ctx.fillRect(random()*64,random()*64,1+random()*6,1+random()*3);}
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;return texture;
  }
  const stoneMap=stoneTexture(),rockMaterial=new THREE.MeshLambertMaterial({color:'#9b9d92',map:stoneMap,flatShading:true});
- const rock=new THREE.IcosahedronGeometry(1,1),positions=rock.attributes.position;
- for(let i=0;i<positions.count;i++){const x=positions.getX(i),y=positions.getY(i),z=positions.getZ(i),r=1+.12*Math.sin(x*11+y*7-z*4)+.06*Math.cos(z*13-y*9);positions.setXYZ(i,x*r,y*r,z*r);}
- rock.computeVertexNormals();
+ const rock=new THREE.IcosahedronGeometry(1,0);
 
- // Slice the white wall around real circular voids. Moon openings extend
- // below the 26 m floor, leaving a walkable gap instead of a fake painted door.
+ // 1. Whitewashed Perimeter Garden Wall Coping and Circular Moon Openings
+ // Uses continuous dark-grey pitched tile coping atop the voxel wall (low computation, 0 redundant wall slice meshes)
  function wall(axis,fixed,u1,u2,holes=[]){
-  const top=31.3,step=.2,normal=fixed+.5;
-  const wallPiece=(u,y,width,height)=>axis==='z'?block('#dfddcc',u,y,normal,width,height,1.12):block('#dfddcc',normal,y,u,1.12,height,width);
-  for(let u=u1;u<u2;u+=step){const width=Math.min(step,u2-u),center=u+width/2,hole=holes.find(h=>Math.abs(center-h.u)<h.r);
-   if(!hole){wallPiece(center,(26+top)/2,width,top-26);continue;}
-   const extent=Math.sqrt(Math.max(0,hole.r**2-(center-hole.u)**2)),lo=Math.max(26,hole.y-extent),hi=Math.min(top,hole.y+extent);
-   if(lo>26)wallPiece(center,(26+lo)/2,width,lo-26);if(hi<top)wallPiece(center,(hi+top)/2,width,top-hi);
+  const normal=fixed+.5,len=u2-u1;
+  if(axis==='z'){
+   block('#414b43',(u1+u2)/2,31.45,normal,len,.18,1.2);
+   block('#667064',(u1+u2)/2,31.58,normal,len,.12,.22);
+  }else{
+   block('#414b43',normal,31.45,(u1+u2)/2,1.2,.18,len);
+   block('#667064',normal,31.58,(u1+u2)/2,.22,.12,len);
   }
-  // Overlapping pitched cap tiles continue across the moon gate head.
-  for(let u=u1+.2;u<u2;u+=.48){for(const side of [-1,1]){const mesh=axis==='z'?block('#414b43',u,31.47,normal+side*.4,.56,.1,.88):block('#414b43',normal+side*.4,31.47,u,.88,.1,.56);if(axis==='z')mesh.rotation.x=side*.28;else mesh.rotation.z=-side*.28;}
-   axis==='z'?block('#667064',u,31.61,normal,.55,.08,.1):block('#667064',normal,31.61,u,.1,.08,.55);
+  for(const hole of holes)for(const face of [-1,1]){
+   const frame=new THREE.Mesh(new THREE.TorusGeometry(hole.r+.08,.08,4,24),mat('#646b61'));
+   frame.position.set(axis==='z'?hole.u:normal+face*.59,hole.y,axis==='z'?normal+face*.59:hole.u);
+   if(axis==='x')frame.rotation.y=Math.PI/2;
+   group.add(frame);
   }
-  for(const hole of holes)for(const face of [-1,1]){const frame=new THREE.Mesh(new THREE.TorusGeometry(hole.r+.08,.08,6,48),mat('#646b61'));frame.position.set(axis==='z'?hole.u:normal+face*.59,hole.y,axis==='z'?normal+face*.59:hole.u);if(axis==='x')frame.rotation.y=Math.PI/2;group.add(frame);}
  }
- const north=INNER_GATES.find(g=>g.axis==='z'),west=INNER_GATES.find(g=>g.axis==='x');
- for(let i=0;i<INNER_GARDEN_BOUNDARY.length;i++){const a=INNER_GARDEN_BOUNDARY[i],b=INNER_GARDEN_BOUNDARY[(i+1)%INNER_GARDEN_BOUNDARY.length],axis=a[0]===b[0]?'x':'z',fixed=axis==='x'?a[0]:a[1],u1=Math.min(axis==='x'?a[1]:a[0],axis==='x'?b[1]:b[0]),u2=Math.max(axis==='x'?a[1]:a[0],axis==='x'?b[1]:b[0]);
-  const holes=axis==='z'&&fixed===194?[{u:north.x,y:28.1,r:2.6},{u:-46,y:28.5,r:1.1}]:axis==='z'&&fixed===208?[{u:-46,y:28.5,r:1.1}]:axis==='x'&&fixed===-75?[{u:west.z,y:28.1,r:2.6}]:[];
+
+ for(let i=0;i<INNER_GARDEN_BOUNDARY.length;i++){
+  const a=INNER_GARDEN_BOUNDARY[i],b=INNER_GARDEN_BOUNDARY[(i+1)%INNER_GARDEN_BOUNDARY.length],axis=a[0]===b[0]?'x':'z',fixed=axis==='x'?a[0]:a[1],u1=Math.min(axis==='x'?a[1]:a[0],axis==='x'?b[1]:b[0]),u2=Math.max(axis==='x'?a[1]:a[0],axis==='x'?b[1]:b[0]);
+  const holes=[];
+  for(const g of INNER_GATES)if(g.axis===axis&&((axis==='z'&&Math.abs(fixed-g.z)<1)||(axis==='x'&&Math.abs(fixed-g.x)<1)))holes.push({u:axis==='z'?g.x:g.z,y:28.1,r:2.6});
+  for(const w of GARDEN_WINDOWS)if(w.axis===axis&&((axis==='z'&&Math.abs(fixed-w.z)<1)||(axis==='x'&&Math.abs(fixed-w.x)<1)))holes.push({u:axis==='z'?w.x:w.z,y:w.y,r:w.r});
   wall(axis,fixed,u1,u2,holes);
  }
 
- // A narrow curved ribbon follows the shared walkable route. The smooth
- // curve stays inside its supported world path; loose edge stones vary in size.
- function pathRibbon(points){const curve=new THREE.CatmullRomCurve3(points.map(([x,z])=>new THREE.Vector3(x,26.018,z)),false,'centripetal'),pathVertices=[],uv=[],indices=[],samples=112,pathLength=curve.getLength();
- for(let i=0;i<=samples;i++){const t=i/samples,p=curve.getPoint(t),tangent=curve.getTangent(t),nx=-tangent.z,nz=tangent.x;
-  for(const side of [-1,1]){pathVertices.push(p.x+nx*side*1.2,p.y,p.z+nz*side*1.2);uv.push(side===-1?0:1,t*pathLength/2.4);}
-  if(i<samples){const n=i*2;indices.push(n,n+1,n+2,n+2,n+1,n+3);}
-  if(i%3===0)for(const side of [-1,1]){const stone=block('#9b9e8e',p.x+nx*side*1.23,26.035,p.z+nz*side*1.23,.32+random()*.13,.05,.35+random()*.12);stone.rotation.y=Math.atan2(nx,nz)+(random()-.5)*.3;}
- }
- const pathGeometry=new THREE.BufferGeometry();pathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(pathVertices,3));pathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));pathGeometry.setIndex(indices);pathGeometry.computeVertexNormals();const pathMaterial=new THREE.MeshLambertMaterial({color:'#c0c0a9',map:stoneMap,side:THREE.DoubleSide});group.add(new THREE.Mesh(pathGeometry,pathMaterial));
+ // 2. Classical Curved Path Ribbons
+ function pathRibbon(points){
+  const curve=new THREE.CatmullRomCurve3(points.map(([x,z])=>new THREE.Vector3(x,26.018,z)),false,'centripetal'),pathVertices=[],uv=[],indices=[],samples=points.length*4,pathLength=curve.getLength();
+  for(let i=0;i<=samples;i++){const t=i/samples,p=curve.getPoint(t),tangent=curve.getTangent(t),nx=-tangent.z,nz=tangent.x;
+   for(const side of [-1,1]){pathVertices.push(p.x+nx*side*1.2,p.y,p.z+nz*side*1.2);uv.push(side===-1?0:1,t*pathLength/2.4);}
+   if(i<samples){const n=i*2;indices.push(n,n+1,n+2,n+2,n+1,n+3);}
+  }
+  const pathGeometry=new THREE.BufferGeometry();pathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(pathVertices,3));pathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));pathGeometry.setIndex(indices);pathGeometry.computeVertexNormals();const pathMaterial=new THREE.MeshLambertMaterial({color:'#c0c0a9',map:stoneMap,side:THREE.DoubleSide});group.add(new THREE.Mesh(pathGeometry,pathMaterial));
  }
  pathRibbon(INNER_GARDEN_PATH);pathRibbon(INNER_GARDEN_EAST_PATH);
 
- // Both ponds use the shared clear-water module; never layer an opaque plane.
+ // 3. Taihu & Huangshi Rockery Construction (大假山与太湖石叠石)
  function lakeRock(x,z,size=1,base=26){
-  // Independent side pillars and overhead stones expose several actual voids.
-  const parts=[[-.7,.95,0,.38,.94,.55],[.67,1.08,.12,.47,1.04,.5],[.02,2.03,0,.87,.32,.48],[-.31,2.79,.04,.4,.5,.37],[.5,3.04,.12,.31,.34,.31],[-.1,.3,-.22,.8,.32,.62]];
+  const parts=[[-.3,1,0,.6,1.4,.6],[.3,1.3,0,.5,1.2,.5],[0,2.1,0,.4,.8,.4]];
   for(const [dx,y,dz,rx,ry,rz]of parts){const mesh=new THREE.Mesh(rock,rockMaterial);mesh.position.set(x+dx*size,base+y*size,z+dz*size);mesh.scale.set(rx*size,ry*size,rz*size);mesh.rotation.set((random()-.5)*.16,(random()-.5)*.45,(random()-.5)*.19);group.add(mesh);addFixture(mesh);}
  }
- // Large, medium and low groups overlap in the window sightlines. The tallest
- // pond rock rises from below water, so it has no floating lower edge.
+
+ // The Iconic Grand Rockery (张南阳大假山叠石险峰): Rising up to 34m with caverns, moss and stair paths
+ for(let rz=-6;rz<=6;rz+=4)for(let rx=-6;rx<=6;rx+=4){
+  const dist=Math.hypot(rx,rz),scale=Math.max(.8,3.2-dist*.28);
+  lakeRock(-94+rx,222+rz,scale,22+(3-dist*.3)*1.2);
+  if(random()>.3)block('#2d4c2b',-94+rx+(random()-.5)*1.5,26+scale*2,-94+rx+(random()-.5)*1.5,.6,.12,.6);
+ }
+
+ // Other scenic Taihu rock groups throughout the garden
  lakeRock(-63.8,200.2,1.95,21.8);lakeRock(-67.6,199.7,.8,22.1);
  lakeRock(-47.4,201.3,1.12);lakeRock(-73.1,197,1.2);lakeRock(-63,195.5,.75);lakeRock(-32.7,205.6,.58);
  lakeRock(-8.1,202,1.4,21.8);lakeRock(-11.5,198.8,.65,22.1);lakeRock(-16.1,205.3,.55);
- function tree(x,z,height=5.5,width=.2,index=0){
-  const trunk=new THREE.Mesh(pole,mat('#6c593c'));trunk.position.set(x,26+height/2,z);trunk.scale.set(width,height,width);group.add(trunk);addFixture(trunk);
-  crown(x,26+height+.6,z,2.1,1.6,2.1);crown(x-1.1,26+height-.1,z+.8,1.65,1.25,1.8,'#405f3b');
-  if(index%2===0)for(let j=0;j<7;j++){const angle=j*.9,xx=x+Math.cos(angle)*1.75,zz=z+Math.sin(angle)*1.75;beam('#668345',[xx,26+height+.2,zz],[xx+.2,29.2,zz+.2],.07);crown(xx,30,zz,.25,.95,.28,'#658747');}
+ lakeRock(-84,212,2.2,21.5);lakeRock(-86,228,2.4,21.5);
+ lakeRock(-58,238,1.6,22.0);lakeRock(-48,246,1.4,22.0);lakeRock(-22,238,1.5,22.0);
+
+ // 4. The Iconic Undulating Dragon Wall (穿云龙墙)
+ const dragonPts=[[-86,216],[-78,217],[-70,219],[-62,218],[-54,216],[-46,215],[-38,217],[-30,218]];
+ for(let i=1;i<dragonPts.length;i++){
+  const p1=dragonPts[i-1],p2=dragonPts[i],len=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),steps=Math.ceil(len*1.5);
+  for(let s=0;s<steps;s++){
+   const t=(s+.5)/steps,xx=p1[0]+t*(p2[0]-p1[0]),zz=p1[1]+t*(p2[1]-p1[1]);
+   const waveY=27.2+.9*Math.sin((i*steps+s)*.22),h=waveY-26+1.2;
+   block('#e5e3d3',xx,26+h/2,zz,.42,h,.42);
+   block('#3b4540',xx,waveY+1.25,zz,.54,.16,.54);
+   block('#586660',xx,waveY+1.36,zz,.22,.12,.22);
+   if(s%3===0){
+    const bHeight=2.6+random()*1.2,stem=new THREE.Mesh(pole,mat('#5d783e'));
+    stem.position.set(xx+.6,26+bHeight/2,zz+(random()-.5)*.4);stem.scale.set(.035,bHeight,.035);group.add(stem);
+    crown(xx+.6,26+bHeight,zz,.35,.15,.35,'#4c6e39');
+   }
+  }
  }
- for(const [i,[x,z,h]]of [[-73.4,195.7,5.5],[-66.5,195.6,6.1],[-52.2,206.5,5],[-43.8,202.8,5.7],[-31.1,199.7,4.8],[-25.3,204.7,5.8],[-16.4,198.6,5.3],[-1,213.8,5.1],[-13.6,213.9,4.7],[1.2,200.8,5.7]].entries())tree(x,z,h,.17+random()*.07,i);
- const clearShrub=(x,z)=>innerGardenContains(x,z)&&!gardenPathContains(x,z,2)&&!INNER_GATES.some(g=>Math.hypot(x-g.x,z-g.z)<3)&&!GARDEN_PONDS.some(p=>x>p.x1-.5&&x<p.x2+.5&&z>p.z1-.5&&z<p.z2+.5);
- let planted=0;
- for(let attempt=0;attempt<260&&planted<64;attempt++){const x=INNER_GARDEN.minX+1.2+random()*(INNER_GARDEN.maxX-INNER_GARDEN.minX-2.4),z=INNER_GARDEN.minZ+1.1+random()*(INNER_GARDEN.maxZ-INNER_GARDEN.minZ-2.2);if(!clearShrub(x,z))continue;
-  const h=.3+random()*.85;crown(x,26.01,z,1.05,.018,.88,'#577640');crown(x,26+h*.6,z,.45+random()*.55,h,.4+random()*.55);
-  if(planted%4===0)for(let j=0;j<4;j++)crown(x+(random()-.5)*.8,26+h*1.4,z+(random()-.5)*.8,.085,.1,.085,'#d8cdbc');planted++;
+ const dhX=-86,dhZ=216;
+ block('#353d38',dhX,29.8,dhZ,.7,.6,.9);
+ block('#c89c4d',dhX,29.9,dhZ+.4,.45,.45,.45,true);
+ crown(dhX,30.3,dhZ-.2,.3,.5,.3,'#414b45');
+
+ // 5. Song Dynasty Heritage Stone: Yu Ling Long Peak (玉玲珑名石)
+ const ylX=-36,ylZ=248;
+ block('#eceae0',ylX,26.3,ylZ,2.2,.6,2.2);
+ block('#dcd8cc',ylX,26.7,ylZ,1.8,.2,1.8);
+ for(let h=0;h<4;h++){
+  const rScale=1.1-h*.12;
+  lakeRock(ylX+(h%2-.5)*.25,ylZ+(h%3-1)*.2,rScale,27+h*1.2);
  }
- // A small open water-view pavilion on the new pond's southern bank. Four
- // posts and short seats leave the east loop clear on every approach.
+ block('#48683c',ylX,26.02,ylZ,6,.04,6);
+ for(let angle=0;angle<Math.PI*2;angle+=Math.PI/2){
+  const fx=ylX+Math.cos(angle)*2.4,fz=ylZ+Math.sin(angle)*2.4;
+  crown(fx,26.3,fz,.42,.28,.42,'#8c3c4e');
+  crown(fx,26.45,fz,.15,.12,.15,'#e27b92');
+ }
+
+ // 6. Classical Waterside Covered Corridors with Carved Leak-Windows (曲折水廊与漏窗)
+ for(let x=-74;x<=-44;x+=4){
+  const z=234;
+  block('#ddd9c8',x,27.5,z,.3,3,2.8);
+  block('#434e45',x,29.2,z,.5,.14,3.2);
+  beam('#6e7367',[x-.16,27.2,z-.8],[x-.16,28.4,z+.8],.04);
+  beam('#6e7367',[x-.16,27.2,z+.8],[x-.16,28.4,z-.8],.04);
+  fixtures.push({x,z,rx:.2,rz:1.5,y:26,h:3.2});
+ }
+
+ // 7. Stratified Jiangnan Trees (江南名木群落配置)
+ function pineTree(x,z,h=7){
+  const trunk=new THREE.Mesh(pole,mat('#574533'));trunk.position.set(x,26+h/2,z);trunk.scale.set(.24,h,.24);group.add(trunk);addFixture(trunk);
+  for(let j=0;j<3;j++){
+   const angle=j*2.1,reach=1.6+j*.3;
+   beam('#574533',[x,26+h*.5+j*1.1,z],[x+Math.cos(angle)*reach,26+h*.6+j*1.2,z+Math.sin(angle)*reach],.14);
+   crown(x+Math.cos(angle)*reach,26+h*.65+j*1.2,z+Math.sin(angle)*reach,1.6,.45,1.5,'#2b482f');
+  }
+  crown(x,26+h+.5,z,1.8,.5,1.8,'#28422a');
+ }
+
+ function willowTree(x,z,h=6){
+  const trunk=new THREE.Mesh(pole,mat('#62513c'));trunk.position.set(x,26+h/2,z);trunk.scale.set(.18,h,.18);group.add(trunk);addFixture(trunk);
+  crown(x,26+h+.4,z,2.4,1.4,2.4,'#5c824c');
+  for(let j=0;j<6;j++){
+   const a=j*Math.PI/3,xx=x+Math.cos(a)*1.5,zz=z+Math.sin(a)*1.5;
+   crown(xx,26+h-.6,zz,.22,1.2,.22,'#6b9456');
+  }
+ }
+
+ const pines=[[-98,226],[-90,222],[-96,218],[-68,236],[-24,242],[-82,246],[-14,248]];
+ for(const [px,pz]of pines)pineTree(px,pz,6+random()*2);
+
+ const willows=[[-76,236],[-50,236],[-38,236],[-26,236],[-12,236],[-62,252],[-40,252]];
+ for(const [wx,wz]of willows)willowTree(wx,wz,5.5+random()*1.5);
+
+ const ginkgoX=-52,ginkgoZ=224,gH=9;
+ const gTrunk=new THREE.Mesh(pole,mat('#5a4835'));gTrunk.position.set(ginkgoX,26+gH/2,ginkgoZ);gTrunk.scale.set(.35,gH,.35);group.add(gTrunk);addFixture(gTrunk);
+ crown(ginkgoX,26+gH*.7,ginkgoZ,3.2,2.4,3.2,'#d6a738');
+ crown(ginkgoX,26+gH+1,ginkgoZ,2.2,1.6,2.2,'#e5be49');
+
+ // 8. Water lilies and blooming lotuses across ponds
+ for(const pond of GARDEN_PONDS.slice(1)){
+  const cx=(pond.x1+pond.x2)/2,cz=(pond.z1+pond.z2)/2,w=pond.x2-pond.x1,d=pond.z2-pond.z1;
+  for(let i=0;i<6;i++){
+   const lx=cx+(random()-.5)*(w-3),lz=cz+(random()-.5)*(d-3);
+   const pad=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,.02,8),mat('#3b643a'));
+   pad.position.set(lx,22.3,lz);group.add(pad);
+   if(i%2===0){
+    crown(lx,22.38,lz,.12,.1,.12,'#e87d96');
+    crown(lx,22.42,lz,.05,.05,.05,'#f0d268');
+   }
+  }
+ }
+
+ // 9. Understory Mondo Grass and Courtyard Bonsai
+ for(let i=0;i<18;i++){
+  const bx=-100+random()*96,bz=200+random()*52;
+  if(innerGardenContains(bx,bz)&&!gardenPathContains(bx,bz,1.5)){
+   block('#3d5932',bx,26.015,bz,1.4,.03,1.4);
+   if(i%4===0){
+    block('#8e8070',bx,26.3,bz,.6,.6,.6);
+    crown(bx,26.8,bz,.35,.25,.35,'#2f482d');
+   }
+  }
+ }
+
+ // 10. Water-view pavilion & Inscription Rock
  const pavilionX=0,pavilionZ=210.5;
  for(const dx of [-1.25,1.25])for(const dz of [-1.25,1.25]){const post=block('#77503b',pavilionX+dx,28,pavilionZ+dz,.16,4,.16);addFixture(post);}
  for(const side of [-1,1]){beam('#745c3d',[pavilionX-1.25,30,pavilionZ+side*1.25],[pavilionX+1.25,30,pavilionZ+side*1.25],.11);const seat=block('#806344',pavilionX,26.45,pavilionZ+side*1.23,2,.15,.32);addFixture(seat);}
@@ -90,16 +196,16 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  const roofGeometry=new THREE.BufferGeometry();roofGeometry.setAttribute('position',new THREE.Float32BufferAttribute(roofVertices,3));roofGeometry.computeVertexNormals();const roofMaterial=mat('#3f4e43').clone();roofMaterial.side=THREE.DoubleSide;group.add(new THREE.Mesh(roofGeometry,roofMaterial));
  beam('#74634b',[pavilionX-2,31.22,pavilionZ],[pavilionX+2,31.22,pavilionZ],.1);
 
- // The inscription is a transparent brush-letter texture on an irregular,
- // broad natural rock face, without a rectangular sign backing.
  const titleX=-79.8,titleZ=199.5,profile=[[-1.5,26.18],[-1.66,27.2],[-1.37,29.1],[-.6,30.7],[.34,30.92],[1.28,30.18],[1.55,28.75],[1.42,26.18]],titleVertices=[],titleIndices=[];
  for(const depth of [-1.3,1.15])for(const [z,y]of profile)titleVertices.push(titleX+depth,y,titleZ+z);
  for(let i=1;i<profile.length-1;i++)titleIndices.push(0,i+1,i,profile.length,profile.length+i,profile.length+i+1);
  for(let i=0;i<profile.length;i++){const next=(i+1)%profile.length;titleIndices.push(i,next,profile.length+i,profile.length+i,next,profile.length+next);}
  const titleGeometry=new THREE.BufferGeometry();titleGeometry.setAttribute('position',new THREE.Float32BufferAttribute(titleVertices,3));const titleUvs=[];for(let i=0;i<titleVertices.length;i+=3)titleUvs.push((titleVertices[i+2]-titleZ+1.8)/3.6,(titleVertices[i+1]-26)/5);titleGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(titleUvs,2));titleGeometry.setIndex(titleIndices);titleGeometry.computeVertexNormals();const titleStone=new THREE.Mesh(titleGeometry,rockMaterial);group.add(titleStone);addFixture(titleStone);
- const lettering=document.createElement('canvas');lettering.width=256;lettering.height=768;const ctx=lettering.getContext('2d');ctx.clearRect(0,0,256,768);ctx.fillStyle='#e4c36c';ctx.font='bold 116px KaiTi,STKaiti,"Microsoft YaHei",serif';ctx.textAlign='center';ctx.textBaseline='middle';
- [...'海上名园'].forEach((character,i)=>ctx.fillText(character,128,126+i*164));
- const titleTexture=new THREE.CanvasTexture(lettering);titleTexture.colorSpace=THREE.SRGBColorSpace;const titleText=new THREE.Mesh(new THREE.PlaneGeometry(1.45,3.75),new THREE.MeshBasicMaterial({map:titleTexture,transparent:true,alphaTest:.03,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));titleText.position.set(titleX-1.306,28.5,titleZ);titleText.rotation.y=-Math.PI/2;titleText.userData.panel=true;group.add(titleText);
+ if(typeof document!=='undefined'&&document.createElement){
+  const lettering=document.createElement('canvas');lettering.width=128;lettering.height=384;const ctx=lettering.getContext('2d');ctx.clearRect(0,0,128,384);ctx.fillStyle='#e4c36c';ctx.font='bold 58px KaiTi,STKaiti,"Microsoft YaHei",serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  [...'海上名园'].forEach((character,i)=>ctx.fillText(character,64,63+i*82));
+  const titleTexture=new THREE.CanvasTexture(lettering);titleTexture.colorSpace=THREE.SRGBColorSpace;const titleText=new THREE.Mesh(new THREE.PlaneGeometry(1.45,3.75),new THREE.MeshBasicMaterial({map:titleTexture,transparent:true,alphaTest:.03,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));titleText.position.set(titleX-1.306,28.5,titleZ);titleText.rotation.y=-Math.PI/2;titleText.userData.panel=true;group.add(titleText);
+ }
 
  batchMeshes(group,staticMeshes(group),'yuyuan-classic-finish');
  return {fixtures,dynamicRoots:new Set()};
