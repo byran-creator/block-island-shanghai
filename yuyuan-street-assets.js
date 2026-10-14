@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import {YUYUAN_BUILDINGS} from './yuyuan-layout.js';
+import {YUYUAN_BUILDINGS,GARDEN_PONDS} from './yuyuan-layout.js';
 
 // Geometry stays in district-local coordinates; the district root supplies Z+60.
 export function createYuyuanStreetAssets(root,{cube,mat,board}){
@@ -21,6 +21,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
  function mesh(parent,g,c,x,y,z,sx,sy,sz){const m=new THREE.Mesh(g,typeof c==='string'?mat(c):c);m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m;}
  function box(parent,c,x,y,z,w,h,d){return mesh(parent,boxGeometry,c,x,y,z,w,h,d);}
  function disk(parent,c,x,y,z,r,h){return mesh(parent,cylinder,c,x,y,z,r,h,r);}
+ function crown(x,y,z,rx,ry,rz,color='#5c824c'){return mesh(root,sphere,color,x,y,z,rx,ry,rz);}
  function trimBox(parent,c,x,y,z,w,h,d){box(parent,c,x,y,z,w,h,d);for(const side of [-1,1])box(parent,gold,x+side*(w/2-.035),y,z-d/2-.01,.025,h,.018);}
  function product(parent,type,accent){
   if(type==='pastry'){
@@ -53,7 +54,6 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   const childStart=root.children.length,fixtureStart=fixtures.length;
   const {x,z,rx,rz}=b,front=z-rz,back=z+rz-.5,doorX=x+.5,counterZ=z+1.6;
   shops.push({id,x:doorX,z,title,key,name,food});goods[key]=[];stockCaps[key]=6;
-  // Brass-edged open door matches the three voxel columns x-1 through x+1.
   for(const side of [-1,1]){cube(timber,doorX+side*1.62,27.5,front-.07,.2,3,.17);cube(gold,doorX+side*1.62,27.5,front-.17,.025,2.94,.025);}
   cube(timber,x,29.27,front-.015,rx*2-.35,.5,.12);cube(gold,x,29.55,front-.06,rx*2-.25,.055,.17);
   board(title,x,29.26,front-.08,rx*1.58,.68,Math.PI);
@@ -67,7 +67,6 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   cube('#e5d7bc',x,26.035,z,rx*2-1,.025,rz*2-1.2);cube('#3d332b',x,26.055,z,rx*2-1.55,.016,rz*2-1.75);cube('#d8cbb4',x,26.075,z,rx*2-1.8,.016,rz*2-2);
   cube(accent,doorX,26.089,z-1.4,2.65,.014,rz*2-3.8);for(const dx of [-1.27,1.27])cube(gold,doorX+dx,26.1,z-1.4,.028,.008,rz*2-4);
   for(let dz=-rz+1.2;dz<rz-.7;dz+=1.35)for(const side of [-1,1])cube('#aa9875',x+side*(rx-1.25),26.087,z+dz,.82,.012,.06);
-  // The central aisle stops at an obvious shop counter, with space to stand.
   const counterWidth=rx*1.4;cube(timber,doorX,26.54,counterZ,counterWidth,1.08,1.1);cube(gold,doorX,27.11,counterZ,counterWidth+.09,.06,1.17);cube(accent,doorX,27.153,counterZ,counterWidth-.13,.025,1.02);
   fixtures.push({x:doorX,z:counterZ,rx:counterWidth/2,rz:.55,y:26,h:1.23});
   for(const dx of [-counterWidth/2+.16,counterWidth/2-.16])cube(gold,doorX+dx,26.55,counterZ-.562,.04,1,.035);
@@ -79,23 +78,137 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   }
   cube(timber,x,27.35,back,rx*2-1.15,2.7,.3);for(const y of [26.8,27.5,28.2])cube(gold,x,y,back-.18,rx*2-1.25,.055,.5);
   for(let i=-1;i<=1;i++){decorative(type,accent,x+i*1.3,27.55,back-.22,.65);box(root,['#718779','#9b6670','#657a99'][i+1],x+i*1.3,26.92,back-.2,.65,.16,.31);box(root,gold,x+i*1.3,27.01,back-.2,.045,.018,.3);}
-  board('江南好物 · 入店选购',x,28.6,back-.21,rx*1.3,.42,Math.PI);fixtures.push({x,z:back,rx:rx-.57,rz:.3,y:26,h:2.7});
+  board('匠心老字号 · 江南风物',x,28.6,back-.21,rx*1.3,.42,Math.PI);fixtures.push({x,z:back,rx:rx-.57,rz:.3,y:26,h:2.7});
   for(const dx of [-1.8,1.8]){cube(timber,x+dx,28.95,z-.5,.055,.25,.055);cube(gold,x+dx,28.83,z-.5,.57,.06,.57);cube('#fff0c2',x+dx,28.61,z-.5,.49,.37,.49,true);cube(gold,x+dx,28.41,z-.5,.57,.06,.57);for(const side of [-1,1])cube(timber,x+dx+side*.255,28.6,z-.5,.027,.42,.52);}
   if(westFacing){
-   // Upstairs redwood lattice windows continue the street-facing facade.
    for(const dx of [-2.5,-.85,.85,2.5]){
     cube(timber,x+dx,31.5,front-.055,1.32,1.62,.08);cube('#b7c5b9',x+dx,31.5,front-.102,1.14,1.42,.016);
     for(const bar of [-.36,0,.36])cube(timber,x+dx+bar,31.5,front-.12,.045,1.48,.025);
     for(const y of [30.83,31.28,31.73,32.17])cube(timber,x+dx,y,front-.12,1.21,.05,.025);
     cube(gold,x+dx,30.68,front-.05,1.44,.085,.2);
    }
-   // Build once in the original north-facing frame, then turn only this shop
-   // toward the west-side shopping lane. Stock groups retain their identities.
    for(let i=childStart;i<root.children.length;i++){const object=root.children[i],dx=object.position.x-x,dz=object.position.z-z;object.position.x=x+dz;object.position.z=z-dx;object.quaternion.premultiply(westFacingRotation);}
    for(let i=fixtureStart;i<fixtures.length;i++){const f=fixtures[i],dx=f.x-x,dz=f.z-z,rx=f.rx;f.x=x+dz;f.z=z-dx;f.rx=f.rz;f.rz=rx;}
    const shop=shops[shops.length-1],dx=shop.x-x,dz=shop.z-z;shop.x=x+dz;shop.z=z-dx;
   }
  }
+
+ // 1. Traditional Carved Stone Paifang Archways (石牌坊)
+ function paifang(x,z,yaw=0,title='豫园商城 · 老城厢'){
+  const pGroup=new THREE.Group();pGroup.position.set(x,26,z);pGroup.rotation.y=yaw;root.add(pGroup);
+  // Four carved stone pillars
+  for(const px of [-5.2,-2.6,2.6,5.2]){
+   box(pGroup,'#c8c9be',px,2.2,0,.45,4.4,.45);
+   box(pGroup,'#afb1a4',px,.5,0,.75,1,.75); // Pillar base stone (抱鼓石)
+   fixtures.push({x:x+px*Math.cos(yaw),z:z+px*Math.sin(yaw),rx:.35,rz:.35,y:26,h:4.4});
+  }
+  // Cross beams & DouGong
+  box(pGroup,'#b9baa9',0,4.2,0,11.2,.42,.32);
+  box(pGroup,'#a5a796',0,4.7,0,6.2,.38,.32);
+  // Center calligraphy board
+  board(title,x,29.9,z,4,.65,yaw);
+  // Pitch tile roof of paifang
+  box(pGroup,'#424d45',0,5.1,0,6.4,.22,1.2);
+  box(pGroup,'#566159',0,5.25,0,6.2,.1,.3);
+  for(const side of [-1,1]){
+   box(pGroup,'#424d45',side*3.9,4.4,0,3,.2,1.1);
+   box(pGroup,'#566159',side*3.9,4.52,0,2.8,.1,.28);
+  }
+ }
+ paifang(-46.5,148,0,'上海老城厢 · 豫园商城');
+ paifang(-106,168,Math.PI/2,'豫园集市 · 传统商肆');
+
+ // 2. Suspended Skywalk Covered Corridors (过街飞檐连廊)
+ // Connects Huabao Lou (x: -86, z: 172) eastwards across pedestrian street to central bazaar at y=30.5
+ function skywalk(x1,x2,z,y=30.2,width=2.8){
+  const cx=(x1+x2)/2,len=Math.abs(x2-x1);
+  // Floor deck
+  box(root,'#5a3a2a',cx,y,z,len,.25,width);
+  // Columns & balustrades
+  for(let xx=x1+1;xx<=x2-1;xx+=2.5)for(const side of [-1,1]){
+   box(root,'#7a382c',xx,y+1.5,z+side*(width/2-.1),.15,3,.15);
+   box(root,'#96724a',xx,y+.45,z+side*(width/2-.1),2.4,.7,.08);
+  }
+  // Covered Roof
+  box(root,'#3e4b44',cx,y+3.15,z,len+.8,.22,width+1.2);
+  box(root,'#5b6962',cx,y+3.3,z,len+.6,.12,.35);
+  // Red hanging lanterns below skywalk
+  for(let xx=x1+1.5;xx<=x2-1.5;xx+=2){
+   const lantern=mesh(root,sphere,'#e88f4c',xx,y-.4,z,.22,.28,.22);
+  }
+ }
+ skywalk(-80,-68,172,30.2,2.6);
+ skywalk(-80,-68,188,30.2,2.6);
+
+ // 3. Bazaar Outdoor Ancient Stage (商圈露天古戏台 & 市集广场)
+ const stX=-86,stZ=156;
+ // Raised stage platform
+ box(root,'#6c4935',stX,27.1,stZ,7.2,2.2,6.2);
+ fixtures.push({x:stX,z:stZ,rx:3.6,rz:3.1,y:26,h:2.2});
+ // Stage four vermilion pillars
+ for(const dx of [-3,3])for(const dz of [-2.4,2.4]){
+  box(root,'#8e2f27',stX+dx,29.6,stZ+dz,.28,3.2,.28);
+  fixtures.push({x:stX+dx,z:stZ+dz,rx:.18,rz:.18,y:27,h:3.2});
+ }
+ // Stage backdrop screen
+ box(root,'#42291d',stX,29.3,stZ+2.3,5.6,2.6,.15);
+ board('藻井欢歌 · 戏曲华章',stX,30.5,stZ-2.45,4.5,.6,0);
+ // Double flying eaves roof
+ box(root,'#39453e',stX,31.4,stZ,8.4,.35,7.4);
+ box(root,'#53635a',stX,31.62,stZ,8,.15,.4);
+
+ // 4. Market Plaza Stalls (露天民俗市集木质榫卯摊位)
+ for(let i=0;i<4;i++){
+  const bx=-74,bz=152+i*5;
+  box(root,'#6b4a36',bx,26.5,bz,1.8,.9,1.2);
+  box(root,'#d8c69f',bx,27,bz,2,.08,1.4);
+  fixtures.push({x:bx,z:bz,rx:.9,rz:.6,y:26,h:1});
+  // Striped awning
+  for(const side of [-1,1])box(root,'#8e3a32',bx+side*.8,27.9,bz,.06,1.8,.06);
+  box(root,'#8a3229',bx,28.8,bz,1.9,.1,1.5);
+  // Merchandise samples
+  product(root,['pastry','candy','fan','lantern'][i],'#96423a');
+ }
+
+ // 5. Commercial Water Street Quay & Canal Bridge (临水水街石埠与石拱桥)
+ const canal=GARDEN_PONDS[6]; // {x1:16, x2:23, z1:156, z2:246}
+ const bridgeZ=188;
+ // Stone arched bridge across canal
+ box(root,'#b0b2a3',19.5,26.6,bridgeZ,7.4,.45,3.2);
+ for(const side of [-1,1]){
+  box(root,'#999b8c',19.5,27.1,bridgeZ+side*1.45,7.6,.6,.18);
+  for(const dx of [-3.2,-1.6,0,1.6,3.2])box(root,'#8c8e7e',19.5+dx,27.35,bridgeZ+side*1.45,.22,.45,.22);
+  fixtures.push({x:19.5,z:bridgeZ+side*1.45,rx:3.7,rz:.15,y:26,h:1.2});
+ }
+ // Stone quay steps down to water edge (石埠码头)
+ for(let step=0;step<4;step++){
+  box(root,'#a8aaa0',15.5-step*.3,25.6-step*.2,204,1,.2,4.8);
+ }
+ // Waterfront Weeping Willows along Commercial Canal
+ for(let z=164;z<=240;z+=18){
+  const wx=14.5;
+  box(root,'#5e4a36',wx,27.5,z,.22,3,.22);
+  crown(wx,29.8,z,2.2,1.3,2.2,'#5c824c');
+  for(let i=0;i<6;i++){
+   const a=i*Math.PI/3,xx=wx+Math.cos(a)*1.6,zz=z+Math.sin(a)*1.6;
+   crown(xx,28.2,zz,.24,1.1,.24,'#678d52');
+  }
+  fixtures.push({x:wx,z,rx:.2,rz:.2,y:26,h:3});
+ }
+
+ // 6. Pedestrian Avenue Trees: Camphor (香樟) & Magnolia in Stone Planters (花箱盆栽)
+ const streetTrees=[[-68,162],[-54,162],[-38,162],[-78,178],[-68,188],[-54,188],[-20,162],[-10,162]];
+ for(const [tx,tz]of streetTrees){
+  // Carved stone flower box
+  box(root,'#9fa193',tx,26.35,tz,1.6,.7,1.6);
+  fixtures.push({x:tx,z:tz,rx:.8,rz:.8,y:26,h:.8});
+  // Camphor / Magnolia trunk & rich evergreen crown
+  box(root,'#5c4a38',tx,28,tz,.22,3.2,.22);
+  crown(tx,30.2,tz,2.2,1.8,2.2,'#3f663b');
+  crown(tx+.4,29.8,tz-.4,1.7,1.4,1.7,'#487242');
+ }
+
  function setStocks(stocks={}){for(const [key,units]of Object.entries(goods)){const count=Number.isFinite(stocks[key])?Math.max(0,Math.min(units.length,Math.floor(stocks[key]))):units.length;units.forEach((group,i)=>{group.visible=i<count;});}}
  setStocks();return {fixtures,dynamicRoots,shops,goods,stockCaps,setStocks};
 }
+

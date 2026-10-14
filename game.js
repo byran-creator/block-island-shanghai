@@ -247,6 +247,16 @@ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();active=false;o
 function setFlight(value){flying=value&&!life?.state.survival;vy=0;$('mode').textContent=life?.state.survival?'生存模式':flying?'创造模式 · 飞行':'创造模式';}
 function placePlayer(point){ensureChunks(point);pos.x=point.x;pos.y=point.y;pos.z=point.z;vy=0;grounded=false;yaw=point.z>=270&&point.x<=170?0:point.z>=68?-Math.PI/2:point.x>=80?Math.PI/2:0;pitch=-.12;}
 function teleport(point){metro?.end(true);commute?.end(true);activity?.cancelRide();placePlayer(point);}
+window.__game={
+  camera,pos,teleport,lookTowards,setFlight,
+  setPos:(x,y,z)=>{teleport({x,y,z});pos.x=x;pos.y=y;pos.z=z;ensureChunks({x,y,z},true,true);camera.position.set(x,y+1.62,z);},
+  lookAt:(x,y,z)=>{lookTowards({x,y,z});camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();renderer.render(scene,camera);},
+  setTime:(min)=>{dayClock=phaseFromMinutes(min);updateSky(0);},
+  setNight:()=>{dayClock=165;updateSky(0);},
+  setDay:()=>{dayClock=36;updateSky(0);},
+  render:()=>{camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();renderer.render(scene,camera);},
+  scene,renderer,enter:()=>enter()
+};
 function pauseForPanel(){sceneAudio.suspend();metro?.suspend();pendingMine=null;active=false;keys.clear();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;document.exitPointerLock?.();}
 adventure=createAdventure({scene,world,notify,beep,teleport,setFlying:setFlight,getFlying:()=>flying,pause:pauseForPanel,resume:enter,burst:companions.burst,lookAt:lookTowards,setNight:()=>{dayClock=165;updateSky(0)},onProgress:()=>{saves?.save('auto')},getQuestTarget:()=>quests?.target(),fastTravel:p=>{const safe=safeLanding(world,p,collides);if(!safe){notify('落点被占用，请稍后再试。');return false;}setFlight(false);gliding=false;teleport(safe);if(p.viewTarget)lookTowards(p.viewTarget);return true;}});
 life=createLife({onEvent:e=>quests?.record(e),scene,world,interactionBlocked:(x,y,z,ignore)=>staticCollides(x,y,z,ignore),blocked:(x,y,z)=>staticCollides(x,y,z),isDry:()=>metroInterior(pos),notify,pause:pauseForPanel,resume:enter,getPos:()=>pos,getYaw:()=>yaw,getDirection:()=>{camera.getWorldDirection(direction);return direction},onMode:survival=>{if(survival)setFlight(false);else setFlight(flying)},onHeld:type=>{$('selected-name').textContent=type?({bed:'床',chair:'木椅',table:'餐桌',lamp:'晶石灯',chest:'储物箱',campfire:'篝火',bookshelf:'书架',planter:'菜圃'}[type]):BLOCKS[selected].name},onDeath:point=>{if(point&&!collides(point.x,point.y,point.z))teleport(point);else teleport(LANDMARKS.village);vy=0},setDay:()=>{dayClock=36;updateSky(0)},onProgress:()=>saves?.save('auto')});
@@ -314,6 +324,7 @@ function lookTowards(point){const dx=point.x-pos.x,dz=point.z-pos.z; yaw=Math.at
 function lookCelestial(night){adventure.cancelRace();enter();teleport(LANDMARKS.bund);dayClock=night?165:36;updateSky(0);camera.position.set(pos.x,pos.y+1.62,pos.z);weather.tick(0,dayClock);lookTowards(night?weather.moon.position:sunBlock.position);notify(night?'已转向月亮；拖动鼠标继续环顾。':'已转向太阳；拖动鼠标继续环顾。');}
 $('start-survival').onclick=async()=>{await $('play').onclick();adventure.cancelRace();const first=life.enterSurvival();if(first){teleport(LANDMARKS.survivalCamp);dayClock=36;updateSky(0);}saves?.save('auto');};
 $('go-city').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.shanghai);lookTowards({x:201,y:76,z:88});notify('陆家嘴：环球在金茂东南，上海中心在金茂西南。对岸是外滩。');};
+$('go-yuyuan').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.yuyuan);lookTowards({x:-46,y:28,z:240});notify('豫园：九曲桥、湖心亭，外围明清仿古商圈，内园扩建4倍古典园林。');};
 $('go-bund').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.bund);lookTowards({x:184,y:65,z:66});};
 $('go-north-bund').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.northBund);lookTowards({x:193,y:76,z:82});};
 $('go-home').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.village);lookTowards({x:74,y:28,z:325});notify('欢迎回生活岛！木屋、奶龙、涂鸦和海港跑酷都在这里。');};
