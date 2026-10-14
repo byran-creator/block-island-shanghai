@@ -6,6 +6,7 @@ import {createChunkMesher,createChunkQueue} from './chunk-work.js';
 import {createQuestJournal} from './quest-journal.js';
 import {mountVoiceSettings} from './voice-settings.js';
 import * as THREE from './three.module.js';
+import {snapMetroFloor} from './metro-floor.js';
 import {createYuyuan} from './yuyuan.js';
 import {createRiverWaterGeometry} from './yuyuan-water.js';
 import {GARDEN_PONDS,YUYUAN_SHIFT} from './yuyuan-layout.js';
@@ -199,13 +200,14 @@ function collides(x,y,z){return staticCollides(x,y,z)||!!civil?.collides(x,y,z);
 function nearWaterExit(){return [[1.1,0],[-1.1,0],[0,1.1],[0,-1.1]].some(([dx,dz])=>{const x=Math.floor(pos.x+dx),z=Math.floor(pos.z+dz),y=world.get(x,23,z)?24:23;return !!world.get(x,y-1,z)&&!world.get(x,y,z)&&!world.get(x,y+1,z);});}
 function physics(dt){
  if(metro?.isRiding()||metro?.tryBoard())return;
+ const alignedFloor=snapMetroFloor(world,pos,vy,{flying,gliding},(x,z)=>metro?.floorAt(x,z));if(alignedFloor!==null&&!collides(pos.x,alignedFloor,pos.z)){pos.y=alignedFloor;vy=0;grounded=true;}
  if(adventure?.state.race)gliding=false;
  for(const [key,until] of releaseAt)if(performance.now()>=until){keys.delete(key);releaseAt.delete(key);}
  yaw+=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight')))*dt*1.65;pitch=Math.max(-1.52,Math.min(1.52,pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt*1.2));
  let fw=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),side=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));const length=Math.hypot(fw,side);if(length){fw/=length;side/=length;}
  const shift=keys.has('ShiftLeft')||keys.has('ShiftRight'),swimming=isSwimming({feet:pos.y,dry:metroInterior(pos)});const speed=movementSpeed({flying,gliding,grounded,swimming,equipped:life?.state.equipped,sprint:shift||runLocked,racing:!!adventure?.state.race});
  const dx=(-Math.sin(yaw)*fw+Math.cos(yaw)*side)*speed*dt,dz=(-Math.cos(yaw)*fw-Math.sin(yaw)*side)*speed*dt;
- const rampY=(x,z)=>{const h=metroRampFloor(x,z)??metro?.floorAt(x,z)??nanpuFloor(world,x,z);return !flying&&!gliding&&h!==null&&Math.abs(pos.y-h)<.35&&vy<=0?h:pos.y;};
+ const rampY=(x,z)=>{const h=metroRampFloor(x,z)??metro?.floorAt(x,z)??nanpuFloor(world,x,z);return !flying&&!gliding&&h!==null&&Math.abs(pos.y-h)<.35&&vy<=0?h:(snapMetroFloor(world,{x,y:pos.y,z},vy,{flying,gliding},(xx,zz)=>metro?.floorAt(xx,zz))??pos.y);};
  let moveY=rampY(pos.x+dx,pos.z);if(!collides(pos.x+dx,moveY,pos.z)){pos.x+=dx;pos.y=moveY;}
  moveY=rampY(pos.x,pos.z+dz);if(!collides(pos.x,moveY,pos.z+dz)){pos.z+=dz;pos.y=moveY;}
  if(flying){vy=(Number(keys.has('Space'))-Number(shift))*6;}
@@ -303,6 +305,7 @@ function applySave(data){try{
 }
 if(p&&(data.mapRevision||0)<5){migrateCityPoint(p);if(p.y>=25&&p.y<33&&!data.flying&&!data.gliding&&!world.get(Math.floor(p.x),Math.floor(p.y)-1,Math.floor(p.z)))Object.assign(p,LANDMARKS.bund);}
 if(p&&data.mapRevision===5)migrateBundPoint(p);
+if(p){const y=snapMetroFloor(world,p,0,{flying:data.flying,gliding:data.gliding},(x,z)=>metro?.floorAt(x,z));if(y!==null)p.y=y;}
 if(p&&!data.flying&&!data.gliding&&[44,70].includes(Math.round(p.y))&&Math.abs(p.x-PEARL.x)<12&&Math.abs(p.z-PEARL.z)<12&&!overlaps(world,p.x,p.y-.1,p.z)){const safe=safeLanding(world,p);if(safe)Object.assign(p,safe);}
 if(p&&[p.x,p.y,p.z].every(Number.isFinite)&&p.y<HEIGHT+12&&!overlaps(world,p.x,p.y,p.z))Object.assign(pos,p);else Object.assign(pos,LANDMARKS.village);ensureChunks(pos,true,true);
  yaw=Number.isFinite(data.yaw)?data.yaw:0;pitch=Number.isFinite(data.pitch)?Math.max(-1.52,Math.min(1.52,data.pitch)):-.08;select(Number.isInteger(data.selected)&&data.selected>0&&data.selected<BLOCKS.length?data.selected:1,false);life.restore(data.version===6?data.life:null);if(data.mapRevision===5){const migrated=life.serialize();for(const f of migrated.furniture)migrateBundPoint(f);if(migrated.home)migrateBundPoint(migrated.home);life.restore(migrated);}if((data.mapRevision||0)<5){const migrated=life.serialize();for(const f of migrated.furniture)movePersonal(f);if(migrated.home)movePersonal(migrated.home);life.restore(migrated);}if((data.mapRevision||0)<4){for(const f of life.state.furniture)if(f.x<=115&&f.z>138&&f.y>=25){const x=Math.floor(f.x),z=Math.floor(f.z),y=Math.floor(f.y)-1;for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)if(!world.get(x+dx,y,z+dz))updateBlock(x+dx,y,z+dz,7);}}if(collides(pos.x,pos.y,pos.z)){const nearby=[{x:pos.x+1.5,y:pos.y,z:pos.z},{x:pos.x-1.5,y:pos.y,z:pos.z},{x:pos.x,y:pos.y+2,z:pos.z}].find(p=>!collides(p.x,p.y,p.z));teleport(nearby||LANDMARKS.village);}setFlight(!!data.flying);gliding=!!data.gliding&&life.state.glider&&!flying;yuyuan.restore(data.yuyuan);restaurant.restore(data.restaurant);privateSuites.restore(data.suites);activity.restore(data.activity);skyline.restore(data.skyline);weather.restore(data.weather);$('weather-choice').value=weather.state.mode;$('weather-pace').value=weather.state.cycleSeconds;$('weather-pace').disabled=weather.state.mode!=='auto';timeOptions=clockOptions(data.timeOptions);dayClock=Number.isFinite(data.dayClock)?Math.max(0,data.dayClock)%240:36;mined=Math.max(0,Number(data.mined)||0);placed=Math.max(0,Number(data.placed)||0);adventure.restore(data.adventure);talkDone=!!data.talkDone;followDone=!!data.followDone;celebrated=!!data.celebrated;quests.restore(data.quests,{talkDone,placed});if(adventure.state.race){gliding=false;teleport(courseById(adventure.state.race.course).platforms[adventure.state.race.checkpoint]);setFlight(false)}updateTasks();started=true;enter();notify(shift?'旧存档已迁移到新群岛，你的建筑仍然保留。':'已读取存档，欢迎回到你的小岛。');
@@ -356,7 +359,7 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-update-v52-seen';
+const UPDATE_NOTICE_KEY='block-island-update-v53-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});

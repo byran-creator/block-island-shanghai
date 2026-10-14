@@ -7,7 +7,7 @@ export function decorateMetroStation(root,s,{cube,slab,board,direction=metroPlat
   const half=y===6?5:14,top=y===6?4.8:5.5;
   for(const z of [-1.85,1.85])slab(root,'#534b41',s.x,y+.025,s.z+z,69,.28);
   for(let x=-34;x<35;x+=.55)slab(root,'#303537',s.x+x,y+top-.16,s.z,.14,half*2);
-  for(const x of [-28,-14,0,14,28]){const z=s.z+(y===6?-.4:-11);cube(root,'#e9e7df',s.x+x,y+2.25,z,1.3,4.5,1.3);cube(root,s.color,s.x+x,y+4.1,z,1.65,.4,1.65);cube(root,'#5e5d59',s.x+x,y+.16,z,1.38,.3,1.38);board(root,[s.name,s.english],s.x+x,y+2.9,z+.67,1.15,.65,'#f4f7f4','#171a1b',{layout:'station',line2:false});}
+  for(const x of [-28,-14,0,14,28]){const z=s.z+(y===6?-.4:-11);cube(root,'#e9e7df',s.x+x,y+2.25,z,1.3,4.5,1.3);cube(root,s.color,s.x+x,y+4.1,z,1.65,.4,1.65);cube(root,'#5e5d59',s.x+x,y+.16,z,1.38,.3,1.38);board(root,[s.name,s.english],s.x+x,y+2.9,z+.67,1.15,.65,'#f4f7f4','#171a1b',{layout:'station',line2:false,...(s.sharedConcourse&&y===16?{lineNumber:2,lineColor:'#92c83e'}:{})});}
  }
  for(const side of [-1,1]){
   for(let x=-34;x<35;x+=1.5)for(const z of [-.14,0,.14])cube(root,'#b1ca7c',s.x+x,6.06,s.z+side*4.4+z,1.4,.025,.035);

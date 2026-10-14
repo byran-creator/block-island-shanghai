@@ -22,7 +22,7 @@ try{
  assert(district.collides(-46,26,268.5),'Round window cannot become a walk-through rectangular hole');
  Object.assign(p,{x:-73,y:26,z:265});district.restore({});assert(district.use());assert.equal(nodes.get('yuyuan-actions').children[0].textContent,'开闸离园');nodes.get('yuyuan-actions').children[0].onclick();assert(!collides(-74.5,265),'Legacy player inside can always exit without a ticket');
  district.gates.claim();const saved=district.serialize();district.restore(saved);assert.deepEqual(district.serialize(),saved);assert(collides(-74.5,265),'Restore closes ephemeral door openings');
- assert.equal(district.crowd.people.length,23,'20 shop visitors and only three additional inner-garden walkers');
+ assert.equal(district.crowd.people.length,43,'40 public-area visitors and only three independent inner-garden walkers');
  const area=Math.abs(INNER_GARDEN_BOUNDARY.reduce((sum,a,i)=>{const b=INNER_GARDEN_BOUNDARY[(i+1)%INNER_GARDEN_BOUNDARY.length];return sum+a[0]*b[1]-a[1]*b[0];},0))/2;assert(area>=644*1.9,'Inner garden did not approximately double');
  walk(INNER_GARDEN_EAST_PATH);
  assert.equal(district.streetArt.shops.length,9);for(const shop of district.streetArt.shops){Object.assign(p,{x:shop.x,y:26,z:shop.z+YUYUAN_SHIFT});district.tick(21);assert(district.use(),'Cannot use new indoor shop '+shop.title);nodes.get('yuyuan-actions').children[0].onclick();assert.equal(district.streetArt.goods[shop.key].filter(g=>g.visible).length,5,'Purchase removes one actual display');district.close();}
@@ -34,5 +34,5 @@ try{
  const geometry=createRiverWaterGeometry({size:1000,centerX:0,centerZ:0,ponds:GARDEN_PONDS,shift:YUYUAN_SHIFT}),positions=geometry.attributes.position,index=geometry.index;
  function covered(x,z){const y=-z,cross=(ax,ay,bx,by,cx,cy)=>(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);for(let i=0;i<(index?.count??positions.count);i+=3){const ids=[0,1,2].map(j=>index?index.getX(i+j):i+j),v=ids.map(j=>[positions.getX(j),positions.getY(j)]),s=v.map((a,j)=>cross(...a,...v[(j+1)%3],x,y));if(s.every(n=>n>=-1e-6)||s.every(n=>n<=1e-6))return true;}return false;}
  assert(covered(0,0),'Huangpu river must remain intact');for(const q of GARDEN_PONDS)for(let i=1;i<8;i++)for(let j=1;j<8;j++)assert(!covered(q.x1+(q.x2-q.x1)*i/8,q.z1+YUYUAN_SHIFT+(q.z2-q.z1)*j/8),'River overlaps the clear garden pond');
- console.log('PASS: doubled inner garden, nine stocked indoor shops, 23 independent walkers, ticket entry/exit/legacy saves, round frames, both curved routes, 20 koi and river holes.');
+ console.log('PASS: doubled inner garden, nine stocked indoor shops, 43 independent walkers, ticket entry/exit/legacy saves, round frames, both curved routes, 20 koi and river holes.');
 }finally{globalThis.document=before;}

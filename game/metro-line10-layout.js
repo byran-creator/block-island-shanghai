@@ -3,12 +3,12 @@ export const LINE10_COLOR='#c6a6d8',LINE10_ORIGIN={x:-94,z:-40},LINE10_ROTATION=
 export const line10ToWorld=p=>({x:LINE10_ORIGIN.x-p.z,y:p.y,z:LINE10_ORIGIN.z+p.x});
 export const line10ToLocal=p=>({x:p.z-LINE10_ORIGIN.z,y:p.y,z:LINE10_ORIGIN.x-p.x});
 export const LINE10_STATIONS=[
- {id:'nanjing10',name:'南京东路',english:'East Nanjing Road',platformLabel:'B3',x:164,z:0,color:'#c6b3d0',exits:[]},
+ {id:'nanjing10',name:'南京东路',english:'East Nanjing Road',platformLabel:'B3',x:164,z:0,color:'#c6b3d0',sharedConcourse:true,exits:[]},
  {id:'yuyuan',name:'豫园',english:'Yuyuan Garden',platformLabel:'B2',x:256,z:0,color:'#ae5142',exits:[{number:1,x:252,z:-8,dir:1,width:1.4,label:'豫园西北门 · 河南南路'},{number:4,x:302,z:-8,dir:-1,width:1.4,label:'豫园西门 · 福佑路'}]}
 ];
 export const LINE10_RAMPS=LINE10_STATIONS.flatMap(s=>[...s.exits.map(e=>({station:s.id,exit:e.number,...e,from:26,to:16,length:18,kind:'entrance'})),{station:s.id,x:s.x-12,z:3,dir:1,from:16,to:6,length:18,width:1.5,kind:'platform'}]);
 export const LINE10_WORLD_STATIONS=LINE10_STATIONS.map(s=>({...s,...line10ToWorld({...s,y:16}),line:10,exits:s.exits.map(e=>({...e,...line10ToWorld({...e,y:26}),axis:'z'}))}));
-export const TRANSFER_POINTS=[[-100,79],[-114,96],[-114,124],[-107,124]];
+export const TRANSFER_POINTS=[[-100,79],[-100,85],[-114,85],[-114,124],[-107,124]];
 function segmentDistance(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);}
 export const transferInterior=p=>p.y>=15.5&&p.y<22&&TRANSFER_POINTS.some((b,i)=>i&&segmentDistance(p.x,p.z,TRANSFER_POINTS[i-1],b)<2.15);
 export const line10RampAt=(x,z)=>LINE10_RAMPS.find(r=>{const d=(x-r.x)*r.dir;return d>=-2&&d<=r.length+2&&Math.abs(z-r.z)<r.width;});
@@ -32,4 +32,7 @@ export function buildLine10(w,builder,baseStations=[]){
  // Corridor end caps may overlap the existing station's open room. Retain its
  // original clear concourse while leaving the new door in the boundary wall.
  for(const s of baseStations)w.fill(s.x-35,16,s.z-15,s.x+35,21,s.z+15,0);
+ // Tube end caps must not rebuild walls inside either connected concourse.
+ // Re-open both rooms last, retaining their floors/ceilings and boundary door.
+ for(const s of LINE10_STATIONS)proxy.fill(s.x-35,16,s.z-15,s.x+35,21,s.z+15,0);
 }

@@ -26,9 +26,12 @@ try{
  const arrived=line10ToLocal(pos);assert(Math.abs(arrived.x-LINE10_STATIONS[1].x)<35);assert(events.some(e=>e.type==='metro10'&&e.from==='nanjing'&&e.to==='yuyuan'&&e.departed));
  assert(network.stations.every(s=>s.paid));assert.equal(line10Direction(LINE10_STATIONS[1],1).next,'老西门');assert.equal(line10Direction(LINE10_STATIONS[1],-1).next,'南京东路');
  const returnTrain=network.lines[10].trains[1];for(let i=0;i<900;i++){tick(.1);if(returnTrain.state.origin===1&&returnTrain.state.station===1&&returnTrain.state.open&&returnTrain.doorAmount>.85)break;}walkIn(LINE10_STATIONS[1],1);for(let i=0;i<450&&network.isRiding();i++)tick(.1);assert(!network.isRiding());assert(events.some(e=>e.type==='metro10'&&e.from==='yuyuan'&&e.to==='nanjing'&&e.departed),'Returning service must deliver to Nanjing without a second security check');
- // Exit the new station through its real gate before a new entry can start.
- const destination=LINE10_STATIONS[0];Object.assign(pos,line10ToWorld({x:destination.x-12,y:16,z:0}));assert(network.use());Object.assign(pos,line10ToWorld({x:destination.x-16,y:16,z:0}));tick(.1);assert(network.stations.every(s=>!s.paid&&!s.checked),'Exit must close the fare session for both lines');
- assert(network.use());assert(messages.at(-1).includes('尚未通过安检'));
+ // Return through the shared paid concourse, then use the original Line 2
+ // exit gate and street staircase. There must be no phantom Line 10 gate.
+ const shared=network.lines[10].stations[0];assert(shared.sharedConcourse);assert(!shared.gateMesh&&!shared.bag);assert.equal(shared.routes.length,0);
+ Object.assign(pos,line10ToWorld({x:150,y:16,z:0}));assert(!network.collides(pos.x,pos.y,pos.z),'Old shared-hall glass gate must be gone');
+ for(const [x,z]of [...TRANSFER_POINTS].reverse()){Object.assign(pos,{x,y:16,z});assert(!overlaps(world,x,16,z));assert(!network.collides(x,16,z));tick(.01);assert(network.stations.every(s=>s.paid));}
+ Object.assign(pos,{x:-106.8,y:16,z:66});assert(network.use());Object.assign(pos,{x:-109,y:16,z:66});tick(.1);assert(network.stations.every(s=>!s.paid&&!s.checked),'Real Line 2 exit gate clears the shared fare');assert(network.use());assert(messages.at(-1).includes('尚未通过安检'));
  const saved=network.serialize();network.restore(saved);assert(!network.isRiding());assert(network.stations.every(s=>!s.paid));network.restore({stations:[{id:'nanjing',checked:true,paid:true}]});assert(network.lines[2].stations[0].paid,'Old Line 2 ticket save remains readable');
  for(const s of LINE10_WORLD_STATIONS)for(const e of s.exits){assert(world.get(Math.floor(e.x),25,Math.floor(e.z)),'New entry needs paving');}
  console.log('PASS: shared paid transfer with wall/model/headroom clearance, original check/gate entry, Line 10 six-car service/boarding/support/arrival, real directions, exit gates/re-entry and old/new fare saves.');
