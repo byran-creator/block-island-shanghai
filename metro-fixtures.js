@@ -4,11 +4,11 @@ import {METRO_HALL,metroFarePartitions} from './metro-layout.js';
 export function metroFixtures(s){
  const bounds=[];
  const add=(x,z,w,d,y,top)=>bounds.push({x:s.x+x,z:s.z+z,w:w/2,d:d/2,y,top});
- add(-22,-8,5,2,16,18.8);
+ if(!s.sharedConcourse)add(-22,-8,5,2,16,18.8);
  for(const floor of [6,16])for(const x of [-28,-14,0,14,28])add(x,floor===16?-11:-.4,1.3,1.3,floor,floor+4.5);
  for(const x of [-28,28])add(x,0,4,1.06,6,7.4);
- for(const b of metroFarePartitions(s))add(b.x-s.x,b.z-s.z,b.w,b.d,16,19.5);
- for(const z of [METRO_HALL.gateZ-2,METRO_HALL.gateZ+2])add(METRO_HALL.gateX,z,2,.48,16,17.25);
+ for(const b of (s.sharedConcourse?[]:metroFarePartitions(s)))add(b.x-s.x,b.z-s.z,b.w,b.d,16,19.5);
+ for(const z of (s.sharedConcourse?[]:[METRO_HALL.gateZ-2,METRO_HALL.gateZ+2]))add(METRO_HALL.gateX,z,2,.48,16,17.25);
  return bounds;
 }
 export function fixtureCollision(bounds,x,y,z,radius=.29,height=1.75){
