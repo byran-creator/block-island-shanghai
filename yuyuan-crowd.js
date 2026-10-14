@@ -22,12 +22,15 @@ export function createYuyuanCrowd({scene,world,blocked}){
   points.splice(0,points.length,...simple);
   const parts=[];let length=0;for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]);parts.push({a,b,d,start:length});length+=d;}
   function pose(distance){const d=(distance%length+length)%length,part=parts.find(p=>d<=p.start+p.d)??parts.at(-1),t=(d-part.start)/part.d;return {x:part.a[0]+t*(part.b[0]-part.a[0]),z:part.a[1]+t*(part.b[1]-part.a[1]),yaw:Math.atan2(part.b[0]-part.a[0],part.b[1]-part.a[1])+Math.PI};}
-  for(let i=0;i<count;i++){const id=firstId+i,root=new THREE.Group(),color=['#8b6579','#627e92','#a48a5e','#62907b','#a87c67'][id%5];scene.add(root);
+  for(let i=0;i<count;i++){const id=firstId+i,root=new THREE.Group(),body=new THREE.Group(),color=['#8b6579','#627e92','#a48a5e','#62907b','#a87c67'][id%5];root.add(body);scene.add(root);
    function box(parent,c,x,y,z,w,h,d){const m=new THREE.Mesh(geo,mat(c));m.position.set(x,y,z);m.scale.set(w,h,d);parent.add(m);return m;}
-   const torso=box(root,color,0,1.05,0,.43,.7,.3),head=box(root,'#d3a982',0,1.57,0,.34,.35,.32),hair=box(root,'#3d302b',0,1.76,0,.35,.08,.33),arms=[],legs=[];
-   for(const side of [-1,1]){const arm=new THREE.Group(),leg=new THREE.Group();arm.position.set(side*.28,1.26,0);leg.position.set(side*.12,.75,0);box(arm,color,0,-.24,0,.13,.51,.18);box(leg,'#424547',0,-.37,0,.17,.74,.22);root.add(arm,leg);arms.push(arm);legs.push(leg);}
-   styleNpc({root,torso,head,hair,arms,legs},id,'visitor');batchMeshes(root,staticMeshes(root,new Set([...arms,...legs])),'yuyuan-street-person');
-   const d=(i+.15+(id*29%17)/24)*length/count,q=pose(d);root.position.set(q.x,26,q.z);root.rotation.y=q.yaw;people.push({root,person:true,d,pose,length,speed:.72+(id*13%7)*.07,travel:0,wait:0,pause:0,offset:0,phase:id*2.173,stride:4.1+(id%5)*.17,browseIn:12+(id*19%37),browseCount:0,detour:null,rerouteIn:0,arms,legs,inner:firstId>=400,npcRole:i%5===0?'逛老城的游客':undefined,guide:{intro:'外侧商街很热闹，内园安静些。月洞门旁领取游戏体验票，再检票进去看假山和锦鲤。',choices:[['哪里可以逛店？','东侧连续的木窗店面和南侧老城商街都能进去，靠近柜台按 V。']]}});
+   const torso=box(body,color,0,1.05,0,.43,.7,.3),head=box(body,'#d3a982',0,1.57,0,.34,.35,.32),hair=box(body,'#3d302b',0,1.76,0,.35,.08,.33),arms=[],legs=[];
+   for(const side of [-1,1]){const arm=new THREE.Group(),leg=new THREE.Group();arm.position.set(side*.28,1.26,0);leg.position.set(side*.12,.75,0);box(arm,color,0,-.24,0,.13,.51,.18);box(leg,'#424547',0,-.37,0,.17,.74,.22);body.add(arm,leg);arms.push(arm);legs.push(leg);}
+   styleNpc({root,torso,head,hair,arms,legs},id,'visitor');
+   const lateral=firstId>=400?(((id%3)-1)*.12):(((id%5)-2)*.18);
+   body.position.x=lateral;body.scale.setScalar(.94+(id%4)*.04);
+   batchMeshes(root,staticMeshes(root,new Set([...arms,...legs])),'yuyuan-street-person');
+   const d=(i+.15+(id*29%17)/24)*length/count,q=pose(d);root.position.set(q.x,26,q.z);root.rotation.y=q.yaw;people.push({root,body,person:true,d,pose,length,speed:.72+(id*13%7)*.07,travel:0,wait:0,pause:0,offset:0,phase:id*2.173,stride:4.1+(id%5)*.17,browseIn:12+(id*19%37),browseCount:0,detour:null,rerouteIn:0,arms,legs,inner:firstId>=400,npcRole:i%5===0?'逛老城的游客':undefined,guide:{intro:'外侧商街很热闹，内园安静些。月洞门旁领取游戏体验票，再检票进去看假山和锦鲤。',choices:[['哪里可以逛店？','东侧连续的木窗店面和南侧老城商街都能进去，靠近柜台按 V。']]}});
   }
  }
  // Independent circuits keep most visitors close to the public shops and
@@ -63,13 +66,16 @@ export function createYuyuanCrowd({scene,world,blocked}){
   if(volume>1e-7)moved=escapeNewBlock(a,dt,volume);
   else if(a.pause>0)a.pause=Math.max(0,a.pause-dt);
   else if(a.detour){const detour=a.detour,target=detour.points[detour.index],p=a.root.position,q={x:target[0],z:target[1],yaw:Math.atan2(target[0]-p.x,target[1]-p.z)+Math.PI};moved=stepTo(a,q,dt);if(Math.hypot(p.x-q.x,p.z-q.z)<.06){detour.index++;if(detour.index>=detour.points.length){a.d=detour.endD;a.detour=null;}}else if(!moved&&a.wait>3&&!a.rerouteIn)reroute(a);}
-  else {const d=(a.d+a.speed*dt)%a.length,q=a.pose(d);
+  else {const lead=people.find(b=>b!==a&&Math.hypot(b.root.position.x-a.root.position.x,b.root.position.z-a.root.position.z)<1.35);
+   const currentSpeed=lead?Math.min(a.speed,lead.speed*.96):a.speed;
+   const d=(a.d+currentSpeed*dt)%a.length,q=a.pose(d);
    if(!staticClear(q.x,q.z)){if(a.wait>.8&&!a.rerouteIn)reroute(a);}
    else {moved=stepTo(a,q,dt);if(moved)a.d=d;}
   }
   if(moved){a.wait=0;a.browseIn-=dt;if(a.browseIn<=0&&!people.some(b=>b!==a&&Math.hypot(a.root.position.x-b.root.position.x,a.root.position.z-b.root.position.z)<2.2)){a.pause=.8+(a.phase%1.9);a.browseCount++;a.browseIn=18+(a.phase*7%31);}}
   else if(!a.pause)a.wait+=dt;
   const swing=moved?Math.sin(a.travel*a.stride+a.phase)*.28:0;for(let i=0;i<2;i++){a.arms[i].rotation.x=THREE.MathUtils.damp(a.arms[i].rotation.x,(i?1:-1)*swing,8,dt);a.legs[i].rotation.x=THREE.MathUtils.damp(a.legs[i].rotation.x,(i?-1:1)*swing,8,dt);}
+  if(a.body)a.body.rotation.y=moved?Math.sin(a.travel*3.2+a.phase)*.05:0;
  }}};
 
 }

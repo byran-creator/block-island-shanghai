@@ -73,6 +73,25 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   lakeRock(-94+rx,222+rz,scale,22+(3-dist*.3)*1.2);
   if(random()>.3)block('#2d4c2b',-94+rx+(random()-.5)*1.5,26+scale*2,-94+rx+(random()-.5)*1.5,.6,.12,.6);
  }
+ // Mountain stone stair trail climbing to the peak
+ for(let s=0;s<9;s++)block('#a2a092',-87.5-s*.65,26+s*.72,221+(s%3-.5)*.5,.9,.22,1.1);
+ // Cavern grotto voids & archways
+ block('#505048',-94,26.6,219.5,2.4,2.2,1.8);
+ // Horizontal gnarled ancient black pines (横斜古黑松)
+ beam('#503e30',[-94,30.5,219],[-90.8,31.3,214.8],.18);
+ crown(-90.4,31.5,214.5,1.9,.48,1.8,'#223a26');
+ beam('#503e30',[-94,31,225],[-97.2,31.9,228.6],.18);
+ crown(-97.6,32.1,228.8,1.8,.48,1.7,'#223a26');
+ // Summit Wangjiang Pavilion (大假山绝顶望江亭) perched at [-94, 224]
+ for(const dx of [-1.3,1.3])for(const dz of [-1.3,1.3]){const post=block('#754b33',-94+dx,33.5,224+dz,.16,3.6,.16);addFixture(post);}
+ const wjRoof=[];
+ for(const side of [-1,1])for(let j=0;j<4;j++){const a=j/4,b=(j+1)/4,h=t=>36.8-1.2*t+.32*t**6,za=224+side*1.95*a,zb=224+side*1.95*b;
+  wjRoof.push(-94-1.95,h(a),za,-94+1.95,h(a),za,-94-1.95,h(b),zb,-94-1.95,h(b),zb,-94+1.95,h(a),za,-94+1.95,h(b),zb);
+ }
+ const wjg=new THREE.BufferGeometry();wjg.setAttribute('position',new THREE.Float32BufferAttribute(wjRoof,3));wjg.computeVertexNormals();const wjm=mat('#38463c').clone();wjm.side=THREE.DoubleSide;group.add(new THREE.Mesh(wjg,wjm));
+ for(const dx of [-1.95,1.95])for(const dz of [-1.95,1.95])block('#29342c',-94+dx,36.25,224+dz,.18,.28,.18);
+ block('#88857a',-94,31.7,224,.7,.6,.7);
+ block('#88857a',-94-.75,31.45,224,.4,.35,.4);block('#88857a',-94+.75,31.45,224,.4,.35,.4);
 
  // Other scenic Taihu rock groups throughout the garden
  lakeRock(-63.8,200.2,1.95,21.8);lakeRock(-67.6,199.7,.8,22.1);
@@ -99,24 +118,118 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   }
  }
  const dhX=-86,dhZ=216;
- block('#353d38',dhX,29.8,dhZ,.7,.6,.9);
- block('#c89c4d',dhX,29.9,dhZ+.4,.45,.45,.45,true);
- crown(dhX,30.3,dhZ-.2,.3,.5,.3,'#414b45');
+ // Authentic Ming-Qing sculpted dragon head (泥塑彩绘龙首 - dragon_wall.jpg)
+ // 1. Dragon snout & upper jaw curving forward
+ block('#34433b',dhX,29.8,dhZ+.35,.72,.42,.85);
+ block('#26322b',dhX,30.08,dhZ+.7,.52,.26,.45);
+ // Sharp white upper fangs & teeth
+ block('#f5f2e9',dhX-.24,29.5,dhZ+.7,.08,.24,.08);
+ block('#f5f2e9',dhX+.24,29.5,dhZ+.7,.08,.24,.08);
+ for(let fx=-.16;fx<=.17;fx+=.08)block('#eae6dc',dhX+fx,29.55,dhZ+.74,.06,.14,.06);
+ // 2. Open mouth cavity & red curving tongue
+ block('#943329',dhX,29.52,dhZ+.42,.54,.14,.62);
+ crown(dhX,29.53,dhZ+.75,.14,.04,.24,'#b6362b');
+ // Lower jaw extending forward with teeth
+ block('#34433b',dhX,29.34,dhZ+.46,.58,.22,.65);
+ block('#f5f2e9',dhX-.2,29.48,dhZ+.72,.07,.18,.07);
+ block('#f5f2e9',dhX+.2,29.48,dhZ+.72,.07,.18,.07);
+ // 3. Bulging brow ridges and glowing golden eyes
+ block('#26322b',dhX-.26,30.16,dhZ+.2,.24,.22,.35);
+ block('#26322b',dhX+.26,30.16,dhZ+.2,.24,.22,.35);
+ block('#dfab3d',dhX-.32,30.06,dhZ+.26,.12,.14,.14,true);
+ block('#dfab3d',dhX+.32,30.06,dhZ+.26,.12,.14,.14,true);
+ block('#1a1a1a',dhX-.34,30.06,dhZ+.28,.04,.1,.04);
+ block('#1a1a1a',dhX+.34,30.06,dhZ+.28,.04,.1,.04);
+ // 4. Branched majestic dragon horns (龙角)
+ beam('#26322b',[dhX-.24,30.2,dhZ+.05],[dhX-.52,31.15,dhZ-.3],.11);
+ beam('#26322b',[dhX-.52,31.15,dhZ-.3],[dhX-.68,31.6,dhZ-.18],.075);
+ beam('#26322b',[dhX+.24,30.2,dhZ+.05],[dhX+.52,31.15,dhZ-.3],.11);
+ beam('#26322b',[dhX+.52,31.15,dhZ-.3],[dhX+.68,31.6,dhZ-.18],.075);
+ // 5. Long undulating dragon whiskers (龙须)
+ beam('#3d4b43',[dhX-.32,29.85,dhZ+.52],[dhX-.72,29.65,dhZ+.18],.055);
+ beam('#3d4b43',[dhX-.72,29.65,dhZ+.18],[dhX-.92,29.25,dhZ-.32],.042);
+ beam('#3d4b43',[dhX+.32,29.85,dhZ+.52],[dhX+.72,29.65,dhZ+.18],.055);
+ beam('#3d4b43',[dhX+.72,29.65,dhZ+.18],[dhX+.92,29.25,dhZ-.32],.042);
+ // 6. Flaming Dragon Pearl (火珠 / 龙珠) held in front
+ const pearl=new THREE.Mesh(new THREE.SphereGeometry(.28,12,10),mat('#e6ae3e',true));
+ pearl.position.set(dhX,29.56,dhZ+1.18);group.add(pearl);
+ crown(dhX,29.34,dhZ+1.18,.45,.08,.45,'#cb5134');
+ crown(dhX,29.56,dhZ+1.38,.16,.26,.16,'#df7530');
+ crown(dhX,29.78,dhZ+1.18,.14,.22,.14,'#e8b942');
+ // Dragon wall purple & green bamboo clump (紫竹丛)
+ for(let b=0;b<5;b++){
+  const bz=dhZ-1.2-b*.55,bx=dhX+.55+(b%2)*.2,bh=3.2+random()*1.2;
+  const bStem=new THREE.Mesh(pole,mat('#48364b'));bStem.position.set(bx,26+bh/2,bz);bStem.scale.set(.035,bh,.035);group.add(bStem);
+  crown(bx,26+bh,bz,.38,.14,.38,'#4a6c38');
+ }
 
- // 5. Song Dynasty Heritage Stone: Yu Ling Long Peak (玉玲珑名石)
+ // 5. Song Dynasty Heritage Stone: Yu Ling Long Peak (玉玲珑名石 - yulinglong_rock.jpg)
  const ylX=-36,ylZ=248;
- block('#eceae0',ylX,26.3,ylZ,2.2,.6,2.2);
- block('#dcd8cc',ylX,26.7,ylZ,1.8,.2,1.8);
- for(let h=0;h<4;h++){
-  const rScale=1.1-h*.12;
-  lakeRock(ylX+(h%2-.5)*.25,ylZ+(h%3-1)*.2,rScale,27+h*1.2);
+ // Authentic Han White Marble Sumeru Pedestal (雕花汉白玉须弥座)
+ block('#dfdbd0',ylX,26.15,ylZ,2.6,.3,2.6);
+ block('#eae7de',ylX,26.4,ylZ,2.1,.22,2.1);
+ block('#f5f3ec',ylX,26.62,ylZ,2.4,.22,2.4);
+ block('#ccc7bd',ylX,26.78,ylZ,2.2,.1,2.2);
+ // Song Dynasty Huashigang Scholar Stone (皱、漏、瘦、透)
+ // Reaching ~3.8m with hand-sculpted hollow lobes around open voids
+ const ylLobes=[
+  [-.3,27.3,-.15,.55,1.1,.52],[.28,27.4,.2,.52,1.2,.48],[0,27.8,0,.45,1.4,.45],
+  [-.32,28.6,.22,.48,.95,.42],[.35,28.7,-.18,.44,1.05,.44],[-.12,29.2,-.25,.4,1.1,.38],[.22,29.4,.22,.38,1.05,.36],
+  [0,30.1,.12,.34,.95,.32],[-.14,30.55,-.05,.28,.82,.26]
+ ];
+ for(const [lx,ly,lz,lrx,lry,lrz]of ylLobes){
+  const mesh=new THREE.Mesh(rock,rockMaterial);mesh.position.set(ylX+lx,ly,ylZ+lz);mesh.scale.set(lrx,lry,lrz);
+  mesh.rotation.set((random()-.5)*.25,(random()-.5)*.5,(random()-.5)*.25);group.add(mesh);addFixture(mesh);
  }
- block('#48683c',ylX,26.02,ylZ,6,.04,6);
- for(let angle=0;angle<Math.PI*2;angle+=Math.PI/2){
-  const fx=ylX+Math.cos(angle)*2.4,fz=ylZ+Math.sin(angle)*2.4;
-  crown(fx,26.3,fz,.42,.28,.42,'#8c3c4e');
-  crown(fx,26.45,fz,.15,.12,.15,'#e27b92');
+ // Companion Taihu stones (伴峰)
+ lakeRock(ylX+1.85,ylZ-.45,.82,26);lakeRock(ylX-1.75,ylZ+.42,.74,26);
+ // Classical Courtyard Screen Wall (照壁) behind Yu Ling Long
+ block('#e8e5d8',ylX,27.6,ylZ+2.8,5.4,3.2,.32);
+ block('#414b43',ylX,29.35,ylZ+2.8,5.7,.18,.52);
+ block('#636d62',ylX,29.48,ylZ+2.8,.25,.12,5.7);
+ fixtures.push({x:ylX,z:ylZ+2.8,rx:2.8,rz:.25,y:26,h:3.6});
+ // Intimate Peony & Plum Courtyard Flora (牡丹、腊梅与翠竹)
+ crown(ylX-1.8,26.35,ylZ-1.2,.55,.32,.55,'#8c2944');crown(ylX-1.8,26.55,ylZ-1.2,.26,.18,.26,'#df6482');
+ crown(ylX+1.75,26.35,ylZ-1.1,.52,.32,.52,'#7a2866');crown(ylX+1.75,26.55,ylZ-1.1,.24,.18,.24,'#e085c8');
+ // Ancient Dwarf Plum / Wintersweet (古腊梅) with golden buds
+ const plumTrunk=new THREE.Mesh(pole,mat('#524032'));plumTrunk.position.set(ylX-2.1,27.2,ylZ+1.1);plumTrunk.scale.set(.12,2.4,.12);group.add(plumTrunk);
+ crown(ylX-2.1,28.4,ylZ+1.1,.85,.6,.85,'#465a39');crown(ylX-2.1,28.7,ylZ+1.1,.42,.3,.42,'#e6bd3f');
+ // Carved stone water basin (石洗 / 水盂)
+ block('#9e9b8f',ylX+1.25,26.3,ylZ+1.2,.75,.55,.75);block('#355554',ylX+1.25,26.56,ylZ+1.2,.6,.04,.6);
+ // Clump of emerald bamboo along the screen wall
+ for(let b=0;b<6;b++){
+  const bxx=ylX-2.2+b*.85,bzz=ylZ+2.45+(b%2)*.2,bh=3.2+random()*1.4;
+  const bStem=new THREE.Mesh(pole,mat('#57793d'));bStem.position.set(bxx,26+bh/2,bzz);bStem.scale.set(.038,bh,.038);group.add(bStem);
+  crown(bxx,26+bh,bzz,.38,.14,.38,'#486c36');
  }
+ // Mondo grass carpet (麦冬地被)
+ block('#3b5530',ylX,26.018,ylZ,5.8,.035,5.8);
+
+ // 5b. Ancient Grand Stage at Dianchun Tang (江南第一古戏台 - garden_stage.jpg)
+ const stgX=-16,stgZ=232;
+ // Raised stage platform with wooden planks
+ block('#5c4129',stgX,26.4,stgZ,6.6,.8,5.6);
+ // Vermilion stage pillars
+ for(const dx of [-2.9,2.9])for(const dz of [-2.4,2.4]){const post=block('#892d27',stgX+dx,28.6,stgZ+dz,.22,3.8,.22);addFixture(post);}
+ // Red carved railings around the stage edges
+ for(const side of [-1,1]){
+  block('#892d27',stgX+side*2.9,27.15,stgZ,.08,.6,4.6);
+  block('#892d27',stgX,27.15,stgZ+side*2.4,5.6,.6,.08);
+ }
+ // Spectacular gilded octagonal caisson ceiling (八角藻井)
+ for(let ring=0;ring<4;ring++){
+  const r=1.9-ring*.38,ry=30.4+ring*.26;
+  for(let a=0;a<8;a++){
+   const ang=a*Math.PI/4,next=(a+1)*Math.PI/4;
+   beam('#c89c4d',[stgX+Math.cos(ang)*r,ry,stgZ+Math.sin(ang)*r],[stgX+Math.cos(next)*r,ry,stgZ+Math.sin(next)*r],.1,true);
+   block('#943329',stgX+Math.cos(ang)*r,ry-.06,stgZ+Math.sin(ang)*r,.14,.12,.14);
+  }
+ }
+ // Backstage carved timber screen partition
+ block('#523925',stgX,28.4,stgZ+2.2,5.2,2.8,.14);
+ // Stage gold calligraphy plaque ("天香云外")
+ block('#211d1a',stgX,30.3,stgZ-2.38,2.4,.55,.08);
+ block('#dfb642',stgX,30.3,stgZ-2.42,2.1,.38,.04,true);
 
  // 6. Classical Waterside Covered Corridors with Carved Leak-Windows (曲折水廊与漏窗)
  for(let x=-74;x<=-44;x+=4){
