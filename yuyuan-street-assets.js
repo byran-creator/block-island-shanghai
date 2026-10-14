@@ -116,7 +116,6 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   }
  }
  paifang(-46.5,148,0,'上海老城厢 · 豫园商城');
- paifang(-100,168,Math.PI/2,'豫园集市 · 传统商肆');
 
  // 2. Wide Open Commercial Pedestrian Sky (开阔视野，无遮挡步行天街)
 
@@ -150,10 +149,8 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   product(root,['pastry','candy','fan','lantern'][i],'#96423a');
  }
 
- 
-
- // 6. Pedestrian Avenue Trees: Camphor (香樟) & Magnolia in Stone Planters (花箱盆栽)
- const streetTrees=[[-68,162],[-54,162],[-38,162],[-78,178],[-68,188],[-54,188],[-20,162],[-10,162]];
+ // 6. North Promenade Trees (strictly in north pond plaza, none in commercial streets)
+ const streetTrees=[[-68,162],[-54,162],[-38,162],[-68,188],[-54,188],[-20,162],[-10,162]];
  for(const [tx,tz]of streetTrees){
   // Carved stone flower box
   box(root,'#9fa193',tx,26.35,tz,1.6,.7,1.6);
@@ -176,10 +173,10 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
  }
  stoneLion(-43.2,149.5,-Math.PI/2);
  stoneLion(-49.8,149.5,Math.PI/2);
- stoneLion(-92.5,156,-Math.PI/2);
- stoneLion(-107.5,156,Math.PI/2);
- stoneLion(13.5,156,-Math.PI/2);
- stoneLion(22.5,156,Math.PI/2);
+ stoneLion(-90.8,156,-Math.PI/2);
+ stoneLion(-109.2,156,Math.PI/2);
+ stoneLion(11.8,156,-Math.PI/2);
+ stoneLion(24.2,156,Math.PI/2);
 
  // 7. Overhead Festive Drum Lantern Canopy across Pedestrian Streets (老街飞檐过街彩灯天幕 - 参考图 user_street_day_lanterns.jpg & user_night_lantern_crowd.jpg)
  const streetLanternCables = [
