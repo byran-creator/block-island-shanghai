@@ -9,12 +9,12 @@ import * as THREE from './three.module.js';
 import {snapMetroFloor} from './metro-floor.js';
 import {createYuyuan} from './yuyuan.js';
 import {createRiverWaterGeometry} from './yuyuan-water.js';
-import {GARDEN_PONDS,YUYUAN_SHIFT} from './yuyuan-layout.js';
+import {GARDEN_PONDS,YUYUAN_SHIFT,yuyuanReserved} from './yuyuan-layout.js';
 import {createMetroNetwork as createMetro} from './metro-network.js';
 import {boatSurfaces,boatSupport,boatSolid,boatWorld} from './boat-support.js';
 import {createPrivateSuites} from './private-suites.js';
 import {createBuildingResidents} from './building-residents.js';
-import {loadWorld} from './world-cache.js';
+import {loadWorld,clearWorldCache} from './world-cache.js';
 import {metroInterior,metroRampFloor} from './metro-layout.js';
 import {CanvasRenderer} from './canvas-renderer.js';
 import {createCompanions} from './companions.js';
@@ -304,7 +304,7 @@ function migrateBundPoint(p){
 function applySave(data){try{
  if(![3,4,6].includes(data?.version)||!Array.isArray(data.edits)||data.edits.length>50000)throw new Error('Invalid save');
  metro?.end(true);metro?.restore(data.metro);commute?.end(true);activity?.cancelRide();data=migrateWestBankSave(data);pendingMine=null;gliding=false;adventure.cancelRace();world.data.set(initialWorld);savedEdits.clear();const shift=data.version<6?WORLD_SHIFT:0;
- for(const [key,id] of data.edits){if(typeof key!=='string'||!Number.isInteger(id)||id<0||id>=BLOCKS.length)continue;const xyz=key.split(',').map(Number);xyz[1]+=shift;if((data.mapRevision||0)<5){const p={x:xyz[0],y:xyz[1],z:xyz[2]};movePersonal(p);xyz[0]=p.x;xyz[2]=p.z;}if(xyz.length!==3||!xyz.every(Number.isInteger)||!world.valid(...xyz)||(xyz[1]<1))continue;const blockId=(id===6&&['-130,25,60','-130,25,61','-129,25,61','-131,25,61','-112,25,70','-113,25,70','-111,25,70'].includes(key))?9:id;if(blocksMetroClearance(...xyz,blockId,initialWorld[world.index(...xyz)]))continue;world.set(...xyz,blockId);savedEdits.set(xyz.join(','),blockId);}
+ for(const [key,id] of data.edits){if(typeof key!=='string'||!Number.isInteger(id)||id<0||id>=BLOCKS.length)continue;const xyz=key.split(',').map(Number);xyz[1]+=shift;if((data.mapRevision||0)<5){const p={x:xyz[0],y:xyz[1],z:xyz[2]};movePersonal(p);xyz[0]=p.x;xyz[2]=p.z;}if(xyz.length!==3||!xyz.every(Number.isInteger)||!world.valid(...xyz)||(xyz[1]<1)||yuyuanReserved(xyz[0],xyz[2]))continue;const blockId=(id===6&&['-130,25,60','-130,25,61','-129,25,61','-131,25,61','-112,25,70','-113,25,70','-111,25,70'].includes(key))?9:id;if(blocksMetroClearance(...xyz,blockId,initialWorld[world.index(...xyz)]))continue;world.set(...xyz,blockId);savedEdits.set(xyz.join(','),blockId);}
  const p=data.pos?{...data.pos,y:data.pos.y+shift}:null;if(p&&(data.mapRevision||0)<2){if(p.x>=125&&p.x<=148&&p.z>=25&&p.z<=52&&p.y>=25){p.x-=20;p.z+=47;}else if(p.x>=113&&p.x<=132&&p.z>=59&&p.z<=65&&p.y<25){p.x=LANDMARKS.dock.x;p.y=LANDMARKS.dock.y;p.z=LANDMARKS.dock.z;}}if(p&&(data.mapRevision||0)<3&&p.x>=110&&p.x<=124&&p.z>=116&&p.z<=121&&p.y<25){p.x=LANDMARKS.dock.x;p.y=23;p.z=LANDMARKS.dock.z;}if(p&&(data.mapRevision||0)<4){
  const rooms=[{x:116.5,z:85.5,dx:55,dz:44},{x:123.5,z:62.5,dx:64,dz:21},{x:145.5,z:71.5,dx:86,dz:30}],room=rooms.find(r=>Math.abs(p.x-r.x)<=12&&Math.abs(p.z-r.z)<=13&&p.y>=25);
  if(room){p.x+=room.dx;p.z+=room.dz;}
@@ -331,6 +331,7 @@ $('go-yuyuan').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.yu
 $('go-bund').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.bund);lookTowards({x:184,y:65,z:66});};
 $('go-north-bund').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.northBund);lookTowards({x:193,y:76,z:82});};
 $('go-home').onclick=()=>{adventure.cancelRace();enter();teleport(LANDMARKS.village);lookTowards({x:74,y:28,z:325});notify('欢迎回生活岛！木屋、奶龙、涂鸦和海港跑酷都在这里。');};
+$('rebuild-cache')?.addEventListener('click',async()=>{if(confirm('确定要清除城市地图缓存并重新构建吗？个人游戏存档会保留。')){await clearWorldCache();location.reload();}});
 $('look-sun').onclick=()=>lookCelestial(false);$('look-moon').onclick=()=>lookCelestial(true);
 $('weather-choice').addEventListener('change',e=>{weather.state.setMode(e.target.value);saves?.save('auto');$('weather-pace').disabled=weather.state.mode!=='auto';notify('天气：'+(e.target.value==='auto'?'自动变化':{clear:'晴天',cloudy:'多云',rain:'雨天',fog:'江雾'}[e.target.value]))});
 $('weather-pace').onchange=e=>{weather.state.setCycle(Number(e.target.value));saves?.save('auto');notify('已调整自动天气速度，当前天气平滑保留。');};
