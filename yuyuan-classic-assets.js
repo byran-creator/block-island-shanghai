@@ -282,6 +282,50 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  const maples=[[-36,248],[-54,220],[-88,212],[-18,226],[-64,236],[-44,248]];
  for(const [mx,mz]of maples)mapleTree(mx,mz,4.8+random()*1.2);
 
+ // 7c. Classical Garden Bridges: Covered Gallery Bridge (水上复廊长廊桥) & Stone Arch Bridge (太湖石石拱桥) (参考 grand_rockery.jpg)
+ function coveredGalleryBridge(x1,z1,x2,z2,width=2.4){
+  const len=Math.hypot(x2-x1,z2-z1),yaw=Math.atan2(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2;
+  const bGroup=new THREE.Group();bGroup.position.set(cx,26,cz);bGroup.rotation.y=yaw;group.add(bGroup);
+  // Taihu rock pier footings in water
+  for(let d=-len/2+1.2;d<=len/2-1.2;d+=2.8){
+   const pier=new THREE.Mesh(rock,rockMaterial);pier.position.set(0,-1.8,d);pier.scale.set(width*.6,2.2,1.4);bGroup.add(pier);
+  }
+  // Heavy timber deck & stone curbstones
+  const deck=new THREE.Mesh(box,mat('#563a28'));deck.position.set(0,.12,0);deck.scale.set(width,.24,len);bGroup.add(deck);
+  // Vermilion lacquer columns along both sides
+  for(let d=-len/2+.8;d<=len/2-.8;d+=2.2){
+   for(const side of [-1,1]){
+    const postX=side*(width/2-.15);
+    const post=new THREE.Mesh(pole,mat('#842c22'));post.position.set(postX,1.35,d);post.scale.set(.09,2.7,.09);bGroup.add(post);
+    const seat=new THREE.Mesh(box,mat('#72492f'));seat.position.set(postX,.5,d);seat.scale.set(.24,.14,2.2);bGroup.add(seat);
+    const rail=new THREE.Mesh(box,mat('#863628'));rail.position.set(postX,.82,d);rail.scale.set(.08,.08,2.2);bGroup.add(rail);
+   }
+   const blantern=new THREE.Mesh(new THREE.SphereGeometry(.2,8,6),mat('#e83a28',true));blantern.position.set(0,2.3,d);bGroup.add(blantern);
+  }
+  // Covered bridge roof with black tiles and eaves
+  const roof=new THREE.Mesh(box,mat('#3a4743'));roof.position.set(0,2.85,0);roof.scale.set(width+1.1,.22,len+.6);bGroup.add(roof);
+  const ridge=new THREE.Mesh(box,mat('#56635d'));ridge.position.set(0,3.02,0);ridge.scale.set(.3,.16,len+.8);bGroup.add(ridge);
+ }
+
+ function stoneArchBridge(x1,z1,x2,z2,width=2.2){
+  const len=Math.hypot(x2-x1,z2-z1),yaw=Math.atan2(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2;
+  const aGroup=new THREE.Group();aGroup.position.set(cx,26,cz);aGroup.rotation.y=yaw;group.add(aGroup);
+  for(let i=0;i<9;i++){
+   const t=(i-4)/4,archY=(1-t*t)*.65,stepZ=t*(len/2-.3);
+   const slab=new THREE.Mesh(box,mat('#afb2a6'));slab.position.set(0,archY+.1,stepZ);slab.scale.set(width,.22,len/8.5);aGroup.add(slab);
+   for(const side of [-1,1]){
+    const post=new THREE.Mesh(box,mat('#9ba092'));post.position.set(side*(width/2-.1),archY+.55,stepZ);post.scale.set(.16,.68,.16);aGroup.add(post);
+    const finial=new THREE.Mesh(leaf,mat('#afb4a7'));finial.position.set(side*(width/2-.1),archY+.95,stepZ);finial.scale.set(.1,.14,.1);aGroup.add(finial);
+   }
+  }
+  for(const side of [-1,1]){
+   const rail=new THREE.Mesh(box,mat('#979c8e'));rail.position.set(side*(width/2-.1),.72,0);rail.scale.set(.08,.12,len);aGroup.add(rail);
+  }
+ }
+ coveredGalleryBridge(-50,236,-34,236,2.5);
+ coveredGalleryBridge(-16,203,-2,203,2.2);
+ stoneArchBridge(-63.5,197,-63.5,203,2.2);
+
  // 7b. Dense Flowering Shrubs, Osmanthus & Peony Clusters (四季名花、杜鹃与桂花灌木丛)
  function flowerShrub(x,z,rx=1.1,ry=.7,rz=1.1,foliage='#3d6238',flower='#e85a7d'){
   crown(x,26+ry/2,z,rx,ry,rz,foliage);

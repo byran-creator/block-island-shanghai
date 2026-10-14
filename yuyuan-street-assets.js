@@ -208,42 +208,67 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   crown(tx+.4,29.8,tz-.4,1.7,1.4,1.7,'#487242');
  }
 
- // 7. Overhead Festive Lantern Strings Spanning across Pedestrian Streets (老街飞檐过街彩灯 - bazaar_night.jpg)
+ // Traditional Carved Stone Lions Guarding Heritage Street Entrances (老字号门前石狮 - 参考图 user_night_lantern_crowd.jpg)
+ function stoneLion(x,z,yaw=0){
+  const g=new THREE.Group();g.position.set(x,26,z);g.rotation.y=yaw;root.add(g);
+  box(g,'#8f9184',0,.2,0,.8,.4,.8);
+  box(g,'#7f8174',0,.5,0,.6,.3,.6);
+  box(g,'#9ba092',0,.85,0,.45,.45,.45);
+  box(g,'#a4a89b',0,1.15,.08,.38,.34,.35);
+  box(g,'#653e2d',0,.48,.28,.14,.14,.14);
+  fixtures.push({x,z,rx:.4,rz:.4,y:26,h:1.3});
+ }
+ stoneLion(-43.2,151,-Math.PI/2);
+ stoneLion(-49.8,151,Math.PI/2);
+ stoneLion(-43.2,167,-Math.PI/2);
+ stoneLion(-49.8,167,Math.PI/2);
+
+ // 7. Overhead Festive Drum Lantern Canopy across Pedestrian Streets (老街飞檐过街彩灯天幕 - 参考图 user_street_day_lanterns.jpg & user_night_lantern_crowd.jpg)
  const streetLanternCables = [
-  // North-South Main Entrance Street (北门豫园老街主通道)
-  {x1: -52, x2: -41, z: 151, y: 30.5},
-  {x1: -52, x2: -41, z: 156, y: 30.2},
-  {x1: -52, x2: -41, z: 161, y: 30.4},
-  {x1: -52, x2: -41, z: 166, y: 30.1},
-  // East Commercial Promenade (东侧水街老街通道, between x=8 buildings and x=18 shops)
-  {x1: 9.5, x2: 16.5, z: 165, y: 30.2},
-  {x1: 9.5, x2: 16.5, z: 174, y: 30.5},
-  {x1: 9.5, x2: 16.5, z: 183, y: 30.1},
-  {x1: 9.5, x2: 16.5, z: 192, y: 30.4},
-  {x1: 9.5, x2: 16.5, z: 201, y: 30.2},
-  {x1: 9.5, x2: 16.5, z: 210, y: 30.5},
-  {x1: 9.5, x2: 16.5, z: 219, y: 30.2},
-  {x1: 9.5, x2: 16.5, z: 228, y: 30.4},
+  // North-South Main Entrance Street (北门豫园老街对排主通道 - 高密彩灯天幕)
+  {x1: -51.2, x2: -41.8, z: 151, y: 30.6},
+  {x1: -51.2, x2: -41.8, z: 154, y: 30.4},
+  {x1: -51.2, x2: -41.8, z: 157, y: 30.6},
+  {x1: -51.2, x2: -41.8, z: 160, y: 30.3},
+  {x1: -51.2, x2: -41.8, z: 163, y: 30.5},
+  {x1: -51.2, x2: -41.8, z: 166, y: 30.3},
+  // East Commercial Promenade (东侧水街老街通道, between x=8 buildings and x=19 shops)
+  {x1: 11.8, x2: 15.2, z: 162, y: 30.3},
+  {x1: 11.8, x2: 15.2, z: 170, y: 30.5},
+  {x1: 11.8, x2: 15.2, z: 178, y: 30.2},
+  {x1: 11.8, x2: 15.2, z: 186, y: 30.5},
+  {x1: 11.8, x2: 15.2, z: 194, y: 30.2},
+  {x1: 11.8, x2: 15.2, z: 202, y: 30.5},
+  {x1: 11.8, x2: 15.2, z: 210, y: 30.2},
+  {x1: 11.8, x2: 15.2, z: 218, y: 30.5},
+  {x1: 11.8, x2: 15.2, z: 226, y: 30.2},
+  {x1: 11.8, x2: 15.2, z: 234, y: 30.4},
   // West Bazaar Craft Street (西市商肆通衢)
-  {x1: -84, x2: -72, z: 166, y: 30.3},
-  {x1: -84, x2: -72, z: 176, y: 30.5},
-  {x1: -84, x2: -72, z: 184, y: 30.2}
+  {x1: -97.2, x2: -92.8, z: 162, y: 30.3},
+  {x1: -97.2, x2: -92.8, z: 170, y: 30.5},
+  {x1: -97.2, x2: -92.8, z: 178, y: 30.2},
+  {x1: -97.2, x2: -92.8, z: 186, y: 30.4},
+  // Central Huxinting Plaza Entrance
+  {x1: -54, x2: -38, z: 171, y: 30.8}
  ];
 
- const lanternColors = ['#e63228', '#f5b838', '#e85038', '#42b676', '#e67838', '#d63428'];
+ const lanternColors = ['#ffc848', '#e63428', '#ffda68', '#d82d24', '#ffbf3b', '#e84232'];
  for(const {x1, x2, z, y} of streetLanternCables){
   const cx = (x1 + x2) / 2, len = Math.abs(x2 - x1);
   box(root, '#3b2f24', cx, y, z, len, .035, .035);
-  const count = Math.max(3, Math.floor(len / 2.2));
+  const count = Math.max(3, Math.floor(len / 1.6));
   for(let i = 0; i < count; i++){
-   const t = (i + 0.5) / count, lx = x1 + (x2 - x1) * t, sag = Math.sin(t * Math.PI) * 0.35, ly = y - sag;
-   box(root, '#785b3b', lx, ly - 0.15, z, .02, .3, .02);
-   const color = lanternColors[(Math.floor(z + lx) % lanternColors.length + lanternColors.length) % lanternColors.length];
-   mesh(root, sphere, color, lx, ly - 0.42, z, .25, .32, .25);
-   disk(root, gold, lx, ly - 0.23, z, .13, .04);
-   disk(root, gold, lx, ly - 0.61, z, .11, .035);
-   box(root, '#d42d22', lx, ly - 0.74, z, .035, .22, .035);
-   disk(root, gold, lx, ly - 0.64, z, .045, .025);
+   const t = (i + 0.5) / count, lx = x1 + (x2 - x1) * t, sag = Math.sin(t * Math.PI) * 0.28, ly = y - sag;
+   box(root, '#785b3b', lx, ly - 0.12, z, .02, .24, .02);
+   const color = lanternColors[(Math.floor(z * 3 + lx * 2) % lanternColors.length + lanternColors.length) % lanternColors.length];
+   const lantern = new THREE.Mesh(cylinder, mat(color, true));
+   lantern.position.set(lx, ly - 0.38, z); lantern.scale.set(.22, .48, .22); root.add(lantern);
+   const core = new THREE.Mesh(cylinder, mat('#fff9d4', true));
+   core.position.set(lx, ly - 0.38, z); core.scale.set(.09, .42, .09); root.add(core);
+   disk(root, gold, lx, ly - 0.14, z, .18, .035);
+   disk(root, gold, lx, ly - 0.62, z, .17, .035);
+   box(root, '#d42d22', lx, ly - 0.78, z, .035, .28, .035);
+   disk(root, gold, lx, ly - 0.65, z, .05, .025);
   }
  }
 
