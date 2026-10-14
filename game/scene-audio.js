@@ -11,8 +11,8 @@ export function soundScene(p,night=false){
  if(Math.abs(p.x-PEACE.x)<PEACE.rx&&Math.abs(p.z-PEACE.z)<PEACE.rz&&Math.abs(p.y-PEACE_DINING.y)<2)return {name:'龙凤厅',track:'dining',dining:1,traffic:0};
  if(p.y>=25&&p.y<30&&shops.some(b=>Math.abs(p.x-b.x)<b.rx&&Math.abs(p.z-b.z)<b.rz))return {name:'南京路店铺',track:'shop',shop:1,traffic:.05};
  if(p.y>=24&&p.y<32&&p.x>=NANJING_WEST&&p.x<roadX(66)-4&&Math.abs(p.z-66)<6)return {name:'南京路步行街',track:'shop',market:1,traffic:.12};
- if(p.x>=-120&&p.x<=35&&p.z>=200&&p.z<=340){
-  const isInner=p.x>=-75&&p.x<=3&&p.z>=254&&p.z<=276;
+ if(p.x>=-125&&p.x<=40&&p.z>=205&&p.z<=338){
+  const isInner=p.x>=-75&&p.x<=3&&p.z>=254&&p.z<=318;
   return {name:isInner?'豫园古典园林':'豫园商城商圈',track:'yuyuan',garden:isInner,bazaar:!isInner,yuyuan:true,water:isInner?.45:.28,traffic:0};
  }
  if(p.z>=270)return {name:'生活岛',track:'island',water:.15,traffic:0};

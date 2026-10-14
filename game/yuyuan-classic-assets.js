@@ -50,6 +50,39 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   wall(axis,fixed,u1,u2,holes);
  }
 
+ // 1b. Whitewashed Diamond Lattice Leak-Window Walls (图3同款粉墙黛瓦花格漏窗墙，全园大范围应用)
+ function leakWindowWall(x1,z1,x2,z2){
+  const axis=x1===x2?'z':'x',len=Math.hypot(x2-x1,z2-z1);
+  const cx=(x1+x2)/2,cz=(z1+z2)/2;
+  if(axis==='z'){
+   block('#ede9da',cx,27.6,cz,.34,3.2,len);
+   block('#3d4941',cx,29.35,cz,.58,.18,len+.3);
+   for(let zz=Math.min(z1,z2)+1.8;zz<=Math.max(z1,z2)-1.8;zz+=3.2){
+    for(const side of [-.18,.18]){
+     beam('#6e7367',[cx+side,27.1,zz-.65],[cx+side,28.3,zz+.65],.035);
+     beam('#6e7367',[cx+side,27.1,zz+.65],[cx+side,28.3,zz-.65],.035);
+    }
+   }
+  }else{
+   block('#ede9da',cx,27.6,cz,len,3.2,.34);
+   block('#3d4941',cx,29.35,cz,len+.3,.18,.58);
+   for(let xx=Math.min(x1,x2)+1.8;xx<=Math.max(x1,x2)-1.8;xx+=3.2){
+    for(const side of [-.18,.18]){
+     beam('#6e7367',[xx-.65,27.1,cz+side],[xx+.65,28.3,cz+side],.035);
+     beam('#6e7367',[xx+.65,27.1,cz+side],[xx-.65,28.3,cz+side],.035);
+    }
+   }
+  }
+ }
+ leakWindowWall(-75,208,-75,257);
+ leakWindowWall(-75,195,-75,202);
+ leakWindowWall(3,195,3,257);
+ leakWindowWall(-74,258,2,258);
+ leakWindowWall(-74,194,-38,194);
+ leakWindowWall(-32,194,2,194);
+ leakWindowWall(-28,216,-28,238);
+ leakWindowWall(-72,208,-48,208);
+
  // 2. Classical Curved Path Ribbons
  function pathRibbon(points){
   const curve=new THREE.CatmullRomCurve3(points.map(([x,z])=>new THREE.Vector3(x,26.018,z)),false,'centripetal'),pathVertices=[],uv=[],indices=[],samples=points.length*4,pathLength=curve.getLength();
@@ -408,19 +441,19 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   // Along North Dragon Wall
   [-74,196,8,3.8,'#52753a'],[-66,196,7,3.6,'#486634'],[-56,196,8,3.9,'#52753a'],
   [-44,196,7,3.5,'#46354b'],[-32,196,8,3.8,'#52753a'],[-20,196,8,3.7,'#52753a'],[-8,196,7,3.5,'#46354b'],
-  // Along West Garden Wall
-  [-103,200,8,3.8,'#46354b'],[-103,212,8,3.9,'#46354b'],[-103,226,9,4.1,'#52753a'],
-  [-103,240,9,4.2,'#52753a'],[-103,252,8,3.8,'#46354b'],
-  // Along South Garden Wall
-  [-96,256,8,3.8,'#46354b'],[-80,256,9,4.0,'#52753a'],[-64,256,8,3.7,'#507238'],
-  [-46,256,8,4.0,'#52753a'],[-28,256,9,3.9,'#46354b'],[-14,256,8,3.7,'#507238'],[-4,256,7,3.5,'#46354b'],
+  // Along West Garden Wall (strictly inside garden at x=-73, none in commercial street)
+  [-73,200,8,3.8,'#46354b'],[-73,212,8,3.9,'#46354b'],[-73,226,9,4.1,'#52753a'],
+  [-73,240,9,4.2,'#52753a'],[-73,252,8,3.8,'#46354b'],
+  // Along South Garden Wall (strictly inside garden at z=256, none in commercial street)
+  [-70,256,8,3.8,'#46354b'],[-60,256,9,4.0,'#52753a'],[-48,256,8,4.0,'#52753a'],
+  [-36,256,9,3.9,'#46354b'],[-24,256,8,3.7,'#507238'],[-14,256,8,3.7,'#507238'],[-4,256,7,3.5,'#46354b'],
   // Along East Garden Wall
   [-4,202,7,3.6,'#507238'],[-4,214,8,3.7,'#486634'],[-4,228,8,3.8,'#52753a'],[-4,242,7,3.6,'#46354b'],
   // Along Partition Dragon Wall at z=208
   [-74,212,7,3.6,'#507238'],[-64,212,8,3.8,'#486634'],[-54,212,8,3.9,'#52753a'],
   [-38,212,7,3.5,'#46354b'],[-28,212,8,3.7,'#52753a'],[-18,212,7,3.6,'#52753a'],
   // Around Grand Rockery & Wangjiang Pavilion
-  [-96,210,8,3.7,'#486634'],[-90,236,8,3.9,'#52753a'],[-78,218,7,3.5,'#46354b']
+  [-72,218,7,3.5,'#46354b'],[-70,232,8,3.7,'#486634'],[-66,228,8,3.9,'#52753a']
  ];
  for(const [bx,bz,bc,bh,col]of bambooGroves)bambooClump(bx,bz,bc,bh,col);
 

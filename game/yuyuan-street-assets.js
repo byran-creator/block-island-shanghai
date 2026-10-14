@@ -116,29 +116,9 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   }
  }
  paifang(-46.5,148,0,'上海老城厢 · 豫园商城');
- paifang(-106,168,Math.PI/2,'豫园集市 · 传统商肆');
+ paifang(-100,168,Math.PI/2,'豫园集市 · 传统商肆');
 
- // 2. Suspended Skywalk Covered Corridors (过街飞檐连廊)
- // Connects Huabao Lou (x: -86, z: 172) eastwards across pedestrian street to central bazaar at y=30.5
- function skywalk(x1,x2,z,y=30.2,width=2.8){
-  const cx=(x1+x2)/2,len=Math.abs(x2-x1);
-  // Floor deck
-  box(root,'#5a3a2a',cx,y,z,len,.25,width);
-  // Columns & balustrades
-  for(let xx=x1+1;xx<=x2-1;xx+=2.5)for(const side of [-1,1]){
-   box(root,'#7a382c',xx,y+1.5,z+side*(width/2-.1),.15,3,.15);
-   box(root,'#96724a',xx,y+.45,z+side*(width/2-.1),2.4,.7,.08);
-  }
-  // Covered Roof
-  box(root,'#3e4b44',cx,y+3.15,z,len+.8,.22,width+1.2);
-  box(root,'#5b6962',cx,y+3.3,z,len+.6,.12,.35);
-  // Red hanging lanterns below skywalk
-  for(let xx=x1+1.5;xx<=x2-1.5;xx+=2){
-   const lantern=mesh(root,sphere,'#e88f4c',xx,y-.4,z,.22,.28,.22);
-  }
- }
- skywalk(-80,-68,172,30.2,2.6);
- skywalk(-80,-68,188,30.2,2.6);
+ // 2. Wide Open Commercial Pedestrian Sky (开阔视野，无遮挡步行天街)
 
  // 3. Bazaar Outdoor Ancient Stage (商圈露天古戏台 & 市集广场)
  const stX=-86,stZ=156;
@@ -197,40 +177,40 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
  stoneLion(-43.2,149.5,-Math.PI/2);
  stoneLion(-49.8,149.5,Math.PI/2);
  stoneLion(-92.5,156,-Math.PI/2);
- stoneLion(-99.5,156,Math.PI/2);
- stoneLion(12.5,156,-Math.PI/2);
- stoneLion(17.5,156,Math.PI/2);
+ stoneLion(-107.5,156,Math.PI/2);
+ stoneLion(13.5,156,-Math.PI/2);
+ stoneLion(22.5,156,Math.PI/2);
 
  // 7. Overhead Festive Drum Lantern Canopy across Pedestrian Streets (老街飞檐过街彩灯天幕 - 参考图 user_street_day_lanterns.jpg & user_night_lantern_crowd.jpg)
  const streetLanternCables = [
-  // West Commercial Pedestrian Street (西侧商业街：全长115米高密彩灯天幕)
-  {x1: -101.2, x2: -90.8, z: 156, y: 30.5},
-  {x1: -101.2, x2: -90.8, z: 164, y: 30.3},
-  {x1: -101.2, x2: -90.8, z: 172, y: 30.5},
-  {x1: -101.2, x2: -90.8, z: 180, y: 30.3},
-  {x1: -101.2, x2: -90.8, z: 188, y: 30.5},
-  {x1: -101.2, x2: -90.8, z: 196, y: 30.3},
-  {x1: -101.2, x2: -90.8, z: 204, y: 30.5},
-  {x1: -101.2, x2: -90.8, z: 212, y: 30.3},
-  {x1: -101.2, x2: -90.8, z: 220, y: 30.5},
-  {x1: -101.2, x2: -90.8, z: 228, y: 30.3},
-  {x1: -101.2, x2: -90.8, z: 236, y: 30.5},
-  {x1: -101.2, x2: -90.8, z: 244, y: 30.3},
-  {x1: -101.2, x2: -90.8, z: 252, y: 30.5},
-  // East Commercial Pedestrian Street (东侧商业街：全长115米高密彩灯天幕)
-  {x1: 11.8, x2: 18.2, z: 156, y: 30.4},
-  {x1: 11.8, x2: 18.2, z: 164, y: 30.2},
-  {x1: 11.8, x2: 18.2, z: 172, y: 30.5},
-  {x1: 11.8, x2: 18.2, z: 180, y: 30.2},
-  {x1: 11.8, x2: 18.2, z: 188, y: 30.5},
-  {x1: 11.8, x2: 18.2, z: 196, y: 30.2},
-  {x1: 11.8, x2: 18.2, z: 204, y: 30.5},
-  {x1: 11.8, x2: 18.2, z: 212, y: 30.2},
-  {x1: 11.8, x2: 18.2, z: 220, y: 30.5},
-  {x1: 11.8, x2: 18.2, z: 228, y: 30.2},
-  {x1: 11.8, x2: 18.2, z: 236, y: 30.5},
-  {x1: 11.8, x2: 18.2, z: 244, y: 30.2},
-  {x1: 11.8, x2: 18.2, z: 252, y: 30.5},
+  // West Commercial Pedestrian Street (西侧18米宽阔商业街：全长115米高密彩灯天幕)
+  {x1: -108.5, x2: -91.5, z: 156, y: 30.5},
+  {x1: -108.5, x2: -91.5, z: 164, y: 30.3},
+  {x1: -108.5, x2: -91.5, z: 172, y: 30.5},
+  {x1: -108.5, x2: -91.5, z: 180, y: 30.3},
+  {x1: -108.5, x2: -91.5, z: 188, y: 30.5},
+  {x1: -108.5, x2: -91.5, z: 196, y: 30.3},
+  {x1: -108.5, x2: -91.5, z: 204, y: 30.5},
+  {x1: -108.5, x2: -91.5, z: 212, y: 30.3},
+  {x1: -108.5, x2: -91.5, z: 220, y: 30.5},
+  {x1: -108.5, x2: -91.5, z: 228, y: 30.3},
+  {x1: -108.5, x2: -91.5, z: 236, y: 30.5},
+  {x1: -108.5, x2: -91.5, z: 244, y: 30.3},
+  {x1: -108.5, x2: -91.5, z: 252, y: 30.5},
+  // East Commercial Pedestrian Street (东侧12米宽阔商业街：全长115米高密彩灯天幕)
+  {x1: 12.5, x2: 23.5, z: 156, y: 30.4},
+  {x1: 12.5, x2: 23.5, z: 164, y: 30.2},
+  {x1: 12.5, x2: 23.5, z: 172, y: 30.5},
+  {x1: 12.5, x2: 23.5, z: 180, y: 30.2},
+  {x1: 12.5, x2: 23.5, z: 188, y: 30.5},
+  {x1: 12.5, x2: 23.5, z: 196, y: 30.2},
+  {x1: 12.5, x2: 23.5, z: 204, y: 30.5},
+  {x1: 12.5, x2: 23.5, z: 212, y: 30.2},
+  {x1: 12.5, x2: 23.5, z: 220, y: 30.5},
+  {x1: 12.5, x2: 23.5, z: 228, y: 30.2},
+  {x1: 12.5, x2: 23.5, z: 236, y: 30.5},
+  {x1: 12.5, x2: 23.5, z: 244, y: 30.2},
+  {x1: 12.5, x2: 23.5, z: 252, y: 30.5},
   // North Entrance Paifang & Huxinting Plaza Entrance
   {x1: -52, x2: -41, z: 151, y: 30.6},
   {x1: -52, x2: -41, z: 156, y: 30.4}

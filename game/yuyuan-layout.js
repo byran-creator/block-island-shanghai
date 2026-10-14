@@ -1,5 +1,5 @@
 export const YUYUAN_SHIFT=60;
-const YUYUAN_LOCAL={x:-46,y:26,z:188,minX:-116,maxX:30,minZ:146,maxZ:276,entry:{x:-46.5,y:26,z:150.5,name:'豫园 · 北门牌坊'},tea:{x:-46,y:26,z:178},snack:{x:-26,y:26,z:214},riddle:{x:-62,y:26,z:203},arrival:{x:-43.5,y:26,z:159.5,name:'豫园 · 九曲桥与湖心亭'}};
+const YUYUAN_LOCAL={x:-46,y:26,z:188,minX:-130,maxX:34,minZ:146,maxZ:276,entry:{x:-46.5,y:26,z:150.5,name:'豫园 · 北门牌坊'},tea:{x:-46,y:26,z:178},snack:{x:-26,y:26,z:214},riddle:{x:-62,y:26,z:203},arrival:{x:-43.5,y:26,z:159.5,name:'豫园 · 九曲桥与湖心亭'}};
 export const YUYUAN={...YUYUAN_LOCAL,z:YUYUAN_LOCAL.z+YUYUAN_SHIFT,minZ:YUYUAN_LOCAL.minZ+YUYUAN_SHIFT,maxZ:YUYUAN_LOCAL.maxZ+YUYUAN_SHIFT,...Object.fromEntries(['entry','tea','snack','riddle','arrival'].map(k=>[k,{...YUYUAN_LOCAL[k],z:YUYUAN_LOCAL[k].z+YUYUAN_SHIFT}]))};
 export const YUYUAN_WALKS=[[-35.5,70.5],[-46.5,216.5]],YUYUAN_STATION_WALK=[[-86,212],[-77,212],[-77,218],[-72,218]],YUYUAN_STATION_WALK_SOUTH=[[-86,262],[-77,262],[-77,265],[-70,265]];
 export const WATER_CORRIDOR={x:-60,z1:170,z2:193,width:3};
@@ -26,9 +26,7 @@ export const GARDEN_BEDS=[
  {x1:-54,x2:-44,z1:198,z2:207},
  {x1:-39,x2:-30,z1:203,z2:208},
  {x1:-49,x2:-38,z1:219,z2:226},
- // 4x Expanded Garden Plant Beds
- {x1:-104,x2:-82,z1:196,z2:208},   // San Sui Tang court: pine & bamboo
- {x1:-105,x2:-86,z1:234,z2:254},   // Grand Rockery south: black pines & bamboo
+ // Central Garden Plant Beds (strictly inside garden, none in commercial streets)
  {x1:-78,x2:-62,z1:212,z2:228},    // Wan Hua Lou court: ancient ginkgo & camellia
  {x1:-38,x2:-22,z1:244,z2:256},    // Yu Ling Long court: tree peonies, plum & mondo grass
  {x1:-18,x2:-6,z1:244,z2:256},     // Dian Chun Tang stage south garden
@@ -77,15 +75,15 @@ export const YUYUAN_BUILDINGS=[
  {id:'nanxiang',x:-26,z:214,rx:6,rz:4,levels:2},    // 南翔馒头店
  {id:'craft-shop',x:-62,z:214,rx:6,rz:4,levels:2},  // 江南手作丝绸
 
- // 2. West Commercial Pedestrian Street (西侧商业街：全长115米，两边商铺、中间步行街、上空彩灯天幕)
- // West Outer Row (x = -106, rx = 5, spans x in [-111, -101]):
- {id:'bazaar-west-candy',x:-106,z:156,rx:5,rz:4,levels:2}, // 梨膏糖老街铺
- {id:'bazaar-stage',x:-106,z:172,rx:5,rz:4,levels:2},      // 民俗古戏台
- {id:'old-city-west',x:-106,z:188,rx:5,rz:6,levels:3},     // 百年老城厢
- {id:'bazaar-west-herbs',x:-106,z:204,rx:5,rz:5,levels:2}, // 童涵春堂老药铺
- {id:'west-craft-hall',x:-106,z:220,rx:5,rz:4,levels:2},   // 西市手作坊
- {id:'west-wine-shop',x:-106,z:236,rx:5,rz:4,levels:2},    // 海上名酿坊
- {id:'west-tea-house',x:-106,z:252,rx:5,rz:4,levels:2},    // 西市老茶庄
+ // 2. West Commercial Pedestrian Street (西侧宽阔商业街：全长115米，两边商铺、中间18米宽敞步行街、上空彩灯天幕)
+ // West Outer Row (x = -114, rx = 5, spans x in [-119, -109]):
+ {id:'bazaar-west-candy',x:-114,z:156,rx:5,rz:4,levels:2}, // 梨膏糖老街铺
+ {id:'bazaar-stage',x:-114,z:172,rx:5,rz:4,levels:2},      // 民俗古戏台
+ {id:'old-city-west',x:-114,z:188,rx:5,rz:6,levels:3},     // 百年老城厢
+ {id:'bazaar-west-herbs',x:-114,z:204,rx:5,rz:5,levels:2}, // 童涵春堂老药铺
+ {id:'west-craft-hall',x:-114,z:220,rx:5,rz:4,levels:2},   // 西市手作坊
+ {id:'west-wine-shop',x:-114,z:236,rx:5,rz:4,levels:2},    // 海上名酿坊
+ {id:'west-tea-house',x:-114,z:252,rx:5,rz:4,levels:2},    // 西市老茶庄
 
  // West Inner Row (x = -86, rx = 5, spans x in [-91, -81]):
  {id:'huabao-lou',x:-86,z:172,rx:6,rz:6,levels:3},         // 华宝楼: 3-tier grand antique & art hall
@@ -94,9 +92,9 @@ export const YUYUAN_BUILDINGS=[
  {id:'west-bazaar-2',x:-86,z:224,rx:5,rz:3,levels:2},      // 江南织造阁
  {id:'west-bazaar-3',x:-86,z:238,rx:5,rz:3,levels:2},      // 古玩玉器斋
  {id:'west-bazaar-4',x:-86,z:252,rx:5,rz:3,levels:2},      // 老城厢食肆
- // (West Walkway in between: x in [-101, -91], centered at x = -96, width 10m!)
+ // (West Walkway in between: x in [-109, -91], centered at x = -100, width 18m!)
 
- // 3. East Commercial Pedestrian Street (东侧商业街：全长115米，两边商铺、中间步行街、上空彩灯天幕)
+ // 3. East Commercial Pedestrian Street (东侧宽阔商业街：全长115米，两边商铺、中间12米宽敞步行街、上空彩灯天幕)
  // East Inner Row (x = 8, rx = 4, spans x in [4, 12]):
  {id:'old-city-northeast',x:8,z:156,rx:4,rz:5,levels:2},
  {id:'tianyu-lou',x:8,z:172,rx:4,rz:6,levels:3},          // 天裕楼: 3-tier towering commercial pavilion
@@ -106,9 +104,9 @@ export const YUYUAN_BUILDINGS=[
  {id:'old-city-east',x:8,z:236,rx:4,rz:6,levels:3},       // 东市名楼
  {id:'bazaar-east-gold',x:8,z:252,rx:4,rz:4,levels:2},     // 老庙黄金传统银楼
 
- // East Outer Row (x = 22, rx = 4, spans x in [18, 26]):
- ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:22,z:162+i*12,rx:4,rz:4,levels:2})),
- // (East Walkway in between: x in [12, 18], centered at x = 15, width 6m!)
+ // East Outer Row (x = 28, rx = 4, spans x in [24, 32]):
+ ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:28,z:162+i*12,rx:4,rz:4,levels:2})),
+ // (East Walkway in between: x in [12, 24], centered at x = 18, width 12m!)
 
  // 4. South Connecting Pedestrian Street (后方连通步行街商铺, z = 268)
  {id:'old-city-south',x:-49,z:268,rx:7,rz:3,levels:2},
@@ -134,7 +132,7 @@ export function buildYuyuan(world){
   world.fill(Math.min(a[0],b[0])-2,25,Math.min(a[1],b[1])-2,Math.max(a[0],b[0])+2,25,Math.max(a[1],b[1])+2,9);
   world.fill(Math.min(a[0],b[0])-2,26,Math.min(a[1],b[1])-2,Math.max(a[0],b[0])+2,29,Math.max(a[1],b[1])+2,0);
  }
- const w={set:(x,y,z,id)=>world.set(x,y,z+YUYUAN_SHIFT,id),fill:(x1,y1,z1,x2,y2,z2,id)=>world.fill(x1,y1,z1+YUYUAN_SHIFT,x2,y2,z2+YUYUAN_SHIFT,id)};
+ const w={get:(x,y,z)=>world.get(x,y,z+YUYUAN_SHIFT),set:(x,y,z,id)=>world.set(x,y,z+YUYUAN_SHIFT,id),fill:(x1,y1,z1,x2,y2,z2,id)=>world.fill(x1,y1,z1+YUYUAN_SHIFT,x2,y2,z2+YUYUAN_SHIFT,id)};
 
  // 2. Grade and clear the expanded district plot (low-computation: clear y=26..32 only)
  w.fill(YUYUAN_LOCAL.minX,18,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,24,YUYUAN_LOCAL.maxZ,3);
@@ -156,18 +154,20 @@ export function buildYuyuan(world){
  }
 
  // 5. Continuous lush green enclosing ring & 100% garden lawn/moss (绿圈直接围合 + 全域青翠苔藓草坪)
- for(let x=-80; x<=3; x++) for(let z=150; z<=262; z++){
-  if(!GARDEN_PONDS.some(p=>x>=p.x1&&x<=p.x2&&z>=p.z1&&z<=p.z2)) w.set(x,25,z,1);
+ for(let x=-76; x<=3; x++) for(let z=148; z<=264; z++){
+  if(!GARDEN_PONDS.some(p=>x>=p.x1&&x<=p.x2&&z>=p.z1&&z<=p.z2) && w.get(x,25,z)!==0) w.set(x,25,z,1);
  }
- for(let z=150; z<=265; z++){
-  for(let x=-82; x<=-77; x++) w.set(x,25,z,1);
-  for(let x=2; x<=5; x++) w.set(x,25,z,1);
- }
- for(let x=-82; x<=5; x++){
-  for(let z=148; z<=154; z++) if(Math.abs(x+46.5)>4.5) w.set(x,25,z,1);
-  for(let z=258; z<=264; z++) w.set(x,25,z,1);
+ for(let z=148; z<=265; z++){
+  for(let x=-78; x<=-74; x++) if(w.get(x,25,z)!==0) w.set(x,25,z,1);
+  for(let x=2; x<=5; x++) if(w.get(x,25,z)!==0) w.set(x,25,z,1);
  }
  for(const b of GARDEN_BEDS) for(let x=b.x1; x<=b.x2; x++) for(let z=b.z1; z<=b.z2; z++) if(gardenBedContains(x+.5,z+.5,b)) w.set(x,25,z,1);
+
+ // Commercial pedestrian streets are clean, flat paved stone avenues (no dirt/grass patches)
+ for(let z=148; z<=268; z++){
+  for(let x=YUYUAN_LOCAL.minX; x<=-80; x++) w.set(x,25,z,9);
+  for(let x=5; x<=YUYUAN_LOCAL.maxX; x++) w.set(x,25,z,9);
+ }
 
  // 6. Outer district perimeter wall & entrance gaps
  w.fill(YUYUAN_LOCAL.minX,26,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.minX,28,YUYUAN_LOCAL.maxZ,9);
@@ -196,8 +196,9 @@ export function buildYuyuan(world){
   else w.fill(e.x,27,e.z-2,e.x,30,e.z+2,0);
  }
 
- // 9. Traditional flagstone winding pathways across the expanded garden
- for(let x=-108;x<=4;x++)for(let z=194;z<=260;z++)if(gardenPathContains(x+.5,z+.5,0.95))w.set(x,25,z,9);
+ // 9. Slender stepping-stone pathway line across garden lawn
+ for(let x=-75;x<=3;x++)for(let z=194;z<=260;z++)if(pathContains(x+.5,z+.5,INNER_GARDEN_PATH,0.45)||pathContains(x+.5,z+.5,INNER_GARDEN_EAST_PATH,0.45))w.set(x,25,z,9);
+ for(let z=148;z<=158;z++)for(let x=-48;x<=-45;x++)w.set(x,25,z,9);
 
  // 10. Construct building brick solids and doorway voids (Codex low-computation pattern)
  for(const b of YUYUAN_BUILDINGS){
