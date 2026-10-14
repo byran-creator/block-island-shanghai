@@ -74,9 +74,6 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
    }
   }
  }
- leakWindowWall(-75,208,-75,257);
- leakWindowWall(-75,195,-75,202);
- leakWindowWall(3,195,3,257);
  leakWindowWall(-74,258,2,258);
  leakWindowWall(-74,194,-38,194);
  leakWindowWall(-32,194,2,194);
