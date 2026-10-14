@@ -60,14 +60,14 @@ export function createYuyuanShopAssets(root,{cube,mat,board}){
   for(let j=0;j<4;j++)stocked('candy',cx+(j-1.5)*.7,27.61,food.back-.31,g=>candyBox(g,0,0,0));
   for(const dz of [-1.1,0,1.1]){steamer(root,-26+side*5.08,27.62,214+dz,.32);bun(root,-26+side*5.08,27.77,214+dz,.16);beanJar(root,-26+side*5.08,28.31,214+dz);}
  }
- const craft=showroom({x:-62,z:214,rx:6,rz:4,title:'江南手作 · 丝绸书画',accent:'#285047'});
+ const craft=showroom({x:-62,z:214,rx:6,rz:4,title:'丽云阁扇庄 · 丝绸扇艺',accent:'#285047'});
  for(const side of [-1,1]){
   const cx=-62+side*3.22;counter(cx,213,3.1);
   for(let j=0;j<3;j++)stocked('souvenir',cx+(j-1)*.85,27.22,213,g=>{if(j===0)fan(g,0,0,0);else if(j===1)silk(g,0,0,0,side<0?'#ab4152':'#476f9a');else scroll(g,0,0,0);});
   for(const dz of [-1.1,0,1.1]){silk(root,-62+side*5.08,26.9,214+dz,dz===0?'#9d4862':'#53868a');fan(root,-62+side*5.08,27.6,214+dz);}
   for(let j=0;j<3;j++)scroll(root,cx+(j-1)*.9,27.65,craft.back-.38);
  }
- const tea=showroom({x:-65,z:163,rx:5,rz:3,title:'湖畔茶坊 · 江南好茶',accent:'#4b5040'});
+ const tea=showroom({x:-65,z:163,rx:5,rz:3,title:'湖心亭茶楼 · 乾隆名茶',accent:'#4b5040'});
  for(const side of [-1,1]){
   const cx=-65+side*2.85;counter(cx,163,2.25);
   for(let j=0;j<3;j++)stocked('tea',cx+(j-1)*.6,27.22,163,g=>{box(g,'#99724e',0,.03,0,.5,.06,.48);teapot(g,-.05,.07,0,.17);cup(g,.19,.08,-.15,.067);cup(g,.19,.08,.14,.067);});

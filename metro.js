@@ -113,8 +113,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function stationIndex(s){return METRO_STATIONS.findIndex(a=>a.id===s.id);}
  const dynamic=new Set([...trains.flatMap(t=>[t.root,...t.exchanges]),...staff.map(s=>s.root),...stations.flatMap(s=>[s.gateMesh,s.bag,...s.people.map(p=>p.root),...s.doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...s.routes])]);
  batchMeshes(root,staticMeshes(root,dynamic),'station-interior');
- function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked){notify('你已通过安检，请沿青色地面线去绿色箭头闸机按 V 刷票。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');announce('请把背包放上传送带，稍等一下。','Please place your bag on the belt.',{cue:'scan',speaker:'安检员'});}
- function gate(s){if(s.gatePass){notify('闸机已打开，请沿绿色箭头走过通道。');return;}const entering=!metroPaidHall(s,getPos().x,getPos().z);if(entering&&!s.checked){notify('这里是检票闸机。本次尚未通过安检。先到青色背包安检机器按 V，检查结束后再来刷票。');return;}s.gate=4;s.gatePass={entering,previousPaid:s.paid};notify(entering?'已刷免费体验票 · 请走过绿色箭头通道，再沿地面线去 B2 扶梯。':'已刷出站票 · 请走过闸机，再沿出口导向上楼。');}
+ function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked||s.paid){notify('你已通过安检并在付费区内，请直接前往站台乘车或换乘，无需重复安检。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');announce('请把背包放上传送带，稍等一下。','Please place your bag on the belt.',{cue:'scan',speaker:'安检员'});}
+ function gate(s){if(s.gatePass){notify('闸机已打开，请沿绿色箭头走过通道。');return;}const entering=!s.paid&&!metroPaidHall(s,getPos().x,getPos().z);if(entering&&!s.checked){notify('这里是检票闸机。本次尚未通过安检。先到青色背包安检机器按 V，检查结束后再来刷票。');return;}s.gate=4;s.gatePass={entering,previousPaid:s.paid};notify(entering?'已刷免费体验票 · 请走过绿色箭头通道，再沿地面线去 B2 扶梯。':'已刷出站票 · 请走过闸机，再沿出口导向上楼。');}
  function tickGate(s,dt){const pass=s.gatePass;if(!pass)return;const p=getPos(),gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
   const crossed=Math.abs(p.y-16)<1.1&&Math.abs(p.z-gz)<1&& (pass.entering?p.x>gx+.65:p.x<gx-.65);
   if(crossed){s.paid=pass.entering;if(!pass.entering){for(const station of stations){station.checked=false;station.paid=false;}notify('已出闸 · 再次进站需重新安检和刷票。');}s.gatePass=null;s.gate=0;return;}

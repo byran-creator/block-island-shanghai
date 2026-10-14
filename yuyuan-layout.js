@@ -4,9 +4,9 @@ export const YUYUAN={...YUYUAN_LOCAL,z:YUYUAN_LOCAL.z+YUYUAN_SHIFT,minZ:YUYUAN_L
 export const YUYUAN_WALKS=[[-35.5,70.5],[-46.5,216.5]],YUYUAN_STATION_WALK=[[-86,212],[-77,212],[-77,218],[-72,218]],YUYUAN_STATION_WALK_SOUTH=[[-86,262],[-77,262],[-77,265],[-70,265]];
 export const WATER_CORRIDOR={x:-60,z1:170,z2:193,width:3};
 
-// Expanded 4x Garden Bounds: ~114 x 64 blocks = ~7,000 blocks area (approx 4.3x original 1,600 area)
-export const INNER_GARDEN={minX:-75,maxX:3,minZ:194,maxZ:216};
-export const INNER_GARDEN_BOUNDARY=[[-75,194],[3,194],[3,216],[-18,216],[-18,208],[-75,208]];
+// Expanded 4x Garden Bounds: ~114 x 68 blocks = ~7,000 blocks area (approx 4.3x original 1,600 area)
+export const INNER_GARDEN={minX:-106,maxX:3,minZ:194,maxZ:258};
+export const INNER_GARDEN_BOUNDARY=[[-75,194],[3,194],[3,258],[-106,258],[-106,208],[-75,208]];
 export const INNER_GATES=[{id:'north',axis:'z',x:-35,z:194},{id:'west',axis:'x',x:-75,z:205}];
 export const GARDEN_WINDOWS=[{axis:'z',x:-46,z:194,y:28.5,r:1.1},{axis:'z',x:-46,z:208,y:28.5,r:1.1}];
 
@@ -38,13 +38,15 @@ export const GARDEN_BEDS=[
 // Inner Garden Walkable Paths Network
 export const INNER_GARDEN_PATH=[[-35,194],[-35,196],[-40,197.5],[-45,196.5],[-50,198],[-54,197.5],[-54,204],[-60,204],[-68,205],[-75,205]];
 export const INNER_GARDEN_EAST_PATH=[[-35,196],[-25,197],[-20,201],[-15,211],[-8,212],[-5,209],[-.5,207],[-.5,196],[-10,196],[-23,196],[-35,196]];
+export const INNER_GARDEN_SOUTH_PATH=[[-54,204],[-60,214],[-62,226],[-62,246],[-48,246],[-36,244],[-24,242],[-16,232],[-15,211]];
+export const INNER_GARDEN_ROCKERY_PATH=[[-75,205],[-86,206],[-94,206],[-94,222],[-86,226],[-78,226],[-68,226]];
 
 export function gardenPathContains(x,z,width=3){
- return pathContains(x,z,INNER_GARDEN_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_PATH,width);
+ return pathContains(x,z,INNER_GARDEN_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_PATH,width)||pathContains(x,z,INNER_GARDEN_SOUTH_PATH,width)||pathContains(x,z,INNER_GARDEN_ROCKERY_PATH,width);
 }
 
 export function innerGardenContains(x,z){
- return x>-74.3&&x<2.8&&z>194.7&&z<(x<-18.2?207.8:215.8);
+ return (x>-74.3&&x<2.8&&z>194.7&&z<(x<-18.2?207.8:215.8))||(x>-105.8&&x<2.8&&z>=207.8&&z<257.8);
 }
 
 export function gardenBedContains(x,z,b){
@@ -137,7 +139,16 @@ export function buildYuyuan(world){
   w.fill(stream.x1,21,stream.z1,stream.x2,25,stream.z2,0);
  }
 
- // 5. Carve green soil for all garden planting beds
+// 5. Inner Garden 100% lush grass/moss floor & waterside greenery (江南名园青翠苔藓草坪全覆盖)
+ for(let x=-108;x<=4;x++)for(let z=194;z<=260;z++){
+  if(!GARDEN_PONDS.some(p=>x>=p.x1&&x<=p.x2&&z>=p.z1&&z<=p.z2))w.set(x,25,z,1);
+ }
+ // Huxinting pond perimeter natural grass banks and lakeside gardens
+ for(let x=-72;x<=-20;x++)for(let z=164;z<=194;z++){
+  if(!JIUQU_BRIDGE.some((b,i)=>{if(!i)return false;const a=JIUQU_BRIDGE[i-1];return pathContains(x,z,[a,b],1.4);})&&!GARDEN_PONDS.some(p=>x>=p.x1&&x<=p.x2&&z>=p.z1&&z<=p.z2)&&Math.hypot(x+46,z-178)>4.5){
+   if(x<=-62||x>=-32||z<=168||z>=191)w.set(x,25,z,1);
+  }
+ }
  for(const b of GARDEN_BEDS)for(let x=b.x1;x<=b.x2;x++)for(let z=b.z1;z<=b.z2;z++)if(gardenBedContains(x+.5,z+.5,b))w.set(x,25,z,1);
 
  // 6. Outer district perimeter wall & entrance gaps
@@ -167,9 +178,8 @@ export function buildYuyuan(world){
   else w.fill(e.x,27,e.z-2,e.x,30,e.z+2,0);
  }
 
- // 9. Stone pathways across the expanded garden
- const g=INNER_GARDEN;
- for(let x=g.minX+1;x<g.maxX;x++)for(let z=g.minZ+1;z<g.maxZ;z++)if(gardenPathContains(x+.5,z+.5,1.2))w.set(x,25,z,9);
+ // 9. Traditional flagstone winding pathways across the expanded garden
+ for(let x=-108;x<=4;x++)for(let z=194;z<=260;z++)if(gardenPathContains(x+.5,z+.5,0.95))w.set(x,25,z,9);
 
  // 10. Construct building brick solids and doorway voids (Codex low-computation pattern)
  for(const b of YUYUAN_BUILDINGS){
