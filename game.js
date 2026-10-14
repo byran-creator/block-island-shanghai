@@ -374,7 +374,7 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-update-v53-seen';
+const UPDATE_NOTICE_KEY='block-island-update-v54-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
