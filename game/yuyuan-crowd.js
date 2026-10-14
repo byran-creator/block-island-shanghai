@@ -38,7 +38,7 @@ export function createYuyuanCrowd({scene,world,blocked}){
  let navigationError=null;
  function addCircuit(points,count,id){try{circuit(points,count,id);}catch(e){navigationError=e.message;}}
  addCircuit([[4.75,155.5],[6.4,155.5],[6.4,241],[4.75,241],[4.75,155.5]],16,300);
- addCircuit([[-56,157],[-44,157],[-44,168],[-56,168],[-56,157]],10,350);
+ addCircuit([[-48,154],[-45,154],[-45,166],[-48,166],[-48,154]],10,350);
  addCircuit([[-70,222],[-33,222],[-33,228],[-70,228],[-70,222]],8,370);
  addCircuit([[-68,168],[-65,168],[-65,192],[-68,192],[-68,168]],6,390);
  const inner=INNER_GARDEN_EAST_PATH.slice(1,-1);addCircuit([...inner,inner[0]],1,400);

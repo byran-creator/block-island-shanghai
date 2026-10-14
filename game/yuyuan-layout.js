@@ -74,28 +74,33 @@ export const YUYUAN_BUILDINGS=[
  {id:'huxinting',x:-46,z:178,rx:4,rz:4,levels:2},
  {id:'tea-gallery',x:-65,z:163,rx:5,rz:3,levels:1},
  
- // 2. Yuyuan Commercial Bazaar: Multi-story Pavilions (华宝楼, 天裕楼, 和丰楼)
- {id:'huabao-lou',x:-86,z:172,rx:7,rz:6,levels:3}, // 华宝楼: 3-tier grand antique & art hall
- {id:'tianyu-lou',x:8,z:176,rx:6,rz:8,levels:3},   // 天裕楼: 3-tier towering commercial pavilion
- {id:'hefeng-lou',x:-25,z:156,rx:6,rz:4,levels:2}, // 和丰楼: 2-tier banquet & tea pavilion
- {id:'bazaar-stage',x:-100,z:156,rx:5,rz:4,levels:2},// 商圈露天民俗古戏台
+ // 2. Yuyuan Commercial Bazaar: North Entrance Old Street (两侧对排传统商肆步行街 - bazaar_street.jpg)
+ {id:'bazaar-west-candy',x:-56,z:155,rx:5,rz:4,levels:2}, // 西侧北铺: 上海梨膏糖百年老铺
+ {id:'bazaar-west-herbs',x:-56,z:164,rx:5,rz:4,levels:2}, // 西侧南铺: 童涵春堂老药铺
+ {id:'hefeng-lou',x:-37,z:155,rx:5,rz:4,levels:2},         // 东侧北铺: 和丰楼经典美食雅集
+ {id:'bazaar-east-gold',x:-37,z:164,rx:5,rz:4,levels:2},  // 东侧南铺: 老庙黄金祥瑞银楼
  
- // 3. Old Heritage Brands & Street Mall (老字号商厦)
+ // 3. Bazaar Landmarks (华宝楼与古戏台)
+ {id:'huabao-lou',x:-86,z:172,rx:7,rz:6,levels:3}, // 华宝楼: 3-tier grand antique & art hall
+ {id:'bazaar-stage',x:-102,z:156,rx:5,rz:4,levels:2},// 商圈露天民俗古戏台
+ 
+ // 4. Old Heritage Brands & Street Mall (老字号商厦)
  {id:'nanxiang',x:-26,z:214,rx:6,rz:4,levels:2},    // 南翔馒头店
  {id:'craft-shop',x:-62,z:214,rx:6,rz:4,levels:2},  // 江南手作丝绸
  {id:'tonghanchun',x:-86,z:188,rx:6,rz:4,levels:2}, // 童涵春堂国药
- {id:'shanghai-hotel',x:8,z:194,rx:6,rz:6,levels:3},// 上海老饭店
- {id:'ningbo-tangtuan',x:8,z:208,rx:5,rz:4,levels:2},// 宁波汤团店
  {id:'lubolang',x:-28,z:188,rx:5,rz:4,levels:2},     // 绿波廊水榭
  
- // 4. West, East and South Perimeter Blocks
- {id:'old-city-west',x:-106,z:180,rx:5,rz:7,levels:3},
- {id:'old-city-east',x:8,z:224,rx:5,rz:7,levels:3},
- {id:'old-city-south',x:-49,z:268,rx:8,rz:3,levels:2},
- {id:'old-city-northeast',x:8,z:158,rx:5,rz:5,levels:2},
+ // 5. East Commercial Street: West Row facing East Row across central pedestrian promenade
+ {id:'old-city-northeast',x:8,z:158,rx:4,rz:5,levels:2},
+ {id:'tianyu-lou',x:8,z:174,rx:4,rz:7,levels:3},   // 天裕楼: 3-tier towering commercial pavilion
+ {id:'shanghai-hotel',x:8,z:192,rx:4,rz:6,levels:3},// 上海老饭店: 3-tier banquet landmark
+ {id:'ningbo-tangtuan',x:8,z:208,rx:4,rz:4,levels:2},// 宁波汤团店
+ {id:'old-city-east',x:8,z:224,rx:4,rz:6,levels:3},
  
- // 5. East Commercial Lane (东侧老街商肆)
- ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:18,z:162+i*12,rx:4,rz:4,levels:2})),
+ // East Row of East Commercial Street (x=19, 7 shops facing West Row across x in [12, 15])
+ ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:19,z:162+i*12,rx:4,rz:4,levels:2})),
+ {id:'old-city-west',x:-104,z:180,rx:5,rz:7,levels:3},
+ {id:'old-city-south',x:-49,z:268,rx:8,rz:3,levels:2},
  {id:'yuyuan-south-west',x:-78,z:268,rx:6,rz:4,levels:2},
  {id:'yuyuan-south-east',x:-18,z:268,rx:6,rz:4,levels:2},
  
@@ -185,14 +190,17 @@ export function buildYuyuan(world){
  for(const b of YUYUAN_BUILDINGS){
   w.fill(b.x-b.rx,25,b.z-b.rz,b.x+b.rx,25,b.z+b.rz,7);
   for(let y=26;y<=28;y++)for(let x=b.x-b.rx;x<=b.x+b.rx;x++)for(let z=b.z-b.rz;z<=b.z+b.rz;z++)if(x===b.x-b.rx||x===b.x+b.rx||z===b.z-b.rz||z===b.z+b.rz)w.set(x,y,z,9);
-  if(b.id.startsWith('yuyuan-street-')){
+  if(b.id.startsWith('yuyuan-street-')||b.id==='hefeng-lou'||b.id.startsWith('bazaar-east-')){
    w.fill(b.x-b.rx,26,b.z-1,b.x-b.rx,28,b.z+1,0);
    for(const sign of [-1,1])w.fill(b.x-b.rx,27,b.z+sign*2+(sign<0?-2:0),b.x-b.rx,28,b.z+sign*2+(sign>0?2:0),0);
+  }else if(b.id.startsWith('bazaar-west-')||['tianyu-lou','shanghai-hotel','ningbo-tangtuan','old-city-east','old-city-northeast'].includes(b.id)){
+   w.fill(b.x+b.rx,26,b.z-1,b.x+b.rx,28,b.z+1,0);
+   for(const sign of [-1,1])w.fill(b.x+b.rx,27,b.z+sign*2+(sign<0?-2:0),b.x+b.rx,28,b.z+sign*2+(sign>0?2:0),0);
   }else{
    w.fill(b.x-1,26,b.z-b.rz,b.x+1,28,b.z-b.rz,0);
    w.fill(b.x-1,26,b.z+b.rz,b.x+1,28,b.z+b.rz,0);
   }
-  if((['nanxiang','craft-shop','tea-gallery','huabao-lou','tonghanchun','hefeng-lou'].includes(b.id)||b.id.startsWith('yuyuan-south-')))for(const side of [-1,1])w.fill(b.x+side*2+(side<0?-2:0),27,b.z-b.rz,b.x+side*2+(side>0?2:0),28,b.z-b.rz,0);
+  if((['nanxiang','craft-shop','tea-gallery','huabao-lou','tonghanchun'].includes(b.id)||b.id.startsWith('yuyuan-south-')))for(const side of [-1,1])w.fill(b.x+side*2+(side<0?-2:0),27,b.z-b.rz,b.x+side*2+(side>0?2:0),28,b.z-b.rz,0);
   if(b.id==='huxinting'){
    w.fill(b.x-b.rx,26,b.z-1,b.x-b.rx,28,b.z+1,0);
    w.fill(b.x+b.rx,26,b.z-1,b.x+b.rx,28,b.z+1,0);
