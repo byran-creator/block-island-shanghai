@@ -261,10 +261,10 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   }
  }
 
- const pines=[[-98,226],[-90,222],[-96,218],[-68,236],[-24,242],[-82,246],[-14,248]];
+ const pines=[[-98,226],[-90,222],[-96,218],[-92,230],[-102,224],[-86,224],[-68,236],[-24,242],[-82,246],[-14,248],[-102,204],[-88,206],[-66,248],[-32,238],[-44,254],[-78,242],[-20,252],[-58,238]];
  for(const [px,pz]of pines)pineTree(px,pz,6+random()*2);
 
- const willows=[[-76,236],[-50,236],[-38,236],[-26,236],[-12,236],[-62,252],[-40,252]];
+ const willows=[[-76,236],[-50,236],[-38,236],[-26,236],[-12,236],[-62,252],[-40,252],[-72,200],[-60,197],[-16,200],[-6,204],[-54,232],[-68,172],[-55,170],[-34,170],[-28,172],[-68,190],[-55,192],[-34,192],[-28,190],[-64,244],[-48,250]];
  for(const [wx,wz]of willows)willowTree(wx,wz,5.5+random()*1.5);
 
  const ginkgoX=-52,ginkgoZ=224,gH=9;
@@ -272,28 +272,122 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  crown(ginkgoX,26+gH*.7,ginkgoZ,3.2,2.4,3.2,'#d6a738');
  crown(ginkgoX,26+gH+1,ginkgoZ,2.2,1.6,2.2,'#e5be49');
 
+ // Jiangnan Vermilion Autumn Maples (江南红枫)
+ function mapleTree(x,z,h=5){
+  const trunk=new THREE.Mesh(pole,mat('#4d3a2b'));trunk.position.set(x,26+h/2,z);trunk.scale.set(.16,h,.16);group.add(trunk);addFixture(trunk);
+  crown(x,26+h*.8,z,2.2,1.5,2.2,'#c0392b');
+  crown(x+.3,26+h+.4,z-.3,1.8,1.2,1.8,'#d64535');
+  crown(x-.3,26+h-.3,z+.3,1.6,1.0,1.6,'#962d22');
+ }
+ const maples=[[-36,248],[-54,220],[-88,212],[-18,226],[-64,236],[-44,248]];
+ for(const [mx,mz]of maples)mapleTree(mx,mz,4.8+random()*1.2);
+
+ // 7b. Dense Flowering Shrubs, Osmanthus & Peony Clusters (四季名花、杜鹃与桂花灌木丛)
+ function flowerShrub(x,z,rx=1.1,ry=.7,rz=1.1,foliage='#3d6238',flower='#e85a7d'){
+  crown(x,26+ry/2,z,rx,ry,rz,foliage);
+  for(let b=0;b<5;b++){
+   const a=b*1.25,bx=x+Math.cos(a)*rx*.65,bz=z+Math.sin(a)*rz*.65,by=26+ry*.7+random()*.25;
+   crown(bx,by,bz,.18,.16,.18,flower);
+  }
+ }
+ function bambooClump(x,z,count=7,h=3.6,stemColor='#5a7a3e'){
+  for(let i=0;i<count;i++){
+   const bx=x+(random()-.5)*1.2,bz=z+(random()-.5)*1.2,bh=h+random()*1.2;
+   const bStem=new THREE.Mesh(pole,mat(stemColor));bStem.position.set(bx,26+bh/2,bz);bStem.scale.set(.038,bh,.038);group.add(bStem);
+   crown(bx,26+bh,bz,.38,.16,.38,'#4a6c37');
+  }
+ }
+
+ // Lush shrubbery surrounding core pavilions and courts (全园无死角绿化群落)
+ const shrubList=[
+  // Yu Ling Long & Yu Hua Tang peony/camellia court
+  [-33,245,1.2,.8,1.2,'#365431','#df5678'],[-39,245,1.3,.85,1.3,'#2f4c2c','#b9324c'],
+  [-34,251,1.1,.75,1.1,'#385a33','#e87da2'],[-40,250,1.4,.9,1.4,'#32522e','#ffffff'],
+  [-30,248,1.2,.8,1.2,'#355630','#cb4a6e'],[-42,244,1.1,.75,1.1,'#2c4828','#df6989'],
+  [-36,252,1.2,.8,1.2,'#365431','#e87d96'],[-42,252,1.3,.85,1.3,'#2f4c2c','#c83854'],
+  [-28,244,1.1,.75,1.1,'#355630','#df5678'],[-26,248,1.2,.8,1.2,'#32522e','#ffffff'],
+  // Grand Rockery & Wangjiang Pavilion mountain skirts
+  [-100,220,1.5,.95,1.5,'#284227','#d4a23b'],[-88,220,1.4,.9,1.4,'#2e492d','#cb5134'],
+  [-101,228,1.6,1.0,1.6,'#263f25','#e2b84a'],[-87,228,1.3,.85,1.3,'#2c462b','#d65a3d'],
+  [-94,215,1.4,.85,1.4,'#294328','#e8c452'],[-94,233,1.5,.9,1.5,'#253e24','#cf4836'],
+  [-102,216,1.4,.9,1.4,'#274026','#e0b240'],[-86,216,1.3,.85,1.3,'#2d482c','#cb4632'],
+  [-102,234,1.5,.95,1.5,'#253e24','#df583a'],[-86,234,1.4,.9,1.4,'#2c462b','#e5bd4e'],
+  [-98,224,1.3,.85,1.3,'#2b452a','#d24230'],[-90,224,1.3,.85,1.3,'#294328','#e2b544'],
+  // Wan Hua Lou flowering courtyard
+  [-50,222,1.3,.8,1.3,'#3a5e35','#e6739f'],[-58,222,1.2,.75,1.2,'#345430','#e8a342'],
+  [-50,230,1.4,.85,1.4,'#375933','#df5374'],[-58,230,1.3,.8,1.3,'#31502c','#e29338'],
+  [-46,226,1.2,.8,1.2,'#365431','#e56b8e'],[-62,226,1.3,.85,1.3,'#304f2b','#dfa03e'],
+  [-48,220,1.1,.75,1.1,'#385a33','#e8789c'],[-60,220,1.2,.8,1.2,'#2d4929','#e6be48'],
+  // Dian Chun Tang stage garden
+  [-12,228,1.3,.85,1.3,'#355630','#df627e'],[-20,228,1.2,.8,1.2,'#2d4929','#e6be48'],
+  [-12,236,1.4,.9,1.4,'#385b33','#c83955'],[-20,236,1.3,.85,1.3,'#304e2b','#e8c454'],
+  [-8,232,1.2,.8,1.2,'#345430','#e86888'],[-24,232,1.3,.85,1.3,'#2c4828','#dfaa42'],
+  [-10,240,1.3,.85,1.3,'#365732','#c6344e'],[-22,240,1.2,.8,1.2,'#2f4d2a','#e2ba46'],
+  // Huijing Lou waterside court
+  [-66,244,1.3,.85,1.3,'#355630','#df5270'],[-58,244,1.2,.8,1.2,'#2f4e2b','#e8b846'],
+  [-66,252,1.4,.9,1.4,'#385a33','#cb3b56'],[-58,252,1.3,.85,1.3,'#31512c','#e5a33e'],
+  [-70,248,1.2,.8,1.2,'#33532e','#e66f92'],[-54,248,1.3,.85,1.3,'#2d4a28','#dfbe4a'],
+  // Central water corridors & bridges
+  [-68,206,1.2,.75,1.2,'#3c6136','#e57898'],[-48,206,1.3,.8,1.3,'#355630','#df4c6a'],
+  [-28,206,1.2,.75,1.2,'#385a33','#e6b544'],[-10,208,1.3,.8,1.3,'#33532e','#df5d79'],
+  [-56,200,1.2,.75,1.2,'#375832','#e87294'],[-42,200,1.3,.8,1.3,'#31502c','#df4866'],
+  [-24,200,1.2,.75,1.2,'#355530','#e4af40'],[-56,212,1.3,.85,1.3,'#365731','#cb3852'],
+  [-42,212,1.2,.8,1.2,'#2e4d29','#e6be48'],[-24,212,1.3,.85,1.3,'#33522e','#df5b78'],
+  // San Sui Tang entrance court
+  [-90,198,1.4,.85,1.4,'#2f4d2a','#e8ba46'],[-98,198,1.3,.8,1.3,'#284224','#d64e38'],
+  [-88,204,1.3,.8,1.3,'#304f2b','#e29f3c'],[-100,204,1.4,.85,1.4,'#274123','#cf442e'],
+  // Inner walls & moon gates perimeter greenery
+  [-72,196,1.3,.8,1.3,'#34552f','#df5d7a'],[-62,196,1.2,.75,1.2,'#2f4d2a','#e5b542'],
+  [-48,196,1.3,.85,1.3,'#375832','#cb3f5a'],[-24,196,1.2,.8,1.2,'#32522e','#e8789a'],
+  [-10,196,1.3,.85,1.3,'#2e4d29','#dfa83e'],[-72,208,1.3,.8,1.3,'#365731','#e66d90'],
+  [-62,208,1.2,.75,1.2,'#30502c','#e2ba46'],[-48,208,1.3,.85,1.3,'#385a33','#c83650'],
+  [-24,208,1.2,.8,1.2,'#33532e','#df5574'],[-10,208,1.3,.85,1.3,'#2d4c28','#e8b244']
+ ];
+ for(const [sx,sz,srx,sry,srz,fol,flw]of shrubList)flowerShrub(sx,sz,srx,sry,srz,fol,flw);
+
+ // Dense emerald & purple bamboo groves along inner walls and courtyards (竹径通幽)
+ const bambooGroves=[
+  // Along North Dragon Wall
+  [-74,196,8,3.8,'#52753a'],[-66,196,7,3.6,'#486634'],[-56,196,8,3.9,'#52753a'],
+  [-44,196,7,3.5,'#46354b'],[-32,196,8,3.8,'#52753a'],[-20,196,8,3.7,'#52753a'],[-8,196,7,3.5,'#46354b'],
+  // Along West Garden Wall
+  [-103,200,8,3.8,'#46354b'],[-103,212,8,3.9,'#46354b'],[-103,226,9,4.1,'#52753a'],
+  [-103,240,9,4.2,'#52753a'],[-103,252,8,3.8,'#46354b'],
+  // Along South Garden Wall
+  [-96,256,8,3.8,'#46354b'],[-80,256,9,4.0,'#52753a'],[-64,256,8,3.7,'#507238'],
+  [-46,256,8,4.0,'#52753a'],[-28,256,9,3.9,'#46354b'],[-14,256,8,3.7,'#507238'],[-4,256,7,3.5,'#46354b'],
+  // Along East Garden Wall
+  [-4,202,7,3.6,'#507238'],[-4,214,8,3.7,'#486634'],[-4,228,8,3.8,'#52753a'],[-4,242,7,3.6,'#46354b'],
+  // Along Partition Dragon Wall at z=208
+  [-74,212,7,3.6,'#507238'],[-64,212,8,3.8,'#486634'],[-54,212,8,3.9,'#52753a'],
+  [-38,212,7,3.5,'#46354b'],[-28,212,8,3.7,'#52753a'],[-18,212,7,3.6,'#52753a'],
+  // Around Grand Rockery & Wangjiang Pavilion
+  [-96,210,8,3.7,'#486634'],[-90,236,8,3.9,'#52753a'],[-78,218,7,3.5,'#46354b']
+ ];
+ for(const [bx,bz,bc,bh,col]of bambooGroves)bambooClump(bx,bz,bc,bh,col);
+
  // 8. Water lilies and blooming lotuses across ponds
  for(const pond of GARDEN_PONDS.slice(1)){
   const cx=(pond.x1+pond.x2)/2,cz=(pond.z1+pond.z2)/2,w=pond.x2-pond.x1,d=pond.z2-pond.z1;
-  for(let i=0;i<6;i++){
-   const lx=cx+(random()-.5)*(w-3),lz=cz+(random()-.5)*(d-3);
-   const pad=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,.02,8),mat('#3b643a'));
+  for(let i=0;i<8;i++){
+   const lx=cx+(random()-.5)*(w-2.5),lz=cz+(random()-.5)*(d-2.5);
+   const pad=new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.02,8),mat('#3b643a'));
    pad.position.set(lx,22.3,lz);group.add(pad);
    if(i%2===0){
-    crown(lx,22.38,lz,.12,.1,.12,'#e87d96');
-    crown(lx,22.42,lz,.05,.05,.05,'#f0d268');
+    crown(lx,22.38,lz,.14,.1,.14,'#e87d96');
+    crown(lx,22.42,lz,.06,.05,.06,'#f0d268');
    }
   }
  }
 
- // 9. Understory Mondo Grass and Courtyard Bonsai
- for(let i=0;i<18;i++){
-  const bx=-100+random()*96,bz=200+random()*52;
-  if(innerGardenContains(bx,bz)&&!gardenPathContains(bx,bz,1.5)){
-   block('#3d5932',bx,26.015,bz,1.4,.03,1.4);
+ // 9. Understory Mondo Grass and Courtyard Bonsai across expanded garden (满园青苔与吉祥草)
+ for(let i=0;i<128;i++){
+  const bx=-105+random()*106,bz=196+random()*60;
+  if(!gardenPathContains(bx,bz,1.3)&&!GARDEN_PONDS.some(p=>bx>=p.x1&&bx<=p.x2&&bz>=p.z1&&bz<=p.z2)){
+   block('#3d5932',bx,26.015,bz,1.8,.03,1.8);
    if(i%4===0){
-    block('#8e8070',bx,26.3,bz,.6,.6,.6);
-    crown(bx,26.8,bz,.35,.25,.35,'#2f482d');
+    block('#8e8070',bx,26.25,bz,.55,.5,.55);
+    crown(bx,26.7,bz,.32,.22,.32,'#2f482d');
    }
   }
  }

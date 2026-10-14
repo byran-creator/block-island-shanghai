@@ -5,15 +5,15 @@ import {YUYUAN_BUILDINGS,GARDEN_PONDS} from './yuyuan-layout.js';
 export function createYuyuanStreetAssets(root,{cube,mat,board}){
  const fixtures=[],dynamicRoots=new Set(),shops=[],goods={},stockCaps={};
  const specs=[
-  ['yuyuan-street-0','九曲糕点','street-cakes','江南糕团礼盒','pastry',2,'#852f36'],
-  ['yuyuan-street-1','豫园梨膏糖','street-candy','梨膏糖礼盒','candy',1,'#91533a'],
-  ['yuyuan-street-2','老城五香豆','street-beans','五香豆罐','beans',1,'#697047'],
-  ['yuyuan-street-3','江南扇坊','street-fans','江南折扇','fan',0,'#497278'],
-  ['yuyuan-street-4','春风茶器','street-teaware','青花茶具套装','tea',0,'#45667b'],
-  ['yuyuan-street-5','锦绣绸庄','street-silk-fans','绸面团扇','fan',0,'#895875'],
-  ['yuyuan-street-6','灯彩工坊','street-lanterns','江南花灯','lantern',0,'#9e482c'],
-  ['yuyuan-south-west','南市茶食','south-pastry','桂花糕点礼盒','pastry',2,'#786944'],
-  ['yuyuan-south-east','听雨茶庄','south-teaware','白瓷茶具套装','tea',0,'#52715b']
+  ['yuyuan-street-0','宁波汤团店','street-cakes','传统手工汤团礼盒','pastry',2,'#852f36'],
+  ['yuyuan-street-1','上海梨膏糖','street-candy','百年非遗梨膏糖礼盒','candy',1,'#91533a'],
+  ['yuyuan-street-2','老城五香豆','street-beans','郭记奶油五香豆罐','beans',1,'#697047'],
+  ['yuyuan-street-3','丽云阁扇庄','street-fans','光绪老字号名扇','fan',0,'#497278'],
+  ['yuyuan-street-4','湖心亭茶庄','street-teaware','青花龙井茶具套装','tea',0,'#45667b'],
+  ['yuyuan-street-5','老庙黄金','street-silk-fans','古法福运团扇','fan',0,'#895875'],
+  ['yuyuan-street-6','豫园灯彩行','street-lanterns','国家非遗豫园花灯','lantern',0,'#9e482c'],
+  ['yuyuan-south-west','万有全腌腊','south-pastry','金牌熟食风味礼盒','pastry',2,'#786944'],
+  ['yuyuan-south-east','童涵春堂','south-teaware','乾隆老字号本草香茗','tea',0,'#52715b']
  ];
  const boxGeometry=new THREE.BoxGeometry(1,1,1),sphere=new THREE.SphereGeometry(1,8,5),cylinder=new THREE.CylinderGeometry(1,1,1,10),ring=new THREE.TorusGeometry(1,.075,4,12);
  const glassMaterial=new THREE.MeshLambertMaterial({color:'#d9ece8',transparent:true,opacity:.2,depthWrite:false});
@@ -206,6 +206,45 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   box(root,'#5c4a38',tx,28,tz,.22,3.2,.22);
   crown(tx,30.2,tz,2.2,1.8,2.2,'#3f663b');
   crown(tx+.4,29.8,tz-.4,1.7,1.4,1.7,'#487242');
+ }
+
+ // 7. Overhead Festive Lantern Strings Spanning across Pedestrian Streets (老街飞檐过街彩灯 - bazaar_night.jpg)
+ const streetLanternCables = [
+  // North-South Main Entrance Street (北门豫园老街主通道)
+  {x1: -52, x2: -41, z: 151, y: 30.5},
+  {x1: -52, x2: -41, z: 156, y: 30.2},
+  {x1: -52, x2: -41, z: 161, y: 30.4},
+  {x1: -52, x2: -41, z: 166, y: 30.1},
+  // East Commercial Promenade (东侧水街老街通道, between x=8 buildings and x=18 shops)
+  {x1: 9.5, x2: 16.5, z: 165, y: 30.2},
+  {x1: 9.5, x2: 16.5, z: 174, y: 30.5},
+  {x1: 9.5, x2: 16.5, z: 183, y: 30.1},
+  {x1: 9.5, x2: 16.5, z: 192, y: 30.4},
+  {x1: 9.5, x2: 16.5, z: 201, y: 30.2},
+  {x1: 9.5, x2: 16.5, z: 210, y: 30.5},
+  {x1: 9.5, x2: 16.5, z: 219, y: 30.2},
+  {x1: 9.5, x2: 16.5, z: 228, y: 30.4},
+  // West Bazaar Craft Street (西市商肆通衢)
+  {x1: -84, x2: -72, z: 166, y: 30.3},
+  {x1: -84, x2: -72, z: 176, y: 30.5},
+  {x1: -84, x2: -72, z: 184, y: 30.2}
+ ];
+
+ const lanternColors = ['#e63228', '#f5b838', '#e85038', '#42b676', '#e67838', '#d63428'];
+ for(const {x1, x2, z, y} of streetLanternCables){
+  const cx = (x1 + x2) / 2, len = Math.abs(x2 - x1);
+  box(root, '#3b2f24', cx, y, z, len, .035, .035);
+  const count = Math.max(3, Math.floor(len / 2.2));
+  for(let i = 0; i < count; i++){
+   const t = (i + 0.5) / count, lx = x1 + (x2 - x1) * t, sag = Math.sin(t * Math.PI) * 0.35, ly = y - sag;
+   box(root, '#785b3b', lx, ly - 0.15, z, .02, .3, .02);
+   const color = lanternColors[(Math.floor(z + lx) % lanternColors.length + lanternColors.length) % lanternColors.length];
+   mesh(root, sphere, color, lx, ly - 0.42, z, .25, .32, .25);
+   disk(root, gold, lx, ly - 0.23, z, .13, .04);
+   disk(root, gold, lx, ly - 0.61, z, .11, .035);
+   box(root, '#d42d22', lx, ly - 0.74, z, .035, .22, .035);
+   disk(root, gold, lx, ly - 0.64, z, .045, .025);
+  }
  }
 
  function setStocks(stocks={}){for(const [key,units]of Object.entries(goods)){const count=Number.isFinite(stocks[key])?Math.max(0,Math.min(units.length,Math.floor(stocks[key]))):units.length;units.forEach((group,i)=>{group.visible=i<count;});}}
