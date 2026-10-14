@@ -37,13 +37,13 @@ export function createYuyuanCrowd({scene,world,blocked}){
  // pond, while the three inner-garden walkers visit different garden rooms.
  let navigationError=null;
  function addCircuit(points,count,id){try{circuit(points,count,id);}catch(e){navigationError=e.message;}}
- addCircuit([[4.75,155.5],[6.4,155.5],[6.4,241],[4.75,241],[4.75,155.5]],16,300);
- addCircuit([[-48,154],[-45,154],[-45,166],[-48,166],[-48,154]],10,350);
- addCircuit([[-70,222],[-33,222],[-33,228],[-70,228],[-70,222]],8,370);
+ addCircuit([[13.5,156],[16.5,156],[16.5,246],[13.5,246],[13.5,156]],16,300);
+ addCircuit([[-98,156],[-94,156],[-94,246],[-98,246],[-98,156]],10,350);
+ addCircuit([[-70,261],[-26,261],[-26,263],[-70,263],[-70,261]],8,370);
  addCircuit([[-68,168],[-65,168],[-65,192],[-68,192],[-68,168]],6,390);
  const inner=INNER_GARDEN_EAST_PATH.slice(1,-1);addCircuit([...inner,inner[0]],1,400);
- addCircuit([[-52,200],[-40,200],[-40,206],[-52,206],[-52,200]],1,410);
- addCircuit([[-73,196],[-71,196],[-71,204],[-73,204],[-73,196]],1,420);
+ addCircuit([[-48,238],[-36,238],[-36,244],[-48,244],[-48,238]],1,410);
+ addCircuit([[-70,202],[-64,202],[-64,214],[-70,214],[-70,202]],1,420);
  function staticClear(x,z){return !!world.get(Math.floor(x),25,Math.floor(z))&&!blocked(x,26,z);}
  function penetration(x,z){let volume=0;for(let ix=Math.floor(x-.29);ix<=Math.floor(x+.29);ix++)for(let iz=Math.floor(z-.29);iz<=Math.floor(z+.29);iz++)for(let iy=26;iy<=27;iy++)if(world.get(ix,iy,iz))volume+=Math.max(0,Math.min(x+.29,ix+1)-Math.max(x-.29,ix))*Math.max(0,Math.min(z+.29,iz+1)-Math.max(z-.29,iz))*(iy===26?1:.75);return volume;}
  function occupied(a,x,z){return people.some(b=>b!==a&&Math.hypot(x-b.root.position.x,z-b.root.position.z)<.65);}

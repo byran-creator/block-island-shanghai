@@ -170,31 +170,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   product(root,['pastry','candy','fan','lantern'][i],'#96423a');
  }
 
- // 5. Commercial Water Street Quay & Canal Bridge (临水水街石埠与石拱桥)
- const canal=GARDEN_PONDS[6]; // {x1:16, x2:23, z1:156, z2:246}
- const bridgeZ=188;
- // Stone arched bridge across canal
- box(root,'#b0b2a3',19.5,26.6,bridgeZ,7.4,.45,3.2);
- for(const side of [-1,1]){
-  box(root,'#999b8c',19.5,27.1,bridgeZ+side*1.45,7.6,.6,.18);
-  for(const dx of [-3.2,-1.6,0,1.6,3.2])box(root,'#8c8e7e',19.5+dx,27.35,bridgeZ+side*1.45,.22,.45,.22);
-  fixtures.push({x:19.5,z:bridgeZ+side*1.45,rx:3.7,rz:.15,y:26,h:1.2});
- }
- // Stone quay steps down to water edge (石埠码头)
- for(let step=0;step<4;step++){
-  box(root,'#a8aaa0',15.5-step*.3,25.6-step*.2,204,1,.2,4.8);
- }
- // Waterfront Weeping Willows along Commercial Canal
- for(let z=164;z<=240;z+=18){
-  const wx=14.5;
-  box(root,'#5e4a36',wx,27.5,z,.22,3,.22);
-  crown(wx,29.8,z,2.2,1.3,2.2,'#5c824c');
-  for(let i=0;i<6;i++){
-   const a=i*Math.PI/3,xx=wx+Math.cos(a)*1.6,zz=z+Math.sin(a)*1.6;
-   crown(xx,28.2,zz,.24,1.1,.24,'#678d52');
-  }
-  fixtures.push({x:wx,z,rx:.2,rz:.2,y:26,h:3});
- }
+ 
 
  // 6. Pedestrian Avenue Trees: Camphor (香樟) & Magnolia in Stone Planters (花箱盆栽)
  const streetTrees=[[-68,162],[-54,162],[-38,162],[-78,178],[-68,188],[-54,188],[-20,162],[-10,162]];
@@ -218,38 +194,46 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   box(g,'#653e2d',0,.48,.28,.14,.14,.14);
   fixtures.push({x,z,rx:.4,rz:.4,y:26,h:1.3});
  }
- stoneLion(-43.2,151,-Math.PI/2);
- stoneLion(-49.8,151,Math.PI/2);
- stoneLion(-43.2,167,-Math.PI/2);
- stoneLion(-49.8,167,Math.PI/2);
+ stoneLion(-43.2,149.5,-Math.PI/2);
+ stoneLion(-49.8,149.5,Math.PI/2);
+ stoneLion(-92.5,156,-Math.PI/2);
+ stoneLion(-99.5,156,Math.PI/2);
+ stoneLion(12.5,156,-Math.PI/2);
+ stoneLion(17.5,156,Math.PI/2);
 
  // 7. Overhead Festive Drum Lantern Canopy across Pedestrian Streets (老街飞檐过街彩灯天幕 - 参考图 user_street_day_lanterns.jpg & user_night_lantern_crowd.jpg)
  const streetLanternCables = [
-  // North-South Main Entrance Street (北门豫园老街对排主通道 - 高密彩灯天幕)
-  {x1: -51.2, x2: -41.8, z: 151, y: 30.6},
-  {x1: -51.2, x2: -41.8, z: 154, y: 30.4},
-  {x1: -51.2, x2: -41.8, z: 157, y: 30.6},
-  {x1: -51.2, x2: -41.8, z: 160, y: 30.3},
-  {x1: -51.2, x2: -41.8, z: 163, y: 30.5},
-  {x1: -51.2, x2: -41.8, z: 166, y: 30.3},
-  // East Commercial Promenade (东侧水街老街通道, between x=8 buildings and x=19 shops)
-  {x1: 11.8, x2: 15.2, z: 162, y: 30.3},
-  {x1: 11.8, x2: 15.2, z: 170, y: 30.5},
-  {x1: 11.8, x2: 15.2, z: 178, y: 30.2},
-  {x1: 11.8, x2: 15.2, z: 186, y: 30.5},
-  {x1: 11.8, x2: 15.2, z: 194, y: 30.2},
-  {x1: 11.8, x2: 15.2, z: 202, y: 30.5},
-  {x1: 11.8, x2: 15.2, z: 210, y: 30.2},
-  {x1: 11.8, x2: 15.2, z: 218, y: 30.5},
-  {x1: 11.8, x2: 15.2, z: 226, y: 30.2},
-  {x1: 11.8, x2: 15.2, z: 234, y: 30.4},
-  // West Bazaar Craft Street (西市商肆通衢)
-  {x1: -97.2, x2: -92.8, z: 162, y: 30.3},
-  {x1: -97.2, x2: -92.8, z: 170, y: 30.5},
-  {x1: -97.2, x2: -92.8, z: 178, y: 30.2},
-  {x1: -97.2, x2: -92.8, z: 186, y: 30.4},
-  // Central Huxinting Plaza Entrance
-  {x1: -54, x2: -38, z: 171, y: 30.8}
+  // West Commercial Pedestrian Street (西侧商业街：全长115米高密彩灯天幕)
+  {x1: -101.2, x2: -90.8, z: 156, y: 30.5},
+  {x1: -101.2, x2: -90.8, z: 164, y: 30.3},
+  {x1: -101.2, x2: -90.8, z: 172, y: 30.5},
+  {x1: -101.2, x2: -90.8, z: 180, y: 30.3},
+  {x1: -101.2, x2: -90.8, z: 188, y: 30.5},
+  {x1: -101.2, x2: -90.8, z: 196, y: 30.3},
+  {x1: -101.2, x2: -90.8, z: 204, y: 30.5},
+  {x1: -101.2, x2: -90.8, z: 212, y: 30.3},
+  {x1: -101.2, x2: -90.8, z: 220, y: 30.5},
+  {x1: -101.2, x2: -90.8, z: 228, y: 30.3},
+  {x1: -101.2, x2: -90.8, z: 236, y: 30.5},
+  {x1: -101.2, x2: -90.8, z: 244, y: 30.3},
+  {x1: -101.2, x2: -90.8, z: 252, y: 30.5},
+  // East Commercial Pedestrian Street (东侧商业街：全长115米高密彩灯天幕)
+  {x1: 11.8, x2: 18.2, z: 156, y: 30.4},
+  {x1: 11.8, x2: 18.2, z: 164, y: 30.2},
+  {x1: 11.8, x2: 18.2, z: 172, y: 30.5},
+  {x1: 11.8, x2: 18.2, z: 180, y: 30.2},
+  {x1: 11.8, x2: 18.2, z: 188, y: 30.5},
+  {x1: 11.8, x2: 18.2, z: 196, y: 30.2},
+  {x1: 11.8, x2: 18.2, z: 204, y: 30.5},
+  {x1: 11.8, x2: 18.2, z: 212, y: 30.2},
+  {x1: 11.8, x2: 18.2, z: 220, y: 30.5},
+  {x1: 11.8, x2: 18.2, z: 228, y: 30.2},
+  {x1: 11.8, x2: 18.2, z: 236, y: 30.5},
+  {x1: 11.8, x2: 18.2, z: 244, y: 30.2},
+  {x1: 11.8, x2: 18.2, z: 252, y: 30.5},
+  // North Entrance Paifang & Huxinting Plaza Entrance
+  {x1: -52, x2: -41, z: 151, y: 30.6},
+  {x1: -52, x2: -41, z: 156, y: 30.4}
  ];
 
  const lanternColors = ['#ffc848', '#e63428', '#ffda68', '#d82d24', '#ffbf3b', '#e84232'];

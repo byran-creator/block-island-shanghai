@@ -70,38 +70,38 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  // The Iconic Grand Rockery (张南阳大假山叠石险峰): Rising up to 34m with caverns, moss and stair paths
  for(let rz=-6;rz<=6;rz+=4)for(let rx=-6;rx<=6;rx+=4){
   const dist=Math.hypot(rx,rz),scale=Math.max(.8,3.2-dist*.28);
-  lakeRock(-94+rx,222+rz,scale,22+(3-dist*.3)*1.2);
-  if(random()>.3)block('#2d4c2b',-94+rx+(random()-.5)*1.5,26+scale*2,-94+rx+(random()-.5)*1.5,.6,.12,.6);
+  lakeRock(-72+rx,222+rz,scale,22+(3-dist*.3)*1.2);
+  if(random()>.3)block('#2d4c2b',-72+rx+(random()-.5)*1.5,26+scale*2,-72+rx+(random()-.5)*1.5,.6,.12,.6);
  }
  // Mountain stone stair trail climbing to the peak
- for(let s=0;s<9;s++)block('#a2a092',-87.5-s*.65,26+s*.72,221+(s%3-.5)*.5,.9,.22,1.1);
+ for(let s=0;s<9;s++)block('#a2a092',-65.5-s*.65,26+s*.72,221+(s%3-.5)*.5,.9,.22,1.1);
  // Cavern grotto voids & archways
- block('#505048',-94,26.6,219.5,2.4,2.2,1.8);
+ block('#505048',-72,26.6,219.5,2.4,2.2,1.8);
  // Horizontal gnarled ancient black pines (横斜古黑松)
- beam('#503e30',[-94,30.5,219],[-90.8,31.3,214.8],.18);
- crown(-90.4,31.5,214.5,1.9,.48,1.8,'#223a26');
- beam('#503e30',[-94,31,225],[-97.2,31.9,228.6],.18);
- crown(-97.6,32.1,228.8,1.8,.48,1.7,'#223a26');
- // Summit Wangjiang Pavilion (大假山绝顶望江亭) perched at [-94, 224]
- for(const dx of [-1.3,1.3])for(const dz of [-1.3,1.3]){const post=block('#754b33',-94+dx,33.5,224+dz,.16,3.6,.16);addFixture(post);}
+ beam('#503e30',[-72,30.5,219],[-68.8,31.3,214.8],.18);
+ crown(-68.4,31.5,214.5,1.9,.48,1.8,'#223a26');
+ beam('#503e30',[-72,31,225],[-75.2,31.9,228.6],.18);
+ crown(-75.6,32.1,228.8,1.8,.48,1.7,'#223a26');
+ // Summit Wangjiang Pavilion (大假山绝顶望江亭) perched at [-72, 224]
+ for(const dx of [-1.3,1.3])for(const dz of [-1.3,1.3]){const post=block('#754b33',-72+dx,33.5,224+dz,.16,3.6,.16);addFixture(post);}
  const wjRoof=[];
  for(const side of [-1,1])for(let j=0;j<4;j++){const a=j/4,b=(j+1)/4,h=t=>36.8-1.2*t+.32*t**6,za=224+side*1.95*a,zb=224+side*1.95*b;
-  wjRoof.push(-94-1.95,h(a),za,-94+1.95,h(a),za,-94-1.95,h(b),zb,-94-1.95,h(b),zb,-94+1.95,h(a),za,-94+1.95,h(b),zb);
+  wjRoof.push(-72-1.95,h(a),za,-72+1.95,h(a),za,-72-1.95,h(b),zb,-72-1.95,h(b),zb,-72+1.95,h(a),za,-72+1.95,h(b),zb);
  }
  const wjg=new THREE.BufferGeometry();wjg.setAttribute('position',new THREE.Float32BufferAttribute(wjRoof,3));wjg.computeVertexNormals();const wjm=mat('#38463c').clone();wjm.side=THREE.DoubleSide;group.add(new THREE.Mesh(wjg,wjm));
- for(const dx of [-1.95,1.95])for(const dz of [-1.95,1.95])block('#29342c',-94+dx,36.25,224+dz,.18,.28,.18);
- block('#88857a',-94,31.7,224,.7,.6,.7);
- block('#88857a',-94-.75,31.45,224,.4,.35,.4);block('#88857a',-94+.75,31.45,224,.4,.35,.4);
+ for(const dx of [-1.95,1.95])for(const dz of [-1.95,1.95])block('#29342c',-72+dx,36.25,224+dz,.18,.28,.18);
+ block('#88857a',-72,31.7,224,.7,.6,.7);
+ block('#88857a',-72-.75,31.45,224,.4,.35,.4);block('#88857a',-72+.75,31.45,224,.4,.35,.4);
 
  // Other scenic Taihu rock groups throughout the garden
  lakeRock(-63.8,200.2,1.95,21.8);lakeRock(-67.6,199.7,.8,22.1);
  lakeRock(-47.4,201.3,1.12);lakeRock(-73.1,197,1.2);lakeRock(-63,195.5,.75);lakeRock(-32.7,205.6,.58);
  lakeRock(-8.1,202,1.4,21.8);lakeRock(-11.5,198.8,.65,22.1);lakeRock(-16.1,205.3,.55);
- lakeRock(-84,212,2.2,21.5);lakeRock(-86,228,2.4,21.5);
+ lakeRock(-76,212,2.2,21.5);lakeRock(-78,228,2.4,21.5);
  lakeRock(-58,238,1.6,22.0);lakeRock(-48,246,1.4,22.0);lakeRock(-22,238,1.5,22.0);
 
  // 4. The Iconic Undulating Dragon Wall (穿云龙墙)
- const dragonPts=[[-86,216],[-78,217],[-70,219],[-62,218],[-54,216],[-46,215],[-38,217],[-30,218]];
+ const dragonPts=[[-78,216],[-70,217],[-62,219],[-54,218],[-46,216],[-38,215],[-30,217]];
  for(let i=1;i<dragonPts.length;i++){
   const p1=dragonPts[i-1],p2=dragonPts[i],len=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),steps=Math.ceil(len*1.5);
   for(let s=0;s<steps;s++){
@@ -117,7 +117,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
    }
   }
  }
- const dhX=-86,dhZ=216;
+ const dhX=-78,dhZ=216;
  // Authentic Ming-Qing sculpted dragon head (泥塑彩绘龙首 - dragon_wall.jpg)
  // 1. Dragon snout & upper jaw curving forward
  block('#34433b',dhX,29.8,dhZ+.35,.72,.42,.85);
@@ -261,10 +261,24 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   }
  }
 
- const pines=[[-98,226],[-90,222],[-96,218],[-92,230],[-102,224],[-86,224],[-68,236],[-24,242],[-82,246],[-14,248],[-102,204],[-88,206],[-66,248],[-32,238],[-44,254],[-78,242],[-20,252],[-58,238]];
+ const pines=[
+  // Continuous green belt enclosing the West & East garden perimeter (绿的一圈直接围合)
+  [-76,156],[-76,170],[-76,184],[-76,200],[-76,214],[-76,228],[-76,242],[-76,256],
+  [1,156],[1,170],[1,184],[1,200],[1,214],[1,228],[1,242],[1,256],
+  // Rockery & inner garden ancient black pines
+  [-74,226],[-68,222],[-72,218],[-70,230],[-68,236],[-24,242],[-14,248],[-66,248],[-32,238],[-44,254],[-20,252],[-58,238]
+ ];
  for(const [px,pz]of pines)pineTree(px,pz,6+random()*2);
 
- const willows=[[-76,236],[-50,236],[-38,236],[-26,236],[-12,236],[-62,252],[-40,252],[-72,200],[-60,197],[-16,200],[-6,204],[-54,232],[-68,172],[-55,170],[-34,170],[-28,172],[-68,190],[-55,192],[-34,192],[-28,190],[-64,244],[-48,250]];
+ const willows=[
+  // North lake perimeter green ring willows
+  [-72,156],[-60,154],[-32,154],[-20,156],[-10,156],
+  // Central ponds willows overhanging water
+  [-68,172],[-55,170],[-34,170],[-28,172],[-68,190],[-55,192],[-34,192],[-28,190],
+  [-72,200],[-60,197],[-16,200],[-6,204],[-54,232],[-64,244],[-48,250],
+  // South green ring willows enclosing south garden
+  [-72,258],[-60,258],[-48,258],[-36,258],[-24,258],[-12,258]
+ ];
  for(const [wx,wz]of willows)willowTree(wx,wz,5.5+random()*1.5);
 
  const ginkgoX=-52,ginkgoZ=224,gH=9;
@@ -279,7 +293,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   crown(x+.3,26+h+.4,z-.3,1.8,1.2,1.8,'#d64535');
   crown(x-.3,26+h-.3,z+.3,1.6,1.0,1.6,'#962d22');
  }
- const maples=[[-36,248],[-54,220],[-88,212],[-18,226],[-64,236],[-44,248]];
+ const maples=[[-36,248],[-54,220],[-88,212],[-18,226],[-64,236],[-44,248],[-76,180],[1,180],[-76,220],[1,220]];
  for(const [mx,mz]of maples)mapleTree(mx,mz,4.8+random()*1.2);
 
  // 7c. Classical Garden Bridges: Covered Gallery Bridge (水上复廊长廊桥) & Stone Arch Bridge (太湖石石拱桥) (参考 grand_rockery.jpg)
@@ -351,12 +365,12 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   [-36,252,1.2,.8,1.2,'#365431','#e87d96'],[-42,252,1.3,.85,1.3,'#2f4c2c','#c83854'],
   [-28,244,1.1,.75,1.1,'#355630','#df5678'],[-26,248,1.2,.8,1.2,'#32522e','#ffffff'],
   // Grand Rockery & Wangjiang Pavilion mountain skirts
-  [-100,220,1.5,.95,1.5,'#284227','#d4a23b'],[-88,220,1.4,.9,1.4,'#2e492d','#cb5134'],
-  [-101,228,1.6,1.0,1.6,'#263f25','#e2b84a'],[-87,228,1.3,.85,1.3,'#2c462b','#d65a3d'],
-  [-94,215,1.4,.85,1.4,'#294328','#e8c452'],[-94,233,1.5,.9,1.5,'#253e24','#cf4836'],
-  [-102,216,1.4,.9,1.4,'#274026','#e0b240'],[-86,216,1.3,.85,1.3,'#2d482c','#cb4632'],
-  [-102,234,1.5,.95,1.5,'#253e24','#df583a'],[-86,234,1.4,.9,1.4,'#2c462b','#e5bd4e'],
-  [-98,224,1.3,.85,1.3,'#2b452a','#d24230'],[-90,224,1.3,.85,1.3,'#294328','#e2b544'],
+  [-78,220,1.5,.95,1.5,'#284227','#d4a23b'],[-66,220,1.4,.9,1.4,'#2e492d','#cb5134'],
+  [-79,228,1.6,1.0,1.6,'#263f25','#e2b84a'],[-65,228,1.3,.85,1.3,'#2c462b','#d65a3d'],
+  [-72,215,1.4,.85,1.4,'#294328','#e8c452'],[-72,233,1.5,.9,1.5,'#253e24','#cf4836'],
+  [-79,216,1.4,.9,1.4,'#274026','#e0b240'],[-64,216,1.3,.85,1.3,'#2d482c','#cb4632'],
+  [-79,234,1.5,.95,1.5,'#253e24','#df583a'],[-64,234,1.4,.9,1.4,'#2c462b','#e5bd4e'],
+  [-76,224,1.3,.85,1.3,'#2b452a','#d24230'],[-68,224,1.3,.85,1.3,'#294328','#e2b544'],
   // Wan Hua Lou flowering courtyard
   [-50,222,1.3,.8,1.3,'#3a5e35','#e6739f'],[-58,222,1.2,.75,1.2,'#345430','#e8a342'],
   [-50,230,1.4,.85,1.4,'#375933','#df5374'],[-58,230,1.3,.8,1.3,'#31502c','#e29338'],
@@ -378,8 +392,8 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   [-24,200,1.2,.75,1.2,'#355530','#e4af40'],[-56,212,1.3,.85,1.3,'#365731','#cb3852'],
   [-42,212,1.2,.8,1.2,'#2e4d29','#e6be48'],[-24,212,1.3,.85,1.3,'#33522e','#df5b78'],
   // San Sui Tang entrance court
-  [-90,198,1.4,.85,1.4,'#2f4d2a','#e8ba46'],[-98,198,1.3,.8,1.3,'#284224','#d64e38'],
-  [-88,204,1.3,.8,1.3,'#304f2b','#e29f3c'],[-100,204,1.4,.85,1.4,'#274123','#cf442e'],
+  [-68,198,1.4,.85,1.4,'#2f4d2a','#e8ba46'],[-76,198,1.3,.8,1.3,'#284224','#d64e38'],
+  [-66,204,1.3,.8,1.3,'#304f2b','#e29f3c'],[-78,204,1.4,.85,1.4,'#274123','#cf442e'],
   // Inner walls & moon gates perimeter greenery
   [-72,196,1.3,.8,1.3,'#34552f','#df5d7a'],[-62,196,1.2,.75,1.2,'#2f4d2a','#e5b542'],
   [-48,196,1.3,.85,1.3,'#375832','#cb3f5a'],[-24,196,1.2,.8,1.2,'#32522e','#e8789a'],
