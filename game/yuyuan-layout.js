@@ -27,7 +27,7 @@ export const GARDEN_BEDS=[
  {x1:-39,x2:-30,z1:203,z2:208},
  {x1:-49,x2:-38,z1:219,z2:226},
  // Central Garden Plant Beds (strictly inside garden, none in commercial streets)
- {x1:-78,x2:-62,z1:212,z2:228},    // Wan Hua Lou court: ancient ginkgo & camellia
+ {x1:-74,x2:-62,z1:212,z2:228},    // Wan Hua Lou court: ancient ginkgo & camellia
  {x1:-38,x2:-22,z1:244,z2:256},    // Yu Ling Long court: tree peonies, plum & mondo grass
  {x1:-18,x2:-6,z1:244,z2:256},     // Dian Chun Tang stage south garden
  {x1:-58,x2:-42,z1:222,z2:232}     // Central waterside weeping willows & seasonal flora
@@ -68,8 +68,8 @@ export function yuyuanReserved(x,z){
 
 // Architectural Buildings: Authentic Ming-Qing Classical pavilions & heritage commercial halls
 export const YUYUAN_BUILDINGS=[
- // 1. Central Core: Huxinting Teahouse & lakeside pavilions (湖心亭、水榭与茶楼)
- {id:'huxinting',x:-46,z:178,rx:4,rz:4,levels:2},
+ // 1. Central Core: Huxinting Teahouse & lakeside pavilions (湖心亭单层古典水榭、茶楼与食肆)
+ {id:'huxinting',x:-46,z:178,rx:4,rz:4,levels:1},   // 单层古典开敞水上茶亭，无二层臃肿民居
  {id:'tea-gallery',x:-65,z:163,rx:5,rz:3,levels:1},
  {id:'lubolang',x:-28,z:188,rx:5,rz:4,levels:2},     // 绿波廊水榭
  {id:'nanxiang',x:-26,z:214,rx:6,rz:4,levels:2},    // 南翔馒头店
@@ -86,12 +86,12 @@ export const YUYUAN_BUILDINGS=[
  {id:'west-tea-house',x:-114,z:252,rx:5,rz:4,levels:2},    // 西市老茶庄
 
  // West Inner Row (x = -86, rx = 5, spans x in [-91, -81]):
- {id:'huabao-lou',x:-86,z:172,rx:6,rz:6,levels:3},         // 华宝楼: 3-tier grand antique & art hall
- {id:'tonghanchun',x:-86,z:188,rx:6,rz:4,levels:2},        // 童涵春堂国药
- {id:'west-bazaar-1',x:-86,z:212,rx:5,rz:3,levels:2},      // 豫园风物馆
- {id:'west-bazaar-2',x:-86,z:224,rx:5,rz:3,levels:2},      // 江南织造阁
+ {id:'huabao-lou',x:-86,z:172,rx:5,rz:6,levels:3},         // 华宝楼: 3-tier grand antique & art hall
+ {id:'tonghanchun',x:-86,z:188,rx:5,rz:4,levels:2},        // 童涵春堂国药
+ // west-bazaar-1 at z=212 removed so Line 10 Metro entrance is completely open!
+ {id:'west-bazaar-2',x:-86,z:226,rx:5,rz:3,levels:2},      // 江南织造阁
  {id:'west-bazaar-3',x:-86,z:238,rx:5,rz:3,levels:2},      // 古玩玉器斋
- {id:'west-bazaar-4',x:-86,z:252,rx:5,rz:3,levels:2},      // 老城厢食肆
+ {id:'west-bazaar-4',x:-86,z:250,rx:5,rz:3,levels:2},      // 老城厢食肆
  // (West Walkway in between: x in [-109, -91], centered at x = -100, width 18m!)
 
  // 3. East Commercial Pedestrian Street (东侧宽阔商业街：全长115米，两边商铺、中间12米宽敞步行街、上空彩灯天幕)
@@ -113,13 +113,9 @@ export const YUYUAN_BUILDINGS=[
  {id:'yuyuan-south-west',x:-78,z:268,rx:6,rz:4,levels:2},
  {id:'yuyuan-south-east',x:-18,z:268,rx:6,rz:4,levels:2},
 
- // 5. Central Grand Classical Garden (中间被围合的核心名园古典楼阁, 绿树浓荫环绕)
+ // 5. Central Grand Classical Garden (核心园林区：房子退移拆除，全域青翠绿化草毯环抱)
  {id:'sansui-tang',x:-71,z:198,rx:4,rz:3,levels:1}, // 三穗堂 (假山前堂)
- {id:'wangjiang-ting',x:-72,z:224,rx:3,rz:3,levels:1},// 望江亭 (大假山绝顶)
- {id:'wanhua-lou',x:-48,z:226,rx:5,rz:4,levels:2},   // 万花楼
- {id:'dianchun-tang',x:-16,z:232,rx:6,rz:4,levels:2}, // 点春堂 (古戏台主堂)
- {id:'yuhua-tang',x:-36,z:242,rx:5,rz:4,levels:1},   // 玉华堂 (对望玉玲珑)
- {id:'huijing-lou',x:-60,z:248,rx:5,rz:4,levels:2}   // 会景楼 (水上楼阁)
+ {id:'wangjiang-ting',x:-72,z:224,rx:3,rz:3,levels:1} // 望江亭 (大假山绝顶)
 ];
 
 export function buildYuyuan(world){
@@ -154,16 +150,12 @@ export function buildYuyuan(world){
  }
 
  // 5. Continuous lush green enclosing ring & 100% garden lawn/moss (绿圈直接围合 + 全域青翠苔藓草坪)
- for(let x=-76; x<=3; x++) for(let z=148; z<=264; z++){
+ for(let x=-75; x<=3; x++) for(let z=148; z<=264; z++){
   if(!GARDEN_PONDS.some(p=>x>=p.x1&&x<=p.x2&&z>=p.z1&&z<=p.z2) && w.get(x,25,z)!==0) w.set(x,25,z,1);
- }
- for(let z=148; z<=265; z++){
-  for(let x=-78; x<=-74; x++) if(w.get(x,25,z)!==0) w.set(x,25,z,1);
-  for(let x=2; x<=5; x++) if(w.get(x,25,z)!==0) w.set(x,25,z,1);
  }
  for(const b of GARDEN_BEDS) for(let x=b.x1; x<=b.x2; x++) for(let z=b.z1; z<=b.z2; z++) if(gardenBedContains(x+.5,z+.5,b)) w.set(x,25,z,1);
 
- // Commercial pedestrian streets are clean, flat paved stone avenues (no dirt/grass patches)
+ // Commercial pedestrian streets are clean, flat paved stone avenues (strictly no grass)
  for(let z=148; z<=268; z++){
   for(let x=YUYUAN_LOCAL.minX; x<=-80; x++) w.set(x,25,z,9);
   for(let x=5; x<=YUYUAN_LOCAL.maxX; x++) w.set(x,25,z,9);
@@ -176,9 +168,16 @@ export function buildYuyuan(world){
  w.fill(YUYUAN_LOCAL.minX,26,YUYUAN_LOCAL.maxZ,YUYUAN_LOCAL.maxX,28,YUYUAN_LOCAL.maxZ,9);
  // North main gate clearance
  w.fill(-50,26,YUYUAN_LOCAL.minZ,-42,30,YUYUAN_LOCAL.minZ+16,0);
+ // North West & East pedestrian street entry portals
+ w.fill(-110,26,YUYUAN_LOCAL.minZ,-90,32,YUYUAN_LOCAL.minZ+4,0);
+ w.fill(11,26,YUYUAN_LOCAL.minZ,25,32,YUYUAN_LOCAL.minZ+4,0);
+ // South West & East pedestrian street exit portals
+ w.fill(-110,26,YUYUAN_LOCAL.maxZ-4,-90,32,YUYUAN_LOCAL.maxZ,0);
+ w.fill(11,26,YUYUAN_LOCAL.maxZ-4,25,32,YUYUAN_LOCAL.maxZ,0);
  // West metro entrances clearance
- w.fill(YUYUAN_LOCAL.minX,26,202,YUYUAN_LOCAL.minX,29,208,0);
+ w.fill(YUYUAN_LOCAL.minX,26,202,YUYUAN_LOCAL.minX,29,218,0);
  w.fill(YUYUAN_LOCAL.minX,26,155,YUYUAN_LOCAL.minX,29,162,0);
+ w.fill(YUYUAN_LOCAL.minX,26,258,YUYUAN_LOCAL.minX,29,266,0);
 
  // 7. Expanded 4x Classical Garden Perimeter Wall
  for(let i=0;i<INNER_GARDEN_BOUNDARY.length;i++){
@@ -204,7 +203,7 @@ export function buildYuyuan(world){
  for(const b of YUYUAN_BUILDINGS){
   w.fill(b.x-b.rx,25,b.z-b.rz,b.x+b.rx,25,b.z+b.rz,7);
   for(let y=26;y<=28;y++)for(let x=b.x-b.rx;x<=b.x+b.rx;x++)for(let z=b.z-b.rz;z<=b.z+b.rz;z++)if(x===b.x-b.rx||x===b.x+b.rx||z===b.z-b.rz||z===b.z+b.rz)w.set(x,y,z,9);
-  if(b.id.startsWith('yuyuan-street-')||['huabao-lou','tonghanchun','west-bazaar-1','west-bazaar-2','west-bazaar-3','west-bazaar-4'].includes(b.id)){
+  if(b.id.startsWith('yuyuan-street-')||['huabao-lou','tonghanchun','west-bazaar-2','west-bazaar-3','west-bazaar-4'].includes(b.id)){
    w.fill(b.x-b.rx,26,b.z-1,b.x-b.rx,28,b.z+1,0);
    for(const sign of [-1,1])w.fill(b.x-b.rx,27,b.z+sign*2+(sign<0?-2:0),b.x-b.rx,28,b.z+sign*2+(sign>0?2:0),0);
   }else if(['tianyu-lou','shanghai-hotel','hefeng-lou','ningbo-tangtuan','old-city-east','old-city-northeast','bazaar-east-gold','bazaar-west-candy','bazaar-west-herbs','bazaar-stage','old-city-west','west-craft-hall','west-wine-shop','west-tea-house'].includes(b.id)){
@@ -216,9 +215,18 @@ export function buildYuyuan(world){
   }
   if((['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-south-')))for(const side of [-1,1])w.fill(b.x+side*2+(side<0?-2:0),27,b.z-b.rz,b.x+side*2+(side>0?2:0),28,b.z-b.rz,0);
   if(b.id==='huxinting'){
-   w.fill(b.x-b.rx,26,b.z-1,b.x-b.rx,28,b.z+1,0);
-   w.fill(b.x+b.rx,26,b.z-1,b.x+b.rx,28,b.z+1,0);
+   w.fill(b.x-b.rx,26,b.z-b.rz,b.x+b.rx,29,b.z+b.rz,0);
   }
  }
+
+ // 11. Final absolute guarantee: clear pedestrian street walkways, metro exits and connecting avenues
+ w.fill(-109,26,146,-91,32,276,0); // West Pedestrian Street walkway: 18m wide, completely clear!
+ w.fill(12,26,146,24,32,276,0);     // East Pedestrian Street walkway: 12m wide, completely clear!
+ w.fill(-90,26,206,-78,32,218,0);   // Line 10 Metro North Exit Plaza: wide open, zero blockage!
+ w.fill(-90,25,206,-78,25,218,9);   // Paved plaza floor
+ w.fill(-90,26,256,-78,32,266,0);   // Line 10 Metro South Exit Plaza: wide open, zero blockage!
+ w.fill(-90,25,256,-78,25,266,9);   // Paved plaza floor
+ w.fill(-90,26,265,12,32,271,0);    // South Connecting Walkway between East & West streets
+ w.fill(-90,25,265,12,25,271,9);
 }
 

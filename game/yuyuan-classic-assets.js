@@ -80,14 +80,12 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  leakWindowWall(-74,258,2,258);
  leakWindowWall(-74,194,-38,194);
  leakWindowWall(-32,194,2,194);
- leakWindowWall(-28,216,-28,238);
- leakWindowWall(-72,208,-48,208);
 
- // 2. Classical Curved Path Ribbons
+ // 2. Classical Curved Stepping Stone Path Ribbons
  function pathRibbon(points){
   const curve=new THREE.CatmullRomCurve3(points.map(([x,z])=>new THREE.Vector3(x,26.018,z)),false,'centripetal'),pathVertices=[],uv=[],indices=[],samples=points.length*4,pathLength=curve.getLength();
   for(let i=0;i<=samples;i++){const t=i/samples,p=curve.getPoint(t),tangent=curve.getTangent(t),nx=-tangent.z,nz=tangent.x;
-   for(const side of [-1,1]){pathVertices.push(p.x+nx*side*1.2,p.y,p.z+nz*side*1.2);uv.push(side===-1?0:1,t*pathLength/2.4);}
+   for(const side of [-1,1]){pathVertices.push(p.x+nx*side*.35,p.y,p.z+nz*side*.35);uv.push(side===-1?0:1,t*pathLength/.7);}
    if(i<samples){const n=i*2;indices.push(n,n+1,n+2,n+2,n+1,n+3);}
   }
   const pathGeometry=new THREE.BufferGeometry();pathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(pathVertices,3));pathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));pathGeometry.setIndex(indices);pathGeometry.computeVertexNormals();const pathMaterial=new THREE.MeshLambertMaterial({color:'#c0c0a9',map:stoneMap,side:THREE.DoubleSide});group.add(new THREE.Mesh(pathGeometry,pathMaterial));
@@ -296,7 +294,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
 
  const pines=[
   // Continuous green belt enclosing the West & East garden perimeter (绿的一圈直接围合)
-  [-76,156],[-76,170],[-76,184],[-76,200],[-76,214],[-76,228],[-76,242],[-76,256],
+  [-74,156],[-74,170],[-74,184],[-74,200],[-74,214],[-74,228],[-74,242],[-74,256],
   [1,156],[1,170],[1,184],[1,200],[1,214],[1,228],[1,242],[1,256],
   // Rockery & inner garden ancient black pines
   [-74,226],[-68,222],[-72,218],[-70,230],[-68,236],[-24,242],[-14,248],[-66,248],[-32,238],[-44,254],[-20,252],[-58,238]
@@ -326,7 +324,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   crown(x+.3,26+h+.4,z-.3,1.8,1.2,1.8,'#d64535');
   crown(x-.3,26+h-.3,z+.3,1.6,1.0,1.6,'#962d22');
  }
- const maples=[[-36,248],[-54,220],[-88,212],[-18,226],[-64,236],[-44,248],[-76,180],[1,180],[-76,220],[1,220]];
+ const maples=[[-36,248],[-54,220],[-18,226],[-64,236],[-44,248],[-72,180],[-2,180],[-72,220],[-2,220]];
  for(const [mx,mz]of maples)mapleTree(mx,mz,4.8+random()*1.2);
 
  // 7c. Classical Garden Bridges: Covered Gallery Bridge (水上复廊长廊桥) & Stone Arch Bridge (太湖石石拱桥) (参考 grand_rockery.jpg)
