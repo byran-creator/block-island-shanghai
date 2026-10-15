@@ -12,7 +12,7 @@ export const GARDEN_WINDOWS=[{axis:'z',x:-46,z:194,y:28.5,r:1.1},{axis:'z',x:-46
 
 // Natural meandering ponds and commercial water-street canal
 export const GARDEN_PONDS=[
- {x1:-63.5,x2:-29.5,z1:169,z2:193}, // 0. Central Huxinting outdoor pond
+ {x1:-68.5,x2:-25.5,z1:166.0,z2:193.8}, // 0. Central Huxinting enlarged outdoor lake (大幅扩大湖面)
  {x1:-70,x2:-57,z1:198,z2:202},    // 1. West rockery pool
  {x1:-14,x2:-2,z1:198,z2:207}      // 2. East inner pond
 ];
@@ -21,7 +21,7 @@ export const GARDEN_PONDS=[
 export const GARDEN_BEDS=[
  {x1:-73,x2:-67,z1:155,z2:166},
  {x1:-41,x2:-32,z1:156,z2:165},
- {x1:-29,x2:-19,z1:177,z2:187},
+ {x1:-25,x2:-19,z1:177,z2:187},
  {x1:-72,x2:-67,z1:195,z2:202},
  {x1:-54,x2:-44,z1:198,z2:207},
  {x1:-39,x2:-30,z1:203,z2:208},
@@ -135,12 +135,19 @@ export function buildYuyuan(world){
  w.fill(YUYUAN_LOCAL.minX,26,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,35,YUYUAN_LOCAL.maxZ,0);
  w.fill(YUYUAN_LOCAL.minX,25,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,25,YUYUAN_LOCAL.maxZ,9);
 
- // 3. Central Huxinting Pond depression and Jiuqu bridge
- w.fill(-63,20,169,-30,20,192,3);w.fill(-63,21,169,-30,25,192,0);
+ // 3. Central Huxinting Enlarged Lake depression, spacious pavilion terrace, and Jiuqu bridge
+ w.fill(-68,20,166,-26,20,194,3);w.fill(-68,21,166,-26,25,194,0);
+ // Spacious solid platform under Huxinting so all 4 pillars are fully supported (不再悬空)
+ w.fill(-50,25,174,-42,25,182,7);
+ for(const sx of [-2.5, 2.5]) for(const sz of [-2.5, 2.5]){
+  w.fill(Math.round(-46+sx),21,Math.round(178+sz),Math.round(-46+sx),24,Math.round(178+sz),9);
+ }
  for(let i=1;i<JIUQU_BRIDGE.length;i++){
   const a=JIUQU_BRIDGE[i-1],b=JIUQU_BRIDGE[i];
   w.fill(Math.min(a[0],b[0])-1,25,Math.min(a[1],b[1])-1,Math.max(a[0],b[0])+1,25,Math.max(a[1],b[1])+1,7);
+  w.fill(a[0],21,a[1],a[0],24,a[1],9);
  }
+ w.fill(-36,25,188,-34,25,193,7);
  w.fill(-61,25,170,-59,25,193,7);for(const x of [-61,-59])for(const z of [170,176,181,186,192])w.fill(x,21,z,x,24,z,9);
 
  // 4. Dig all other natural ponds and commercial water canal

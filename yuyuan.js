@@ -91,12 +91,19 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  function roof(b,y,scale=1){const rx=(b.rx+1.2)*scale,rz=(b.rz+1.2)*scale,vertices=[];for(const side of [-1,1])for(let j=0;j<5;j++){const a=j/5,c=(j+1)/5,z1=b.z+side*rz*a,z2=b.z+side*rz*c,h=t=>y+2.3*(1-t)+.65*Math.pow(t,7);vertices.push(b.x-rx,h(a),z1,b.x+rx,h(a),z1,b.x-rx,h(c),z2,b.x-rx,h(c),z2,b.x+rx,h(a),z1,b.x+rx,h(c),z2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();const material=mat('#374543').clone();material.side=THREE.DoubleSide;const mesh=new THREE.Mesh(g,material);root.add(mesh);cube('#927b50',b.x,y+2.32,b.z,rx*2+.4,.14,.18);const eaveGlow=cube('#ffd75a',b.x,y+2.36,b.z,rx*2+.3,.06,.09,true);lights.push(eaveGlow);for(const side of [-1,1]){cube('#74644c',b.x,y+.66,b.z+side*rz,rx*2+.4,.12,.17);const sideEaveZ=cube('#ffc240',b.x,y+.7,b.z+side*rz,rx*2+.3,.06,.09,true);lights.push(sideEaveZ);const sideEaveX=cube('#ffc240',b.x+side*rx,y+.7,b.z,.09,.06,rz*2+.3,true);lights.push(sideEaveX);}for(const sx of [-1,1])for(const sz of [-1,1]){const cornerX=b.x+sx*rx,cornerZ=b.z+sz*rz,tipX=cornerX+sx*.55,tipZ=cornerZ+sz*.55,tipY=y+1.12;const wing=new THREE.Mesh(box,mat('#374543'));wing.position.set((cornerX+tipX)/2,(y+.66+tipY)/2,(cornerZ+tipZ)/2);wing.scale.set(.12,.16,.75);wing.rotation.y=Math.atan2(sz,sx);wing.rotation.z=sx*.28;root.add(wing);cube('#28332c',tipX,tipY+.12,tipZ,.15,.22,.15);const wingGlow=cube('#ffd75a',(cornerX+tipX)/2,(y+.72+tipY)/2,(cornerZ+tipZ)/2,.07,.07,.78,true);wingGlow.rotation.y=Math.atan2(sz,sx);wingGlow.rotation.z=sx*.28;lights.push(wingGlow);const cornerLantern=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.35,8),mat('#e83a28',true));cornerLantern.position.set(tipX,tipY-.28,tipZ);root.add(cornerLantern);lanterns.push(cornerLantern);const core=cube('#fff5b8',tipX,tipY-.28,tipZ,.08,.22,.08,true);lights.push(core);cube('#d42d22',tipX,tipY-.52,tipZ,.03,.16,.03);}}
   for(const b of YUYUAN_BUILDINGS){
    if(b.id==='huxinting'){
-    // Single-tier delicate open classical lakeside tea pavilion on Nine-turn Bridge (开放式休息水榭，无墙壁、带靠栏坐凳)
-    roof(b,26+1*4,.96);
+    // Single-tier delicate open classical lakeside tea pavilion on Nine-turn Bridge (开放式水榭茶亭)
+    // 1. Spacious solid wooden water terrace under pavilion (大幅拓宽平台木板，完全承托四角立柱与游人坐歇)
+    cube('#7a5638',b.x,25.88,b.z,7.8,.26,7.8);
+    cube('#5e3f26',b.x,25.68,b.z,8.1,.16,8.1); // perimeter cross-timber rim
+    // 2. Solid granite foundation piers reaching down to pond bed under all four corner pillars (坚实石柱下探水底，消除悬空)
     for(const sx of [-1,1])for(const sz of [-1,1]){
-     cube('#822e23',b.x+sx*(b.rx-.35),28,b.z+sz*(b.rz-.35),.28,3.6,.28);
-     cube('#6a241b',b.x+sx*(b.rx-.35),26.25,b.z+sz*(b.rz-.35),.42,.5,.42);
+     const px=b.x+sx*(b.rx-.35), pz=b.z+sz*(b.rz-.35);
+     cube('#858a7e',px,23.5,pz,.58,5.0,.58); // stone pier from water bed y=21 up to 26
+     cube('#822e23',px,28,pz,.28,3.6,.28); // red pavilion column
+     cube('#6a241b',px,26.25,pz,.42,.5,.42); // plinth
     }
+    // 3. Pavilion roof and leisure bench railing
+    roof(b,26+1*4,.96);
     for(const side of [-1,1]){
      cube('#6e462d',b.x,26.65,b.z+side*(b.rz-.22),b.rx*2-.7,.5,.1);
      cube('#573520',b.x,26.96,b.z+side*(b.rz-.22),b.rx*2-.5,.08,.14);
