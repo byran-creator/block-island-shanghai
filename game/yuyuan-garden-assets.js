@@ -101,16 +101,16 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  }
  lakeRock(-39.5,158,.9);lakeRock(-71.5,196,1.25);lakeRock(-44.0,224.5,1.1);lakeRock(-68.5,217.5,1.0);
 
- // Meandering natural Taihu stone revetment blocks along waterlines (驳岸叠石)
+ // Meandering natural Taihu stone revetment blocks along enlarged waterlines (大幅扩大九曲湖水驳岸叠石)
  const revetmentBoulders=[
-  // North Central Pond shoreline (z ~ 169.2)
-  [-62.0,169.3,.9,.8],[-57.0,169.4,1.1,.9],[-45.5,169.3,.85,.8],[-36.5,169.4,1.0,.85],[-30.5,169.8,.9,.8],
-  // East Central Pond shoreline (x ~ -29.6)
-  [-29.6,174.5,.9,.85],[-29.6,181.0,1.0,.9],[-29.6,187.5,.9,.8],
-  // West Central Pond shoreline (x ~ -63.4)
-  [-63.4,175.0,1.0,.85],[-63.4,182.5,.9,.8],[-63.4,188.0,1.0,.9],
-  // South Central Pond shoreline (z ~ 192.8)
-  [-52.0,192.7,.9,.8],[-44.0,192.8,1.0,.85],[-38.0,192.7,.85,.8],
+  // North Central Pond shoreline (z ~ 166.2, expanded north)
+  [-67.0,166.3,.95,.85],[-60.0,166.4,1.1,.9],[-45.5,166.3,.9,.8],[-36.5,166.4,1.0,.85],[-27.5,166.5,.95,.8],
+  // East Central Pond shoreline (x ~ -25.6, expanded east right by Lubolang)
+  [-25.6,171.5,.9,.85],[-25.6,178.0,1.0,.9],[-25.6,184.5,.95,.85],[-25.6,190.5,.9,.8],
+  // West Central Pond shoreline (x ~ -68.4, expanded west)
+  [-68.4,171.0,1.0,.85],[-68.4,178.5,.95,.8],[-68.4,185.0,1.0,.9],[-68.4,191.0,.9,.8],
+  // South Central Pond shoreline (z ~ 193.6)
+  [-56.0,193.5,.9,.8],[-46.0,193.6,1.0,.85],[-36.0,193.5,.85,.8],
   // West Rockery Pool shoreline
   [-68.0,198.5,.85,.7],[-60.0,198.3,.9,.75],[-64.0,201.7,.8,.7],
   // East Inner Garden Pond shoreline
@@ -124,10 +124,10 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  // Waterside Granite Stepping Stones / Fishing Pier (亲水石阶与临水石埠头)
  const pierX=-42.0;
  for(let stepIdx=0;stepIdx<4;stepIdx++){
-  const sy=25.4-stepIdx*0.88,sz=168.8+stepIdx*0.55;
+  const sy=25.4-stepIdx*0.88,sz=165.8+stepIdx*0.55;
   block(garden,'#b2b7a9',pierX,sy,sz,1.9,0.22,0.65);
  }
- block(garden,'#a4a99b',pierX,22.65,171.1,2.2,0.24,0.95); // low waterside landing slab
+ block(garden,'#a4a99b',pierX,22.65,168.1,2.2,0.24,0.95); // low waterside landing slab
 
  // =========================================================================
  // 2. WATERSIDE WEEPING WILLOWS (垂柳依依与微风摇曳)
@@ -157,10 +157,10 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   }
   swayingWillows.push({group:tendrilGroup,phase:x*1.3+z*.7});
  }
- weepingWillow(-48.5,168.3,0,1.8,1.15); // North pond willow leaning over water toward Moon Bridge
- weepingWillow(-32.5,169.8,-1.5,1.4,1.1); // Northeast pond willow framing Jiuqu Bridge
- weepingWillow(-29.6,185.0,-1.8,0,1.05); // East pond willow by Lubolang
- weepingWillow(-63.0,178.5,1.7,0,1.0); // West pond willow by Water Corridor
+ weepingWillow(-48.5,165.2,0,1.8,1.15); // North pond willow leaning over enlarged lake toward Moon Bridge
+ weepingWillow(-31.0,166.5,-1.5,1.4,1.1); // Northeast pond willow framing Jiuqu Bridge
+ weepingWillow(-25.4,182.0,-1.8,0,1.05); // East pond willow by Lubolang
+ weepingWillow(-68.0,178.5,1.7,0,1.0); // West pond willow by Water Corridor
  weepingWillow(-58.5,197.8,-1.4,1.2,.95); // Inner Garden West Rockery Pool willow
  weepingWillow(-14.2,203.0,1.6,0,1.0); // Inner Garden East Pond willow
  weepingWillow(-48.0,222.0,0,-1.5,1.05); // South garden lawn willow
@@ -357,15 +357,58 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   }
  }
 
- // Two compact fountains: 96 reused instance transforms
- const fountains=[[-37,172],[-56.5,188]],drops=new THREE.InstancedMesh(new THREE.SphereGeometry(.038,5,4),mat('#d2e5df',true),96);
+ // =========================================================================
+ // 7. MAJESTIC REALISTIC FOUNTAINS (大气逼真喷泉：大半径喷洒、水流顺畅连贯、动态水花与雕花基座)
+ // =========================================================================
+ const fountains=[[-37,172],[-56.5,188]];
+ for(const [fx,fz] of fountains){
+  const basePlinth=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.65,.42,8),mat('#9fa496'));basePlinth.position.set(fx,22.42,fz);garden.add(basePlinth);
+  const upperBasin=new THREE.Mesh(new THREE.CylinderGeometry(1.0,.8,.3,12),mat('#b2b7a9'));upperBasin.position.set(fx,22.72,fz);garden.add(upperBasin);
+  const nozzleRim=new THREE.Mesh(new THREE.CylinderGeometry(.25,.34,.25,8),mat('#d4af37',true));nozzleRim.position.set(fx,22.95,fz);garden.add(nozzleRim);
+  const centerSpout=new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,.2,8),mat('#f5c842',true));centerSpout.position.set(fx,23.12,fz);garden.add(centerSpout);
+ }
+
+ const drops=new THREE.InstancedMesh(new THREE.SphereGeometry(.055,6,5),mat('#e2f8f5',true),96);
  drops.name='yuyuan-fountain-droplets';drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);drops.frustumCulled=false;root.add(drops);
- const transform=new THREE.Matrix4(),position=new THREE.Vector3(),rotation=new THREE.Quaternion(),scale=new THREE.Vector3(.8,1.6,.8);let elapsed=0;
- function animate(){for(let f=0;f<2;f++)for(let i=0;i<48;i++){
-  const jet=i%8,phase=((Math.floor(i/8)/6+elapsed*.62)%1),angle=jet*Math.PI/4,reach=1.45*phase;
-  position.set(fountains[f][0]+Math.cos(angle)*reach,22.3+2.7*4*phase*(1-phase),fountains[f][1]+Math.sin(angle)*reach);
-  transform.compose(position,rotation,scale);drops.setMatrixAt(f*48+i,transform);
- }drops.instanceMatrix.needsUpdate=true;}
+ const transform=new THREE.Matrix4(),position=new THREE.Vector3(),scale=new THREE.Vector3(1.2,2.4,1.2);
+ const tempQuat=new THREE.Quaternion(),upVec=new THREE.Vector3(0,1,0),dirVec=new THREE.Vector3();let elapsed=0;
+
+ function animate(){
+  for(let f=0;f<2;f++){
+   const [fx,fz]=fountains[f];
+   for(let i=0;i<48;i++){
+    const idx=f*48+i;
+    if(i<16){
+     // 1. Center high-pressure column plume (中央直冲主柱: 16颗粒, 紧凑流线, 垂直拉伸)
+     const phase=((i/16 + elapsed*0.88)%1);
+     const arc=Math.sin(phase*Math.PI);
+     const py=22.32 + 2.64*arc; // peaks at 24.96m (strictly within [22.29, 25.01])
+     const rSpread=0.38*arc;
+     const angle=i*(Math.PI*2/8);
+     position.set(fx+Math.cos(angle)*rSpread, py, fz+Math.sin(angle)*rSpread);
+     scale.set(1.2, 3.2*(0.6+0.4*arc), 1.2);
+     transform.compose(position,tempQuat.identity(),scale);
+    }else{
+     // 2. Outer cascading parabolic arched water canopy (外圈壮阔伞形大半径弧线喷水幕: 32颗粒, 8向圆周, 宽阔半径3.15m)
+     const jet=(i-16)%8;
+     const stepInJet=Math.floor((i-16)/8);
+     const phase=((stepInJet/4 + (jet%2)*0.06 + elapsed*0.78)%1);
+     const angle=jet*Math.PI/4;
+     const reach=3.15*phase; // 大喷泉半径: 达到 3.15 米广阔水幕!
+     const py=22.32 + 2.60*4*phase*(1-phase); // 顺畅抛物线弧线, 顶点 24.92m (严格在 [22.29, 25.01])
+     position.set(fx+Math.cos(angle)*reach, py, fz+Math.sin(angle)*reach);
+     const vy=2.60*4*(1-2*phase), vx=3.15*Math.cos(angle), vz=3.15*Math.sin(angle);
+     dirVec.set(vx, vy*0.6, vz).normalize();
+     tempQuat.setFromUnitVectors(upVec, dirVec);
+     const stretch=1.8 + Math.abs(vy)*0.35;
+     scale.set(1.4, stretch, 1.4); // 水花大、水流饱满顺畅
+     transform.compose(position,tempQuat,scale);
+    }
+    drops.setMatrixAt(idx,transform);
+   }
+  }
+  drops.instanceMatrix.needsUpdate=true;
+ }
  animate();
 
  function animateGarden(dt){
