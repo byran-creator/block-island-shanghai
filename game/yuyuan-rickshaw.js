@@ -1,3 +1,4 @@
+import {createRickshawAudio,RICKSHAW_LINES} from './rickshaw-audio.js';
 import * as THREE from './three.module.js';
 import { YUYUAN_SHIFT } from './yuyuan-layout.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
@@ -75,105 +76,9 @@ function getRoutePose(distance) {
  return { x, z, yaw };
 }
 
-let rickshawAudioCtx = null;
-let gameGetAudioFn = null;
-function getRickshawAudio() {
- try {
-  if (gameGetAudioFn) return gameGetAudioFn();
-  rickshawAudioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
-  if (rickshawAudioCtx.state === 'suspended') rickshawAudioCtx.resume()?.catch?.(() => {});
-  return rickshawAudioCtx;
- } catch { return null; }
-}
-
-// Authentic Old Shanghai Rickshaw Foot Pedal Bell (双音铜铃 "叮——当！")
-function playRickshawBell() {
- const ctx = getRickshawAudio();
- if (!ctx) return;
- const now = ctx.currentTime;
- [[1760, 0, 0.42], [1318, 0.12, 0.45]].forEach(([freq, delay, dur]) => {
-  try {
-   const osc = ctx.createOscillator();
-   const oscHarm = ctx.createOscillator();
-   const gain = ctx.createGain();
-   osc.type = 'sine'; osc.frequency.value = freq;
-   oscHarm.type = 'triangle'; oscHarm.frequency.value = freq * 2.76;
-   const t = now + delay;
-   gain.gain.setValueAtTime(0.0001, t);
-   gain.gain.exponentialRampToValueAtTime(0.09, t + 0.008);
-   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-   osc.connect(gain); oscHarm.connect(gain);
-   gain.connect(ctx.destination);
-   osc.start(t); osc.stop(t + dur + 0.02);
-   oscHarm.start(t); oscHarm.stop(t + dur * 0.4);
-  } catch {}
- });
-}
-
-// Authentic Chinese Male Vocal Hawking/Shouting Voice (真人男中音原声号子共振合成)
-function playRickshawMaleVoice(type = 'warn') {
- const ctx = getRickshawAudio();
- if (!ctx) return;
- const now = ctx.currentTime;
- const syllables = type === 'mount' 
-  ? [{ f0: 165, f0End: 145, dur: 0.22, delay: 0.15 }, { f0: 178, f0End: 152, dur: 0.35, delay: 0.42 }, { f0: 140, f0End: 110, dur: 0.48, delay: 0.82 }]
-  : type === 'arrive'
-  ? [{ f0: 172, f0End: 158, dur: 0.28, delay: 0.12 }, { f0: 164, f0End: 138, dur: 0.32, delay: 0.44 }, { f0: 145, f0End: 112, dur: 0.52, delay: 0.80 }]
-  : [
-    { f0: 182, f0End: 164, dur: 0.18, delay: 0.18 },
-    { f0: 175, f0End: 150, dur: 0.22, delay: 0.40 },
-    { f0: 195, f0End: 172, dur: 0.25, delay: 0.72 },
-    { f0: 168, f0End: 122, dur: 0.55, delay: 1.02 }
-  ];
-
- for (const syl of syllables) {
-  try {
-   const t = now + syl.delay;
-   const osc = ctx.createOscillator();
-   osc.type = 'sawtooth';
-   osc.frequency.setValueAtTime(syl.f0, t);
-   osc.frequency.exponentialRampToValueAtTime(Math.max(70, syl.f0End), t + syl.dur);
-
-   const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 620; f1.Q.value = 4.2;
-   const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 1320; f2.Q.value = 5.5;
-   const f3 = ctx.createBiquadFilter(); f3.type = 'peaking'; f3.frequency.value = 2650; f3.gain.value = 8.0; f3.Q.value = 3.0;
-
-   const gain = ctx.createGain();
-   gain.gain.setValueAtTime(0.0001, t);
-   gain.gain.exponentialRampToValueAtTime(0.12, t + 0.04);
-   gain.gain.exponentialRampToValueAtTime(0.0001, t + syl.dur);
-
-   osc.connect(f1); f1.connect(f2); f2.connect(f3); f3.connect(gain);
-   gain.connect(ctx.destination);
-
-   osc.start(t);
-   osc.stop(t + syl.dur + 0.02);
-  } catch {}
- }
-}
-
-// Authentic Hawking Voice Synthesis (结合浏览器原生中文真人发音 + 双音铜铃 + 喉鸣共振)
-function speakRickshawHawking(text, type = 'warn') {
- playRickshawBell();
- playRickshawMaleVoice(type);
- if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  try {
-   if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-   const utt = new SpeechSynthesisUtterance(text);
-   utt.lang = 'zh-CN';
-   utt.rate = 1.15;
-   utt.pitch = 0.92;
-   const voices = window.speechSynthesis.getVoices();
-   const zhVoices = voices.filter(v => v.lang && (v.lang.includes('zh') || v.lang.includes('cmn')));
-   const maleVoice = zhVoices.find(v => /male|男|yunyang|kangkang|breeze|qiang/i.test(v.name)) || zhVoices[0];
-   if (maleVoice) utt.voice = maleVoice;
-   window.speechSynthesis.speak(utt);
-  } catch {}
- }
-}
-
-export function createYuyuanRickshaws({ scene, root, getPos, setView, place, notify, onEvent = () => {}, getAudio = null, getPedestrians = () => [] }) {
- if (getAudio) gameGetAudioFn = getAudio;
+export function createYuyuanRickshaws({ scene, root, getPos, setView, place, notify, onEvent = () => {}, getAudio = null, getSound = () => true, getVolume = () => .28, getPedestrians = () => [] }) {
+ const voice=createRickshawAudio({getPos,getAudio,getSound,getVolume});
+ function speakRickshawHawking(r,type='warn') {const accepted=voice.request(()=>r.group.position,type);if(accepted&&type==='warn')notify('黄包车夫：'+RICKSHAW_LINES.warn);return accepted;}
  const rickshaws = [];
  const box = new THREE.BoxGeometry(1, 1, 1);
  const cyl = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -388,6 +293,7 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
 
  function tick(dt, keys = new Set(), externalPedestrians = null) {
   elapsed += dt;
+  voice.tick(dt);
   const peds = externalPedestrians ?? (getPedestrians ? getPedestrians() : []);
 
   for (const r of rickshaws) {
@@ -476,10 +382,8 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
 
     if (elapsed - r.lastAvoidVoiceTime > 4.2) {
      r.lastAvoidVoiceTime = elapsed;
-     const calls = ['借光！借光！车来喽——！', '让一让嘞！车来喽！', '留神脚下，让条道嘞！'];
-     const shout = calls[Math.floor(Math.random() * calls.length)];
-     speakRickshawHawking(shout, 'warn');
-     notify('车夫及时避让路人：' + shout);
+     speakRickshawHawking(r, 'warn');
+
     }
    } else if (r.avoidLockTime <= 0) {
     r.targetLateralOffset = 0;
@@ -521,24 +425,16 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
      ride.lapDistance += travel;
      if (elapsed - lastVoiceTime > 9) {
       lastVoiceTime = elapsed;
-      const calls = [
-       '借光！借光！车来喽——！',
-       '让一让嘞！车来喽！',
-       '借光借光，留神脚下！',
-       '车来喽！客官慢走！'
-      ];
-      const shout = calls[Math.floor(Math.random() * calls.length)];
-      speakRickshawHawking(shout, 'warn');
-      notify('车夫吆喝：' + shout);
+      speakRickshawHawking(r, 'warn');
+
      }
     } else if (!ride) {
      const p = getPos();
      const dist = Math.hypot(p.x - r.group.position.x, p.z - r.group.position.z);
      if (dist < 13.0 && Math.abs(p.y - 26.0) < 2.5 && elapsed - lastPasserbyVoiceTime > 8) {
       lastPasserbyVoiceTime = elapsed;
-      const shout = '借光！借光！车来喽——！';
-      speakRickshawHawking(shout, 'warn');
-      notify('黄包车夫吆喝：借光！借光！车来喽——！');
+      speakRickshawHawking(r, 'warn');
+
      }
     }
 
@@ -604,8 +500,8 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   r.targetSpeed = 4.6;
   setView(r.pose.yaw, -0.08);
   lastVoiceTime = elapsed;
-  speakRickshawHawking('客官坐稳喽！环豫园老街一圈走起！', 'mount');
-  notify('车夫：客官坐稳喽！环豫园老街一圈走起！(按 空格 或 V 随时下车)');
+  speakRickshawHawking(r, 'mount');
+  notify('车夫：'+RICKSHAW_LINES.mount+'(按 空格 或 V 随时下车)');
   onEvent({ type: 'yuyuan-rickshaw-ride' });
  }
 
@@ -624,10 +520,9 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   r.targetSpeed = 0;
   ride = null;
 
-  const farewell = reason === '全程到站' ? '客官，到站嘞！一圈老街逛完咯，您请慢走！' : '客官请慢走！祝您游园愉快！';
-  speakRickshawHawking(farewell, 'arrive');
+  speakRickshawHawking(r, 'arrive');
   if (reason === '全程到站') {
-   notify('车夫：客官，到站嘞！一圈老街逛完咯，您请慢走！');
+   notify('一圈老街已逛完。车夫：'+RICKSHAW_LINES.arrive);
   } else {
    notify('已下黄包车。祝您游园愉快！');
   }
@@ -681,7 +576,7 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   use,
   isRiding: () => !!ride,
   safeSavePoint: () => ride ? {...ride.from,z:ride.from.z+YUYUAN_SHIFT} : null,
-  cancelRide(){ride=null;for(const r of rickshaws){r.speed=0;r.targetSpeed=0;}},
+  cancelRide(){voice.suspend();ride=null;for(const r of rickshaws){r.speed=0;r.targetSpeed=0;}},
   cameraPose,
   dismount
  };

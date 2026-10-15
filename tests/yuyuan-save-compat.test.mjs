@@ -1,3 +1,4 @@
+import {createWorldBaseline} from '../game/world-baseline.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as THREE from '../game/three.module.js';
@@ -9,7 +10,7 @@ const source=readFileSync(new URL('../game/game.js',import.meta.url),'utf8');
 const body=source.slice(source.indexOf(' for(const [key,id] of data.edits)'),source.indexOf(' const p=data.pos?'));
 assert(body.length>100);
 const restoreEdits=new Function('data','world','savedEdits','initialWorld','BLOCKS','blocksMetroClearance','shift',body);
-const world=new VoxelWorld(),initialWorld=world.data.slice(),savedEdits=new Map();
+const world=new VoxelWorld(),initialWorld=createWorldBaseline(world.data),savedEdits=new Map();
 const edits=[['-100,27,220',9],['-100,70,220',7],['-50,24,290',0],['140,27,300',8]];
 restoreEdits({mapRevision:11,edits},world,savedEdits,initialWorld,BLOCKS,blocksMetroClearance,0);
 assert.deepEqual([...savedEdits],edits,'Personal building/removal edits inside and outside Yuyuan must survive');

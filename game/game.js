@@ -1,3 +1,4 @@
+import {createWorldBaseline} from './world-baseline.js';
 import {runPlayerInteraction} from './interaction-routing.js';
 import {blocksMetroClearance} from './metro-clearance.js';
 import {createPlayerHandbook} from './player-handbook.js';
@@ -52,7 +53,7 @@ const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,360);camera.rotation.order='YXZ';
 const ambient=new THREE.HemisphereLight('#fff9dd','#6d9277',1.6);scene.add(ambient);
 const sun=new THREE.DirectionalLight('#fff0c7',1.5);sun.position.set(-20,65,30);scene.add(sun);
-const world=await loadWorld(message=>{$('play').textContent=message;}),initialWorld=world.data.slice(),savedEdits=new Map();let adventure,saves,life,skyline,civil,weather,restaurant,activity,commute,npcGuides,metro,quests,handbook,yuyuan;let runLocked=false;
+const world=await loadWorld(message=>{$('play').textContent=message;}),initialWorld=createWorldBaseline(world.data),savedEdits=new Map();let adventure,saves,life,skyline,civil,weather,restaurant,activity,commute,npcGuides,metro,quests,handbook,yuyuan;let runLocked=false;
 const atlasCanvas=document.createElement('canvas');atlasCanvas.width=16*14;atlasCanvas.height=16;const ctx=atlasCanvas.getContext('2d');
 const tiles=['#77ad42','#956a45','#939e9c','#88603d','#498548','#e5d59b','#c29b61','#b76950','#956a45','#bb9259','#deded5','#db6594','#61c9df','#c4f77c'];
 for(let tile=0;tile<14;tile++){
@@ -165,10 +166,10 @@ document.addEventListener('mousemove',e=>{if(cursorFree)return;if(active&&(docum
 function edit(place){
  if(!active)return;if(metro?.isRiding()){notify('先到站下车，再拆建方块。');return;}if(commute?.isRiding()){notify('先下车，再拆建方块。');return;}if(yuyuan?.isRiding()){notify('先下黄包车，再拆建方块。');return;}if(adventure?.state.race){notify('跑酷中不能拆建；按 V 退出后恢复创造模式。');return;}camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);if(!place&&life?.attack()){pendingMine=null;lastAction=performance.now();return;}if(place&&life?.state.held){life.place(target?.place);return;}if(!target)return;
  if(place){const p=target.place;if(!p||p.y<1||!world.valid(p.x,p.y,p.z)){notify('这里已经是世界边界');return;}
-  if(blocksMetroClearance(p.x,p.y,p.z,selected,initialWorld[world.index(p.x,p.y,p.z)])){notify('地铁通道和站牌周围需要保持畅通，请在其他区域搭建。');return;}
+  if(blocksMetroClearance(p.x,p.y,p.z,selected,initialWorld.get(world.index(p.x,p.y,p.z)))){notify('地铁通道和站牌周围需要保持畅通，请在其他区域搭建。');return;}
   if(p.x+1>pos.x-.3&&p.x<pos.x+.3&&p.y+1>pos.y&&p.y<pos.y+1.76&&p.z+1>pos.z-.3&&p.z<pos.z+.3)return;
   if(world.protected(p.x,p.y,p.z)&&life?.state.survival){notify('生存模式下地标受到保护；可在菜单切换创造模式自由搭建。');return;}if(life?.occupied(p)){notify('这里有家具，Q 可以先回收家具。');return;}if(companions.occupied(p)){notify('这里是奶龙站的位置，换一格吧');return;}if(life?.state.survival&&!life.state.consume(selected)){notify('这个方块用完了，先挖掘收集，或 C 制作木板。');return;}updateBlock(p.x,p.y,p.z,selected);life.refresh();placed++;updateTasks();beep(1);
- }else{if(target.y<1)return;if(blocksMetroClearance(target.x,target.y,target.z,0,initialWorld[world.index(target.x,target.y,target.z)])){notify('地铁结构由系统统一维护，请在其他区域挖掘。');lastAction=performance.now();return;}if(world.protected(target.x,target.y,target.z)&&life?.state.survival){notify('生存模式下地标受到保护；可在菜单切换创造模式自由挖掘。');lastAction=performance.now();return;}const key=target.x+','+target.y+','+target.z;if(pendingMine?.key===key)return;const duration=life?.state.survival?life.state.miningTime(target.id):0;if(duration){pendingMine={...target,key,progress:0,duration};}else breakBlock(target);}
+ }else{if(target.y<1)return;if(blocksMetroClearance(target.x,target.y,target.z,0,initialWorld.get(world.index(target.x,target.y,target.z)))){notify('地铁结构由系统统一维护，请在其他区域挖掘。');lastAction=performance.now();return;}if(world.protected(target.x,target.y,target.z)&&life?.state.survival){notify('生存模式下地标受到保护；可在菜单切换创造模式自由挖掘。');lastAction=performance.now();return;}const key=target.x+','+target.y+','+target.z;if(pendingMine?.key===key)return;const duration=life?.state.survival?life.state.miningTime(target.id):0;if(duration){pendingMine={...target,key,progress:0,duration};}else breakBlock(target);}
 
  lastAction=performance.now();
 }
@@ -269,7 +270,7 @@ metro=createMetro({getYaw:()=>yaw,turnView:a=>{yaw+=a;},onEvent:e=>quests.record
 vesselSurfaces=boatSurfaces(activity.ferry,civil.boats);
 privateSuites=createPrivateSuites({scene,getPos:()=>pos,getState:()=>life.state,teleport,lookAt:lookTowards,notify,setDay:()=>{dayClock=36;updateSky(0);},onProgress:()=>{life.refresh();saves?.save('auto');}});
 if($('play'))$('play').textContent='正在构建豫园与老城商圈…';
-yuyuan=createYuyuan({scene,world,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:e=>quests.record(e),getAudio});
+yuyuan=createYuyuan({scene,world,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:e=>quests.record(e),getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
 residents=createBuildingResidents({scene,world,getPos:()=>pos,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])]});
 npcGuides=createNpcGuides({extraPeople:[...metro.staff,...residents.people,...yuyuan.actors],scene,world,civil,activity,getPos:()=>pos,getVehicles:()=>commute?.vehicles??[],pause:pauseForPanel,resume:enter,notify,lookAt:p=>{camera.position.set(pos.x,pos.y+1.62,pos.z);lookTowards(p);}});
 commute=createCommute({scene,world,civil,activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!activity?.collides(x,y,z),exitBlocked:collides,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},onExit:()=>{keys.clear();pressedAt.clear();releaseAt.clear();grounded=true;},turnView:a=>{yaw+=a;},notify,allowed:()=>!adventure.state.race&&!activity.isRiding()&&!metroInterior(pos),getActors:()=>npcGuides.actors,onImpact:(actor,vx,vz,strength)=>npcGuides.impact(actor,vx,vz,strength)});
@@ -303,8 +304,8 @@ function migrateBundPoint(p){
 }
 function applySave(data){try{
  if(![3,4,6].includes(data?.version)||!Array.isArray(data.edits)||data.edits.length>50000)throw new Error('Invalid save');
- metro?.end(true);metro?.restore(data.metro);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.cancelRide();data=migrateWestBankSave(data);pendingMine=null;gliding=false;adventure.cancelRace();world.data.set(initialWorld);savedEdits.clear();const shift=data.version<6?WORLD_SHIFT:0;
- for(const [key,id] of data.edits){if(typeof key!=='string'||!Number.isInteger(id)||id<0||id>=BLOCKS.length)continue;const xyz=key.split(',').map(Number);xyz[1]+=shift;if((data.mapRevision||0)<5){const p={x:xyz[0],y:xyz[1],z:xyz[2]};movePersonal(p);xyz[0]=p.x;xyz[2]=p.z;}if(xyz.length!==3||!xyz.every(Number.isInteger)||!world.valid(...xyz)||(xyz[1]<1))continue;const blockId=(id===6&&['-130,25,60','-130,25,61','-129,25,61','-131,25,61','-112,25,70','-113,25,70','-111,25,70'].includes(key))?9:id;if(blocksMetroClearance(...xyz,blockId,initialWorld[world.index(...xyz)]))continue;world.set(...xyz,blockId);savedEdits.set(xyz.join(','),blockId);}
+ metro?.end(true);metro?.restore(data.metro);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.cancelRide();data=migrateWestBankSave(data);pendingMine=null;gliding=false;adventure.cancelRace();initialWorld.restore(world.data);savedEdits.clear();const shift=data.version<6?WORLD_SHIFT:0;
+ for(const [key,id] of data.edits){if(typeof key!=='string'||!Number.isInteger(id)||id<0||id>=BLOCKS.length)continue;const xyz=key.split(',').map(Number);xyz[1]+=shift;if((data.mapRevision||0)<5){const p={x:xyz[0],y:xyz[1],z:xyz[2]};movePersonal(p);xyz[0]=p.x;xyz[2]=p.z;}if(xyz.length!==3||!xyz.every(Number.isInteger)||!world.valid(...xyz)||(xyz[1]<1))continue;const blockId=(id===6&&['-130,25,60','-130,25,61','-129,25,61','-131,25,61','-112,25,70','-113,25,70','-111,25,70'].includes(key))?9:id;if(blocksMetroClearance(...xyz,blockId,initialWorld.get(world.index(...xyz))))continue;world.set(...xyz,blockId);savedEdits.set(xyz.join(','),blockId);}
  const p=data.pos?{...data.pos,y:data.pos.y+shift}:null;if(p&&(data.mapRevision||0)<2){if(p.x>=125&&p.x<=148&&p.z>=25&&p.z<=52&&p.y>=25){p.x-=20;p.z+=47;}else if(p.x>=113&&p.x<=132&&p.z>=59&&p.z<=65&&p.y<25){p.x=LANDMARKS.dock.x;p.y=LANDMARKS.dock.y;p.z=LANDMARKS.dock.z;}}if(p&&(data.mapRevision||0)<3&&p.x>=110&&p.x<=124&&p.z>=116&&p.z<=121&&p.y<25){p.x=LANDMARKS.dock.x;p.y=23;p.z=LANDMARKS.dock.z;}if(p&&(data.mapRevision||0)<4){
  const rooms=[{x:116.5,z:85.5,dx:55,dz:44},{x:123.5,z:62.5,dx:64,dz:21},{x:145.5,z:71.5,dx:86,dz:30}],room=rooms.find(r=>Math.abs(p.x-r.x)<=12&&Math.abs(p.z-r.z)<=13&&p.y>=25);
  if(room){p.x+=room.dx;p.z+=room.dz;}
@@ -374,7 +375,7 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-update-v54-seen';
+const UPDATE_NOTICE_KEY='block-island-update-v55-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});

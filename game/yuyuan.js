@@ -13,7 +13,7 @@ import {styleNpc} from './npc-appearance.js';
 import {createYuyuanRickshaws} from './yuyuan-rickshaw.js';
 import {YUYUAN,YUYUAN_SHIFT,YUYUAN_BUILDINGS,WATER_CORRIDOR,GARDEN_PONDS,JIUQU_BRIDGE,WATER_GALLERY_BENDS,YUYUAN_WALKS,YUYUAN_STATION_WALK,YUYUAN_STATION_WALK_SOUTH,pathContains,gardenPathContains} from './yuyuan-layout.js';
 export const YUYUAN_RIDDLES=[{question:'两岸不相连，走我能过河。猜一物。',answers:['桥','茶壶','灯笼'],correct:0},{question:'有脚不走路，安睡好帮手。猜一物。',answers:['鱼竿','床','竹子'],correct:1},{question:'白天藏起来，夜里满天开。猜一物。',answers:['小笼包','茶叶','星星'],correct:2}];
-export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null}){
+export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null,getSound=()=>true,getVolume=()=>.28}){
  const root=new THREE.Group();root.name='yuyuan-garden-and-malls';root.position.z=YUYUAN_SHIFT;scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),lights=[],lanterns=[],actors=[],fixtureBounds=[];let panel=false,elapsed=0,lastTea=-30,lastSnack=-30,solved=new Set(),orders=0,teas=0,stocks={buns:12,candy:8,souvenir:6,tea:6},collectibles={};
 
  const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
@@ -277,7 +277,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   }
  }
 
- const rickshaws=createYuyuanRickshaws({scene,root,getPos:localPos,setView,place:p=>{Object.assign(getPos(),{...p,z:p.z+YUYUAN_SHIFT});},notify,onEvent,getAudio,getPedestrians:()=>actors});
+ const rickshaws=createYuyuanRickshaws({scene,root,getPos:localPos,setView,place:p=>{Object.assign(getPos(),{...p,z:p.z+YUYUAN_SHIFT});},notify,onEvent,getAudio,getSound,getVolume,getPedestrians:()=>actors});
  function npc(index,x,z,role,color){const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const add=(c,xx,y,zz,w,h,d)=>{const m=new THREE.Mesh(box,mat(c));m.position.set(xx,y,zz);m.scale.set(w,h,d);r.add(m);return m;};const torso=add(color,0,1,0,.43,.7,.3),head=add('#d4a27b',0,1.55,0,.34,.36,.34),hair=add('#332c27',0,1.76,0,.35,.08,.35),arms=[],legs=[];for(const side of [-1,1]){arms.push(add(color,side*.28,1,0,.13,.6,.18));legs.push(add('#34413c',side*.12,.38,0,.17,.76,.22));}styleNpc({root:r,torso,head,hair,arms,legs},index,'visitor');actors.push({root:r,person:true,npcRole:role,guide:{intro:'欢迎来到豫园。湖心亭喝茶、商圈南市老街可品尝南翔小笼与选购手作，商圈有华宝楼古玩与民俗戏台，内园扩建了张南阳大假山与宋代玉玲珑。',choices:[['怎么去地铁？','从西侧牌坊沿福佑路指示去河南南路地铁口。10号线基隆路方向下一站南京东路，可换乘2号线去陆家嘴。']]}});}
  npc(101,-44.5,176.2,'湖心亭茶客','#b39568');npc(102,-25.5,271.2,'南翔师傅','#c6a27b');npc(103,-61.5,204.5,'灯谜向导','#9f6c79');npc(104,-34,201,'豫园游客','#79939b');npc(105,-56,201,'豫园游客','#96aa82');
  for(const [i,shop]of streetArt.shops.entries())npc(120+i,shop.x-1.7,shop.z+.3,shop.title+'店员',['#b78c66','#85936b','#a87e83'][i%3]);

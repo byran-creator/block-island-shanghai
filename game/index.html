@@ -160,13 +160,23 @@
 <dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title">
  <header>
   <div>
-   <small>VERSION UPDATE · V54 / 2026.10.15</small>
-   <h2 id="update-title">✨ 版本更新通知 · 豫园烟火商街与园林盛景</h2>
+   <small>VERSION UPDATE · V55 / 2026.10.15</small>
+   <h2 id="update-title">✨ 版本更新通知 · 内存优化与近处车夫吆喝</h2>
   </div>
   <button id="update-close" aria-label="关闭更新通知">关闭并返回</button>
  </header>
  <div class="update-body">
 
+  <p class="update-intro">2026年10月15日 · 减少城市加载时的内存占用与临时分配，保留当前建筑、贴图、灯光和游客效果；已有存档、背包与个人建造继续保留。</p>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">运行优化 01</span><h3>🏙️ 原有画面 · 更少重复内存</h3></div><ul class="update-list">
+   <li>城市底图副本改为无损压缩；模型合批直接写入最终缓冲区，减少加载时的大量临时数组。</li>
+   <li>保留当前豫园、商铺、贴图清晰度、灯光和人流；存档格式与个人建造保持兼容。</li>
+  </ul></article>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">街头声音 02</span><h3>🔊 走近车夫 · 才听得到吆喝</h3></div><ul class="update-list">
+   <li>车夫改用固定普通话男声短音频，去掉原来的电子喉音与系统朗读叠加。这是合成配音，不是真人实录。</li>
+   <li>只在车夫周围8米内播放，随距离减轻；远离、暂停、静音或切换到其他楼层时停止，避免多人同时喊话。</li>
+  </ul></article>
+  <details class="update-history"><summary>📚 第54版 · 豫园烟火商街与园林盛景（2026.10.15）</summary>
   <p class="update-intro">2026年10月15日 · 全面升级<b>豫园老城厢商业街区与古典园林</b>：两侧商铺彻底告别中空毛坯、全景精装修有烟火气店铺、大幅提升商业街区人流量、园林核心区全域草毯覆盖、九曲桥优化为单层通透水榭亭台。已有存档、背包与个人建造继续保留。</p>
   <article class="update-section">
    <div class="update-badge-row">
@@ -174,7 +184,7 @@
     <h3>🏮 步行商街全面精修 · 烟火旺铺与如织人流</h3>
    </div>
    <div class="update-figure">
-    <img src="./assets/updates/yuyuan_street_v54.png" alt="豫园商业步行街精修实景与热闹人流" class="update-img" loading="eager">
+    <img src="./assets/updates/yuyuan_street_v54.png" alt="豫园商业步行街精修实景与热闹人流" class="update-img" loading="lazy">
    </div>
    <ul class="update-list">
     <li><strong>21间沿街商铺全面实景装修</strong>：两侧商铺彻底告别中空毛坯，全部精装为类似南京路的繁华老字号（梨膏糖坊、国药堂、名酿酒庄、华宝楼古玩、老饭店名点、金楼银楼等），设有布艺遮阳帘、金字牌匾、落地展示窗、红木柜台与暖光吊灯，并配备8位专职掌柜与名厨可供互动品鉴。</li>
@@ -188,7 +198,7 @@
     <h3>🏯 核心园林绿意盎然 · 通透湖心水榭与整洁环境</h3>
    </div>
    <div class="update-figure">
-    <img src="./assets/updates/yuyuan_garden_v54.png" alt="豫园核心区翠绿草坪与轻巧湖心亭实景" class="update-img" loading="eager">
+    <img src="./assets/updates/yuyuan_garden_v54.png" alt="豫园核心区翠绿草坪与轻巧湖心亭实景" class="update-img" loading="lazy">
    </div>
    <ul class="update-list">
     <li><strong>全域翠绿草毯覆盖</strong>：核心园林区域彻底消除黄土裸露，全部铺设如茵绿毯；所有商业店铺退让至古典围墙外，院落内外层次分明。</li>
@@ -196,6 +206,7 @@
     <li><strong>地铁口与交通通道畅通</strong>：10号线1号口与2号口周边全面清理，彻底移除任何阻挡房屋与隔墙，标牌清晰直通商街与园门。</li>
    </ul>
   </article>
+  </details>
   <details class="update-history"><summary>📚 第53版 · 换乘畅通与游客漫步（2026.10.14）</summary>
   <p class="update-intro">2026年10月14日 · 修复<b>南京东路换乘与返程出站</b>，增加<b>豫园商街游客</b>，让园内散步各有节奏。已有存档、背包与个人建造继续保留。</p>
   <article class="update-section"><div class="update-badge-row"><span class="update-tag">出行修复 01</span><h3>🚇 换乘通道与返程出口</h3></div><ul class="update-list">
