@@ -16,16 +16,87 @@ function texture(part,palette,role){
   const base=part==='head'?palette.skin:part==='leg'?palette.pants:palette.shirt;paint(base,0,0,32,32);
   for(let k=0;k<8;k++)paint(k%2?'#ffffff0c':'#14232b10',(k*13+palette.variant*5)%30,(k*9+face*5)%30,2,2);
   if(part==='head'){
-   paint(palette.hair,0,0,32,face===2||face===4?32:9);if(face!==2&&face!==3&&face!==5)paint(palette.hair,0,0,8,27);
-   if(face===5){const v=palette.variant,eyeY=v%2?15:16,eyeH=[4,3,5,2][v%4];paint(palette.hair,0,8,4,9);paint(palette.hair,28,8,4,9);paint(palette.hair,4+(v%4)*3,8,8,4);for(const x of [6,20]){paint(palette.hair,x,eyeY-3,7,v%3===0?2:1);paint('#f4eee5',x,eyeY,7,eyeH);paint(['#293c49','#4b6545','#5d4036','#365d78'][v%4],x+3+(v%2),eyeY+1,2,Math.max(1,eyeH-1));if(v===4||v===6){paint('#293340',x-1,eyeY-1,9,1);paint('#293340',x-1,eyeY+eyeH,9,1);paint('#293340',x-1,eyeY-1,1,eyeH+2);paint('#293340',x+7,eyeY-1,1,eyeH+2);}}if(v===4||v===6)paint('#293340',13,eyeY,7,1);paint('#9b725c',15,21,2+v%2,2);paint('#9a6558',12+v%2,25+v%2,6+v%3,1);if(v%3===1){paint('#9a6558',11,24,2,1);paint('#9a6558',19,24,2,1);}if(v===7)paint(palette.hair,11,26,10,3);}
+   paint(palette.hair,0,0,32,face===2||face===4?32:9);
+   if(face===2){paint('#ffffff1c',8,8,16,14);paint('#00000018',15,0,2,32);}
+   if(face===4){paint('#00000022',0,24,32,8);paint('#ffffff15',8,8,16,12);}
+   if(face===0||face===1){
+    paint(palette.hair,0,0,8,27);
+    paint(palette.skin,13,16,6,8);paint('#9c654d',15,18,2,4);
+   }
+   if(face===5){
+    const v=palette.variant,eyeY=v%2?15:16,eyeH=[4,3,5,2][v%4];
+    paint(palette.hair,0,0,32,7);
+    paint(palette.hair,0,7,4,10);paint(palette.hair,28,7,4,10);
+    paint(palette.hair,4+(v%4)*3,7,8,4);
+    paint('#ffffff24',6,2,14,2);
+    paint('#c96b6528',4,19,7,3);paint('#c96b6528',21,19,7,3);
+    for(const ex of [6,20]){
+     paint(palette.hair,ex,eyeY-3,7,v%3===0?2:1);
+     paint('#201a18',ex,eyeY-1,7,1);
+     paint('#f8f6f0',ex,eyeY,7,eyeH);
+     const irisCol=['#32526e','#3d5e45','#5c3d31','#355469'][v%4];
+     paint(irisCol,ex+2+(v%2),eyeY+1,3,Math.max(1,eyeH-1));
+     paint('#15181c',ex+3+(v%2),eyeY+1,1,Math.max(1,eyeH-2));
+     paint('#ffffff',ex+2+(v%2),eyeY,1,1);
+     if(v===4||v===6){
+      paint(v===4?'#a8b6c4':'#c8a548',ex-1,eyeY-1,9,1);
+      paint(v===4?'#a8b6c4':'#c8a548',ex-1,eyeY+eyeH,9,1);
+      paint(v===4?'#a8b6c4':'#c8a548',ex-1,eyeY-1,1,eyeH+2);
+      paint(v===4?'#a8b6c4':'#c8a548',ex+7,eyeY-1,1,eyeH+2);
+     }
+    }
+    if(v===4||v===6)paint(v===4?'#a8b6c4':'#c8a548',13,eyeY,7,1);
+    if(v===1){
+     paint('#1c232a',5,eyeY-1,9,eyeH+2);paint('#1c232a',18,eyeY-1,9,eyeH+2);
+     paint('#2f3b46',14,eyeY,4,1);paint('#ffffff44',6,eyeY,2,1);paint('#ffffff44',19,eyeY,2,1);
+    }
+    paint('#ffffff25',15,17,2,3);
+    paint('#966b53',14,21,4,1);
+    paint('#9b725c',15,21,2+v%2,2);
+    paint('#9a6558',12+v%2,25+v%2,6+v%3,1);
+    paint('#d98075',13+v%2,26,4+v%3,1);
+    if(v%3===1){paint('#9a6558',11,24,2,1);paint('#9a6558',19,24,2,1);}
+    if(v===7)paint(palette.hair,11,26,10,3);
+   }
   }else if(part==='torso'){
-   paint('#21324455',0,28,32,4);paint('#ffffff20',0,3,32,2);if(face===5){paint('#f0e9db',11,0,10,4);paint('#253b4c',15,4,2,24);for(let b=8;b<26;b+=5)paint('#e7ece8',15,b,2,2);paint('#29405066',3,12,8,1);paint('#29405066',21,12,8,1);}
-   if(role==='vendor'){paint('#6c8b79',5,10,22,20);paint('#e2d2af',5,25,22,2);}
-   if(role==='officer'){paint('#233853',0,0,8,3);paint('#233853',24,0,8,3);if(face===5)paint('#e4eef3',22,8,6,3);}
-   if(role==='guide'){paint('#b5e6de',1,16,30,3);if(face===5)paint('#e6f3e9',21,8,7,5);}
+   paint('#21324455',0,28,32,4);paint('#ffffff20',0,3,32,2);
+   if(face===5){
+    paint('#f0e9db',11,0,10,5);paint('#ffffff35',9,0,3,6);paint('#ffffff35',20,0,3,6);
+    paint('#253b4c',15,4,2,24);
+    for(let b=7;b<26;b+=4)paint('#e7ece8',15,b,2,2);
+    paint('#29405066',3,12,8,1);paint('#29405066',21,12,8,1);
+    paint('#00000022',4,13,7,5);paint('#00000022',21,13,7,5);
+    const v=palette.variant;
+    if(v===0){paint('#96241e',11,1,10,3);paint('#caa54f',12,3,8,1);}
+    else if(v===1){paint('#c8963e',4,11,7,1);paint('#c8963e',21,11,7,1);}
+    else if(v===2){paint('#eeeade',13,5,1,7);paint('#eeeade',18,5,1,7);}
+    else if(v===3){paint('#ffffff',22,10,5,2);}
+    else if(v===4){for(const py of [7,13,19])paint('#caa54f',13,py,6,2);}
+    else if(v===5){for(const py of [9,15,21])paint('#ffffff28',0,py,32,2);}
+    else if(v===6){for(const py of [8,14,20,26])paint('#00000022',0,py,32,1);}
+    else if(v===7){paint('#1f2a36',8,13,16,7);paint('#ffda68',11,15,2,5);}
+   }
+   if(face===4){paint('#0000001a',0,8,32,1);paint('#00000015',15,8,2,20);}
+   if(role==='vendor'){paint('#6c8b79',5,10,22,20);paint('#e2d2af',5,25,22,2);paint('#4a6b57',10,13,12,6);}
+   if(role==='officer'){paint('#233853',0,0,8,3);paint('#233853',24,0,8,3);paint('#d4eb69',0,11,32,5);if(face===5)paint('#e4eef3',22,7,6,4);}
+   if(role==='guide'){paint('#b5e6de',1,16,30,3);paint('#f0cf65',0,4,32,4);if(face===5)paint('#e6f3e9',21,8,7,5);}
+   if(role==='staff'&&face===5){paint('#d42828',8,5,3,3);}
    if(role==='office'&&face===5)paint('#38516c',14,4,4,17);
-  }else if(part==='arm'){paint('#ffffff30',0,23,32,2);paint(palette.skin,0,25,32,7);}
-  else{paint('#1b2b3a44',1,0,2,27);paint('#ffffff16',15,4,1,22);paint('#28343d',0,27,32,5);paint('#c8d5d7',0,31,32,1);}
+  }else if(part==='arm'){
+   paint('#ffffff30',0,21,32,2);paint('#00000020',0,23,32,1);
+   paint(palette.skin,0,24,32,8);
+   if(face===5){paint('#282828',5,25,6,4);paint('#ffd700',7,26,2,2);}
+   paint('#966b5333',0,29,32,1);
+  }else{
+   paint('#201a14',0,0,32,4);paint('#caa54f',14,1,4,2);
+   paint('#1b2b3a44',1,0,2,27);paint('#ffffff16',15,4,1,22);
+   paint('#00000020',4,4,8,4);paint('#00000020',20,4,8,4);
+   paint('#00000030',0,26,32,1);
+   paint('#f0f2f5',0,27,32,5);
+   paint('#38648e',6,28,18,2);
+   for(const ly of [27,29])paint('#d0d5dc',13,ly,6,1);
+   paint('#28343d',0,31,32,1);
+  }
  }
  const map=new THREE.CanvasTexture(canvas);map.magFilter=THREE.NearestFilter;map.minFilter=THREE.LinearMipmapLinearFilter;map.colorSpace=THREE.SRGBColorSpace;
  const material=new THREE.MeshLambertMaterial({map});cache.set(key,material);return material;
