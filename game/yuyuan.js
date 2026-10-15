@@ -16,7 +16,78 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const root=new THREE.Group();root.name='yuyuan-garden-and-malls';root.position.z=YUYUAN_SHIFT;scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),lights=[],lanterns=[],actors=[],fixtureBounds=[];let panel=false,elapsed=0,lastTea=-30,lastSnack=-30,solved=new Set(),orders=0,teas=0,stocks={buns:12,candy:8,souvenir:6,tea:6},collectibles={};
  const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
  function cube(color,x,y,z,w,h,d,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;}
- function board(text,x,y,z,w=4,h=.8,yaw=0){if(typeof document==='undefined'||!document.createElement){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial());m.position.set(x,y,z);m.rotation.y=yaw;root.add(m);return m;}const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#342b25';ctx.fillRect(0,0,256,64);ctx.strokeStyle='#cfb46a';ctx.lineWidth=4;ctx.strokeRect?.(4,4,248,56);ctx.fillStyle='#f4d697';ctx.font='bold 30px "Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.fillText(text,128,43,244);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide}));mesh.position.set(x,y,z);mesh.rotation.y=yaw;mesh.userData.panel=true;root.add(mesh);return mesh;}
+ function board(text,x,y,z,w=4,h=.8,yaw=0){
+  if(typeof document==='undefined'||!document.createElement){
+   const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial());
+   m.position.set(x,y,z);m.rotation.y=yaw;root.add(m);return m;
+  }
+  const isVert=h>w*1.5,c=document.createElement('canvas');
+  if(isVert){c.width=160;c.height=480;}else{c.width=512;c.height=128;}
+  const ctx=c.getContext('2d'),bw=c.width,bh=c.height;
+  if(isVert){
+   const bg=ctx.createLinearGradient?.(0,0,bw,0);
+   if(bg?.addColorStop){bg.addColorStop(0,'#100a08');bg.addColorStop(0.5,'#201610');bg.addColorStop(1,'#100a08');ctx.fillStyle=bg;}
+   else ctx.fillStyle='#18100c';
+   ctx.fillRect?.(0,0,bw,bh);
+   ctx.strokeStyle='#8f6828';ctx.lineWidth=1.5;ctx.strokeRect?.(5,5,bw-10,bh-10);
+   const bgGrad=ctx.createLinearGradient?.(0,0,0,bh);
+   if(bgGrad?.addColorStop){bgGrad.addColorStop(0,'#ffe894');bgGrad.addColorStop(0.5,'#c99638');bgGrad.addColorStop(1,'#7a5416');ctx.strokeStyle=bgGrad;}
+   else ctx.strokeStyle='#c99638';
+   ctx.lineWidth=3;ctx.strokeRect?.(9,9,bw-18,bh-18);
+   ctx.fillStyle='#edd378';ctx.font='bold 16px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText?.('❖',bw/2,24);
+   const chars=text.replace(/[\s·\-_]/g,'').split(''),startY=48,availH=bh-startY-44,spacing=Math.min(50,availH/Math.max(1,chars.length));
+   ctx.font='bold 34px "STKaiti","Kaiti","Songti","SimSun",serif';
+   chars.forEach((ch,i)=>{
+    const cy=startY+i*spacing+spacing/2;
+    ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillText?.(ch,bw/2+2,cy+3);
+    ctx.fillStyle='#8f5c18';ctx.fillText?.(ch,bw/2+1,cy+1.5);
+    const cg=ctx.createLinearGradient?.(0,cy-18,0,cy+18);
+    if(cg?.addColorStop){cg.addColorStop(0,'#fffbe0');cg.addColorStop(0.3,'#fce07e');cg.addColorStop(0.7,'#e0a938');cg.addColorStop(1,'#946618');ctx.fillStyle=cg;}
+    else ctx.fillStyle='#fce07e';
+    ctx.fillText?.(ch,bw/2,cy);
+   });
+   const ss=24,sx=bw/2-ss/2,sy=bh-36;
+   ctx.fillStyle='#a62420';ctx.fillRect?.(sx,sy,ss,ss);
+   ctx.strokeStyle='#d6854b';ctx.lineWidth=1;ctx.strokeRect?.(sx+.5,sy+.5,ss-1,ss-1);
+   ctx.fillStyle='#fce4c8';ctx.font='bold 10px "STKaiti","Kaiti",serif';ctx.fillText?.('百年',bw/2,sy+ss/2);
+  }else{
+   const bg=ctx.createRadialGradient?.(bw/2,bh/2,10,bw/2,bh/2,bw*0.6);
+   if(bg?.addColorStop){bg.addColorStop(0,'#241710');bg.addColorStop(0.7,'#150d09');bg.addColorStop(1,'#0c0705');ctx.fillStyle=bg;}
+   else ctx.fillStyle='#140d09';
+   ctx.fillRect?.(0,0,bw,bh);
+   ctx.strokeStyle='rgba(255,215,120,0.04)';ctx.lineWidth=1;
+   for(let y=8;y<bh;y+=8){ctx.beginPath?.();ctx.moveTo?.(8,y);ctx.lineTo?.(bw-8,y);ctx.stroke?.();}
+   ctx.strokeStyle='#9c7530';ctx.lineWidth=1.5;ctx.strokeRect?.(6,6,bw-12,bh-12);
+   const bgGrad=ctx.createLinearGradient?.(0,0,bw,bh);
+   if(bgGrad?.addColorStop){bgGrad.addColorStop(0,'#ffe48a');bgGrad.addColorStop(0.5,'#c99638');bgGrad.addColorStop(1,'#7a5416');ctx.strokeStyle=bgGrad;}
+   else ctx.strokeStyle='#c99638';
+   ctx.lineWidth=3.5;ctx.strokeRect?.(12,12,bw-24,bh-24);
+   const drawCorner=(cx,cy,sx,sy)=>{
+    ctx.strokeStyle='#edd378';ctx.lineWidth=2;ctx.beginPath?.();
+    ctx.moveTo?.(cx+sx*16,cy);ctx.lineTo?.(cx,cy);ctx.lineTo?.(cx,cy+sy*16);
+    ctx.moveTo?.(cx+sx*5,cy+sy*5);ctx.lineTo?.(cx+sx*11,cy+sy*5);ctx.lineTo?.(cx+sx*11,cy+sy*11);
+    ctx.stroke?.();
+   };
+   drawCorner(14,14,1,1);drawCorner(bw-14,14,-1,1);drawCorner(14,bh-14,1,-1);drawCorner(bw-14,bh-14,-1,-1);
+   const ss=28,sx=bw-48,sy=bh/2-ss/2;
+   ctx.fillStyle='#a62420';ctx.fillRect?.(sx,sy,ss,ss);
+   ctx.strokeStyle='#d6854b';ctx.lineWidth=1.5;ctx.strokeRect?.(sx+1,sy+1,ss-2,ss-2);
+   ctx.fillStyle='#fce4c8';ctx.font='bold 11px "STKaiti","Kaiti",serif';ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.fillText?.('非遗',sx+ss/2,sy+ss/2);
+   const tx=(bw-36)/2,ty=bh/2+1;ctx.textAlign='center';ctx.textBaseline='middle';
+   const fontSize=Math.min(46,Math.max(26,Math.round(bw/Math.max(6,text.length)*1.05)));
+   ctx.font=`bold ${fontSize}px "STKaiti","Kaiti","Songti","SimSun",serif`;
+   ctx.fillStyle='rgba(0,0,0,0.9)';ctx.fillText?.(text,tx+2.5,ty+3.5);
+   ctx.fillStyle='#8f5c18';ctx.fillText?.(text,tx+1.2,ty+1.8);
+   const textGrad=ctx.createLinearGradient?.(0,ty-fontSize*0.6,0,ty+fontSize*0.6);
+   if(textGrad?.addColorStop){textGrad.addColorStop(0,'#fffbe0');textGrad.addColorStop(0.25,'#fce07e');textGrad.addColorStop(0.7,'#e0a938');textGrad.addColorStop(1,'#946618');ctx.fillStyle=textGrad;}
+   else ctx.fillStyle='#fce07e';
+   ctx.fillText?.(text,tx,ty);
+  }
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide}));
+  mesh.position.set(x,y,z);mesh.rotation.y=yaw;mesh.userData.panel=true;root.add(mesh);return mesh;
+ }
  function roof(b,y,scale=1){const rx=(b.rx+1.2)*scale,rz=(b.rz+1.2)*scale,vertices=[];for(const side of [-1,1])for(let j=0;j<5;j++){const a=j/5,c=(j+1)/5,z1=b.z+side*rz*a,z2=b.z+side*rz*c,h=t=>y+2.3*(1-t)+.65*Math.pow(t,7);vertices.push(b.x-rx,h(a),z1,b.x+rx,h(a),z1,b.x-rx,h(c),z2,b.x-rx,h(c),z2,b.x+rx,h(a),z1,b.x+rx,h(c),z2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();const material=mat('#374543').clone();material.side=THREE.DoubleSide;const mesh=new THREE.Mesh(g,material);root.add(mesh);cube('#927b50',b.x,y+2.32,b.z,rx*2+.4,.14,.18);const eaveGlow=cube('#ffd75a',b.x,y+2.36,b.z,rx*2+.3,.06,.09,true);lights.push(eaveGlow);for(const side of [-1,1]){cube('#74644c',b.x,y+.66,b.z+side*rz,rx*2+.4,.12,.17);const sideEaveZ=cube('#ffc240',b.x,y+.7,b.z+side*rz,rx*2+.3,.06,.09,true);lights.push(sideEaveZ);const sideEaveX=cube('#ffc240',b.x+side*rx,y+.7,b.z,.09,.06,rz*2+.3,true);lights.push(sideEaveX);}for(const sx of [-1,1])for(const sz of [-1,1]){const cornerX=b.x+sx*rx,cornerZ=b.z+sz*rz,tipX=cornerX+sx*.55,tipZ=cornerZ+sz*.55,tipY=y+1.12;const wing=new THREE.Mesh(box,mat('#374543'));wing.position.set((cornerX+tipX)/2,(y+.66+tipY)/2,(cornerZ+tipZ)/2);wing.scale.set(.12,.16,.75);wing.rotation.y=Math.atan2(sz,sx);wing.rotation.z=sx*.28;root.add(wing);cube('#28332c',tipX,tipY+.12,tipZ,.15,.22,.15);const wingGlow=cube('#ffd75a',(cornerX+tipX)/2,(y+.72+tipY)/2,(cornerZ+tipZ)/2,.07,.07,.78,true);wingGlow.rotation.y=Math.atan2(sz,sx);wingGlow.rotation.z=sx*.28;lights.push(wingGlow);const cornerLantern=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.35,8),mat('#e83a28',true));cornerLantern.position.set(tipX,tipY-.28,tipZ);root.add(cornerLantern);lanterns.push(cornerLantern);const core=cube('#fff5b8',tipX,tipY-.28,tipZ,.08,.22,.08,true);lights.push(core);cube('#d42d22',tipX,tipY-.52,tipZ,.03,.16,.03);}}
   for(const b of YUYUAN_BUILDINGS){
    if(b.id==='huxinting'){
@@ -68,7 +139,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  // Curve-following bridge posts sit outside its three-block walking deck.
  for(let i=1;i<JIUQU_BRIDGE.length;i++){const a=JIUQU_BRIDGE[i-1],b=JIUQU_BRIDGE[i],length=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/length,dz=(b[1]-a[1])/length;for(let d=0;d<=length;d+=1.5)for(const side of [-1,1]){const x=a[0]+dx*d+dz*side*1.3,z=a[1]+dz*d-dx*side*1.3;if(Math.abs(x-WATER_CORRIDOR.x)<WATER_CORRIDOR.width/2+.3&&z>=WATER_CORRIDOR.z1&&z<=WATER_CORRIDOR.z2||pathContains(x,z,JIUQU_BRIDGE,1.05)||Math.abs(x+46)<4.5&&Math.abs(z-178)<4.5)continue;cube('#806a48',x,26.4,z,.09,.8,.09);fixtureBounds.push({x,z,rx:.05,rz:.05,y:26,h:.8});}for(const side of [-1,1])for(let d=.25;d<length;d+=.5){const x=a[0]+dx*d+dz*side*1.3,z=a[1]+dz*d-dx*side*1.3;if(Math.abs(x-WATER_CORRIDOR.x)<WATER_CORRIDOR.width/2+.3&&z>=WATER_CORRIDOR.z1&&z<=WATER_CORRIDOR.z2||pathContains(x,z,JIUQU_BRIDGE,1.05)||Math.abs(x+46)<4.5&&Math.abs(z-178)<4.5)continue;const m=cube('#8e7855',x,26.77,z,.53,.065,.07);m.rotation.y=-Math.atan2(dz,dx);fixtureBounds.push({x,z,rx:dx?.265:.035,rz:dx?.035:.265,y:26.72,h:.1});}}
 
- const streetArt=createYuyuanStreetAssets(root,{cube,mat,board});fixtureBounds.push(...streetArt.fixtures);Object.assign(stocks,streetArt.stockCaps);const stockCaps={buns:12,candy:8,souvenir:6,tea:6,...streetArt.stockCaps};const collectibleNames=['江南手作纪念品','江南茶具套装',...streetArt.shops.filter(s=>!s.food).map(s=>s.name)];
+ const streetArt=createYuyuanStreetAssets(root,{cube,mat,board});fixtureBounds.push(...streetArt.fixtures);Object.assign(stocks,streetArt.stockCaps);const stockCaps={buns:12,candy:8,souvenir:6,tea:6,...streetArt.stockCaps};const collectibleNames=['江南手作纪念品','江南茶具套装','吹糖金龙','康熙通宝铜钱','老坑古玉扳指',...streetArt.shops.filter(s=>!s.food).map(s=>s.name)];
  for(const group of Object.values(streetArt.goods).flat())batchMeshes(group,staticMeshes(group),'yuyuan-street-stock');
  const setStocks=()=>{shopArt.setStocks(stocks);streetArt.setStocks(stocks);};
  const shopArt=createYuyuanShopAssets(root,{cube,mat,board});fixtureBounds.push(...shopArt.fixtures);for(const group of Object.values(shopArt.goods).flat())batchMeshes(group,staticMeshes(group),'yuyuan-stock-item');
@@ -85,6 +156,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  npc(130,-105.8,153.4,'梨膏糖掌柜','#9c3f38');npc(131,-105.8,200.4,'国药堂掌柜','#4d6f54');npc(132,-105.8,233.4,'名酿坊掌柜','#7a422b');
  npc(133,-87.2,167.4,'华宝楼掌柜','#8c6e3d');npc(134,-87.2,248.4,'生煎师傅','#aa5538');
  npc(135,8.2,167.4,'天裕楼掌柜','#3a617e');npc(136,8.2,199.4,'老饭店名厨','#9b3f36');npc(137,8.2,249.4,'金楼掌柜','#9a7c36');
+ npc(140,-101.8,212.5,'游商糖人张','#a84232');npc(141,11.8,181.0,'挑担栗子王','#785233');npc(142,-92.2,212.0,'地摊古董刘','#4f6479');
  const dynamic=new Set([...lights,...lanterns,...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(shopArt.goods).flat()]);batchMeshes(root,staticMeshes(root,dynamic),'yuyuan-static-details');for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);}
 
  const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||fixtureBounds.some(b=>Math.abs(x-b.x)<b.rx+.29&&Math.abs(z-YUYUAN_SHIFT-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y)}):{people:[],tick(){}};actors.push(...visitors.people);
@@ -95,15 +167,27 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   const gate=gates.near(p);if(gate){pause();panel=true;$('yuyuan-title').textContent='海上名园 · 内园检票';$('yuyuan-result').textContent=insideGarden(p)?'离园请过闸，出园后再次进入需重新领票。':'九曲桥、湖心亭与商街可自由游览；内园使用免费游戏体验票。';$('yuyuan-actions').replaceChildren();
    if(!insideGarden(p)&&!gates.ticket)action('领取免费游园体验票',()=>{gates.claim();close();use();});
    const button=action(insideGarden(p)?'开闸离园':'检票入园',()=>{if(gates.open(gate)){close();notify('闸机已开，请从月洞门中央走过。');}});button.disabled=!insideGarden(p)&&!gates.ticket;$('yuyuan-dialog').showModal();return true;}
- const extraShops=streetArt.extraShops??[];
- const entries=[{id:'tea',x:-46,z:176.8,title:'湖心亭 · 临水茶席'},{id:'snack',x:-26,z:212,title:'南翔 · 店内小笼柜台'},{id:'craft',x:-62,z:212,title:'江南手作 · 店内柜台'},{id:'teashop',x:-65,z:162,title:'湖畔茶坊 · 店内柜台'},{id:'riddle',x:-62,z:203,title:'豫园 · 灯谜'},...streetArt.shops.map(s=>({...s,id:'street-'+s.id})),...extraShops.map(s=>({...s,id:'extra-'+s.id,isExtra:true}))].sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z));const near=entries[0];if(Math.hypot(near.x-p.x,near.z-p.z)>3.2)return false;pause();panel=true;$('yuyuan-title').textContent=near.title;$('yuyuan-result').textContent='';$('yuyuan-actions').replaceChildren();
+   const extraShops=streetArt.extraShops??[];
+  const peddlerEntries=[{id:'peddler-tang',x:-101.8,z:212.5,title:'游商糖人张 · 街角小摊',peddlerType:'tang'},{id:'peddler-chestnut',x:11.8,z:181.0,title:'挑担栗子王 · 现炒栗子',peddlerType:'chestnut'},{id:'peddler-antique',x:-92.2,z:212.0,title:'地摊古董刘 · 金石古币',peddlerType:'antique'}];
+  const entries=[{id:'tea',x:-46,z:176.8,title:'湖心亭 · 临水茶席'},{id:'snack',x:-26,z:212,title:'南翔 · 店内小笼柜台'},{id:'craft',x:-62,z:212,title:'江南手作 · 店内柜台'},{id:'teashop',x:-65,z:162,title:'湖畔茶坊 · 店内柜台'},{id:'riddle',x:-62,z:203,title:'豫园 · 灯谜'},...streetArt.shops.map(s=>({...s,id:'street-'+s.id})),...extraShops.map(s=>({...s,id:'extra-'+s.id,isExtra:true})),...peddlerEntries].sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z));const near=entries[0];if(Math.hypot(near.x-p.x,near.z-p.z)>3.2)return false;pause();panel=true;$('yuyuan-title').textContent=near.title;$('yuyuan-result').textContent='';$('yuyuan-actions').replaceChildren();
   if(near.id==='tea')action('品一壶茉莉花茶',()=>{if(elapsed-lastTea<20){$('yuyuan-result').textContent='慢慢品茶，稍后再来。';return;}lastTea=elapsed;const s=getState();s.health=Math.min(20,s.health+2);s.hunger=Math.min(20,s.hunger+1);teas++;onEvent({type:'yuyuan-tea'});onProgress();$('yuyuan-result').textContent='茶香与湖水相伴 · 体力略有恢复。';});
   function buy(key,name,food=0){const b=action(name+' · 库存 '+stocks[key],()=>{if(stocks[key]<=0)return;if(elapsed-lastSnack<20){$('yuyuan-result').textContent='刚买过一份，稍后再来。';return;}lastSnack=elapsed;stocks[key]--;orders++;setStocks();if(food)getState().food=Math.min(99999,getState().food+food);else collectibles[name]=(collectibles[name]??0)+1;if(near.id==='snack')onEvent({type:'yuyuan-snack'});onProgress();b.textContent=name+' · 库存 '+stocks[key];b.disabled=stocks[key]===0;$('yuyuan-result').textContent='已购买'+name+'，柜台少一份；'+(food?'Z 可食用。':'O 背包可查看收藏。');});b.disabled=stocks[key]===0;}
   if(near.id==='snack'){buy('buns','小笼包',2);buy('candy','梨膏糖 / 五香豆',2);}if(near.id==='craft')buy('souvenir','江南手作纪念品');if(near.id==='teashop')buy('tea','江南茶具套装');if(near.key)buy(near.key,near.name,near.food);
   if(near.isExtra)action('挑选与品鉴特色名品',()=>{const s=getState();s.health=Math.min(20,s.health+1);if(['pastry','candy','wine'].includes(near.type))s.hunger=Math.min(20,s.hunger+1);$('yuyuan-result').textContent='掌柜笑迎八方客：【'+near.title+'】名扬沪上，承蒙厚爱！';});
+  if(near.peddlerType==='tang'){
+   action('买一串冰糖葫芦 (红润酸甜)',()=>{if(elapsed-lastSnack<10){$('yuyuan-result').textContent='刚吃完一串，稍后再尝。';return;}lastSnack=elapsed;const s=getState();s.hunger=Math.min(20,s.hunger+2);s.food=Math.min(99999,s.food+2);$('yuyuan-result').textContent='【糖人张】嘘……小声点！城管来了喊我一声！刚熬好的冰糖葫芦，酸甜酥脆咯！';});
+   action('买一只吹糖金龙 (栩栩如生)',()=>{collectibles['吹糖金龙']=(collectibles['吹糖金龙']??0)+1;$('yuyuan-result').textContent='【糖人张】得嘞！这只吹糖金龙您拿好，晶莹剔透，纯手工非遗手艺！';});
+  }
+  if(near.peddlerType==='chestnut'){
+   action('买一包热糖炒栗子 (刚出锅)',()=>{if(elapsed-lastSnack<10){$('yuyuan-result').textContent='慢慢剥慢慢吃，小心烫嘴。';return;}lastSnack=elapsed;const s=getState();s.hunger=Math.min(20,s.hunger+3);s.food=Math.min(99999,s.food+3);$('yuyuan-result').textContent='【栗子王】小声点小声点！正宗良乡热糖炒栗子，现炒现出锅，壳脆仁甜，热乎着呢！';});
+  }
+  if(near.peddlerType==='antique'){
+   action('淘一枚古铜钱 (康熙通宝)',()=>{collectibles['康熙通宝铜钱']=(collectibles['康熙通宝铜钱']??0)+1;$('yuyuan-result').textContent='【古董刘】这位爷借一步说话！祖传生坑官铸古铜钱，识货的便宜匀给您，留个念想！';});
+   action('鉴赏古玉扳指 (温润包浆)',()=>{collectibles['老坑古玉扳指']=(collectibles['老坑古玉扳指']??0)+1;$('yuyuan-result').textContent='【古董刘】您老好眼力！这枚老坑和田青白玉扳指，包浆油润，大开门的好东西！';});
+  }
   if(near.id==='riddle'){const index=YUYUAN_RIDDLES.findIndex((_,i)=>!solved.has(i));if(index<0)$('yuyuan-result').textContent='三道灯谜都答对了，夜晚可来赏灯。';else{const q=YUYUAN_RIDDLES[index];$('yuyuan-result').textContent=q.question;for(const [i,answer]of q.answers.entries())action(answer,()=>{if(i!==q.correct){$('yuyuan-result').textContent='再想想：'+q.question;return;}if(solved.has(index))return;solved.add(index);if(solved.size===3)onEvent({type:'yuyuan-riddle',solved:3});onProgress();$('yuyuan-result').textContent='答对了！'+solved.size+'/3；关闭后再来下一题。';});}}
   $('yuyuan-dialog').showModal();return true;
  }
  $('yuyuan-close').onclick=close;$('yuyuan-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});
- return {root,actors,shopArt,streetArt,vendors:streetArt.vendors??[],gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,collides:(x,y,z)=>gates.collides(x,y,z-YUYUAN_SHIFT)||fixtureBounds.some(b=>Math.abs(x-b.x)<b.rx+.29&&Math.abs(z-YUYUAN_SHIFT-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y),tick(dt,{night=false}={}){elapsed+=dt;gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
+ return {root,actors,shopArt,streetArt,vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,collides:(x,y,z)=>gates.collides(x,y,z-YUYUAN_SHIFT)||fixtureBounds.some(b=>Math.abs(x-b.x)<b.rx+.29&&Math.abs(z-YUYUAN_SHIFT-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y),tick(dt,{night=false}={}){elapsed+=dt;gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
 }
