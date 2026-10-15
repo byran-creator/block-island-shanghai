@@ -40,7 +40,7 @@ export function createYuyuanCrowd({scene,world,blocked}){
  addCircuit([[15,156],[18.5,156],[18.5,246],[15,246],[15,156]],24,300);
  addCircuit([[-99,156],[-94.5,156],[-94.5,246],[-99,246],[-99,156]],18,350);
  addCircuit([[-70,261],[-26,261],[-26,263],[-70,263],[-70,261]],12,370);
- addCircuit([[-68,168],[-65,168],[-65,192],[-68,192],[-68,168]],8,390);
+ addCircuit([[-73,166],[-70,166],[-70,192],[-73,192],[-73,166]],8,390);
  const inner=INNER_GARDEN_EAST_PATH.slice(1,-1);addCircuit([...inner,inner[0]],1,400);
  addCircuit([[-48,238],[-36,238],[-36,244],[-48,244],[-48,238]],1,410);
  addCircuit([[-70,202],[-64,202],[-64,214],[-70,214],[-70,202]],1,420);
@@ -67,23 +67,28 @@ export function createYuyuanCrowd({scene,world,blocked}){
   else if(a.pause>0)a.pause=Math.max(0,a.pause-dt);
   else if(a.detour){const detour=a.detour,target=detour.points[detour.index],p=a.root.position,q={x:target[0],z:target[1],yaw:Math.atan2(target[0]-p.x,target[1]-p.z)+Math.PI};moved=stepTo(a,q,dt);if(Math.hypot(p.x-q.x,p.z-q.z)<.06){detour.index++;if(detour.index>=detour.points.length){a.d=detour.endD;a.detour=null;}}else if(!moved&&a.wait>3&&!a.rerouteIn)reroute(a);}
   else {const lead=people.find(b=>b!==a&&Math.hypot(b.root.position.x-a.root.position.x,b.root.position.z-a.root.position.z)<1.35);
-   const currentSpeed=lead?Math.min(a.speed,lead.speed*.96):a.speed;
+   let currentSpeed=a.speed;
+   if(lead){
+    const dist=Math.hypot(lead.root.position.x-a.root.position.x,lead.root.position.z-a.root.position.z);
+    currentSpeed=Math.min(a.speed,lead.speed*.96*Math.max(.72,Math.min(1.0,(dist-.6)/.35)));
+   }
    const d=(a.d+currentSpeed*dt)%a.length,q=a.pose(d);
    if(!staticClear(q.x,q.z)){if(a.wait>.8&&!a.rerouteIn)reroute(a);}
    else {moved=stepTo(a,q,dt);if(moved)a.d=d;}
   }
   if(moved){a.wait=0;a.browseIn-=dt;if(a.browseIn<=0&&!people.some(b=>b!==a&&Math.hypot(a.root.position.x-b.root.position.x,a.root.position.z-b.root.position.z)<2.2)){a.pause=.8+(a.phase%1.9);a.browseCount++;a.browseIn=18+(a.phase*7%31);}}
   else if(!a.pause)a.wait+=dt;
-  const swing=moved?Math.sin(a.travel*a.stride+a.phase)*.58:0;
-  const armSwing=moved?Math.sin(a.travel*a.stride+a.phase)*.48:0;
+  const isWalking=THREE.MathUtils.damp(a.walkWeight??1,moved?1:0,10,dt);a.walkWeight=isWalking;
+  const swing=Math.sin(a.travel*a.stride+a.phase)*.58*isWalking;
+  const armSwing=Math.sin(a.travel*a.stride+a.phase)*.48*isWalking;
   for(let i=0;i<2;i++){
    a.arms[i].rotation.x=THREE.MathUtils.damp(a.arms[i].rotation.x,(i?1:-1)*armSwing,10,dt);
    a.legs[i].rotation.x=THREE.MathUtils.damp(a.legs[i].rotation.x,(i?-1:1)*swing,10,dt);
   }
   if(a.body){
-   a.body.position.y=moved?Math.abs(Math.sin(a.travel*a.stride+a.phase))*.045:0;
-   a.body.rotation.y=moved?Math.sin(a.travel*a.stride+a.phase)*.06:0;
-   a.body.rotation.z=moved?Math.sin(a.travel*a.stride+a.phase)*.035:0;
+   a.body.position.y=Math.abs(Math.sin(a.travel*a.stride+a.phase))*.045*isWalking;
+   a.body.rotation.y=Math.sin(a.travel*a.stride+a.phase)*.06*isWalking;
+   a.body.rotation.z=Math.sin(a.travel*a.stride+a.phase)*.035*isWalking;
   }
  }}};
 
