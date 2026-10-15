@@ -9,7 +9,8 @@ export const TRACKS=[
  {id:'deep',name:'深海梦境',step:1.25,chords:[[38,45,50,57],[41,48,53,60],[45,52,57,64],[43,50,55,62],[38,45,53,57],[40,47,55,59],[41,48,57,60],[43,50,57,62]],melody:[[69,null,null,74,null,null,77,null],[72,null,76,null,null,79,null,null],[76,null,null,81,null,79,null,null],[74,null,79,null,null,81,null,null],[69,null,null,77,null,null,74,null],[71,null,76,null,null,79,null,null],[72,null,null,81,null,79,null,null],[74,null,null,79,null,null,69,null]]},
  {id:'island',name:'小岛慢行',step:1,chords:CHORDS,melody:MELODY},
  {id:'shop',name:'南京路漫逛',step:.46,chords:[[48,52,55,59],[45,52,55,60],[50,53,57,60],[43,50,55,59]],melody:[[72,76,null,79,76,null,74,72],[69,null,72,76,null,79,76,null],[74,77,null,81,79,77,null,74],[71,null,74,79,null,77,74,null]]},
- {id:'dining',name:'龙凤茶叙',step:.94,chords:[[48,55,59,62],[41,48,52,57],[45,52,55,60],[43,50,57,62]],melody:[[76,null,79,null,74,null,72,null],[72,null,null,76,77,null,76,null],[69,null,72,null,76,null,79,null],[74,null,79,null,77,null,74,null]]}
+ {id:'dining',name:'龙凤茶叙',step:.94,chords:[[48,55,59,62],[41,48,52,57],[45,52,55,60],[43,50,57,62]],melody:[[76,null,79,null,74,null,72,null],[72,null,null,76,77,null,76,null],[69,null,72,null,76,null,79,null],[74,null,79,null,77,null,74,null]]},
+ {id:'yuyuan',name:'豫园清韵',step:.78,chords:[[45,52,57,64],[48,55,60,67],[43,50,55,62],[45,52,57,64],[50,57,62,69],[48,55,60,67],[43,50,57,62],[45,52,60,64]],melody:[[81,79,76,null,79,76,74,76],[72,null,74,76,79,null,76,72],[74,76,79,null,81,79,74,null],[76,null,74,72,69,null,null,null],[74,null,76,79,81,84,81,79],[84,null,81,79,76,79,76,null],[79,81,76,74,72,74,76,null],[69,null,72,74,76,72,69,null]]}
 ];
 export const frequency=midi=>440*Math.pow(2,(midi-69)/12);
 export function createMusic(getContext){

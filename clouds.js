@@ -345,9 +345,11 @@ export function createClouds(camera=new THREE.PerspectiveCamera()){
    const amount=coverage[[tier1Group,tier2Group,tier3Group].indexOf(group)];
    mesh.material.color.copy(source.color);mesh.material.opacity=source.opacity*amount;
    // Sorting within each transparent batch avoids arbitrary instance overlap.
+   const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z;
    items.sort((a,b)=>{
-    const dist=q=>(q.root.position.x+q.x-camera.position.x)**2+(q.root.position.y+q.y-camera.position.y)**2+(q.root.position.z+q.z-camera.position.z)**2;
-    return dist(b)-dist(a);
+    const dax=a.root.position.x+a.x-camX,day=a.root.position.y+a.y-camY,daz=a.root.position.z+a.z-camZ;
+    const dbx=b.root.position.x+b.x-camX,dby=b.root.position.y+b.y-camY,dbz=b.root.position.z+b.z-camZ;
+    return (dbx*dbx+dby*dby+dbz*dbz)-(dax*dax+day*day+daz*daz);
    });
    for(let i=0;i<items.length;i++){
     const b=items[i];position.set(b.root.position.x+b.x,b.root.position.y+b.y,b.root.position.z+b.z);

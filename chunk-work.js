@@ -19,8 +19,8 @@ export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false}){
     for(const f of faces){
      if(world.get(x+f.d[0],y+f.d[1],z+f.d[2]))continue;
      let tile=id-1;if(id===1)tile=f.d[1]===1?0:f.d[1]===-1?1:8;if(id===4&&f.d[1]!==0)tile=9;if(id>=9)tile=id+1;
-     const start=data.p.length/3;
-     for(let i=0;i<4;i++){const v=f.v[i];data.p.push(x+v[0],y+v[1],z+v[2]);data.norm.push(...f.d);data.col.push(f.light,f.light,f.light);const u=i===1||i===2?1:0,vv=i>=2?1:0;data.uv.push((tile+(.025+u*.95))/14,.025+vv*.95);}
+     const start=data.p.length/3,nx=f.d[0],ny=f.d[1],nz=f.d[2],lt=f.light;
+     for(let i=0;i<4;i++){const v=f.v[i];data.p.push(x+v[0],y+v[1],z+v[2]);data.norm.push(nx,ny,nz);data.col.push(lt,lt,lt);const u=i===1||i===2?1:0,vv=i>=2?1:0;data.uv.push((tile+(.025+u*.95))/14,.025+vv*.95);}
      data.indices.push(start,start+1,start+2,start,start+2,start+3);
     }
    }

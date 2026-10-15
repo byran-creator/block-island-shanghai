@@ -71,7 +71,11 @@ body.in-dialogue .hud,body.in-dialogue #crosshair,body.in-dialogue #toast,body.i
 @media(max-width:600px){.quest-launcher{width:165px;padding:8px}.quest-launcher p{display:none}#tasks-dialog{padding:18px;max-height:90dvh}#task-list{grid-template-columns:1fr}#tasks-dialog h2{font-size:20px}#tasks-close{padding:8px;font-size:12px}.task-card{padding:14px}}
 @media(max-height:580px){.quest-launcher{display:block;top:90px}.quest-launcher p{display:none}}
 /* Luxury Glassmorphism Start Menu & Settings Modal */
-.glass-luxury{background:rgba(12,24,32,0.78);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,0.16);box-shadow:0 28px 75px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.2);border-radius:22px;padding:34px 38px 28px;max-width:495px}
+/* Clean Elegant Glassmorphism Start Menu & Settings Modal */
+.menu-tag{font-size:11px;letter-spacing:2.2px;color:#b2e2b0;font-weight:700;margin-bottom:10px}
+.highlight-pill{background:rgba(213,253,135,0.18)!important;border-color:rgba(213,253,135,0.45)!important;color:#e7ffb8!important;font-weight:700!important}
+.highlight-pill:hover{background:rgba(213,253,135,0.32)!important;color:#fff!important}
+.glass-luxury{background:rgba(12,28,34,0.72);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border:1px solid rgba(255,255,255,0.14);box-shadow:0 24px 60px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.18);border-radius:20px;padding:30px 32px 24px;max-width:440px}
 .badge-dot{width:8px;height:8px;border-radius:50%;background:#d5fd87;box-shadow:0 0 10px #d5fd87;display:inline-block}
 .hero-cta{background:linear-gradient(135deg,#e3ff8c 0%,#b8f75b 60%,#8ae434 100%)!important;color:#173220!important;border:1px solid #f6ffcb!important;font-size:18px!important;font-weight:800!important;letter-spacing:1px!important;padding:17px 22px!important;border-radius:12px!important;box-shadow:0 6px 20px rgba(184,247,91,0.35),0 3px 0 #689e22!important;transition:all .2s cubic-bezier(0.2,0.8,0.2,1)!important;margin-bottom:14px}
 .hero-cta:hover:not(:disabled){transform:translateY(-2px) scale(1.01)!important;box-shadow:0 10px 28px rgba(184,247,91,0.5),0 4px 0 #689e22!important;background:linear-gradient(135deg,#edffaa 0%,#c4fa6e 60%,#99ea42 100%)!important}
