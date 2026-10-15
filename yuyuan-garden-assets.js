@@ -4,7 +4,7 @@ import {GARDEN_BEDS,gardenBedContains,WATER_CORRIDOR,JIUQU_BRIDGE,gardenPathCont
 
 // Coordinates belong to the district, whose parent applies YUYUAN_SHIFT.
 export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
- const fixtures=[],night=new THREE.Group(),garden=new THREE.Group(),animatedGarden=new THREE.Group();
+ const fixtures=[],night=new THREE.Group(),garden=new THREE.Group(),animatedGarden=new THREE.Object3D();
  night.name='yuyuan-eaves-and-window-light';night.visible=false;
  garden.name='yuyuan-corridor-and-planting';animatedGarden.name='yuyuan-animated-garden';
  root.add(garden,night,animatedGarden);
@@ -321,8 +321,10 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   animatedSwans.push({root:rootObj,neck:neckGroup,wings,cx,cz,rx,rz,speed,phase});
  }
  // Active swimming swans (优雅白天鹅游弋于碧波之中，游动觅食与振翅)
- swimmingSwan(-8.0,202.5,3.6,2.2,0.42,0); // Inner Garden river
- swimmingSwan(-42.0,186.0,5.2,2.8,0.36,1.8); // Central Huxinting lake
+ swimmingSwan(-8.0,200.2,3.2,1.1,0.48,0);   // Inner Garden East River (north of Moon Bridge)
+ swimmingSwan(-8.0,204.8,3.2,1.1,0.46,2.1); // Inner Garden East River (south of Moon Bridge)
+ swimmingSwan(-42.0,186.0,6.2,3.2,0.38,1.2); // Central Huxinting Lake
+ swimmingSwan(-50.0,173.0,5.0,2.6,0.40,2.8); // Central North Lake
 
  function swallow(type,cx,cy,cz,radius=5.0,speed=2.5){
   const rootObj=new THREE.Group();animatedGarden.add(rootObj);
@@ -444,7 +446,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
    const px=sw.cx+Math.cos(t)*sw.rx, pz=sw.cz+Math.sin(t)*sw.rz;
    const bob=Math.sin(elapsed*2.4+sw.phase)*0.016;
    sw.root.position.set(px,22.38+bob,pz);
-   const yaw=Math.atan2(-sw.rx*Math.sin(t),sw.rz*Math.cos(t))+Math.PI;
+   const yaw=Math.atan2(-sw.rx*Math.sin(t),sw.rz*Math.cos(t));
    sw.root.rotation.set(Math.sin(elapsed*2.4+sw.phase)*0.025,yaw,0);
    sw.neck.rotation.x=Math.sin(elapsed*1.8+sw.phase)*0.22;
    sw.neck.rotation.y=Math.sin(elapsed*0.9+sw.phase)*0.32;
@@ -470,5 +472,5 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  }
 
  batchMeshes(garden,staticMeshes(garden),'yuyuan-garden-detail');batchMeshes(night,staticMeshes(night),'yuyuan-night-trim');
- return {fixtures,dynamicRoots:new Set([night,drops]),tick(dt,{night:lit=false}={}){elapsed+=dt;night.visible=lit;animate();animateGarden(dt);}};
+ return {fixtures,dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;night.visible=lit;animate();animateGarden(dt);}};
 }

@@ -512,19 +512,12 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
     brk.rotation.x = bsz > 0 ? 0.35 : -0.35;
    }
    board(title, hSignX+(isEastFacing?.12:-.12), 29.38, frontZ, signW, .82, hSignAngle);
-   mesh(root, sphere, '#d92b2b', hSignX+(isEastFacing?.2:-.2), 29.86, frontZ, .22, .22, .22);
-   for(const ang of [-.5, .5]){
-    mesh(root, sphere, '#c82323', hSignX+(isEastFacing?.2:-.2), 29.86+Math.cos(ang)*.12, frontZ+Math.sin(ang)*.12, .11, .11, .11);
-   }
-   mesh(root, cylinder, '#c82323', hSignX+(isEastFacing?.18:-.18), 29.56, frontZ-.14, .08, .42);
-   mesh(root, cylinder, '#c82323', hSignX+(isEastFacing?.18:-.18), 29.56, frontZ+.14, .08, .42);
   }else{
    cube('#1c130d', frontX, 29.38, hSignZ, signW+.25, .96, .15);
    cube(gold, frontX, 29.38, hSignZ+(facing==='lake_south'?.06:-.06), signW+.32, 1.04, .04);
    cube(gold, frontX, 29.38, hSignZ+(facing==='lake_south'?.08:-.08), signW+.18, .88, .02);
    cube('#384840', frontX, 29.98, hSignZ+(facing==='lake_south'?.14:-.14), signW+.48, .08, .35);
    board(title, frontX, 29.38, hSignZ+(facing==='lake_south'?.12:-.12), signW, .82, hSignAngle);
-   mesh(root, sphere, '#d92b2b', frontX, 29.86, hSignZ+(facing==='lake_south'?.2:-.2), .22, .22, .22);
   }
 
   if(isXAxis){
@@ -555,13 +548,15 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   }
   swayingObjects.push({group: flagGroup, phase: x*1.9+z*2.7, speed: 2.1, maxAngleZ: 0.11, maxAngleX: 0.05, type: 'flag'});
 
+  // Hanging lanterns placed flanking outside signboard boundaries to never block calligraphy text
+  const lanternSpan = Math.max(signW / 2 + 0.65, 3.2);
   if(isXAxis){
-   for(const lz of [z-1.9, z+1.9]){
-    createSwayingLantern(root, frontX+(facing==='east'?.42:-.42), 29.1, lz, '#e83424', 1.05, frontX*2+lz*3);
+   for(const lz of [z-lanternSpan, z+lanternSpan]){
+    createSwayingLantern(root, frontX+(facing==='east'?.42:-.42), 29.2, lz, '#e83424', 1.05, frontX*2+lz*3);
    }
   }else{
-   for(const lx of [x-1.9, x+1.9]){
-    createSwayingLantern(root, lx, 29.1, frontZ+(facing==='lake_south'?.42:-.42), '#e83424', 1.05, lx*2+frontZ*3);
+   for(const lx of [x-lanternSpan, x+lanternSpan]){
+    createSwayingLantern(root, lx, 29.2, frontZ+(facing==='lake_south'?.42:-.42), '#e83424', 1.05, lx*2+frontZ*3);
    }
   }
 
