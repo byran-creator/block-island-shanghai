@@ -221,18 +221,25 @@ export function createYuyuanWater(root,{ponds}){
   return {...d,...df};
  });
 
- const dummy=new THREE.Object3D();let elapsed=0;
+ const dummy=new THREE.Object3D();let elapsed=0,waterTimer=0;
  function tick(dt,{night=false}={}){
-  if(Number.isFinite(dt)&&dt>0)elapsed+=Math.min(dt,.25);
-  waterMaterial.color.set(night?'#668a79':'#82baa0');rippleMaterial.opacity=night?.11:.18;
-  for(let i=0;i<fish.length;i++){
-   const f=fish[i],a=f.phase+elapsed*f.speed,sa=Math.sin(a),ca=Math.cos(a),x=f.cx+f.rx*ca,z=f.cz+f.rz*sa,y=f.height+Math.sin(elapsed*.75+i)*.008;
-   const yaw=Math.atan2(-f.rx*sa*f.speed,f.rz*ca*f.speed);
-   dummy.position.set(x,y,z);dummy.rotation.set(0,yaw,0);dummy.scale.setScalar(f.scale);dummy.updateMatrix();bodies.setMatrixAt(i,dummy.matrix);
-   dummy.position.set(x-Math.sin(yaw)*.4*f.scale,y,z-Math.cos(yaw)*.4*f.scale);dummy.rotation.y=yaw+Math.sin(elapsed*(4.2+i%3)+i)*.25;dummy.updateMatrix();tails.setMatrixAt(i,dummy.matrix);
+  if(Number.isFinite(dt)&&dt>0){
+   const step=Math.min(dt,.25);
+   elapsed+=step;
+   waterTimer+=step;
   }
-  for(let i=0;i<ripples.length;i++){const r=ripples[i],u=(elapsed*.11+r.phase)%1,scale=.35+u*.6;dummy.position.set(r.x,22.302,r.z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}
-  bodies.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;rings.instanceMatrix.needsUpdate=true;
+  waterMaterial.color.set(night?'#668a79':'#82baa0');rippleMaterial.opacity=night?.11:.18;
+  if(waterTimer>=0.028||dt===0){
+   waterTimer=0;
+   for(let i=0;i<fish.length;i++){
+    const f=fish[i],a=f.phase+elapsed*f.speed,sa=Math.sin(a),ca=Math.cos(a),x=f.cx+f.rx*ca,z=f.cz+f.rz*sa,y=f.height+Math.sin(elapsed*.75+i)*.008;
+    const yaw=Math.atan2(-f.rx*sa*f.speed,f.rz*ca*f.speed);
+    dummy.position.set(x,y,z);dummy.rotation.set(0,yaw,0);dummy.scale.setScalar(f.scale);dummy.updateMatrix();bodies.setMatrixAt(i,dummy.matrix);
+    dummy.position.set(x-Math.sin(yaw)*.4*f.scale,y,z-Math.cos(yaw)*.4*f.scale);dummy.rotation.y=yaw+Math.sin(elapsed*(4.2+i%3)+i)*.25;dummy.updateMatrix();tails.setMatrixAt(i,dummy.matrix);
+   }
+   for(let i=0;i<ripples.length;i++){const r=ripples[i],u=(elapsed*.11+r.phase)%1,scale=.35+u*.6;dummy.position.set(r.x,22.302,r.z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}
+   bodies.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;rings.instanceMatrix.needsUpdate=true;
+  }
 
   // Animated Mandarin ducks swimming in pairs
   for(const d of ducks){

@@ -53,18 +53,18 @@ export function createYuyuanShopAssets(root,{cube,mat,board}){
   for(const dx of [-2.3,2.3]){cube(timber,x+dx,29.28,z,.07,.56,.07);cube(gold,x+dx,29.01,z,.66,.06,.66);cube('#fff2c4',x+dx,28.77,z,.56,.42,.56,true);for(const ax of [-.3,.3])cube(timber,x+dx+ax,28.77,z,.04,.46,.62);cube(gold,x+dx,28.53,z,.66,.05,.66);}
   return {front,back};
  }
- const food=showroom({x:-26,z:214,rx:6,rz:4,title:'南翔馒头店 · 小笼名点',accent:'#792925'});
+ const food=showroom({x:-26,z:271,rx:6,rz:3,title:'南翔馒头店 · 小笼名点',accent:'#792925'});
  for(const side of [-1,1]){
-  const cx=-26+side*3.22;counter(cx,213,3.1);
-  for(let j=0;j<6;j++){const dx=(j%3-1)*.84,dz=(Math.floor(j/3)-.5)*.49;stocked('buns',cx+dx,27.21,213+dz,g=>{steamer(g,0,0,0,.33);bun(g,0,.16,0,.18);});}
+  const cx=-26+side*3.22;counter(cx,270,3.1);
+  for(let j=0;j<6;j++){const dx=(j%3-1)*.84,dz=(Math.floor(j/3)-.5)*.49;stocked('buns',cx+dx,27.21,270+dz,g=>{steamer(g,0,0,0,.33);bun(g,0,.16,0,.18);});}
   for(let j=0;j<4;j++)stocked('candy',cx+(j-1.5)*.7,27.61,food.back-.31,g=>candyBox(g,0,0,0));
-  for(const dz of [-1.1,0,1.1]){steamer(root,-26+side*5.08,27.62,214+dz,.32);bun(root,-26+side*5.08,27.77,214+dz,.16);beanJar(root,-26+side*5.08,28.31,214+dz);}
+  for(const dz of [-1.1,0,1.1]){steamer(root,-26+side*5.08,27.62,271+dz,.32);bun(root,-26+side*5.08,27.77,271+dz,.16);beanJar(root,-26+side*5.08,28.31,271+dz);}
  }
- const craft=showroom({x:-62,z:214,rx:6,rz:4,title:'丽云阁扇庄 · 丝绸扇艺',accent:'#285047'});
+ const craft=showroom({x:-62,z:271,rx:6,rz:3,title:'丽云阁扇庄 · 丝绸扇艺',accent:'#285047'});
  for(const side of [-1,1]){
-  const cx=-62+side*3.22;counter(cx,213,3.1);
-  for(let j=0;j<3;j++)stocked('souvenir',cx+(j-1)*.85,27.22,213,g=>{if(j===0)fan(g,0,0,0);else if(j===1)silk(g,0,0,0,side<0?'#ab4152':'#476f9a');else scroll(g,0,0,0);});
-  for(const dz of [-1.1,0,1.1]){silk(root,-62+side*5.08,26.9,214+dz,dz===0?'#9d4862':'#53868a');fan(root,-62+side*5.08,27.6,214+dz);}
+  const cx=-62+side*3.22;counter(cx,270,3.1);
+  for(let j=0;j<3;j++)stocked('souvenir',cx+(j-1)*.85,27.22,270,g=>{if(j===0)fan(g,0,0,0);else if(j===1)silk(g,0,0,0,side<0?'#ab4152':'#476f9a');else scroll(g,0,0,0);});
+  for(const dz of [-1.1,0,1.1]){silk(root,-62+side*5.08,26.9,271+dz,dz===0?'#9d4862':'#53868a');fan(root,-62+side*5.08,27.6,271+dz);}
   for(let j=0;j<3;j++)scroll(root,cx+(j-1)*.9,27.65,craft.back-.38);
  }
  const tea=showroom({x:-65,z:163,rx:5,rz:3,title:'湖心亭茶楼 · 乾隆名茶',accent:'#4b5040'});

@@ -113,8 +113,11 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   [-56.0,193.5,.9,.8],[-46.0,193.6,1.0,.85],[-36.0,193.5,.85,.8],
   // West Rockery Pool shoreline
   [-68.0,198.5,.85,.7],[-60.0,198.3,.9,.75],[-64.0,201.7,.8,.7],
-  // East Inner Garden Pond shoreline
-  [-13.0,198.8,.85,.75],[-9.0,198.5,.9,.8],[-3.5,199.0,.8,.7],[-3.5,206.0,.85,.75],[-11.0,206.5,.9,.8]
+  // East Inner Garden Grand Lake shoreline (围绕扩大1倍的大明湖自然驳岸叠石)
+  [-23.8,198.5,.9,.8],[-23.8,205.0,.95,.85],[-23.8,217.0,.9,.8],[-23.8,224.0,.95,.85],
+  [1.8,198.5,.9,.8],[1.8,205.0,.95,.85],[1.8,217.0,.9,.8],[1.8,224.0,.95,.85],
+  [-18.0,194.5,.9,.8],[-11.0,194.5,.95,.85],[-4.0,194.5,.9,.8],
+  [-18.0,227.5,.9,.8],[-11.0,227.5,.95,.85],[-4.0,227.5,.9,.8]
  ];
  for(const [bx,bz,bsx,bsz] of revetmentBoulders){
   const boulderMesh=new THREE.Mesh(leafGeometry,mat('#8b9084'));boulderMesh.position.set(bx,23.6,bz);boulderMesh.scale.set(bsx*1.1,.8,bsz*1.1);boulderMesh.rotation.y=(bx+bz)*1.7;garden.add(boulderMesh);
@@ -144,26 +147,40 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   leaves(x+leanX*.4,rootY+5.4*scale,z+leanZ*.4,1.8*scale,1.2*scale,1.7*scale,'#5f8a44');
   leaves(x+leanX*1.1,rootY+4.4*scale,z+leanZ*1.1,1.7*scale,1.1*scale,1.6*scale,'#476f36');
   // Cascading weeping willow tendrils (垂落水面的柳丝)
-  const tendrilGroup=new THREE.Group();tendrilGroup.position.set(x,0,z);animatedGarden.add(tendrilGroup);
-  for(let i=0;i<14;i++){
-   const angle=i*(Math.PI*2/14),dist=(1.2+((i%3)*.35))*scale;
-   const tx=leanX*.6+Math.cos(angle)*dist,tz=leanZ*.6+Math.sin(angle)*dist;
-   const upperY=rootY+4.2*scale,len=2.4+((i%4)*.5)*scale;
-   const strand=new THREE.Mesh(stemGeometry,mat(i%2===0?'#6b9748':'#7caa52'));strand.position.set(tx,upperY-len/2,tz);strand.scale.set(.038,len,.038);tendrilGroup.add(strand);
+  // Pivot at branch canopy top (rootY + 4.0*scale), NOT at y=0!
+  const pivotY = rootY + 4.0 * scale;
+  const pivotX = x + leanX * 0.55;
+  const pivotZ = z + leanZ * 0.55;
+  const tendrilGroup = new THREE.Group();
+  tendrilGroup.position.set(pivotX, pivotY, pivotZ);
+  animatedGarden.add(tendrilGroup);
+
+  for(let i=0;i<12;i++){
+   const angle=i*(Math.PI*2/12),dist=(0.95+((i%3)*.28))*scale;
+   const tx=Math.cos(angle)*dist,tz=Math.sin(angle)*dist;
+   const len=(1.8+((i%3)*.35))*scale; // controlled realistic length, hanging naturally above water
+   const strand=new THREE.Mesh(stemGeometry,mat(i%2===0?'#6b9748':'#7caa52'));
+   strand.position.set(tx,-len/2,tz);
+   strand.scale.set(.035,len,.035);
+   tendrilGroup.add(strand);
    for(let k=0;k<3;k++){
-    const leafY=upperY-len*(0.25+k*0.32);
-    const leafMesh=new THREE.Mesh(leafGeometry,mat('#628d41'));leafMesh.position.set(tx+(Math.sin(k+i)*.08),leafY,tz+(Math.cos(k+i)*.08));leafMesh.scale.set(.12,.38,.12);tendrilGroup.add(leafMesh);
+    const leafY=-len*(0.22+k*0.32);
+    const leafMesh=new THREE.Mesh(leafGeometry,mat('#628d41'));
+    leafMesh.position.set(tx+(Math.sin(k+i)*.06),leafY,tz+(Math.cos(k+i)*.06));
+    leafMesh.scale.set(.10,.28,.10);
+    tendrilGroup.add(leafMesh);
    }
   }
   swayingWillows.push({group:tendrilGroup,phase:x*1.3+z*.7});
  }
- weepingWillow(-48.5,165.2,0,1.8,1.15); // North pond willow leaning over enlarged lake toward Moon Bridge
- weepingWillow(-31.0,166.5,-1.5,1.4,1.1); // Northeast pond willow framing Jiuqu Bridge
- weepingWillow(-25.4,182.0,-1.8,0,1.05); // East pond willow by Lubolang
- weepingWillow(-68.0,178.5,1.7,0,1.0); // West pond willow by Water Corridor
- weepingWillow(-58.5,197.8,-1.4,1.2,.95); // Inner Garden West Rockery Pool willow
- weepingWillow(-14.2,203.0,1.6,0,1.0); // Inner Garden East Pond willow
- weepingWillow(-48.0,222.0,0,-1.5,1.05); // South garden lawn willow
+ weepingWillow(-48.5,164.2,0,1.4,1.1); // North central pond shoreline (on solid ground, leaning south)
+ weepingWillow(-24.0,164.5,-1.2,1.2,1.05); // Northeast corner pond shoreline (on solid ground)
+ weepingWillow(-24.0,182.0,-1.3,0,1.0); // East central pond shoreline by Lubolang (on solid ground)
+ weepingWillow(-70.0,178.5,1.3,0,1.0); // West central pond shoreline by corridor (on solid ground)
+ weepingWillow(-58.5,196.2,-1.0,1.0,.95); // Inner Garden West Rockery Pool bank (on solid ground)
+ weepingWillow(-31.5,203.0,1.4,0,1.05); // East Lake West Bank (on solid ground at x=-31.5, leaning over lake)
+ weepingWillow(4.5,218.0,-1.4,0,1.0); // East Lake East Bank (on solid ground at x=4.5, leaning over lake)
+ weepingWillow(-48.0,222.0,0,-1.3,1.0); // South garden lawn willow (on solid ground)
 
  // =========================================================================
  // 3. SCHOLAR PINES & ANCIENT TWISTED PINES (苍劲盘松与罗汉松)
@@ -196,21 +213,21 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  // =========================================================================
  // 4. CLASSICAL SINGLE-ARCH STONE MOON BRIDGE (江南单孔石拱桥/半月桥)
  // =========================================================================
- function moonBridge(cx,cz,{length=12.6,width=2.4,archH=2.2,dir='x'}){
-  const steps=18,waterY=22.38;
+ function moonBridge(cx,cz,{length=27.0,width=3.4,archH=2.8,dir='x'}){
+  const steps=26;
   const isX=dir==='x';
-  // Arched opening voussoir blocks and stone parapet deck
+  // Arch begins smoothly at bank ground level y=26.08 at ends (t=±1) and gracefully rises to apex (t=0)
   for(let i=0;i<=steps;i++){
    const t=(i/steps)*2-1; // -1 to 1
-   // Arch begins at bank ground level y=25.2 at ends (t=±1) and rises to y=27.2 at apex (t=0)
-   const archUnder=waterY+0.5+archH*Math.max(0,1-t*t); // opening clearance: 22.88m at banks, 25.08m at apex (clear water underneath)
-   const deckTop=archUnder+0.42+0.12*(1-t*t); // stepped walking deck: 25.6m at banks, 27.2m at apex
+   const archCurve=Math.max(0,1-t*t);
+   const deckTop=26.08+archH*archCurve; // walking deck: 26.08m at banks, 28.88m at apex (high above ground & water)
+   const archUnder=23.6+(archH-0.4)*archCurve; // vaulted opening clearance: 23.6m at banks, 26.0m at apex (ample clearance for water & boats)
    const posOffset=(t*length)/2;
    const bx=isX?cx+posOffset:cx,bz=isX?cz:cz+posOffset;
    const bw=isX?length/steps+.06:width,bd=isX?width:length/steps+.06;
-   // Arch voussoir slab
-   block(garden,'#9ea396',bx,(archUnder+deckTop)/2,bz,bw,deckTop-archUnder+.08,bd);
-   // Stepped walking tread (踏步石阶)
+   // Arch voussoir slab (厚实拱券砌石)
+   block(garden,'#9ea396',bx,(archUnder+deckTop)/2,bz,bw,Math.max(0.3,deckTop-archUnder+.08),bd);
+   // Stepped walking tread (实心踏步步道石阶，踩踏平稳绝不踏空)
    block(garden,'#b2b7aa',bx,deckTop+.02,bz,bw*.92,.08,bd*.9);
    // Side balustrades and carved lotus finials (望柱与莲花柱头)
    if(i%2===0){
@@ -218,25 +235,27 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
      const px=isX?bx:bx+side*(width/2-.08),pz=isX?bz+side*(width/2-.08):bz;
      block(garden,'#8c9184',px,deckTop+.42,pz,.14,.76,.14); // balustrade post
      const finial=new THREE.Mesh(leafGeometry,mat('#c2c7ba'));finial.position.set(px,deckTop+.86,pz);finial.scale.set(.09,.15,.09);garden.add(finial);
+     fixtures.push({x:px,z:pz,rx:isX?bw/2+.02:.14,rz:isX?.14:bd/2+.02,y:deckTop,h:1.2});
     }
    }else{
     for(const side of [-1,1]){
      const px=isX?bx:bx+side*(width/2-.08),pz=isX?bz+side*(width/2-.08):bz;
      block(garden,'#9da295',px,deckTop+.32,pz,bw,.46,.08); // carved stone panel
+     fixtures.push({x:px,z:pz,rx:isX?bw/2+.02:.14,rz:isX?.14:bd/2+.02,y:deckTop,h:1.2});
     }
    }
   }
   // Keystone / water dragon carving at apex (龙门石/吸水兽)
-  const apexY=waterY+0.5+archH+0.54;
-  block(garden,'#b8beb1',cx,apexY+.42,cz,.35,.35,.35);
-  // Solid bridge abutment piers anchored firmly into stone revetment banks
+  const apexDeck=26.08+archH;
+  block(garden,'#b8beb1',cx,apexDeck+.42,cz,.35,.35,.35);
+  // Solid bridge abutment piers anchored firmly into stone revetment banks (牢固桥台落座陆地)
   for(const side of [-1,1]){
    const ax=isX?cx+side*(length/2):cx,az=isX?cz:cz+side*(length/2);
-   block(garden,'#82877b',ax,24.5,az,isX?1.4:width,3.2,isX?width:1.4);
+   block(garden,'#82877b',ax,24.5,az,isX?2.0:width,3.2,isX?width:2.0);
   }
  }
- // Grand Single-Arch Moon Bridge placed inside Classical Inner Garden (横跨东园扩大碧波大湖，宏丽石拱桥气魄宏大，步道实心平稳)
- moonBridge(-12.0,206.0,{length:16.0,width:3.2,archH:2.6,dir:'x'});
+ // Grand Single-Arch Moon Bridge placed inside Classical Inner Garden (横跨扩大1倍的东园大明湖，33米飞虹横跨，稳固落座两岸陆地，桥下碧水荡漾无多余木板)
+ moonBridge(-13.5,211.0,{length:33.0,width:3.6,archH:3.2,dir:'x'});
 
  // =========================================================================
  // 5. LUSH LOTUS & WATER LILY DISPLAYS (荷塘翠盖、红莲睡莲与莲蓬)
@@ -267,7 +286,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   }
  }
  lotusDisplay(-56.0,175.0,9);lotusDisplay(-47.0,173.5,8);lotusDisplay(-35.0,173.0,9);lotusDisplay(-37.5,189.0,8);lotusDisplay(-57.0,191.0,7);
- lotusDisplay(-64.5,200.0,7);lotusDisplay(-11.0,201.5,8);lotusDisplay(-5.5,204.0,8);
+ lotusDisplay(-64.5,200.0,7);lotusDisplay(-18.0,199.0,8);lotusDisplay(-5.0,201.0,8);lotusDisplay(-18.0,222.0,8);lotusDisplay(-5.0,223.0,8);
 
  // =========================================================================
  // 6. LIVELY GARDEN WILDLIFE (仙鹤白鹭戏水、飞燕穿柳、天鹅逐波)
@@ -299,7 +318,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   const crest=new THREE.Mesh(leafGeometry,mat('#f8fafc'));crest.position.set(0,.82,-.04);crest.scale.set(.02,.06,.2);crest.rotation.x=-.4;neckGroup.add(crest);
   animatedEgrets.push({root:rootObj,neck:neckGroup,baseY:y,phase:x*1.9+z*.8});
  }
- whiteEgret(-14.2,25.2,201.2,1.2); // Inner Garden river revetment rock by Moon Bridge
+ whiteEgret(-37.5,25.4,204.0,1.2); // Inner Garden west bank revetment by Moon Bridge
  whiteEgret(-33.2,23.5,172.5,-1.2); // Lakeside revetment under Weeping Willow
  whiteEgret(-61.8,23.0,199.2,1.0); // West Rockery Pool edge
 
@@ -320,9 +339,9 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   const beak=new THREE.Mesh(stemGeometry,mat('#ea580c'));beak.position.set(0,.64,.26);beak.scale.set(.03,.2,.03);beak.rotation.x=Math.PI/2.1;neckGroup.add(beak);
   animatedSwans.push({root:rootObj,neck:neckGroup,wings,cx,cz,rx,rz,speed,phase});
  }
- // Active swimming swans (优雅白天鹅游弋于碧波之中，游动觅食与振翅)
- swimmingSwan(-12.0,200.0,5.5,2.8,0.62,0);    // Inner Garden East Lake (north of Moon Bridge)
- swimmingSwan(-12.0,212.0,5.5,2.5,0.60,2.1);  // Inner Garden East Lake (south of Moon Bridge)
+ // Active swimming swans across the enlarged Grand East Lake (8.5x4.8m wide cruising orbits north and south of Moon Bridge)
+ swimmingSwan(-11.0,202.0,8.5,4.8,0.62,0);    // Inner Garden East Lake North Basin (north of Moon Bridge)
+ swimmingSwan(-11.0,220.0,8.5,4.8,0.60,2.1);  // Inner Garden East Lake South Basin (south of Moon Bridge)
  swimmingSwan(-45.0,234.0,8.0,2.2,0.58,1.4);  // Central Grand River (cruising along water channel)
  swimmingSwan(-44.0,186.0,7.5,3.6,0.58,1.2);  // Central Huxinting Lake
  swimmingSwan(-52.0,173.0,6.5,3.0,0.56,2.8);  // Central North Lake
@@ -363,14 +382,6 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   block(garden,'#424c43',x,29.42,z,.65,.18,3.9);
   fixtures.push({x,z,rx:.19,rz:1.55,y:27.45,h:1.1});
  }
- const pavilionX=-21,pavilionZ=224.5;
- for(const dx of [-1.5,1.5])for(const dz of [-1.5,1.5]){block(garden,'#81513b',pavilionX+dx,27.7,pavilionZ+dz,.14,3.4,.14);fixtures.push({x:pavilionX+dx,z:pavilionZ+dz,rx:.07,rz:.07,y:26,h:3.4});}
- const pavilionRoof=[];
- for(const side of [-1,1])for(let j=0;j<4;j++){const a=j/4,b=(j+1)/4,h=t=>31.2-1.3*t+.3*t**6,za=pavilionZ+side*2.1*a,zb=pavilionZ+side*2.1*b;
-  pavilionRoof.push(pavilionX-2.1,h(a),za,pavilionX+2.1,h(a),za,pavilionX-2.1,h(b),zb,pavilionX-2.1,h(b),zb,pavilionX+2.1,h(a),za,pavilionX+2.1,h(b),zb);
- }
- const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(pavilionRoof,3));pg.computeVertexNormals();garden.add(new THREE.Mesh(pg,roofMat));
- for(const side of [-1,1]){block(night,'#ffcc87',pavilionX,30.24,pavilionZ+side*2.1,4.3,.06,.06,true);block(garden,'#76543a',pavilionX,26.42,pavilionZ+side*1.42,2.7,.14,.38);fixtures.push({x:pavilionX,z:pavilionZ+side*1.42,rx:1.35,rz:.19,y:26.35,h:.14});}
 
  // Low lotus islands
  for(const [x,z] of [[-56,190],[-45,189],[-32,174],[-32,188]]){
@@ -395,7 +406,12 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  const drops=new THREE.InstancedMesh(new THREE.SphereGeometry(.016,4,3),mat('#e2f8f5',true),384);
  drops.name='yuyuan-fountain-droplets';drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);drops.frustumCulled=false;root.add(drops);
  const transform=new THREE.Matrix4(),position=new THREE.Vector3(),scale=new THREE.Vector3(1,1,1);
- const tempQuat=new THREE.Quaternion(),upVec=new THREE.Vector3(0,1,0),dirVec=new THREE.Vector3();let elapsed=0;
+ const tempQuat=new THREE.Quaternion(),upVec=new THREE.Vector3(0,1,0),dirVec=new THREE.Vector3();let elapsed=0,dropTimer=0;
+
+ const JET_COUNT=10,jetCos=new Float32Array(JET_COUNT),jetSin=new Float32Array(JET_COUNT);
+ for(let j=0;j<JET_COUNT;j++){const ang=j*(Math.PI*2/JET_COUNT);jetCos[j]=Math.cos(ang);jetSin[j]=Math.sin(ang);}
+ const COL_COUNT=8,colCos=new Float32Array(COL_COUNT),colSin=new Float32Array(COL_COUNT);
+ for(let i=0;i<COL_COUNT;i++){const ang=i*(Math.PI*2/COL_COUNT);colCos[i]=Math.cos(ang);colSin[i]=Math.sin(ang);}
 
  function animate(){
   for(let f=0;f<2;f++){
@@ -408,20 +424,20 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
      const arc=Math.sin(phase*Math.PI);
      const py=22.38 + 2.58*arc; // peaks at 24.96m (strictly within [22.29, 25.01])
      const rSpread=0.28*arc;
-     const angle=i*(Math.PI*2/8);
-     position.set(fx+Math.cos(angle)*rSpread, py, fz+Math.sin(angle)*rSpread);
+     const colIdx=i%COL_COUNT;
+     position.set(fx+colCos[colIdx]*rSpread, py, fz+colSin[colIdx]*rSpread);
      scale.set(0.9, 1.8*(0.6+0.4*arc), 0.9);
      transform.compose(position,tempQuat.identity(),scale);
     }else{
      // 2. Cascading silky parabolic water canopy (外圈大半径流畅水幕: 10道连续抛物线水流带, 每道16颗细密水珠首尾相衔, 宽阔半径3.2m)
-     const jet=(i-32)%10;
+     const jet=(i-32)%JET_COUNT;
      const stepInJet=Math.floor((i-32)/10);
      const phase=((stepInJet/16 + (jet%2)*0.03 + elapsed*0.82)%1);
-     const angle=jet*(Math.PI*2/10);
+     const cA=jetCos[jet],sA=jetSin[jet];
      const reach=3.2*phase; // 大喷泉半径: 达到 3.2 米广阔水幕!
      const py=22.38 + 2.58*4*phase*(1-phase); // 顺畅抛物线弧线, 顶点 24.96m (严格在 [22.29, 25.01])
-     position.set(fx+Math.cos(angle)*reach, py, fz+Math.sin(angle)*reach);
-     const vy=2.58*4*(1-2*phase), vx=3.2*Math.cos(angle), vz=3.2*Math.sin(angle);
+     position.set(fx+cA*reach, py, fz+sA*reach);
+     const vy=2.58*4*(1-2*phase), vx=3.2*cA, vz=3.2*sA;
      dirVec.set(vx, vy*0.75, vz).normalize();
      tempQuat.setFromUnitVectors(upVec, dirVec);
      const stretch=1.5 + Math.abs(vy)*0.35;
@@ -473,5 +489,14 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  }
 
  batchMeshes(garden,staticMeshes(garden),'yuyuan-garden-detail');batchMeshes(night,staticMeshes(night),'yuyuan-night-trim');
- return {fixtures,dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;night.visible=lit;animate();animateGarden(dt);}};
+ return {fixtures,dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;dropTimer+=dt;night.visible=lit;if(dropTimer>=0.028||dt===0){dropTimer=0;animate();}animateGarden(dt);}};
+}
+
+export function moonBridgeFloor(x, z){
+ const cx=-13.5,cz=211.0,length=33.0,width=3.6,archH=3.2;
+ if(Math.abs(z-cz)<=width/2&&Math.abs(x-cx)<=length/2+.6){
+  const t=Math.max(-1,Math.min(1,(x-cx)/(length/2))),curve=Math.max(0,1-t*t);
+  return 26.08+archH*curve;
+ }
+ return null;
 }

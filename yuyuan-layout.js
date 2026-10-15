@@ -1,5 +1,5 @@
 export const YUYUAN_SHIFT=60;
-const YUYUAN_LOCAL={x:-46,y:26,z:188,minX:-130,maxX:34,minZ:146,maxZ:276,entry:{x:-46.5,y:26,z:150.5,name:'豫园 · 北门牌坊'},tea:{x:-46,y:26,z:178},snack:{x:-26,y:26,z:214},riddle:{x:-62,y:26,z:203},arrival:{x:-43.5,y:26,z:159.5,name:'豫园 · 九曲桥与湖心亭'}};
+const YUYUAN_LOCAL={x:-46,y:26,z:188,minX:-130,maxX:34,minZ:146,maxZ:276,entry:{x:-46.5,y:26,z:150.5,name:'豫园 · 北门牌坊'},tea:{x:-46,y:26,z:178},snack:{x:-26,y:26,z:271},riddle:{x:-62,y:26,z:203},arrival:{x:-43.5,y:26,z:159.5,name:'豫园 · 九曲桥与湖心亭'}};
 export const YUYUAN={...YUYUAN_LOCAL,z:YUYUAN_LOCAL.z+YUYUAN_SHIFT,minZ:YUYUAN_LOCAL.minZ+YUYUAN_SHIFT,maxZ:YUYUAN_LOCAL.maxZ+YUYUAN_SHIFT,...Object.fromEntries(['entry','tea','snack','riddle','arrival'].map(k=>[k,{...YUYUAN_LOCAL[k],z:YUYUAN_LOCAL[k].z+YUYUAN_SHIFT}]))};
 export const YUYUAN_WALKS=[[-35.5,70.5],[-46.5,216.5]],YUYUAN_STATION_WALK=[[-86,212],[-77,212],[-77,218],[-72,218]],YUYUAN_STATION_WALK_SOUTH=[[-86,262],[-77,262],[-77,265],[-70,265]];
 export const WATER_CORRIDOR={x:-60,z1:170,z2:193,width:3};
@@ -12,9 +12,9 @@ export const GARDEN_WINDOWS=[{axis:'z',x:-46,z:194,y:28.5,r:1.1},{axis:'z',x:-46
 
 // Natural meandering ponds and commercial water-street canal
 export const GARDEN_PONDS=[
- {x1:-68.5,x2:-25.5,z1:166.0,z2:193.8}, // 0. Central Huxinting enlarged outdoor lake (大幅扩大九曲大湖)
+ {x1:-61.2,x2:-25.5,z1:166.0,z2:193.8}, // 0. Central Huxinting outdoor lake (岸线紧贴水上长廊东侧，长廊西侧为实心陆地)
  {x1:-66.0,x2:-24.0,z1:230.0,z2:242.0}, // 1. Central Grand River dividing garden into two halves (42米宽阔中央长河，横贯园林)
- {x1:-22.0,x2:-2.0,z1:196.0,z2:216.0}   // 2. Grand East Scenic Lake for Stone Moon Bridge (扩大东园大明湖，开阔映桥)
+ {x1:-23.0,x2:2.0,z1:198.0,z2:223.0}    // 2. Grand East Scenic Lake for Stone Moon Bridge (开阔映月湖，绝不南侵点春堂与古戏台，两岸翠草环抱)
 ];
 
 // Rich planting zones: pines & bamboo on rockeries, willows at waterside, mondo grass carpet & seasonal flowers
@@ -26,21 +26,21 @@ export const GARDEN_BEDS=[
  {x1:-54,x2:-44,z1:198,z2:207},
  {x1:-39,x2:-30,z1:203,z2:208},
  {x1:-49,x2:-38,z1:219,z2:226},
- // Central Garden Plant Beds (strictly inside garden, none in commercial streets)
+ // Central Garden Plant Beds (strictly inside garden on dry land, none in lake or commercial streets)
  {x1:-74,x2:-62,z1:212,z2:228},    // Wan Hua Lou court: ancient ginkgo & camellia
- {x1:-38,x2:-22,z1:244,z2:256},    // Yu Ling Long court: tree peonies, plum & mondo grass
- {x1:-18,x2:-6,z1:244,z2:256},     // Dian Chun Tang stage south garden
+ {x1:-60,x2:-42,z1:244,z2:256},    // Yu Ling Long court: tree peonies, plum & mondo grass
  {x1:-58,x2:-42,z1:222,z2:232}     // Central waterside weeping willows & seasonal flora
 ];
 
-// Inner Garden Walkable Paths Network
+// Inner Garden Walkable Paths Network: paths lead to bridge abutments, strictly NO duplicate road cutting across water
 export const INNER_GARDEN_PATH=[[-35,194],[-35,196],[-40,197.5],[-45,196.5],[-50,198],[-54,197.5],[-54,204],[-60,204],[-68,205],[-75,205]];
-export const INNER_GARDEN_EAST_PATH=[[-35,196],[-25,197],[-20,201],[-15,211],[-8,212],[-5,209],[-.5,207],[-.5,196],[-10,196],[-23,196],[-35,196]];
-export const INNER_GARDEN_SOUTH_PATH=[[-54,204],[-60,214],[-62,226],[-62,246],[-48,246],[-36,244],[-24,242],[-16,232],[-15,211]];
+export const INNER_GARDEN_EAST_PATH=[[-35,196],[-35,204],[-35,211],[-29.5,211]];
+export const INNER_GARDEN_EAST_BANK_PATH=[[2.5,211],[5,215],[5,225]];
+export const INNER_GARDEN_SOUTH_PATH=[[-54,204],[-60,214],[-62,226],[-62,246],[-52,248],[-42,248]];
 export const INNER_GARDEN_ROCKERY_PATH=[[-75,205],[-86,206],[-94,206],[-94,222],[-86,226],[-78,226],[-68,226]];
 
 export function gardenPathContains(x,z,width=3){
- return pathContains(x,z,INNER_GARDEN_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_PATH,width)||pathContains(x,z,INNER_GARDEN_SOUTH_PATH,width)||pathContains(x,z,INNER_GARDEN_ROCKERY_PATH,width);
+ return pathContains(x,z,INNER_GARDEN_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_BANK_PATH,width)||pathContains(x,z,INNER_GARDEN_SOUTH_PATH,width)||pathContains(x,z,INNER_GARDEN_ROCKERY_PATH,width);
 }
 
 export function innerGardenContains(x,z){
@@ -53,6 +53,20 @@ export function gardenBedContains(x,z,b){
 }
 
 export const JIUQU_BRIDGE=[[-64,173],[-58,173],[-58,176],[-54,176],[-54,184],[-51,184],[-51,178],[-40,178],[-40,184],[-35,184],[-35,192]];
+
+// Smooth serpentine curved water gallery across Central River (九曲长廊平滑蜿蜒曲水，非生硬90°折角)
+export const WATER_GALLERY_BENDS = [
+ [-66.0, 236.0],
+ [-61.5, 237.4],
+ [-56.5, 238.4],
+ [-51.0, 237.8],
+ [-45.5, 235.8],
+ [-40.5, 233.8],
+ [-35.5, 233.2],
+ [-30.5, 234.6],
+ [-26.5, 236.4],
+ [-24.0, 236.0]
+];
 
 export function pathContains(x,z,points,width=3){
  return points.some((b,i)=>{
@@ -72,8 +86,8 @@ export const YUYUAN_BUILDINGS=[
  {id:'huxinting',x:-46,z:178,rx:2.5,rz:2.5,levels:1}, // 单层精致开放式水上休息茶亭，无墙壁、带靠栏坐凳
  {id:'tea-gallery',x:-74,z:158,rx:5,rz:3,levels:1},   // 往西北退移，彻底空出九曲桥北端引桥广场
  {id:'lubolang',x:-20,z:188,rx:5,rz:4,levels:2},      // 往东退移，彻底空出九曲桥南端出桥登陆广场
- {id:'nanxiang',x:-26,z:214,rx:6,rz:4,levels:2},      // 南翔馒头店
- {id:'craft-shop',x:-62,z:214,rx:6,rz:4,levels:2},    // 江南手作丝绸
+ {id:'nanxiang',x:-26,z:271,rx:6,rz:3,levels:2},      // 南翔馒头店（迁至最南边靠海靠墙）
+ {id:'craft-shop',x:-62,z:271,rx:6,rz:3,levels:2},    // 江南手作丝绸（迁至最南边靠海靠墙）
 
  // 2. West Commercial Pedestrian Street (西侧宽阔商业街：全长115米，两边商铺、中间11米紧凑繁华步行街、上空彩灯天幕)
  // West Outer Row (x = -114, rx = 5, spans x in [-119, -109]):
@@ -96,7 +110,6 @@ export const YUYUAN_BUILDINGS=[
 
  // 3. East Commercial Pedestrian Street (东侧宽阔商业街：全长115米，两边商铺、中间9米紧凑繁华步行街、上空彩灯天幕)
  // East Inner Row (x = 8, rx = 4, spans x in [4, 12]):
- {id:'old-city-northeast',x:8,z:156,rx:4,rz:5,levels:2},
  {id:'tianyu-lou',x:8,z:172,rx:4,rz:6,levels:3},          // 天裕楼: 3-tier towering commercial pavilion
  {id:'hefeng-lou',x:8,z:188,rx:4,rz:4,levels:2},          // 和丰楼美食雅集
  {id:'shanghai-hotel',x:8,z:204,rx:4,rz:6,levels:3},       // 上海老饭店: 3-tier banquet landmark
@@ -104,20 +117,21 @@ export const YUYUAN_BUILDINGS=[
  {id:'old-city-east',x:8,z:236,rx:4,rz:6,levels:3},       // 东市名楼
  {id:'bazaar-east-gold',x:8,z:252,rx:4,rz:4,levels:2},     // 老庙黄金传统银楼
 
- // East Outer Row (x = 28, rx = 4, spans x in [24, 32]):
- ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:25,z:162+i*12,rx:4,rz:4,levels:2})),
- // (East Walkway in between: x in [12, 24], centered at x = 18, width 12m!)
+ // East Outer Row (x = 25, rx = 4, spans x in [21, 29]):
+ {id:'old-city-northeast',x:25,z:156,rx:4,rz:4,levels:2}, // 移至东外侧，空出东北角畅通广场
+ ...Array.from({length:7},(_,i)=>({id:'yuyuan-street-'+i,x:25,z:168+i*12,rx:4,rz:4,levels:2})),
+ // (East Walkway in between: x in [12, 21], centered at x = 16.5, width 9m!)
 
- // 4. South Connecting Pedestrian Street (后方连通步行街商铺, z = 268)
- {id:'old-city-south',x:-49,z:268,rx:7,rz:3,levels:2},
- {id:'yuyuan-south-west',x:-78,z:268,rx:6,rz:4,levels:2},
- {id:'yuyuan-south-east',x:-18,z:268,rx:6,rz:4,levels:2},
+ // 4. South Connecting Pedestrian Street (全部移至南边靠墙一侧，南街宽达15米极度通畅)
+ {id:'old-city-south',x:-49,z:271,rx:7,rz:3,levels:2},
+ {id:'yuyuan-south-west',x:-78,z:271,rx:6,rz:3,levels:2},
+ {id:'yuyuan-south-east',x:-18,z:271,rx:6,rz:3,levels:2},
 
  // 5. Central Grand Classical Garden (核心园林区历史文化遗迹建筑群)
  {id:'sansui-tang',x:-71,z:198,rx:4,rz:3,levels:1,historic:'sansui'},     // 三穗堂: 乾隆五开间高敞正堂、水磨砖雕
  {id:'yangshan-tang',x:-62,z:216,rx:4,rz:3,levels:2,historic:'yangshan'}, // 仰山堂与卷雨楼: 二层临水观山名楼
- {id:'dianchun-tang',x:-16,z:232,rx:4,rz:3,levels:1,historic:'dianchun'}, // 点春堂: 小刀会起义指挥所旧址、红柱重檐
- {id:'yuhua-tang',x:-36,z:248,rx:3.5,rz:3,levels:1,historic:'yuhua'},     // 玉华堂: 潘允端明代书斋、冰裂花窗对玉玲珑
+ {id:'dianchun-tang',x:-52,z:232,rx:4,rz:3,levels:1,historic:'dianchun'}, // 点春堂: 小刀会起义指挥所旧址、红柱重檐
+ {id:'yuhua-tang',x:-58,z:248,rx:3.5,rz:3,levels:1,historic:'yuhua'},     // 玉华堂: 潘允端明代书斋、冰裂花窗对玉玲珑
  {id:'wangjiang-ting',x:-72,z:224,rx:2.5,rz:2.5,levels:1,historic:'wangjiang'} // 望江亭: 张南阳大假山绝顶四角攒尖古亭
 ];
 
@@ -138,8 +152,8 @@ export function buildYuyuan(world){
  w.fill(YUYUAN_LOCAL.minX,26,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,35,YUYUAN_LOCAL.maxZ,0);
  w.fill(YUYUAN_LOCAL.minX,25,YUYUAN_LOCAL.minZ,YUYUAN_LOCAL.maxX,25,YUYUAN_LOCAL.maxZ,9);
 
- // 3. Central Huxinting Enlarged Lake depression, spacious pavilion terrace, and Jiuqu bridge
- w.fill(-68,20,166,-26,20,194,3);w.fill(-68,21,166,-26,25,194,0);
+ // 3. Central Huxinting Lake depression, spacious pavilion terrace, and Jiuqu bridge
+ w.fill(-61,20,166,-26,20,194,3);w.fill(-61,21,166,-26,25,194,0);
  // Spacious solid platform under Huxinting so all 4 pillars are fully supported (不再悬空)
  w.fill(-50,25,174,-42,25,182,7);
  for(const sx of [-2.5, 2.5]) for(const sz of [-2.5, 2.5]){
@@ -150,8 +164,8 @@ export function buildYuyuan(world){
   w.fill(Math.min(a[0],b[0])-1,25,Math.min(a[1],b[1])-1,Math.max(a[0],b[0])+1,25,Math.max(a[1],b[1])+1,7);
   w.fill(a[0],21,a[1],a[0],24,a[1],9);
  }
- w.fill(-36,25,188,-34,25,193,7);
- w.fill(-61,25,170,-59,25,193,7);for(const x of [-61,-59])for(const z of [170,176,181,186,192])w.fill(x,21,z,x,24,z,9);
+ w.fill(-36,25,188,-34,25,194,7);
+ w.fill(-62,25,170,-59,25,193,7);for(const x of [-61,-59])for(const z of [170,176,181,186,192])w.fill(x,21,z,x,24,z,9);
 
  // 4. Dig all other natural ponds and commercial water canal
  for(const stream of GARDEN_PONDS.slice(1)){
@@ -159,13 +173,16 @@ export function buildYuyuan(world){
   w.fill(stream.x1,21,stream.z1,stream.x2,25,stream.z2,0);
  }
 
- // Solid walking deck for Moon Bridge across East Lake (全跨坚实石桥步道，踩踏平稳绝不踏空落水)
- w.fill(-20,25,204,-4,25,208,7);
- w.fill(-20,26,204,-4,31,208,0); // Clear air across bridge walking deck
+ // 4b. Clear river channel headroom for Curved Water Gallery (长廊下碧波清澈，彻底删除河面多余木板与浮空地面)
+ for(let x=-68;x<=-22;x++){
+  for(let z=228;z<=244;z++){
+   w.fill(x,21,z,x,32,z,0);
+   w.fill(x,20,z,x,20,z,3);
+  }
+ }
 
- // Solid walking deck for Long Covered Gallery across Central River (中央长河42米水上长廊通达两岸)
- w.fill(-66,25,234,-24,25,238,7);
- w.fill(-66,26,234,-24,29,238,0); // Clear headroom inside gallery
+ // Moon Bridge spans gracefully over water without any artificial wood platform beneath (彻底删除水面多余木板平台与黄土，桥下碧水荡漾)
+ w.fill(-38,26,208,5,36,214,0); // Clear air headroom across bridge walking deck
 
  // 5. Continuous 100% emerald green garden lawn coverage (全域核心区青翠草毯覆盖，无裸露黄土/多余石板)
  for(let x=-76; x<=3; x++) for(let z=148; z<=265; z++){
@@ -218,8 +235,10 @@ export function buildYuyuan(world){
  }
 
  // 9. Slender stepping-stone pathway line across garden lawn & east pond bridge
- for(let x=-75;x<=3;x++)for(let z=194;z<=260;z++)if(pathContains(x+.5,z+.5,INNER_GARDEN_PATH,0.85)||pathContains(x+.5,z+.5,INNER_GARDEN_EAST_PATH,0.85))w.set(x,25,z,9);
- w.fill(-4,25,206,-1,25,208,9);
+ for(let x=-75;x<=5;x++)for(let z=194;z<=260;z++){
+  if(GARDEN_PONDS.some(p=>x>=p.x1&&x<=p.x2&&z>=p.z1&&z<=p.z2)) continue;
+  if(pathContains(x+.5,z+.5,INNER_GARDEN_PATH,0.85)||pathContains(x+.5,z+.5,INNER_GARDEN_EAST_PATH,0.85)||pathContains(x+.5,z+.5,INNER_GARDEN_EAST_BANK_PATH,0.85)||pathContains(x+.5,z+.5,INNER_GARDEN_SOUTH_PATH,0.85))w.set(x,25,z,9);
+ }
  for(let z=148;z<=158;z++)for(let x=-48;x<=-45;x++)w.set(x,25,z,9);
 
  // 10. Construct building brick foundation floor solids (zero hollow voxel wall boxes!)

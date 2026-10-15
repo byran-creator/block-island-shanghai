@@ -1,6 +1,6 @@
 import * as THREE from './three.module.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
-import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_PATH,INNER_GATES,GARDEN_WINDOWS,GARDEN_PONDS,gardenPathContains,innerGardenContains} from './yuyuan-layout.js';
+import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_PATH,INNER_GARDEN_EAST_BANK_PATH,INNER_GATES,GARDEN_WINDOWS,GARDEN_PONDS,WATER_GALLERY_BENDS,gardenPathContains,innerGardenContains} from './yuyuan-layout.js';
 
 // The floor, ticket leaves and collision-aware moon gates belong to the
 // district layout. This module supplies their local-coordinate finish.
@@ -89,7 +89,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   }
   const pathGeometry=new THREE.BufferGeometry();pathGeometry.setAttribute('position',new THREE.Float32BufferAttribute(pathVertices,3));pathGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));pathGeometry.setIndex(indices);pathGeometry.computeVertexNormals();const pathMaterial=new THREE.MeshLambertMaterial({color:'#c0c0a9',map:stoneMap,side:THREE.DoubleSide});group.add(new THREE.Mesh(pathGeometry,pathMaterial));
  }
- pathRibbon(INNER_GARDEN_PATH);pathRibbon(INNER_GARDEN_EAST_PATH);
+ pathRibbon(INNER_GARDEN_PATH);pathRibbon(INNER_GARDEN_EAST_PATH);pathRibbon(INNER_GARDEN_EAST_BANK_PATH);
 
  // 3. Taihu & Huangshi Rockery Construction (大假山与太湖石叠石)
  function lakeRock(x,z,size=1,base=26){
@@ -127,7 +127,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  lakeRock(-72.5,196.5,1.1,26);lakeRock(-47.4,201.3,1.12,26);lakeRock(-73.1,197,1.2,26);lakeRock(-63,195.5,.75,26);lakeRock(-32.7,205.6,.58,26);
  lakeRock(-2.0,202.5,.75,26);
  lakeRock(-76,212,2.2,26);lakeRock(-78,228,2.4,26);
- lakeRock(-58,238,1.6,26);lakeRock(-48,246,1.4,26);lakeRock(-22,238,1.5,26);
+ lakeRock(-48,246,1.4,26);
 
  // 4. The Iconic Undulating Dragon Wall (穿云龙墙)
  const dragonPts=[[-78,216],[-70,217],[-62,219],[-54,218],[-46,216],[-38,215],[-30,217]];
@@ -260,9 +260,8 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  block('#211d1a',stgX,30.3,stgZ-2.38,2.4,.55,.08);
  block('#dfb642',stgX,30.3,stgZ-2.42,2.1,.38,.04,true);
 
- // 6. Classical Waterside Covered Corridors with Carved Leak-Windows (曲折水廊与漏窗)
- for(let x=-74;x<=-44;x+=4){
-  const z=234;
+ // 6. Classical Waterside Standalone Leak-Window Screen Walls in Open Lawn Courtyards (漏窗景墙移至开阔草坪，彻底空出水上长廊)
+ for(const [x,z] of [[-71, 222], [-45, 224], [-33, 246]]){
   block('#ddd9c8',x,27.5,z,.3,3,2.8);
   block('#434e45',x,29.2,z,.5,.14,3.2);
   beam('#6e7367',[x-.16,27.2,z-.8],[x-.16,28.4,z+.8],.04);
@@ -295,7 +294,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   [-74,156],[-74,170],[-74,184],[-74,200],[-74,214],[-74,228],[-74,242],[-74,256],
   [1,156],[1,170],[1,184],[1,200],[1,214],[1,228],[1,242],[1,256],
   // Rockery & inner garden ancient black pines
-  [-74,226],[-68,222],[-72,218],[-70,230],[-68,236],[-24,242],[-14,248],[-66,248],[-32,238],[-44,254],[-20,252],[-58,238]
+  [-74,226],[-68,222],[-72,218],[-70,230],[-68,236],[-24,242],[-14,248],[-66,248],[-44,254],[-20,252]
  ];
  for(const [px,pz]of pines)pineTree(px,pz,6+random()*2);
 
@@ -304,7 +303,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   [-72,156],[-60,154],[-32,154],[-20,156],[-10,156],
   // Central ponds willows overhanging water
   [-68,172],[-55,170],[-34,170],[-28,172],[-68,190],[-55,192],[-34,192],[-28,190],
-  [-72,200],[-60,197],[-16,200],[-6,204],[-54,232],[-64,244],[-48,250],
+  [-72,200],[-60,197],[-16,200],[-6,204],[-64,244],[-48,250],
   // South green ring willows enclosing south garden
   [-72,258],[-60,258],[-48,258],[-36,258],[-24,258],[-12,258]
  ];
@@ -325,35 +324,40 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  const maples=[[-36,248],[-54,220],[-18,226],[-64,236],[-44,248],[-72,180],[-2,180],[-72,220],[-2,220]];
  for(const [mx,mz]of maples)mapleTree(mx,mz,4.8+random()*1.2);
 
- // 7c. Classical Garden Covered Gallery Bridge (中央长河42米水上长廊：双侧美人靠坐椅、朱漆立柱与飞檐黑瓦)
- function coveredGalleryBridge(x1,z1,x2,z2,width=3.2){
+ // 7c. Classical Garden Covered Gallery Bridge (中央长河九曲平滑水上长廊：双侧美人靠坐椅、朱漆立柱与飞檐黑瓦，中轴3.4米宽坦通途无阻)
+ function coveredGalleryBridge(x1,z1,x2,z2,width=3.4){
   const len=Math.hypot(x2-x1,z2-z1),yaw=Math.atan2(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2;
   const bGroup=new THREE.Group();bGroup.position.set(cx,26,cz);bGroup.rotation.y=yaw;group.add(bGroup);
   // Architectural stone bridge piers down to riverbed
-  for(let d=-len/2+2;d<=len/2-2;d+=4.0){
+  for(let d=-len/2+1.5;d<=len/2-1.5;d+=3.2){
    const pier=new THREE.Mesh(box,mat('#72776c'));pier.position.set(0,-2.2,d);pier.scale.set(width*.65,3.6,.65);bGroup.add(pier);
   }
   // Heavy timber deck & stone curbstones
-  const deck=new THREE.Mesh(box,mat('#563a28'));deck.position.set(0,.12,0);deck.scale.set(width,.24,len);bGroup.add(deck);
+  const deck=new THREE.Mesh(box,mat('#563a28'));deck.position.set(0,.12,0);deck.scale.set(width,.24,len+.15);bGroup.add(deck);
   // Vermilion lacquer columns along both sides & comfortable lakeside resting benches (美人靠)
-  for(let d=-len/2+1.0;d<=len/2-1.0;d+=2.4){
+  for(let d=-len/2+0.8;d<=len/2-0.8;d+=2.2){
    for(const side of [-1,1]){
-    const postX=side*(width/2-.2);
+    const postX=side*(width/2-.22);
     const post=new THREE.Mesh(pole,mat('#842c22'));post.position.set(postX,1.4,d);post.scale.set(.1,2.8,.1);bGroup.add(post);
-    const seat=new THREE.Mesh(box,mat('#72492f'));seat.position.set(postX,.5,d);seat.scale.set(.32,.14,2.4);bGroup.add(seat);
-    const rail=new THREE.Mesh(box,mat('#863628'));rail.position.set(postX,.84,d);rail.scale.set(.1,.09,2.4);bGroup.add(rail);
+    const seat=new THREE.Mesh(box,mat('#72492f'));seat.position.set(postX,.5,d);seat.scale.set(.32,.14,2.2);bGroup.add(seat);
+    const rail=new THREE.Mesh(box,mat('#863628'));rail.position.set(postX,.84,d);rail.scale.set(.1,.09,2.2);bGroup.add(rail);
    }
+   // Vertical suspension drop wire connecting from roof ridge to lantern top cap
+   const lWire=new THREE.Mesh(box,mat('#2e2118'));lWire.position.set(0,2.6,d);lWire.scale.set(.022,.7,.022);bGroup.add(lWire);
+   const lRing=new THREE.Mesh(new THREE.TorusGeometry(.045,.012,4,8),mat('#e5a93b',true));lRing.position.set(0,2.38,d);bGroup.add(lRing);
    // Hanging translucent warm palace lantern ("红里透黄"灯笼)
-   const lCore=new THREE.Mesh(new THREE.SphereGeometry(.14,6,5),mat('#ffd24d',true));lCore.position.set(0,2.3,d);bGroup.add(lCore);
-   const lSkin=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshLambertMaterial({color:'#d32f2f',emissive:'#82221b',transparent:true,opacity:.82,depthWrite:false}));lSkin.position.set(0,2.3,d);lSkin.scale.y=1.3;bGroup.add(lSkin);
+   const lCore=new THREE.Mesh(new THREE.SphereGeometry(.18,8,6),mat('#ffe066',true));lCore.position.set(0,2.25,d);bGroup.add(lCore);
+   const lSkin=new THREE.Mesh(new THREE.SphereGeometry(.28,10,8),new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#d84315',transparent:true,opacity:.58,depthWrite:false}));lSkin.position.set(0,2.25,d);lSkin.scale.y=1.25;bGroup.add(lSkin);
   }
   // Covered bridge roof with black tiles, eaves and flying rafters
-  const roof=new THREE.Mesh(box,mat('#364440'));roof.position.set(0,2.95,0);roof.scale.set(width+1.2,.26,len+.8);bGroup.add(roof);
-  const ridge=new THREE.Mesh(box,mat('#52615a'));ridge.position.set(0,3.15,0);ridge.scale.set(.36,.18,len+1.0);bGroup.add(ridge);
+  const roof=new THREE.Mesh(box,mat('#364440'));roof.position.set(0,2.95,0);roof.scale.set(width+1.1,.26,len+.6);bGroup.add(roof);
+  const ridge=new THREE.Mesh(box,mat('#52615a'));ridge.position.set(0,3.15,0);ridge.scale.set(.36,.18,len+.8);bGroup.add(ridge);
  }
 
- // Grand Central Covered Water Gallery spanning across Central River (42米横跨中央长河，气魄宏丽，两岸飞檐倚翠，与东湖拱桥完全分离)
- coveredGalleryBridge(-66,236,-24,236,3.2);
+ // Grand Central Smooth Winding Covered Water Gallery across Central River (九曲水上长廊：平滑蜿蜒曲水，全线步道畅通无阻，两岸飞檐倚翠)
+ for(let i=1;i<WATER_GALLERY_BENDS.length;i++){
+  coveredGalleryBridge(WATER_GALLERY_BENDS[i-1][0],WATER_GALLERY_BENDS[i-1][1],WATER_GALLERY_BENDS[i][0],WATER_GALLERY_BENDS[i][1],3.4);
+ }
 
  // 7b. Dense Flowering Shrubs, Osmanthus & Peony Clusters (四季名花、杜鹃与桂花灌木丛)
  function flowerShrub(x,z,rx=1.1,ry=.7,rz=1.1,foliage='#3d6238',flower='#e85a7d'){
@@ -466,7 +470,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  }
 
  // 10. Water-view pavilion & Inscription Rock
- const pavilionX=0,pavilionZ=210.5;
+ const pavilionX=0.5,pavilionZ=219.0;
  for(const dx of [-1.25,1.25])for(const dz of [-1.25,1.25]){const post=block('#77503b',pavilionX+dx,28,pavilionZ+dz,.16,4,.16);addFixture(post);}
  for(const side of [-1,1]){beam('#745c3d',[pavilionX-1.25,30,pavilionZ+side*1.25],[pavilionX+1.25,30,pavilionZ+side*1.25],.11);const seat=block('#806344',pavilionX,26.45,pavilionZ+side*1.23,2,.15,.32);addFixture(seat);}
  const roofVertices=[];

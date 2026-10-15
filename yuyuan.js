@@ -1,6 +1,6 @@
 import {createYuyuanStreetAssets} from './yuyuan-street-assets.js';
 import {createYuyuanShopAssets} from './yuyuan-shop-assets.js';
-import {createYuyuanGardenAssets} from './yuyuan-garden-assets.js';
+import {createYuyuanGardenAssets,moonBridgeFloor} from './yuyuan-garden-assets.js';
 import {createYuyuanClassicAssets} from './yuyuan-classic-assets.js';
 import {createYuyuanWater} from './yuyuan-water.js';
 import {createYuyuanGates,insideGarden} from './yuyuan-gates.js';
@@ -11,10 +11,11 @@ import {batchMeshes,staticMeshes} from './mesh-batch.js';
 import {overlaps} from './world.js';
 import {styleNpc} from './npc-appearance.js';
 import {createYuyuanRickshaws} from './yuyuan-rickshaw.js';
-import {YUYUAN,YUYUAN_SHIFT,YUYUAN_BUILDINGS,WATER_CORRIDOR,GARDEN_PONDS,JIUQU_BRIDGE,YUYUAN_WALKS,pathContains} from './yuyuan-layout.js';
+import {YUYUAN,YUYUAN_SHIFT,YUYUAN_BUILDINGS,WATER_CORRIDOR,GARDEN_PONDS,JIUQU_BRIDGE,WATER_GALLERY_BENDS,YUYUAN_WALKS,YUYUAN_STATION_WALK,YUYUAN_STATION_WALK_SOUTH,pathContains,gardenPathContains} from './yuyuan-layout.js';
 export const YUYUAN_RIDDLES=[{question:'两岸不相连，走我能过河。猜一物。',answers:['桥','茶壶','灯笼'],correct:0},{question:'有脚不走路，安睡好帮手。猜一物。',answers:['鱼竿','床','竹子'],correct:1},{question:'白天藏起来，夜里满天开。猜一物。',answers:['小笼包','茶叶','星星'],correct:2}];
-export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{}}){
+export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null}){
  const root=new THREE.Group();root.name='yuyuan-garden-and-malls';root.position.z=YUYUAN_SHIFT;scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),lights=[],lanterns=[],actors=[],fixtureBounds=[];let panel=false,elapsed=0,lastTea=-30,lastSnack=-30,solved=new Set(),orders=0,teas=0,stocks={buns:12,candy:8,souvenir:6,tea:6},collectibles={};
+ if(world){for(let x=-68;x<=-22;x++)for(let z=228;z<=244;z++){const wz=z+YUYUAN_SHIFT;for(let y=21;y<=28;y++)if(world.get(x,y,wz)!==0)world.set(x,y,wz,0);}}
  const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
  function cube(color,x,y,z,w,h,d,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;}
  const boardCache=new Map();
@@ -104,6 +105,8 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
      cube('#6e462d',b.x,26.65,b.z+side*(b.rz-.22),b.rx*2-.7,.5,.1);
      cube('#573520',b.x,26.96,b.z+side*(b.rz-.22),b.rx*2-.5,.08,.14);
     }
+    cube('#2e2118',b.x,29.7,b.z,0.024,0.76,0.024);
+    cube('#e5a93b',b.x,29.34,b.z,0.06,0.04,0.06,true);
     const pavilionLantern=new THREE.Mesh(new THREE.CylinderGeometry(.18,.22,.45,8),mat('#e83a28',true));
     pavilionLantern.position.set(b.x,29.1,b.z);root.add(pavilionLantern);lanterns.push(pavilionLantern);
     continue;
@@ -181,7 +184,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
      for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)cube('#5d432b',b.x+side*(b.rx+.035),26+b.levels*2,z,.06,b.levels*4,.12);
     }
    }for(const side of [-1,1]){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-'))){if(b.levels>1)cube(wallCol,b.x,30+(b.levels-1)*2,b.z-b.rz-.028,b.rx*2,(b.levels-1)*4,.035);continue;}for(const sign of [-1,1])cube(wallCol,b.x+sign*(b.rx+1.5)/2,26+b.levels*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx-1.5,b.levels*4,.035);if(b.levels>1)cube(wallCol,b.x,29.5+(b.levels-1)*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx*2,(b.levels-1)*4-1,.035);}for(let level=1;level<=b.levels;level++)roof(b,26+level*4,level===b.levels?.96:1.1);for(const side of [-1,1])for(let x=b.x-b.rx+.6;x<=b.x+b.rx-.4;x+=1.2){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-')))continue;cube('#62482f',x,27.5,b.z+side*(b.rz+.035)+(side>0?1:0),.11,3,.08);if(Math.abs(x-b.x)>1.5){cube('#593e2b',x,27.55,b.z+side*(b.rz+.08)+(side>0?1:0),.84,1.72,.06);const winGlow=cube('#ffba54',x,27.55,b.z+side*(b.rz+.07)+(side>0?1:0),.78,1.6,.02,true);lights.push(winGlow);for(const dx of [-.27,0,.27])cube('#d3ba77',x+dx,27.55,b.z+side*(b.rz+.12)+(side>0?1:0),.035,1.5,.025);for(const y of [27.05,27.55,28.05])cube('#d3ba77',x,y,b.z+side*(b.rz+.12)+(side>0?1:0),.78,.035,.025);}}if(b.levels>=2)for(const side of [-1,1]){cube('#8c5b32',b.x,30.05,b.z+side*(b.rz+.35),b.rx*2+.7,.12,.65);cube('#76502c',b.x,30.9,b.z+side*(b.rz+.6),b.rx*2+.7,.09,.09);for(let x=b.x-b.rx;x<=b.x+b.rx;x+=.6)cube('#76502c',x,30.5,b.z+side*(b.rz+.6),.05,.8,.06);const upperWin=cube('#ffba54',b.x,30.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(upperWin);}if(b.levels>=3)for(const side of [-1,1]){cube('#8c5b32',b.x,34.05,b.z+side*(b.rz+.35),b.rx*2+.5,.12,.65);const topWin=cube('#ffba54',b.x,34.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(topWin);}}
-  board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,209.8,5.5,.9);board('江南手作',-62,30,209.8,5.5,.9);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);board('豫园 · 沿街步行 / 地铁10',-35,29,10,5,.7);
+  board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,264.5,5.5,.9);board('江南手作',-62,30,264.5,5.5,.9);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);board('豫园 · 沿街步行 / 地铁10',-35,29,10,5,.7);
  board('华宝楼 · 百年商厦',-86,37.2,165.8,5.5,.9);board('天裕楼 · 豫园名阁',8,37.2,166.8,5.5,.9);board('和丰楼 · 美食雅集',8,33,184.8,5.5,.9);
  board('上海老饭店 · 百年名筵',8,37.2,198.8,5.5,.9);board('宁波汤团店 · 经典名点',8,30,216.8,5.5,.9);board('老庙黄金 · 百年祥瑞',8,33,248.8,5.5,.9);
  board('上海梨膏糖 · 非遗老号',-107,33,151.8,5.5,.9);board('童涵春堂 · 传统国药',-107,33,199.8,5.5,.9);board('绿波廊 · 湖畔美馔',-20,33,183.8,4.8,.9);
@@ -208,41 +211,93 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const gardenArt=createYuyuanGardenAssets(root,{cube,mat,buildings:YUYUAN_BUILDINGS});fixtureBounds.push(...gardenArt.fixtures);
  const classicArt=createYuyuanClassicAssets(root,{cube,mat,board});fixtureBounds.push(...classicArt.fixtures);
 
- // Spaced traditional glowing lanterns with warm translucent hue across bazaar alleys
- const animatedLanterns=[];
- function hangingLantern(x,y,z,size=0.44){
-  const lGroup=new THREE.Group();lGroup.position.set(x,y,z);root.add(lGroup);
-  cube('#423528',x,y+size*0.72,z,0.035,size*0.55,0.035);
-  const topCap=new THREE.Mesh(new THREE.CylinderGeometry(size*0.45,size*0.55,size*0.12,8),mat('#2b2016'));
-  topCap.position.set(0,size*0.52,0);lGroup.add(topCap);
-  const innerCore=new THREE.Mesh(new THREE.SphereGeometry(size*0.62,8,6),mat('#ffd54f',true));
-  innerCore.scale.set(0.78,1.15,0.78);lGroup.add(innerCore);lights.push(innerCore);
-  const outerSkinMat=new THREE.MeshLambertMaterial({color:'#d32f2f',emissive:'#8a1f18',transparent:true,opacity:0.82,depthWrite:false});
-  const outerSkin=new THREE.Mesh(new THREE.SphereGeometry(size,12,10),outerSkinMat);
-  outerSkin.scale.set(0.85,1.25,0.85);lGroup.add(outerSkin);
-  const botCap=new THREE.Mesh(new THREE.CylinderGeometry(size*0.5,size*0.38,size*0.12,8),mat('#2b2016'));
-  botCap.position.set(0,-size*0.62,0);lGroup.add(botCap);
-  const tassel=new THREE.Mesh(new THREE.CylinderGeometry(size*0.07,size*0.14,size*0.58,6),mat('#e5a93b',true));
-  tassel.position.set(0,-size*0.98,0);lGroup.add(tassel);
-  animatedLanterns.push({group:lGroup,seed:x*1.7+z*2.3});lanterns.push(innerCore);return lGroup;
+ // High-performance O(1) Spatial Hash Grid for fixture collisions (彻底消除每秒数百万次fixtureBounds.some线性迭代)
+ const GRID_SIZE=8,fixtureGrid=new Map();
+ for(const b of fixtureBounds){
+  const minGx=Math.floor((b.x-b.rx-.35)/GRID_SIZE),maxGx=Math.floor((b.x+b.rx+.35)/GRID_SIZE);
+  const minGz=Math.floor((b.z-b.rz-.35)/GRID_SIZE),maxGz=Math.floor((b.z+b.rz+.35)/GRID_SIZE);
+  for(let gx=minGx;gx<=maxGx;gx++){
+   for(let gz=minGz;gz<=maxGz;gz++){
+    const k=`${gx},${gz}`;
+    let list=fixtureGrid.get(k);
+    if(!list){list=[];fixtureGrid.set(k,list);}
+    list.push(b);
+   }
+  }
  }
- for(const z of [152,165,178,192,206,220,236,252,266])for(let x=-95;x<=15;x+=12){
-  hangingLantern(x,29.15,z,0.44);
+ function collidesFixtures(x,y,lz){
+  const gx=Math.floor(x/GRID_SIZE),gz=Math.floor(lz/GRID_SIZE);
+  const list=fixtureGrid.get(`${gx},${gz}`);
+  if(!list)return false;
+  for(let i=0;i<list.length;i++){
+   const b=list[i];
+   if(Math.abs(x-b.x)<b.rx+.29&&Math.abs(lz-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y)return true;
+  }
+  return false;
  }
 
- const rickshaws=createYuyuanRickshaws({scene,root,getPos:localPos,setView,place:p=>{Object.assign(getPos(),{...p,z:p.z+YUYUAN_SHIFT});},notify,onEvent});
- function npc(index,x,z,role,color){const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const add=(c,xx,y,zz,w,h,d)=>{const m=new THREE.Mesh(box,mat(c));m.position.set(xx,y,zz);m.scale.set(w,h,d);r.add(m);return m;};const torso=add(color,0,1,0,.43,.7,.3),head=add('#d4a27b',0,1.55,0,.34,.36,.34),hair=add('#332c27',0,1.76,0,.35,.08,.35),arms=[],legs=[];for(const side of [-1,1]){arms.push(add(color,side*.28,1,0,.13,.6,.18));legs.push(add('#34413c',side*.12,.38,0,.17,.76,.22));}styleNpc({root:r,torso,head,hair,arms,legs},index,'visitor');actors.push({root:r,person:true,npcRole:role,guide:{intro:'欢迎来到豫园。湖心亭喝茶、南翔柜台点小笼，商圈有华宝楼古玩与民俗戏台，内园扩建了张南阳大假山与宋代玉玲珑。',choices:[['怎么去地铁？','从西侧牌坊沿福佑路指示去河南南路地铁口。10号线基隆路方向下一站南京东路，可换乘2号线去陆家嘴。']]}});}
- npc(101,-44.5,176.2,'湖心亭茶客','#b39568');npc(102,-25.5,214.8,'南翔师傅','#c6a27b');npc(103,-61.5,204.5,'灯谜向导','#9f6c79');npc(104,-34,201,'豫园游客','#79939b');npc(105,-56,201,'豫园游客','#96aa82');
+ // Spaced traditional glowing lanterns with suspension cables & drop wires (商街与湖心亭上空共享材质轻量化宫灯天幕)
+ const CABLE_Y=30.6;
+ const sharedTopCapGeo=new THREE.CylinderGeometry(0.168,0.208,0.048,8);
+ const sharedBotCapGeo=new THREE.CylinderGeometry(0.192,0.144,0.048,8);
+ const sharedInnerGeo=new THREE.SphereGeometry(0.28,8,6);
+ const sharedOuterGeo=new THREE.SphereGeometry(0.40,8,6);
+ const sharedWaistGeo=new THREE.TorusGeometry(0.336,0.024,4,10);
+ const sharedTasselGeo=new THREE.CylinderGeometry(0.028,0.06,0.248,6);
+ const sharedLanternMat=new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#d84315',transparent:true,opacity:0.6,depthWrite:false});
+
+ function hangingLantern(x,y,z,size=0.40){
+  cube('#2d2118',x,(CABLE_Y+y+size*0.52)/2,z,0.024,CABLE_Y-(y+size*0.52),0.024);
+  cube('#c89c38',x,y+size*0.58,z,0.065,0.045,0.065,true);
+  cube('#423528',x,y+size*0.72,z,0.038,size*0.55,0.038);
+  const topCap=new THREE.Mesh(sharedTopCapGeo,mat('#2b2016'));
+  topCap.position.set(x,y+size*0.52,z);root.add(topCap);
+  const innerCore=new THREE.Mesh(sharedInnerGeo,mat('#ffe066',true));
+  innerCore.scale.set(0.78,1.15,0.78);innerCore.position.set(x,y,z);root.add(innerCore);lights.push(innerCore);
+  const outerSkin=new THREE.Mesh(sharedOuterGeo,sharedLanternMat);
+  outerSkin.scale.set(0.85,1.25,0.85);outerSkin.position.set(x,y,z);root.add(outerSkin);
+  const waistHoop=new THREE.Mesh(sharedWaistGeo,mat('#e5a93b',true));
+  waistHoop.rotation.x=Math.PI/2;waistHoop.position.set(x,y,z);root.add(waistHoop);
+  const botCap=new THREE.Mesh(sharedBotCapGeo,mat('#2b2016'));
+  botCap.position.set(x,y-size*0.62,z);root.add(botCap);
+  const tassel=new THREE.Mesh(sharedTasselGeo,mat('#f0b840',true));
+  tassel.position.set(x,y-size*1.02,z);root.add(tassel);
+  lanterns.push(outerSkin);
+ }
+ const lanternSpans=[
+  ...[156,168,180,192,204,216,228,240,252,264].map(z=>({x1:-105,x2:-86,z,step:3.8})),
+  ...[156,168,180,192,204,216,228,240,252,264].map(z=>({x1:7,x2:26,z,step:3.8})),
+  ...[166,178,190].map(z=>({x1:-54,x2:-38,z,step:4.0}))
+ ];
+ for(const {x1,x2,z,step} of lanternSpans){
+  const cx=(x1+x2)/2,len=Math.abs(x2-x1);
+  cube('#281f18',cx,CABLE_Y,z,len,0.035,0.035);
+  for(let x=x1+step/2;x<=x2;x+=step){
+   hangingLantern(x,29.15,z,0.40);
+  }
+ }
+
+ const rickshaws=createYuyuanRickshaws({scene,root,getPos:localPos,setView,place:p=>{Object.assign(getPos(),{...p,z:p.z+YUYUAN_SHIFT});},notify,onEvent,getAudio,getPedestrians:()=>actors});
+ function npc(index,x,z,role,color){const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const add=(c,xx,y,zz,w,h,d)=>{const m=new THREE.Mesh(box,mat(c));m.position.set(xx,y,zz);m.scale.set(w,h,d);r.add(m);return m;};const torso=add(color,0,1,0,.43,.7,.3),head=add('#d4a27b',0,1.55,0,.34,.36,.34),hair=add('#332c27',0,1.76,0,.35,.08,.35),arms=[],legs=[];for(const side of [-1,1]){arms.push(add(color,side*.28,1,0,.13,.6,.18));legs.push(add('#34413c',side*.12,.38,0,.17,.76,.22));}styleNpc({root:r,torso,head,hair,arms,legs},index,'visitor');actors.push({root:r,person:true,npcRole:role,guide:{intro:'欢迎来到豫园。湖心亭喝茶、商圈南市老街可品尝南翔小笼与选购手作，商圈有华宝楼古玩与民俗戏台，内园扩建了张南阳大假山与宋代玉玲珑。',choices:[['怎么去地铁？','从西侧牌坊沿福佑路指示去河南南路地铁口。10号线基隆路方向下一站南京东路，可换乘2号线去陆家嘴。']]}});}
+ npc(101,-44.5,176.2,'湖心亭茶客','#b39568');npc(102,-25.5,271.2,'南翔师傅','#c6a27b');npc(103,-61.5,204.5,'灯谜向导','#9f6c79');npc(104,-34,201,'豫园游客','#79939b');npc(105,-56,201,'豫园游客','#96aa82');
  for(const [i,shop]of streetArt.shops.entries())npc(120+i,shop.x-1.7,shop.z+.3,shop.title+'店员',['#b78c66','#85936b','#a87e83'][i%3]);
- npc(106,-62,214.8,'手作店员','#947950');npc(107,-65,164.4,'茶坊店员','#7b976e');
+ npc(106,-62,271.2,'手作店员','#947950');npc(107,-65,164.4,'茶坊店员','#7b976e');
  npc(130,-105.8,153.4,'梨膏糖掌柜','#9c3f38');npc(131,-105.8,200.4,'国药堂掌柜','#4d6f54');npc(132,-105.8,233.4,'名酿坊掌柜','#7a422b');
  npc(133,-87.2,167.4,'华宝楼掌柜','#8c6e3d');npc(134,-87.2,248.4,'生煎师傅','#aa5538');
  npc(135,8.2,167.4,'天裕楼掌柜','#3a617e');npc(136,8.2,199.4,'老饭店名厨','#9b3f36');npc(137,8.2,249.4,'金楼掌柜','#9a7c36');
  npc(140,-101.8,212.5,'游商糖人张','#a84232');npc(141,11.8,181.0,'挑担栗子王','#785233');npc(142,-92.2,212.0,'地摊古董刘','#4f6479');
- const dynamic=new Set([...lights,...lanterns,...animatedLanterns.map(l=>l.group),...rickshaws.rickshaws.map(r=>r.group),...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(shopArt.goods).flat()]);batchMeshes(root,staticMeshes(root,dynamic),'yuyuan-static-details');for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);}
 
- const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||fixtureBounds.some(b=>Math.abs(x-b.x)<b.rx+.29&&Math.abs(z-YUYUAN_SHIFT-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y)}):{people:[],tick(){}};actors.push(...visitors.people);
- const crowd=world?createYuyuanCrowd({scene,world,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||fixtureBounds.some(b=>Math.abs(x-b.x)<b.rx+.29&&Math.abs(z-YUYUAN_SHIFT-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y)}):{people:[],tick(){}};actors.push(...crowd.people);
+ // Ultra-fast Static Mesh Batching (彻底消除卡顿与闪退：将700+发光体与宫灯全域合并为统一极速静态网格)
+ const staticDynamic=new Set([...rickshaws.rickshaws.map(r=>r.group),...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(shopArt.goods).flat(),...lights,...lanterns]);
+ batchMeshes(root,staticMeshes(root,staticDynamic),'yuyuan-static-details');
+ const batchedLights=batchMeshes(root,lights,'yuyuan-night-glow');
+ lights.splice(0,lights.length,...batchedLights);
+ const batchedLanterns=batchMeshes(root,lanterns,'yuyuan-night-lanterns');
+ lanterns.splice(0,lanterns.length,...batchedLanterns);
+ for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);}
+
+ const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
+ const crowd=world?createYuyuanCrowd({scene,world,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
  function close(){if(!panel)return;panel=false;$('yuyuan-dialog').close();resume();}
  function action(text,fn){const b=document.createElement('button');b.className='recipe-card';b.textContent=text;b.onclick=fn;$('yuyuan-actions').appendChild(b);return b;}
  function use(){if(rickshaws.use())return true;const p=localPos();if(p.y<25||p.y>28)return false;
@@ -251,10 +306,10 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    const button=action(insideGarden(p)?'开闸离园':'检票入园',()=>{if(gates.open(gate)){close();notify('闸机已开，请从月洞门中央走过。');}});button.disabled=!insideGarden(p)&&!gates.ticket;$('yuyuan-dialog').showModal();return true;}
    const extraShops=streetArt.extraShops??[];
   const peddlerEntries=[{id:'peddler-tang',x:-101.8,z:212.5,title:'游商糖人张 · 吹糖亭',peddlerType:'tang'},{id:'peddler-chestnut',x:11.8,z:181.0,title:'挑担栗子王 · 炒栗铺',peddlerType:'chestnut'},{id:'peddler-antique',x:-92.2,z:212.0,title:'地摊古董刘 · 珍玩阁',peddlerType:'antique'}];
-  const entries=[{id:'tea',x:-46,z:176.8,title:'湖心亭 · 临水茶席'},{id:'snack',x:-26,z:212,title:'南翔 · 店内小笼柜台'},{id:'craft',x:-62,z:212,title:'江南手作 · 店内柜台'},{id:'teashop',x:-65,z:162,title:'湖畔茶坊 · 店内柜台'},{id:'riddle',x:-62,z:203,title:'豫园 · 灯谜'},...streetArt.shops.map(s=>({...s,id:'street-'+s.id})),...extraShops.map(s=>({...s,id:'extra-'+s.id,isExtra:true})),...peddlerEntries].sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z));const near=entries[0];if(Math.hypot(near.x-p.x,near.z-p.z)>3.2)return false;pause();panel=true;$('yuyuan-title').textContent=near.title;$('yuyuan-result').textContent='';$('yuyuan-actions').replaceChildren();
+  const entries=[{id:'tea',x:-46,z:176.8,title:'湖心亭 · 临水茶席'},{id:'snack',x:-26,z:270,title:'南翔馒头店 · 小笼名点'},{id:'craft',x:-62,z:270,title:'江南手作 · 丝绸手作坊'},{id:'craft-legacy',x:-62,z:212,title:'江南手作 · 丝绸手作坊'},{id:'teashop',x:-65,z:162,title:'湖畔茶坊 · 店内柜台'},{id:'riddle',x:-62,z:203,title:'豫园 · 灯谜'},...streetArt.shops.map(s=>({...s,id:'street-'+s.id})),...extraShops.map(s=>({...s,id:'extra-'+s.id,isExtra:true})),...peddlerEntries].sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z));const near=entries[0];if(Math.hypot(near.x-p.x,near.z-p.z)>3.2)return false;pause();panel=true;$('yuyuan-title').textContent=near.title;$('yuyuan-result').textContent='';$('yuyuan-actions').replaceChildren();
   if(near.id==='tea')action('品一壶茉莉花茶',()=>{if(elapsed-lastTea<20){$('yuyuan-result').textContent='慢慢品茶，稍后再来。';return;}lastTea=elapsed;const s=getState();s.health=Math.min(20,s.health+2);s.hunger=Math.min(20,s.hunger+1);teas++;onEvent({type:'yuyuan-tea'});onProgress();$('yuyuan-result').textContent='茶香与湖水相伴 · 体力略有恢复。';});
-  function buy(key,name,food=0){const b=action(name+' · 库存 '+stocks[key],()=>{if(stocks[key]<=0)return;if(elapsed-lastSnack<20){$('yuyuan-result').textContent='刚买过一份，稍后再来。';return;}lastSnack=elapsed;stocks[key]--;orders++;setStocks();if(food)getState().food=Math.min(99999,getState().food+food);else collectibles[name]=(collectibles[name]??0)+1;if(near.id==='snack')onEvent({type:'yuyuan-snack'});onProgress();b.textContent=name+' · 库存 '+stocks[key];b.disabled=stocks[key]===0;$('yuyuan-result').textContent='已购买'+name+'，柜台少一份；'+(food?'Z 可食用。':'O 背包可查看收藏。');});b.disabled=stocks[key]===0;}
-  if(near.id==='snack'){buy('buns','小笼包',2);buy('candy','梨膏糖 / 五香豆',2);}if(near.id==='craft')buy('souvenir','江南手作纪念品');if(near.id==='teashop')buy('tea','江南茶具套装');if(near.key)buy(near.key,near.name,near.food);
+  function buy(key,name,food=0){const b=action(name+' · 库存 '+stocks[key],()=>{if(stocks[key]<=0)return;if(elapsed-lastSnack<20){$('yuyuan-result').textContent='刚买过一份，稍后再来。';return;}lastSnack=elapsed;stocks[key]--;orders++;setStocks();if(food)getState().food=Math.min(99999,getState().food+food);else collectibles[name]=(collectibles[name]??0)+1;if(near.id.startsWith('snack'))onEvent({type:'yuyuan-snack'});onProgress();b.textContent=name+' · 库存 '+stocks[key];b.disabled=stocks[key]===0;$('yuyuan-result').textContent='已购买'+name+'，柜台少一份；'+(food?'Z 可食用。':'O 背包可查看收藏。');});b.disabled=stocks[key]===0;}
+  if(near.id.startsWith('snack')){buy('buns','小笼包',2);buy('candy','梨膏糖 / 五香豆',2);}if(near.id.startsWith('craft'))buy('souvenir','江南手作纪念品');if(near.id==='teashop')buy('tea','江南茶具套装');if(near.key)buy(near.key,near.name,near.food);
   if(near.isExtra)action('挑选与品鉴特色名品',()=>{const s=getState();s.health=Math.min(20,s.health+1);if(['pastry','candy','wine'].includes(near.type))s.hunger=Math.min(20,s.hunger+1);$('yuyuan-result').textContent='掌柜笑迎八方客：【'+near.title+'】名扬沪上，承蒙厚爱！';});
   if(near.peddlerType==='tang'){
    action('买一串冰糖葫芦 (红润酸甜)',()=>{if(elapsed-lastSnack<10){$('yuyuan-result').textContent='刚吃完一串，稍后再尝。';return;}lastSnack=elapsed;const s=getState();s.hunger=Math.min(20,s.hunger+2);s.food=Math.min(99999,s.food+2);$('yuyuan-result').textContent='【糖人张】得嘞！刚熬好的冰糖葫芦，红润酸甜，酥脆不粘牙！';});
@@ -271,5 +326,85 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   $('yuyuan-dialog').showModal();return true;
  }
  $('yuyuan-close').onclick=close;$('yuyuan-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});
- return {root,actors,shopArt,streetArt,rickshaws,isRiding:()=>rickshaws.isRiding(),cameraPose:(yaw,pitch)=>rickshaws.cameraPose(yaw,pitch),vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,collides:(x,y,z)=>gates.collides(x,y,z-YUYUAN_SHIFT)||fixtureBounds.some(b=>Math.abs(x-b.x)<b.rx+.29&&Math.abs(z-YUYUAN_SHIFT-b.z)<b.rz+.29&&y<b.y+b.h&&y+1.75>b.y),tick(dt,{night=false,keys=new Set()}={}){elapsed+=dt;gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);rickshaws.tick(dt,keys);for(const l of animatedLanterns){l.group.rotation.z=Math.sin(elapsed*1.5+l.seed)*0.07;l.group.rotation.x=Math.cos(elapsed*1.2+l.seed)*0.05;}for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
+ let lastNightState=null;
+
+ // Comprehensive Solid Buildings Collision (建筑防穿模：商铺外墙、侧墙与背墙坚实防穿模、开敞门洞通畅、历史名堂全封闭防穿模)
+ function buildingRoofFloor(x, lz, refY = getPos?.()?.y){
+  for(const b of YUYUAN_BUILDINGS){
+   const dx = x - b.x, dz = lz - b.z;
+   if(Math.abs(dx) <= b.rx + 0.65 && Math.abs(dz) <= b.rz + 0.65){
+    const roofY = 26 + b.levels * 4 + 0.35;
+    if(refY === undefined || refY === null || refY >= roofY - 2.5){
+     return roofY;
+    }
+   }
+  }
+  return null;
+ }
+
+ function galleryFloor(x, lz){
+  for(let i=1;i<WATER_GALLERY_BENDS.length;i++){
+   const a=WATER_GALLERY_BENDS[i-1],b=WATER_GALLERY_BENDS[i];
+   const len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+   const dx=(b[0]-a[0])/(len||1),dz=(b[1]-a[1])/(len||1);
+   const t=Math.max(0,Math.min(len,(x-a[0])*dx+(lz-a[1])*dz));
+   const dist=Math.hypot(x-(a[0]+dx*t),lz-(a[1]+dz*t));
+   if(dist<=1.85) return 26.0;
+  }
+  if(Math.abs(x-(-60))<=1.6 && lz>=170 && lz<=193) return 26.0;
+  return null;
+ }
+
+ // Comprehensive Solid Buildings Collision (建筑防穿模：商铺外墙/侧墙/背墙实体防穿模、开敞门洞通畅、屋顶坚实体感绝不穿模地下)
+ function buildingCollides(x, y, lz){
+  if(y > 42 || y < 24) return false;
+  if(galleryFloor(x, lz) !== null) return false;
+  if(pathContains(x, lz + YUYUAN_SHIFT, YUYUAN_STATION_WALK, 2.2) || pathContains(x, lz + YUYUAN_SHIFT, YUYUAN_STATION_WALK_SOUTH, 2.2) || pathContains(x, lz, JIUQU_BRIDGE, 1.8) || (Math.abs(x - (-60)) < 1.8 && lz >= 169 && lz <= 194) || gardenPathContains(x, lz, 2.0)) return false;
+  for(const b of YUYUAN_BUILDINGS){
+   const dx = x - b.x, dz = lz - b.z;
+   if(Math.abs(dx) >= b.rx || Math.abs(dz) >= b.rz) continue;
+   if(b.id === 'huxinting') continue;
+   const roofY = 26 + b.levels * 4 + 0.35;
+   if(y >= roofY) continue;
+   if(y >= roofY - 0.8 && Math.abs(dx) <= b.rx + 0.5 && Math.abs(dz) <= b.rz + 0.5) return true;
+   if(b.historic && y < roofY) return true;
+   // West Outer Row: front door on East (+x)
+   if(b.x === -107){
+    if(dx <= -b.rx + 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx >= b.rx - 0.45 && Math.abs(dz) > 1.35)) return true;
+    continue;
+   }
+   // West Inner Row: front door on West (-x)
+   if(b.x === -86){
+    if(dx >= b.rx - 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx <= -b.rx + 0.45 && Math.abs(dz) > 1.35)) return true;
+    continue;
+   }
+   // East Inner Row: front door on East (+x)
+   if(b.x === 8){
+    if(dx <= -b.rx + 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx >= b.rx - 0.45 && Math.abs(dz) > 1.35)) return true;
+    continue;
+   }
+   // East Outer Row: front door on West (-x)
+   if(b.x === 25){
+    if(dx >= b.rx - 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx <= -b.rx + 0.45 && Math.abs(dz) > 1.35)) return true;
+    continue;
+   }
+   // South Row: front door on North (-z)
+   if(b.z === 271){
+    if(dz >= b.rz - 0.45 || Math.abs(dx) >= b.rx - 0.45 || (dz <= -b.rz + 0.45 && Math.abs(dx) > 1.5)) return true;
+    continue;
+   }
+   if(b.id === 'lubolang'){
+    if(dx >= b.rx - 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx <= -b.rx + 0.45 && Math.abs(dz) > 1.5)) return true;
+    continue;
+   }
+   if(b.id === 'tea-gallery'){
+    if(dz <= -b.rz + 0.45 || Math.abs(dx) >= b.rx - 0.45 || (dz >= b.rz - 0.45 && Math.abs(dx) > 1.5)) return true;
+    continue;
+   }
+   if(y < roofY) return true;
+  }
+  return false;
+ }
+
+ return {root,actors,shopArt,streetArt,rickshaws,isRiding:()=>rickshaws.isRiding(),cameraPose:(yaw,pitch)=>rickshaws.cameraPose(yaw,pitch),vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,floorAt:(x,z)=>{const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return null;return moonBridgeFloor(x,lz)??galleryFloor(x,lz)??buildingRoofFloor(x,lz);},collides:(x,y,z)=>{if(y<21||y>45)return false;const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return false;if(galleryFloor(x,lz)!==null)return false;return gates.collides(x,y,lz)||buildingCollides(x,y,lz)||collidesFixtures(x,y,lz);},tick(dt,{night=false,keys=new Set()}={}){elapsed+=dt;gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);rickshaws.tick(dt,keys);if(night!==lastNightState){lastNightState=night;for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);}},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
 }
