@@ -196,14 +196,15 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  // =========================================================================
  // 4. CLASSICAL SINGLE-ARCH STONE MOON BRIDGE (江南单孔石拱桥/半月桥)
  // =========================================================================
- function moonBridge(cx,cz,{length=7.4,width=2.2,archH=2.3,dir='x'}){
-  const steps=14,waterY=22.3,bridgeDeckY=waterY+archH+0.32;
+ function moonBridge(cx,cz,{length=12.6,width=2.4,archH=2.2,dir='x'}){
+  const steps=18,waterY=22.38;
   const isX=dir==='x';
   // Arched opening voussoir blocks and stone parapet deck
   for(let i=0;i<=steps;i++){
    const t=(i/steps)*2-1; // -1 to 1
-   const archUnder=waterY+Math.max(0,archH*Math.sqrt(Math.max(0,1-t*t*.95)));
-   const deckTop=archUnder+0.38+0.12*(1-t*t);
+   // Arch begins at bank ground level y=25.2 at ends (t=±1) and rises to y=27.2 at apex (t=0)
+   const archUnder=waterY+0.5+archH*Math.max(0,1-t*t); // opening clearance: 22.88m at banks, 25.08m at apex (clear water underneath)
+   const deckTop=archUnder+0.42+0.12*(1-t*t); // stepped walking deck: 25.6m at banks, 27.2m at apex
    const posOffset=(t*length)/2;
    const bx=isX?cx+posOffset:cx,bz=isX?cz:cz+posOffset;
    const bw=isX?length/steps+.06:width,bd=isX?width:length/steps+.06;
@@ -226,17 +227,16 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
    }
   }
   // Keystone / water dragon carving at apex (龙门石/吸水兽)
-  block(garden,'#b8beb1',cx,bridgeDeckY+.42,cz,.35,.35,.35);
-  // Bridge abutment foundations into water
+  const apexY=waterY+0.5+archH+0.54;
+  block(garden,'#b8beb1',cx,apexY+.42,cz,.35,.35,.35);
+  // Solid bridge abutment piers anchored firmly into stone revetment banks
   for(const side of [-1,1]){
    const ax=isX?cx+side*(length/2):cx,az=isX?cz:cz+side*(length/2);
-   block(garden,'#82877b',ax,22.8,az,isX?1.2:width,1.2,isX?width:1.2);
+   block(garden,'#82877b',ax,24.5,az,isX?1.4:width,3.2,isX?width:1.4);
   }
  }
- // Central Pond Moon Bridge: framing Huxinting from North arrival plaza
- moonBridge(-51.0,171.5,{length:7.4,width:2.2,archH:2.3,dir:'x'});
- // East Inner Garden Pond Moon Bridge: arched over water lilies and koi
- moonBridge(-8.0,202.5,{length:6.8,width:2.1,archH:2.1,dir:'z'});
+ // Single-Arch Moon Bridge placed inside Classical Inner Garden (跨过内园曲水河道，连接东西两岸)
+ moonBridge(-8.0,202.5,{length:12.6,width:2.4,archH:2.2,dir:'x'});
 
  // =========================================================================
  // 5. LUSH LOTUS & WATER LILY DISPLAYS (荷塘翠盖、红莲睡莲与莲蓬)
@@ -270,9 +270,9 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
  lotusDisplay(-64.5,200.0,7);lotusDisplay(-11.0,201.5,8);lotusDisplay(-5.5,204.0,8);
 
  // =========================================================================
- // 6. LIVELY GARDEN WILDLIFE (仙鹤白鹭戏水、飞燕穿柳)
+ // 6. LIVELY GARDEN WILDLIFE (仙鹤白鹭戏水、飞燕穿柳、天鹅逐波)
  // =========================================================================
- const animatedEgrets=[],animatedSwallows=[];
+ const animatedEgrets=[],animatedSwallows=[],animatedSwans=[];
  function whiteEgret(x,y,z,rotY=0){
   const rootObj=new THREE.Group();rootObj.position.set(x,y,z);rootObj.rotation.y=rotY;animatedGarden.add(rootObj);
   // Slender charcoal legs and feet
@@ -299,9 +299,30 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   const crest=new THREE.Mesh(leafGeometry,mat('#f8fafc'));crest.position.set(0,.82,-.04);crest.scale.set(.02,.06,.2);crest.rotation.x=-.4;neckGroup.add(crest);
   animatedEgrets.push({root:rootObj,neck:neckGroup,baseY:y,phase:x*1.9+z*.8});
  }
- whiteEgret(-49.5,23.2,170.8,0.6); // Standing on rock by Moon Bridge inspecting koi
+ whiteEgret(-14.2,25.2,201.2,1.2); // Inner Garden river revetment rock by Moon Bridge
  whiteEgret(-33.2,23.5,172.5,-1.2); // Lakeside revetment under Weeping Willow
  whiteEgret(-61.8,23.0,199.2,1.0); // West Rockery Pool edge
+
+ function swimmingSwan(cx,cz,rx,rz,speed=0.38,phase=0){
+  const rootObj=new THREE.Group();rootObj.position.set(cx,22.38,cz);animatedGarden.add(rootObj);
+  const body=new THREE.Mesh(leafGeometry,mat('#ffffff'));body.position.set(0,.12,0);body.scale.set(.26,.2,.52);body.rotation.x=.16;rootObj.add(body);
+  const wings=[];
+  for(const side of [-1,1]){
+   const wing=new THREE.Mesh(leafGeometry,mat('#f6f8fb'));wing.position.set(side*.2,.19,-.04);wing.scale.set(.07,.22,.46);wing.rotation.x=.2;wing.rotation.z=side*.12;rootObj.add(wing);
+   wings.push(wing);
+  }
+  const tail=new THREE.Mesh(leafGeometry,mat('#f6f8fb'));tail.position.set(0,.2,-.3);tail.scale.set(.1,.14,.22);tail.rotation.x=.42;rootObj.add(tail);
+  const neckGroup=new THREE.Group();neckGroup.position.set(0,.18,.22);rootObj.add(neckGroup);
+  const n1=new THREE.Mesh(stemGeometry,mat('#ffffff'));n1.position.set(0,.2,.08);n1.scale.set(.05,.42,.05);n1.rotation.x=-.32;neckGroup.add(n1);
+  const n2=new THREE.Mesh(stemGeometry,mat('#ffffff'));n2.position.set(0,.46,.02);n2.scale.set(.045,.36,.045);n2.rotation.x=.34;neckGroup.add(n2);
+  const head=new THREE.Mesh(leafGeometry,mat('#ffffff'));head.position.set(0,.66,.12);head.scale.set(.08,.09,.14);neckGroup.add(head);
+  const knob=new THREE.Mesh(leafGeometry,mat('#111111'));knob.position.set(0,.69,.19);knob.scale.set(.04,.06,.045);neckGroup.add(knob);
+  const beak=new THREE.Mesh(stemGeometry,mat('#ea580c'));beak.position.set(0,.64,.26);beak.scale.set(.03,.2,.03);beak.rotation.x=Math.PI/2.1;neckGroup.add(beak);
+  animatedSwans.push({root:rootObj,neck:neckGroup,wings,cx,cz,rx,rz,speed,phase});
+ }
+ // Active swimming swans (优雅白天鹅游弋于碧波之中，游动觅食与振翅)
+ swimmingSwan(-8.0,202.5,3.6,2.2,0.42,0); // Inner Garden river
+ swimmingSwan(-42.0,186.0,5.2,2.8,0.36,1.8); // Central Huxinting lake
 
  function swallow(type,cx,cy,cz,radius=5.0,speed=2.5){
   const rootObj=new THREE.Group();animatedGarden.add(rootObj);
@@ -368,40 +389,40 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   const centerSpout=new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,.2,8),mat('#f5c842',true));centerSpout.position.set(fx,23.12,fz);garden.add(centerSpout);
  }
 
- const drops=new THREE.InstancedMesh(new THREE.SphereGeometry(.055,6,5),mat('#e2f8f5',true),96);
+ const drops=new THREE.InstancedMesh(new THREE.SphereGeometry(.016,4,3),mat('#e2f8f5',true),384);
  drops.name='yuyuan-fountain-droplets';drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);drops.frustumCulled=false;root.add(drops);
- const transform=new THREE.Matrix4(),position=new THREE.Vector3(),scale=new THREE.Vector3(1.2,2.4,1.2);
+ const transform=new THREE.Matrix4(),position=new THREE.Vector3(),scale=new THREE.Vector3(1,1,1);
  const tempQuat=new THREE.Quaternion(),upVec=new THREE.Vector3(0,1,0),dirVec=new THREE.Vector3();let elapsed=0;
 
  function animate(){
   for(let f=0;f<2;f++){
    const [fx,fz]=fountains[f];
-   for(let i=0;i<48;i++){
-    const idx=f*48+i;
-    if(i<16){
-     // 1. Center high-pressure column plume (中央直冲主柱: 16颗粒, 紧凑流线, 垂直拉伸)
-     const phase=((i/16 + elapsed*0.88)%1);
+   for(let i=0;i<192;i++){
+    const idx=f*192+i;
+    if(i<32){
+     // 1. Center high-pressure column plume (中央直冲主柱: 32粒细密晶莹水珠, 垂直拉伸流线)
+     const phase=((i/32 + elapsed*0.95)%1);
      const arc=Math.sin(phase*Math.PI);
-     const py=22.32 + 2.64*arc; // peaks at 24.96m (strictly within [22.29, 25.01])
-     const rSpread=0.38*arc;
+     const py=22.38 + 2.58*arc; // peaks at 24.96m (strictly within [22.29, 25.01])
+     const rSpread=0.28*arc;
      const angle=i*(Math.PI*2/8);
      position.set(fx+Math.cos(angle)*rSpread, py, fz+Math.sin(angle)*rSpread);
-     scale.set(1.2, 3.2*(0.6+0.4*arc), 1.2);
+     scale.set(0.9, 1.8*(0.6+0.4*arc), 0.9);
      transform.compose(position,tempQuat.identity(),scale);
     }else{
-     // 2. Outer cascading parabolic arched water canopy (外圈壮阔伞形大半径弧线喷水幕: 32颗粒, 8向圆周, 宽阔半径3.15m)
-     const jet=(i-16)%8;
-     const stepInJet=Math.floor((i-16)/8);
-     const phase=((stepInJet/4 + (jet%2)*0.06 + elapsed*0.78)%1);
-     const angle=jet*Math.PI/4;
-     const reach=3.15*phase; // 大喷泉半径: 达到 3.15 米广阔水幕!
-     const py=22.32 + 2.60*4*phase*(1-phase); // 顺畅抛物线弧线, 顶点 24.92m (严格在 [22.29, 25.01])
+     // 2. Cascading silky parabolic water canopy (外圈大半径流畅水幕: 10道连续抛物线水流带, 每道16颗细密水珠首尾相衔, 宽阔半径3.2m)
+     const jet=(i-32)%10;
+     const stepInJet=Math.floor((i-32)/10);
+     const phase=((stepInJet/16 + (jet%2)*0.03 + elapsed*0.82)%1);
+     const angle=jet*(Math.PI*2/10);
+     const reach=3.2*phase; // 大喷泉半径: 达到 3.2 米广阔水幕!
+     const py=22.38 + 2.58*4*phase*(1-phase); // 顺畅抛物线弧线, 顶点 24.96m (严格在 [22.29, 25.01])
      position.set(fx+Math.cos(angle)*reach, py, fz+Math.sin(angle)*reach);
-     const vy=2.60*4*(1-2*phase), vx=3.15*Math.cos(angle), vz=3.15*Math.sin(angle);
-     dirVec.set(vx, vy*0.6, vz).normalize();
+     const vy=2.58*4*(1-2*phase), vx=3.2*Math.cos(angle), vz=3.2*Math.sin(angle);
+     dirVec.set(vx, vy*0.75, vz).normalize();
      tempQuat.setFromUnitVectors(upVec, dirVec);
-     const stretch=1.8 + Math.abs(vy)*0.35;
-     scale.set(1.4, stretch, 1.4); // 水花大、水流饱满顺畅
+     const stretch=1.5 + Math.abs(vy)*0.35;
+     scale.set(1.0, stretch, 1.0); // 细密微珠拉伸为顺畅水流
      transform.compose(position,tempQuat,scale);
     }
     drops.setMatrixAt(idx,transform);
@@ -416,6 +437,19 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   for(const w of swayingWillows){
    const sway=Math.sin(elapsed*1.4+w.phase)*0.07;
    w.group.rotation.z=sway;w.group.rotation.x=Math.cos(elapsed*1.1+w.phase)*0.05;
+  }
+  // Graceful swimming swans gliding, water bobbing, and neck foraging
+  for(const sw of animatedSwans){
+   const t=elapsed*sw.speed+sw.phase;
+   const px=sw.cx+Math.cos(t)*sw.rx, pz=sw.cz+Math.sin(t)*sw.rz;
+   const bob=Math.sin(elapsed*2.4+sw.phase)*0.016;
+   sw.root.position.set(px,22.38+bob,pz);
+   const yaw=Math.atan2(-sw.rx*Math.sin(t),sw.rz*Math.cos(t))+Math.PI;
+   sw.root.rotation.set(Math.sin(elapsed*2.4+sw.phase)*0.025,yaw,0);
+   sw.neck.rotation.x=Math.sin(elapsed*1.8+sw.phase)*0.22;
+   sw.neck.rotation.y=Math.sin(elapsed*0.9+sw.phase)*0.32;
+   if(sw.wings[0])sw.wings[0].rotation.z=0.14+Math.sin(elapsed*3.2+sw.phase)*0.06;
+   if(sw.wings[1])sw.wings[1].rotation.z=-0.14-Math.sin(elapsed*3.2+sw.phase)*0.06;
   }
   // Graceful white egrets dipping and breathing
   for(const eg of animatedEgrets){
