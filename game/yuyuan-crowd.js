@@ -41,15 +41,38 @@ export function createYuyuanCrowd({scene,world,blocked}){
  addCircuit([[-99,156],[-94.5,156],[-94.5,246],[-99,246],[-99,156]],18,350);
  addCircuit([[-70,261],[-26,261],[-26,263],[-70,263],[-70,261]],12,370);
  addCircuit([[-73,166],[-70,166],[-70,192],[-73,192],[-73,166]],8,390);
- const inner=INNER_GARDEN_EAST_PATH.slice(1,-1);addCircuit([...inner,inner[0]],1,400);
- addCircuit([[-48,238],[-36,238],[-36,244],[-48,244],[-48,238]],1,410);
- addCircuit([[-70,202],[-64,202],[-64,214],[-70,214],[-70,202]],1,420);
+ addCircuit([[-35,198],[-31,202],[-31,208],[-35,208],[-35,198]],1,400);
+ addCircuit([[-60,246],[-50,246],[-50,254],[-60,254],[-60,246]],1,410);
+ addCircuit([[-70,202],[-64,202],[-64,211],[-70,211],[-70,202]],1,420);
  function staticClear(x,z){return !!world.get(Math.floor(x),25,Math.floor(z))&&!blocked(x,26,z);}
  function penetration(x,z){let volume=0;for(let ix=Math.floor(x-.29);ix<=Math.floor(x+.29);ix++)for(let iz=Math.floor(z-.29);iz<=Math.floor(z+.29);iz++)for(let iy=26;iy<=27;iy++)if(world.get(ix,iy,iz))volume+=Math.max(0,Math.min(x+.29,ix+1)-Math.max(x-.29,ix))*Math.max(0,Math.min(z+.29,iz+1)-Math.max(z-.29,iz))*(iy===26?1:.75);return volume;}
- function occupied(a,x,z){return people.some(b=>b!==a&&Math.hypot(x-b.root.position.x,z-b.root.position.z)<.65);}
- function stepTo(a,q,dt){const p=a.root.position,dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz),ratio=d?Math.min(1,a.speed*dt/d):0,x=p.x+dx*ratio,z=p.z+dz*ratio;
+ function occupied(a,x,z){
+  const r2=.52*.52;
+  for(let i=0;i<people.length;i++){
+   const b=people[i];
+   if(b===a)continue;
+   const bp=b.root.position;
+   const dx=x-bp.x;
+   if(dx>.52||dx<-.52)continue;
+   const dz=z-bp.z;
+   if(dz>.52||dz<-.52)continue;
+   if(dx*dx+dz*dz<r2)return true;
+  }
+  return false;
+ }
+ function stepTo(a,q,dt){
+  const p=a.root.position,dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz);
+  if(!d)return false;
+  const maxStep=a.speed*dt;
+  const stepDist=Math.min(d,maxStep);
+  const x=p.x+dx/d*stepDist,z=p.z+dz/d*stepDist;
   if(!staticClear(x,z)||occupied(a,x,z))return false;
-  a.travel+=Math.hypot(x-p.x,z-p.z);p.set(x,26,z);const angle=Math.atan2(Math.sin(q.yaw-a.root.rotation.y),Math.cos(q.yaw-a.root.rotation.y));a.root.rotation.y+=angle*(1-Math.exp(-4*dt));return true;
+  const movedDist=Math.hypot(x-p.x,z-p.z);
+  a.travel+=movedDist;
+  p.set(x,26,z);
+  const angle=Math.atan2(Math.sin(q.yaw-a.root.rotation.y),Math.cos(q.yaw-a.root.rotation.y));
+  a.root.rotation.y+=angle*(1-Math.exp(-4*dt));
+  return true;
  }
  function routeStart(a){const p=[a.root.position.x,a.root.position.z],candidates=[];
   for(let dx=-2;dx<=2;dx+=.5)for(let dz=-2;dz<=2;dz+=.5)candidates.push([Math.round((p[0]+dx)*2)/2,Math.round((p[1]+dz)*2)/2]);
@@ -66,17 +89,49 @@ export function createYuyuanCrowd({scene,world,blocked}){
   if(volume>1e-7)moved=escapeNewBlock(a,dt,volume);
   else if(a.pause>0)a.pause=Math.max(0,a.pause-dt);
   else if(a.detour){const detour=a.detour,target=detour.points[detour.index],p=a.root.position,q={x:target[0],z:target[1],yaw:Math.atan2(target[0]-p.x,target[1]-p.z)+Math.PI};moved=stepTo(a,q,dt);if(Math.hypot(p.x-q.x,p.z-q.z)<.06){detour.index++;if(detour.index>=detour.points.length){a.d=detour.endD;a.detour=null;}}else if(!moved&&a.wait>3&&!a.rerouteIn)reroute(a);}
-  else {const lead=people.find(b=>b!==a&&Math.hypot(b.root.position.x-a.root.position.x,b.root.position.z-a.root.position.z)<1.35);
+  else {
+   let lead=null;
+   const ax=a.root.position.x,az=a.root.position.z,ayaw=a.root.rotation.y;
+   for(let i=0;i<people.length;i++){
+    const b=people[i];
+    if(b===a)continue;
+    const bp=b.root.position;
+    const dx=bp.x-ax;
+    if(dx>1.2||dx<-1.2)continue;
+    const dz=bp.z-az;
+    if(dz>1.2||dz<-1.2)continue;
+    if(dx*dx+dz*dz<1.44){
+     const diff=Math.atan2(Math.sin(b.root.rotation.y-ayaw),Math.cos(b.root.rotation.y-ayaw));
+     if(Math.abs(diff)<1.2){lead=b;break;}
+    }
+   }
    let currentSpeed=a.speed;
    if(lead){
     const dist=Math.hypot(lead.root.position.x-a.root.position.x,lead.root.position.z-a.root.position.z);
-    currentSpeed=Math.min(a.speed,lead.speed*.96*Math.max(.72,Math.min(1.0,(dist-.6)/.35)));
+    currentSpeed=Math.min(a.speed,lead.speed*.96*Math.max(.72,Math.min(1.0,(dist-.5)/.35)));
    }
    const d=(a.d+currentSpeed*dt)%a.length,q=a.pose(d);
    if(!staticClear(q.x,q.z)){if(a.wait>.8&&!a.rerouteIn)reroute(a);}
    else {moved=stepTo(a,q,dt);if(moved)a.d=d;}
   }
-  if(moved){a.wait=0;a.browseIn-=dt;if(a.browseIn<=0&&!people.some(b=>b!==a&&Math.hypot(a.root.position.x-b.root.position.x,a.root.position.z-b.root.position.z)<2.2)){a.pause=.8+(a.phase%1.9);a.browseCount++;a.browseIn=18+(a.phase*7%31);}}
+  if(moved){
+   a.wait=0;a.browseIn-=dt;
+   if(a.browseIn<=0){
+    let crowded=false;
+    const ax=a.root.position.x,az=a.root.position.z;
+    for(let i=0;i<people.length;i++){
+     const b=people[i];
+     if(b===a)continue;
+     const bp=b.root.position;
+     const dx=ax-bp.x;
+     if(dx>2.2||dx<-2.2)continue;
+     const dz=az-bp.z;
+     if(dz>2.2||dz<-2.2)continue;
+     if(dx*dx+dz*dz<4.84){crowded=true;break;}
+    }
+    if(!crowded){a.pause=.8+(a.phase%1.9);a.browseCount++;a.browseIn=18+(a.phase*7%31);}
+   }
+  }
   else if(!a.pause)a.wait+=dt;
   const isWalking=THREE.MathUtils.damp(a.walkWeight??1,moved?1:0,10,dt);a.walkWeight=isWalking;
   const swing=Math.sin(a.travel*a.stride+a.phase)*.58*isWalking;

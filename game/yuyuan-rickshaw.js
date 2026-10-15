@@ -1,16 +1,45 @@
 import * as THREE from './three.module.js';
+import { YUYUAN_SHIFT } from './yuyuan-layout.js';
 
-// Closed-loop scenic tour route along the perimeter commercial pedestrian streets of Yuyuan
-// Total perimeter: ~450 meters encircling West Bazaar, South Street, East Bazaar and North Plaza
+// Closed-loop 4-corner scenic tour route encircling Yuyuan along its 4 pedestrian streets
 const TOUR_ROUTE = [
- [-100, 156],
- [-100, 210],
- [-100, 264],
- [-41,  264],
- [18,   264],
- [18,   210],
- [18,   156],
- [-41,  156]
+ // 1. West Pedestrian Street (Southbound along x = -96.5, clear 18m wide avenue)
+ [-96.5, 155.0],
+ [-96.5, 185.0],
+ [-96.5, 215.0],
+ [-96.5, 248.0],
+ [-96.5, 254.0],
+ // Corner 1: West to South Smooth Turn (西南角平滑大圆角)
+ [-94.5, 258.0],
+ [-91.0, 260.0],
+ [-86.0, 260.0],
+ // 2. South Connecting Street (Eastbound along z = 260.0, 15米极宽南街中央)
+ [-70.0, 260.0],
+ [-45.0, 260.0],
+ [-20.0, 260.0],
+ [0.0,   260.0],
+ [8.0,   260.0],
+ // Corner 2: South to East Smooth Turn (东南角平滑大圆角)
+ [14.0,  258.0],
+ [17.5,  254.0],
+ // 3. East Pedestrian Street (Northbound along x = 17.5, 9米繁华步行街正中央)
+ [17.5,  245.0],
+ [17.5,  220.0],
+ [17.5,  190.0],
+ [17.5,  162.0],
+ [17.5,  154.0],
+ // Corner 3: East to North Smooth Turn (东北角平滑大圆角)
+ [14.5,  151.0],
+ [10.0,  150.0],
+ // 4. North Approach Plaza (Westbound along z = 150.0, 宽阔前庭广场)
+ [0.0,   150.0],
+ [-25.0, 150.0],
+ [-46.5, 150.0],
+ [-70.0, 150.0],
+ [-86.0, 150.0],
+ // Corner 4: North to West Smooth Turn (西北角平滑大圆角)
+ [-92.5, 151.5],
+ [-96.5, 155.0]
 ];
 
 // Precompute cumulative arc length for smooth parametric progression
@@ -29,11 +58,115 @@ function getRoutePose(distance) {
  const t = (d - seg.startDist) / (seg.length || 1);
  const x = seg.from[0] + t * (seg.to[0] - seg.from[0]);
  const z = seg.from[1] + t * (seg.to[1] - seg.from[1]);
- const yaw = Math.atan2(seg.to[0] - seg.from[0], seg.to[1] - seg.from[1]);
+ // Look ahead for continuous smooth curve tangent yaw (平滑四角转向)
+ const dNext = (d + 1.2) % TOTAL_LENGTH;
+ const segNext = SEGMENTS.find(s => dNext >= s.startDist && dNext < s.startDist + s.length) || seg;
+ const tNext = (dNext - segNext.startDist) / (segNext.length || 1);
+ const xNext = segNext.from[0] + tNext * (segNext.to[0] - segNext.from[0]);
+ const zNext = segNext.from[1] + tNext * (segNext.to[1] - segNext.from[1]);
+ const yaw = Math.atan2(xNext - x, zNext - z);
  return { x, z, yaw };
 }
 
-export function createYuyuanRickshaws({ scene, root, getPos, setView, place, notify, onEvent = () => {} }) {
+let rickshawAudioCtx = null;
+let gameGetAudioFn = null;
+function getRickshawAudio() {
+ try {
+  if (gameGetAudioFn) return gameGetAudioFn();
+  rickshawAudioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+  if (rickshawAudioCtx.state === 'suspended') rickshawAudioCtx.resume()?.catch?.(() => {});
+  return rickshawAudioCtx;
+ } catch { return null; }
+}
+
+// Authentic Old Shanghai Rickshaw Foot Pedal Bell (双音铜铃 "叮——当！")
+function playRickshawBell() {
+ const ctx = getRickshawAudio();
+ if (!ctx) return;
+ const now = ctx.currentTime;
+ [[1760, 0, 0.42], [1318, 0.12, 0.45]].forEach(([freq, delay, dur]) => {
+  try {
+   const osc = ctx.createOscillator();
+   const oscHarm = ctx.createOscillator();
+   const gain = ctx.createGain();
+   osc.type = 'sine'; osc.frequency.value = freq;
+   oscHarm.type = 'triangle'; oscHarm.frequency.value = freq * 2.76;
+   const t = now + delay;
+   gain.gain.setValueAtTime(0.0001, t);
+   gain.gain.exponentialRampToValueAtTime(0.09, t + 0.008);
+   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+   osc.connect(gain); oscHarm.connect(gain);
+   gain.connect(ctx.destination);
+   osc.start(t); osc.stop(t + dur + 0.02);
+   oscHarm.start(t); oscHarm.stop(t + dur * 0.4);
+  } catch {}
+ });
+}
+
+// Authentic Chinese Male Vocal Hawking/Shouting Voice (真人男中音原声号子共振合成)
+function playRickshawMaleVoice(type = 'warn') {
+ const ctx = getRickshawAudio();
+ if (!ctx) return;
+ const now = ctx.currentTime;
+ const syllables = type === 'mount' 
+  ? [{ f0: 165, f0End: 145, dur: 0.22, delay: 0.15 }, { f0: 178, f0End: 152, dur: 0.35, delay: 0.42 }, { f0: 140, f0End: 110, dur: 0.48, delay: 0.82 }]
+  : type === 'arrive'
+  ? [{ f0: 172, f0End: 158, dur: 0.28, delay: 0.12 }, { f0: 164, f0End: 138, dur: 0.32, delay: 0.44 }, { f0: 145, f0End: 112, dur: 0.52, delay: 0.80 }]
+  : [
+    { f0: 182, f0End: 164, dur: 0.18, delay: 0.18 },
+    { f0: 175, f0End: 150, dur: 0.22, delay: 0.40 },
+    { f0: 195, f0End: 172, dur: 0.25, delay: 0.72 },
+    { f0: 168, f0End: 122, dur: 0.55, delay: 1.02 }
+  ];
+
+ for (const syl of syllables) {
+  try {
+   const t = now + syl.delay;
+   const osc = ctx.createOscillator();
+   osc.type = 'sawtooth';
+   osc.frequency.setValueAtTime(syl.f0, t);
+   osc.frequency.exponentialRampToValueAtTime(Math.max(70, syl.f0End), t + syl.dur);
+
+   const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 620; f1.Q.value = 4.2;
+   const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 1320; f2.Q.value = 5.5;
+   const f3 = ctx.createBiquadFilter(); f3.type = 'peaking'; f3.frequency.value = 2650; f3.gain.value = 8.0; f3.Q.value = 3.0;
+
+   const gain = ctx.createGain();
+   gain.gain.setValueAtTime(0.0001, t);
+   gain.gain.exponentialRampToValueAtTime(0.12, t + 0.04);
+   gain.gain.exponentialRampToValueAtTime(0.0001, t + syl.dur);
+
+   osc.connect(f1); f1.connect(f2); f2.connect(f3); f3.connect(gain);
+   gain.connect(ctx.destination);
+
+   osc.start(t);
+   osc.stop(t + syl.dur + 0.02);
+  } catch {}
+ }
+}
+
+// Authentic Hawking Voice Synthesis (结合浏览器原生中文真人发音 + 双音铜铃 + 喉鸣共振)
+function speakRickshawHawking(text, type = 'warn') {
+ playRickshawBell();
+ playRickshawMaleVoice(type);
+ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  try {
+   if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+   const utt = new SpeechSynthesisUtterance(text);
+   utt.lang = 'zh-CN';
+   utt.rate = 1.15;
+   utt.pitch = 0.92;
+   const voices = window.speechSynthesis.getVoices();
+   const zhVoices = voices.filter(v => v.lang && (v.lang.includes('zh') || v.lang.includes('cmn')));
+   const maleVoice = zhVoices.find(v => /male|男|yunyang|kangkang|breeze|qiang/i.test(v.name)) || zhVoices[0];
+   if (maleVoice) utt.voice = maleVoice;
+   window.speechSynthesis.speak(utt);
+  } catch {}
+ }
+}
+
+export function createYuyuanRickshaws({ scene, root, getPos, setView, place, notify, onEvent = () => {}, getAudio = null, getPedestrians = () => [] }) {
+ if (getAudio) gameGetAudioFn = getAudio;
  const rickshaws = [];
  const box = new THREE.BoxGeometry(1, 1, 1);
  const cyl = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -49,7 +182,7 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   group.name = 'yuyuan-rickshaw-' + id;
   root.add(group);
 
-  // 1. Double large spoked carriage wheels (双大木轮带铁圈)
+  // 1. Double large spoked carriage wheels (垂直立式双大木轮带铁圈，符合真实物理顺畅向前滚动)
   const wheels = [];
   const wheelR = 0.58;
   for (const side of [-1, 1]) {
@@ -57,25 +190,26 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
    wheelGroup.position.set(side * 0.72, wheelR, 0);
    group.add(wheelGroup);
 
-   // Outer iron rim
+   // Outer iron rim: rotated into vertical YZ plane (normal along X axle)
    const rim = new THREE.Mesh(new THREE.TorusGeometry(wheelR, 0.035, 6, 20), mat('#2a231d'));
+   rim.rotation.y = Math.PI / 2;
    wheelGroup.add(rim);
 
-   // Wooden wheel hub
+   // Wooden wheel hub: cylinder horizontal along X axle
    const hub = new THREE.Mesh(cyl, mat('#7b5534'));
    hub.rotation.z = Math.PI / 2;
    hub.scale.set(0.12, 0.14, 0.12);
    wheelGroup.add(hub);
 
-   // Radial spokes
+   // Radial spokes: strictly within the vertical YZ rolling plane
    for (let s = 0; s < 8; s++) {
     const sp = new THREE.Mesh(box, mat('#9a6f44'));
-    sp.rotation.y = s * (Math.PI / 8);
-    sp.scale.set(wheelR * 1.9, 0.024, 0.024);
+    sp.rotation.x = s * (Math.PI / 8);
+    sp.scale.set(0.024, wheelR * 1.92, 0.024);
     wheelGroup.add(sp);
    }
 
-   // Curved brass mudguard
+   // Curved brass mudguard fixed to chassis above wheel in YZ plane
    const mudguard = new THREE.Mesh(new THREE.TorusGeometry(wheelR + 0.06, 0.03, 4, 14, Math.PI * 0.75), mat('#a88746'));
    mudguard.position.set(side * 0.72, wheelR, 0);
    mudguard.rotation.y = Math.PI / 2;
@@ -222,36 +356,184 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
    distance: initialDist,
    speed: 0,
    targetSpeed: 0,
+   lateralOffset: 0,
+   targetLateralOffset: 0,
+   prevLateralOffset: 0,
+   avoidLockTime: 0,
+   lastAvoidVoiceTime: 0,
    seatOffset: new THREE.Vector3(0, 0.88, -0.05),
    pose: getRoutePose(initialDist)
   };
  }
 
- // Build 2 rickshaws spaced along the tour route
- rickshaws.push(buildRickshaw(1, 0));             // Near West bazaar North Entrance
- rickshaws.push(buildRickshaw(2, TOTAL_LENGTH / 2)); // Near Southeast Corner
+ // Build 8 rickshaws spaced along the 4-street tour route (增加至8辆黄包车分布四条街区)
+ for (let i = 0; i < 8; i++) {
+  rickshaws.push(buildRickshaw(i + 1, TOTAL_LENGTH * (i / 8)));
+ }
 
  // Active passenger riding state
  let ride = null;
  let elapsed = 0;
+ let lastVoiceTime = 0;
+ let lastPasserbyVoiceTime = 0;
 
- function tick(dt, keys = new Set()) {
+ function tick(dt, keys = new Set(), externalPedestrians = null) {
   elapsed += dt;
+  const peds = externalPedestrians ?? (getPedestrians ? getPedestrians() : []);
 
   for (const r of rickshaws) {
    const isRidden = ride?.rickshaw === r;
-   // Cruise at 4.6 m/s when carrying a passenger, or idle/crawl when empty
-   r.targetSpeed = isRidden ? 4.6 : 0;
-   r.speed = THREE.MathUtils.damp(r.speed, r.targetSpeed, 3.5, dt);
+   const yaw = r.pose.yaw;
+   const fx = Math.sin(yaw), fz = Math.cos(yaw);
+   const nx = Math.cos(yaw), nz = -Math.sin(yaw);
+
+   // 1. Collect all nearby obstacles in front
+   const allObstacles = [];
+   if (!ride || ride.rickshaw !== r) {
+    const pp = getPos?.();
+    if (pp && Math.abs(pp.y - 26.0) < 2.0) allObstacles.push(pp);
+   }
+   for (let i = 0; i < peds.length; i++) {
+    const p = peds[i];
+    if (!p) continue;
+    const px = p.root ? p.root.position.x : p.x;
+    const pz = p.root ? (p.root.position.z - YUYUAN_SHIFT) : p.z;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) continue;
+    if (Math.abs(px - r.pose.x) > 7.5 || Math.abs(pz - r.pose.z) > 7.5) continue;
+    allObstacles.push({ x: px, z: pz });
+   }
+   for (let i = 0; i < rickshaws.length; i++) {
+    const o = rickshaws[i];
+    if (o !== r) allObstacles.push(o.group.position);
+   }
+
+   // 2. Multi-lane clearance evaluation with hysteresis (彻底消除人多时左右摇晃与卡死)
+   const candidateLanes = [-1.35, 0, 1.35];
+   const laneScores = [0, 0, 0];
+   let minFwdDistance = 999;
+   let directlyBlocked = false;
+
+   for (let i = 0; i < allObstacles.length; i++) {
+    const ob = allObstacles[i];
+    const dx = ob.x - r.pose.x;
+    const dz = ob.z - r.pose.z;
+    const fwd = dx * fx + dz * fz;
+    if (fwd < 0.3 || fwd > 6.8) continue;
+    const lat = dx * nx + dz * nz;
+    if (Math.abs(lat) > 3.0) continue;
+
+    const urgency = (6.8 - fwd) / 6.5;
+
+    for (let l = 0; l < 3; l++) {
+     const laneOffset = candidateLanes[l];
+     const distToLane = Math.abs(lat - laneOffset);
+     if (distToLane < 1.35) {
+      laneScores[l] += urgency * 2.0;
+     }
+    }
+
+    const currentDistToCart = Math.abs(lat - r.lateralOffset);
+    if (currentDistToCart < 1.1) {
+     if (fwd < minFwdDistance) minFwdDistance = fwd;
+     if (fwd < 2.4) directlyBlocked = true;
+    }
+   }
+
+   // Hysteresis bias: penalty against toggling lanes unless significantly clearer
+   for (let l = 0; l < 3; l++) {
+    if (candidateLanes[l] === 0) laneScores[l] -= 0.15;
+    if (candidateLanes[l] !== r.targetLateralOffset) {
+     laneScores[l] += 0.45;
+    }
+   }
+
+   r.avoidLockTime = Math.max(0, (r.avoidLockTime || 0) - dt);
+
+   if (directlyBlocked || minFwdDistance < 4.8) {
+    if (r.avoidLockTime <= 0 || directlyBlocked) {
+     let bestLane = candidateLanes[0];
+     let lowestScore = laneScores[0];
+     for (let l = 1; l < 3; l++) {
+      if (laneScores[l] < lowestScore) {
+       lowestScore = laneScores[l];
+       bestLane = candidateLanes[l];
+      }
+     }
+     if (bestLane !== r.targetLateralOffset) {
+      r.targetLateralOffset = bestLane;
+      r.avoidLockTime = 2.2;
+     }
+    }
+
+    if (elapsed - r.lastAvoidVoiceTime > 4.2) {
+     r.lastAvoidVoiceTime = elapsed;
+     const calls = ['借光！借光！车来喽——！', '让一让嘞！车来喽！', '留神脚下，让条道嘞！'];
+     const shout = calls[Math.floor(Math.random() * calls.length)];
+     speakRickshawHawking(shout, 'warn');
+     notify('车夫及时避让路人：' + shout);
+    }
+   } else if (r.avoidLockTime <= 0) {
+    r.targetLateralOffset = 0;
+   }
+
+   r.lateralOffset = THREE.MathUtils.damp(r.lateralOffset, r.targetLateralOffset, 3.2, dt);
+
+   // 3. Smooth forward speed: continuous non-stopping flow, never freezes indefinitely
+   let targetBaseSpeed = isRidden ? 4.8 : 2.0;
+
+   // Inter-rickshaw safe headway
+   for (let i = 0; i < rickshaws.length; i++) {
+    const o = rickshaws[i];
+    if (o === r) continue;
+    const distDiff = (o.distance - r.distance + TOTAL_LENGTH) % TOTAL_LENGTH;
+    if (distDiff > 0.4 && distDiff < 6.0) {
+     targetBaseSpeed = Math.min(targetBaseSpeed, Math.max(0.6, o.speed * 0.9));
+     if (distDiff < 2.5) targetBaseSpeed = 0.4;
+    }
+   }
+
+   if (minFwdDistance < 0.6) {
+    targetBaseSpeed = 0.0;
+   } else if (minFwdDistance < 1.4) {
+    targetBaseSpeed = Math.min(targetBaseSpeed, 0.7);
+   } else if (minFwdDistance < 2.6) {
+    targetBaseSpeed = Math.min(targetBaseSpeed, 1.6);
+   } else if (minFwdDistance < 5.0) {
+    targetBaseSpeed = Math.min(targetBaseSpeed, 2.8);
+   }
+
+   r.targetSpeed = targetBaseSpeed;
+   r.speed = THREE.MathUtils.damp(r.speed, r.targetSpeed, targetBaseSpeed < r.speed ? 4.5 : 2.5, dt);
 
    if (r.speed > 0.01) {
     const travel = r.speed * dt;
     r.distance += travel;
     if (isRidden) {
      ride.lapDistance += travel;
+     if (elapsed - lastVoiceTime > 9) {
+      lastVoiceTime = elapsed;
+      const calls = [
+       '借光！借光！车来喽——！',
+       '让一让嘞！车来喽！',
+       '借光借光，留神脚下！',
+       '车来喽！客官慢走！'
+      ];
+      const shout = calls[Math.floor(Math.random() * calls.length)];
+      speakRickshawHawking(shout, 'warn');
+      notify('车夫吆喝：' + shout);
+     }
+    } else if (!ride) {
+     const p = getPos();
+     const dist = Math.hypot(p.x - r.group.position.x, p.z - r.group.position.z);
+     if (dist < 13.0 && Math.abs(p.y - 26.0) < 2.5 && elapsed - lastPasserbyVoiceTime > 8) {
+      lastPasserbyVoiceTime = elapsed;
+      const shout = '借光！借光！车来喽——！';
+      speakRickshawHawking(shout, 'warn');
+      notify('黄包车夫吆喝：借光！借光！车来喽——！');
+     }
     }
 
-    // Spin wheels
+    // 4. Spin wheels vertically along rolling contact axis (垂直立式顺畅前滚)
     const wheelRot = travel / 0.58;
     for (const w of r.wheels) {
      w.rotation.x += wheelRot;
@@ -268,10 +550,13 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
     r.torso.position.y = 1.08;
    }
 
-   // Update position and heading along route
+   // 5. Update position with dynamic lateral avoidance offset and natural steer yaw
    r.pose = getRoutePose(r.distance);
-   r.group.position.set(r.pose.x, 26.0, r.pose.z);
-   r.group.rotation.y = r.pose.yaw;
+   r.group.position.set(r.pose.x + nx * r.lateralOffset, 26.0, r.pose.z + nz * r.lateralOffset);
+   const latDelta = (r.lateralOffset - (r.prevLateralOffset ?? r.lateralOffset)) / Math.max(0.001, dt);
+   r.prevLateralOffset = r.lateralOffset;
+   const steerAngle = Math.max(-0.22, Math.min(0.22, Math.atan2(latDelta, Math.max(1.0, r.speed)) * 0.35));
+   r.group.rotation.y = r.pose.yaw + steerAngle;
   }
 
   // Handle passenger riding mechanics
@@ -309,7 +594,9 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   };
   r.targetSpeed = 4.6;
   setView(r.pose.yaw, -0.08);
-  notify('车夫：客官坐稳嘞！环豫园老街一圈走起！(按 空格 或 V 随时下车)');
+  lastVoiceTime = elapsed;
+  speakRickshawHawking('客官坐稳喽！环豫园老街一圈走起！', 'mount');
+  notify('车夫：客官坐稳喽！环豫园老街一圈走起！(按 空格 或 V 随时下车)');
   onEvent({ type: 'yuyuan-rickshaw-ride' });
  }
 
@@ -328,6 +615,8 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   r.targetSpeed = 0;
   ride = null;
 
+  const farewell = reason === '全程到站' ? '客官，到站嘞！一圈老街逛完咯，您请慢走！' : '客官请慢走！祝您游园愉快！';
+  speakRickshawHawking(farewell, 'arrive');
   if (reason === '全程到站') {
    notify('车夫：客官，到站嘞！一圈老街逛完咯，您请慢走！');
   } else {
@@ -356,14 +645,20 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   if (!ride) return null;
   const r = ride.rickshaw;
   const p = r.group.position;
+  const worldZ = p.z + YUYUAN_SHIFT;
   const ry = r.group.rotation.y;
 
   // Gentle camera follow behind passenger seat looking forward through street
   const camDist = 3.6;
-  const focus = { x: p.x, y: p.y + 1.45, z: p.z };
+  const focusY = p.y + 1.45;
   const camX = p.x - Math.sin(ry) * camDist;
   const camY = p.y + 2.3;
-  const camZ = p.z - Math.cos(ry) * camDist;
+  const camZ = worldZ - Math.cos(ry) * camDist;
+  const focus = {
+   x: p.x + Math.sin(ry) * 2.5,
+   y: focusY,
+   z: worldZ + Math.cos(ry) * 2.5
+  };
 
   return {
    position: { x: camX, y: camY, z: camZ },

@@ -237,29 +237,33 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   // Hook / cable
   box(g, '#785b3b', 0, -0.06, 0, .02, .12, .02);
 
-  // Main lantern body
-  const body = new THREE.Mesh(cylinder, mat(color, true));
-  body.position.set(0, -0.36*scale, 0);
-  body.scale.set(.24*scale, .5*scale, .24*scale);
-  g.add(body);
-
-  // Soft glowing core
-  const coreMat = mat('#fff8dd', true);
+  // Warm golden-amber glowing luminous inner core (暖金黄发光内核)
+  const coreMat = mat('#ffc107', true);
   const core = new THREE.Mesh(cylinder, coreMat);
   core.position.set(0, -0.36*scale, 0);
-  core.scale.set(.11*scale, .44*scale, .11*scale);
+  core.scale.set(.18*scale, .48*scale, .18*scale);
   g.add(core);
-  flickeringLights.push({mat: coreMat, baseColor: new THREE.Color('#fff8dd'), phase: phaseOffset});
+  flickeringLights.push({mat: coreMat, baseColor: new THREE.Color('#ffc107'), phase: phaseOffset});
+
+  // Translucent Crimson silk gauze outer lampshade (红里透黄薄纱红罩)
+  const gauzeMat = new THREE.MeshLambertMaterial({color:'#e53935', emissive:'#b71c1c', transparent:true, opacity:0.65, depthWrite:false});
+  const body = new THREE.Mesh(cylinder, gauzeMat);
+  body.position.set(0, -0.36*scale, 0);
+  body.scale.set(.28*scale, .52*scale, .28*scale);
+  g.add(body);
+
+  // Golden waist hoop trim (金边腰箍)
+  disk(g, gold, 0, -0.36*scale, 0, .285*scale, .025*scale);
 
   // Top & bottom brass collars
-  disk(g, gold, 0, -0.11*scale, 0, .18*scale, .035*scale);
-  disk(g, gold, 0, -0.61*scale, 0, .17*scale, .035*scale);
+  disk(g, gold, 0, -0.1*scale, 0, .2*scale, .04*scale);
+  disk(g, gold, 0, -0.62*scale, 0, .19*scale, .04*scale);
 
-  // Bottom red fringe / tassel
-  box(g, '#d82d22', 0, -0.76*scale, 0, .04*scale, .26*scale, .04*scale);
-  disk(g, gold, 0, -0.63*scale, 0, .05*scale, .02*scale);
+  // Bottom red fringe & golden tassel (红穗流苏)
+  box(g, '#d82d22', 0, -0.82*scale, 0, .05*scale, .36*scale, .05*scale);
+  disk(g, gold, 0, -0.64*scale, 0, .06*scale, .025*scale);
 
-  swayingObjects.push({group: g, phase: phaseOffset, speed: 1.6, maxAngleZ: 0.075, maxAngleX: 0.045, type: 'lantern'});
+  swayingObjects.push({group: g, phase: phaseOffset, speed: 1.6, maxAngleZ: 0.08, maxAngleX: 0.05, type: 'lantern'});
   return g;
  }
 
@@ -778,8 +782,8 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   box(g,'#653e2d',0,.48,.28,.14,.14,.14);
   fixtures.push({x,z,rx:.4,rz:.4,y:26,h:1.3});
  }
- stoneLion(-43.2,149.5,-Math.PI/2);
- stoneLion(-49.8,149.5,Math.PI/2);
+ stoneLion(-41.0,149.0,-Math.PI/2);
+ stoneLion(-52.0,149.0,Math.PI/2);
  stoneLion(-90.8,156,-Math.PI/2);
  stoneLion(-102.2,156,Math.PI/2);
  stoneLion(11.8,156,-Math.PI/2);
@@ -830,17 +834,20 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   for(let i = 0; i < count; i++){
    const t = (i + 0.5) / count, lx = x1 + (x2 - x1) * t, sag = Math.sin(t * Math.PI) * 0.26, ly = y - sag;
    const color = lanternColors[(Math.floor(z * 3 + lx * 2) % lanternColors.length + lanternColors.length) % lanternColors.length];
-   createSwayingLantern(root, lx, ly, z, color, 0.95, lx*2.3+z*1.7);
+   createSwayingLantern(root, lx, ly, z, color, 1.65, lx*2.3+z*1.7);
   }
  }
 
  function setStocks(stocks={}){for(const [key,units]of Object.entries(goods)){const count=Number.isFinite(stocks[key])?Math.max(0,Math.min(units.length,Math.floor(stocks[key]))):units.length;units.forEach((group,i)=>{group.visible=i<count;});}}
  setStocks();
 
- // Animation tick: smooth harmonic swaying in the wind + soft hazy breathing glow
- let clock = 0;
+ // Animation tick: smooth harmonic swaying in the wind + soft hazy breathing glow (30Hz节流避免逐帧CPU占用)
+ let clock = 0, animTimer = 0;
  function tick(dt, {night=false}={}){
   clock += dt;
+  animTimer += dt;
+  if(animTimer < 0.033) return;
+  animTimer = 0;
   const t = clock;
   // 1. Lanterns & flags sway gently in the breeze
   for(let i = 0; i < swayingObjects.length; i++){
@@ -852,10 +859,10 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
    item.group.rotation.x = swayX;
   }
   // 2. Soft hazy breathing glow for lantern cores
-  for(let i = 0; i < flickeringLights.length; i++){
-   const item = flickeringLights[i];
-   const breathe = 0.88 + 0.12 * Math.sin(t * 2.4 + item.phase) + 0.04 * Math.sin(t * 5.8 + item.phase * 1.7);
-   if(night && item.mat?.color){
+  if(night && flickeringLights.length > 0){
+   const breathe = 0.88 + 0.12 * Math.sin(t * 2.4);
+   const item = flickeringLights[0];
+   if(item?.mat?.color){
     item.mat.color.setRGB(item.baseColor.r * breathe, item.baseColor.g * breathe, item.baseColor.b * breathe);
    }
   }

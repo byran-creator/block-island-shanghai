@@ -21,7 +21,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  const lineNumber=config?.lineNumber??2,signOptions=config?.signOptions??{},trainOptions=config?.trainOptions??{},METRO_CARS=trainOptions.cars??BASE_CARS,METRO_SEATS=config?makeMetroSeats(METRO_CARS):BASE_SEATS,METRO_DOOR_CENTERS=METRO_CARS.flatMap(x=>[x-2,x+2]),nearestMetroDoor=x=>METRO_DOOR_CENTERS.reduce((a,b)=>Math.abs(b-x)<Math.abs(a-x)?b:a),halfTrain=METRO_CARS.at(-1)+3,cabinBlocked=(x,z,p)=>baseCabinBlocked(x,z,p,METRO_CARS);
 
  const root=new THREE.Group();root.name='shanghai-line-'+lineNumber;scene.add(root);
- const tileTexture=terrazzoTexture(),box=new THREE.BoxGeometry(1,1,1),mats=new Map(),stations=[],staff=[],trains=[];let clock=0,ride=null,scan=null,audioAllowed=false,ownSpeech=false,subtitleTime=0;
+ const tileTexture=terrazzoTexture(),box=new THREE.BoxGeometry(1,1,1),mats=new Map(),stations=[],staff=[],trains=[];let clock=0,treadTimer=0,ride=null,scan=null,audioAllowed=false,ownSpeech=false,subtitleTime=0;
  const hud=document.createElement('aside');hud.id=lineNumber===2?'metro-status':'metro-status-'+lineNumber;hud.className='metro-status';hud.hidden=true;document.body.append(hud);
  const caption=document.createElement('div');caption.id=lineNumber===2?'metro-caption':'metro-caption-'+lineNumber;caption.className='metro-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');document.body.append(caption);
  function mat(color,opacity=1){const k=color+opacity;if(!mats.has(k))mats.set(k,new THREE.MeshBasicMaterial({color,transparent:opacity<1,opacity,depthWrite:opacity===1}));return mats.get(k);}
@@ -182,7 +182,11 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   }
   if(!ride&&playing)tryBoard();
   if(playing)walkRider(dt,keys);positionRider();const p=getPos(),r=metroRampAt(p.x,p.z),h=metroRampFloor(p.x,p.z);if(!ride&&canCarry()&&r&&Math.abs(p.y-h)<.13){const d=(p.x-r.x)*r.dir;if(d>.05&&d<r.length-.05){const step=(p.z>=r.z?1:-1)*r.dir*dt*.7,x=p.x+step;place({x,y:metroRampFloor(x,p.z),z:p.z});}}
-  for(const [index,{r,i,side}]of treads.entries()){const u=((i/36+clock*.026*side)%1+1)%1;if(u<.025||u>.975){treadPose.scale.set(0,0,0);treadPose.position.set(r.x,0,r.z);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);continue;}const x=r.x+r.dir*r.length*u,dip=u<.06?(0.06-u)*2.5:u>.94?(u-.94)*2.5:0;treadPose.position.set(x,r.from+(r.to-r.from)*u+.015-dip,r.z+side*r.width*.5);treadPose.scale.set(r.length/36,.035,r.width*.91);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);}treadBatch.instanceMatrix.needsUpdate=true;
+  treadTimer+=dt;
+  if(treadTimer>=0.033||dt===0){
+   treadTimer=0;
+   for(const [index,{r,i,side}]of treads.entries()){const u=((i/36+clock*.026*side)%1+1)%1;if(u<.025||u>.975){treadPose.scale.set(0,0,0);treadPose.position.set(r.x,0,r.z);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);continue;}const x=r.x+r.dir*r.length*u,dip=u<.06?(0.06-u)*2.5:u>.94?(u-.94)*2.5:0;treadPose.position.set(x,r.from+(r.to-r.from)*u+.015-dip,r.z+side*r.width*.5);treadPose.scale.set(r.length/36,.035,r.width*.91);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);}treadBatch.instanceMatrix.needsUpdate=true;
+  }
   for(const s of stations){tickGate(s,dt);s.routes.forEach((r,i)=>r.visible=i===(s.paid?2:s.checked?1:0));if(s.gateMesh)s.gateMesh.visible=!s.gatePass;for(const d of s.doors){const t=trains.find(t=>t.direction===-d.side);d.set(t.state.station===stationIndex(s)?t.doorAmount:0);}
    s.people.forEach(p=>{const x=p.x+Math.sin(clock*p.speed+p.phase)*.65;if(p.clear(x,p.y,p.z))p.root.position.x=x;p.root.rotation.y=Math.sin(clock*.12+p.phase);});
    const second=Math.floor(clock);if(second!==s.lastSecond){s.lastSecond=second;for(const {screen,dir}of s.screens){const t=trains.find(t=>t.direction===dir),here=t.state.station===stationIndex(s)&&t.state.phase==='dwell',n=Math.ceil(arrivalSeconds(clock,stationIndex(s),t.offset,t.direction));screen.paint([metroPlatformDirection(s,dir).zh,here?(t.state.open?'列车已到站 · 请先下后上':'列车已到站 · 请留意车门'):'下一班 '+Math.floor(n/60)+'分 '+n%60+'秒']);if(dt>0&&n===5&&metroStationAt(getPos())?.id===s.id)announce('列车即将进站，请站在黄色安全线以内。','A train is approaching. Please stand behind the yellow line.',{cue:'arrival'});}}

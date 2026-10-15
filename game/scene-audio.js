@@ -57,7 +57,8 @@ export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,U
   if(dialogue){cancelCall();return;}
   const callInterval=area.bazaar?12:24;
   if(clock-lastCall>callInterval&&Utterance&&speech&&!speech.speaking&&!speech.pending){
-   const vendor=vendors.find(v=>{const vp=v.root?.position??v.position??v;return Math.abs(pos.y-vp.y)<4&&Math.hypot(pos.x-vp.x,pos.z-vp.z)<12;});
+   const list=typeof vendors==='function'?vendors():vendors;
+   const vendor=list.find(v=>{const vp=v.root?.position??v.position??v;return Math.abs(pos.y-vp.y)<4&&Math.hypot(pos.x-vp.x,pos.z-vp.z)<12;});
    if(vendor){
     lastCall=clock;
     const callZh=vendor.callZh||(area.bazaar?(vendor.food?'南翔小笼馒头，现包现蒸，皮薄汁多！':'老城厢手作特产，欢迎进店观赏！'):(vendor.food?'热乎的小笼生煎，来尝尝！':'海派纪念品，欢迎来看看！'));
