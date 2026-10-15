@@ -1,4 +1,5 @@
 import {createRickshawAudio,RICKSHAW_LINES} from './rickshaw-audio.js';
+import {rickshawMetroClear,rickshawMetroSweepClear} from './rickshaw-clearance.js';
 import * as THREE from './three.module.js';
 import { YUYUAN_SHIFT } from './yuyuan-layout.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
@@ -44,7 +45,11 @@ const TOUR_ROUTE = [
  [-25.0, 150.0],
  [-46.5, 150.0],
  [-70.0, 150.0],
- [-86.0, 150.0],
+ [-77.0, 150.0],
+ // Pass north of the real Line 10 canopy; never drive through its open doorway.
+ [-80.0, 147.3],
+ [-91.0, 147.3],
+ [-94.0, 149.0],
  // Corner 4: North to West Smooth Turn (西北角平滑大圆角)
  [-92.5, 151.5],
  [-96.5, 155.0]
@@ -257,6 +262,9 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   rightLeg.scale.set(0.15, 0.68, 0.18);
   puller.add(rightLeg);
 
+  const initialPose=getRoutePose(initialDist);
+  group.position.set(initialPose.x,26,initialPose.z);
+  group.rotation.y=initialPose.yaw;
   return {
    id,
    group,
@@ -274,7 +282,7 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
    avoidLockTime: 0,
    lastAvoidVoiceTime: 0,
    seatOffset: new THREE.Vector3(0, 0.88, -0.05),
-   pose: getRoutePose(initialDist)
+   pose: initialPose
   };
  }
 
@@ -323,8 +331,16 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
    }
 
    // 2. Multi-lane clearance evaluation with hysteresis (彻底消除人多时左右摇晃与卡死)
-   const candidateLanes = [-1.35, 0, 1.35];
+   // The north detour fits between the station canopy and the existing street edge.
+   // Keep the full puller footprint on paving instead of swerving over that edge.
+   const tightCorner=r.pose.x<-70&&r.pose.z<158;
+   const candidateLanes = tightCorner?[-.25,0,.25]:[-1.35, 0, 1.35];
+   if(!candidateLanes.includes(r.targetLateralOffset))r.targetLateralOffset=0;
    const laneScores = [0, 0, 0];
+   for(let l=0;l<candidateLanes.length;l++)for(const ahead of [0,1.5,3,5]){
+    const p=getRoutePose(r.distance+ahead),offset=candidateLanes[l];
+    if(!rickshawMetroClear(p.x+Math.cos(p.yaw)*offset,p.z-Math.sin(p.yaw)*offset,p.yaw)){laneScores[l]=Infinity;break;}
+   }
    let minFwdDistance = 999;
    let directlyBlocked = false;
 
@@ -374,7 +390,7 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
        bestLane = candidateLanes[l];
       }
      }
-     if (bestLane !== r.targetLateralOffset) {
+     if (Number.isFinite(lowestScore) && bestLane !== r.targetLateralOffset) {
       r.targetLateralOffset = bestLane;
       r.avoidLockTime = 2.2;
      }
@@ -389,6 +405,8 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
     r.targetLateralOffset = 0;
    }
 
+   if(!Number.isFinite(laneScores[candidateLanes.indexOf(r.targetLateralOffset)]))r.targetLateralOffset=0;
+   const previousLateral=r.lateralOffset;
    r.lateralOffset = THREE.MathUtils.damp(r.lateralOffset, r.targetLateralOffset, 3.2, dt);
 
    // 3. Smooth forward speed: continuous non-stopping flow, never freezes indefinitely
@@ -417,6 +435,14 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
 
    r.targetSpeed = targetBaseSpeed;
    r.speed = THREE.MathUtils.damp(r.speed, r.targetSpeed, targetBaseSpeed < r.speed ? 4.5 : 2.5, dt);
+
+   let nextPose=getRoutePose(r.distance+r.speed*dt);
+   const latDelta=(r.lateralOffset-previousLateral)/Math.max(.001,dt),steer=Math.max(-.22,Math.min(.22,Math.atan2(latDelta,Math.max(1,r.speed))*.35));
+   let nextX=nextPose.x+Math.cos(nextPose.yaw)*r.lateralOffset,nextZ=nextPose.z-Math.sin(nextPose.yaw)*r.lateralOffset,nextYaw=nextPose.yaw+steer;
+   if(!rickshawMetroSweepClear(r.group,nextX,nextZ,nextYaw)){
+    r.speed=0;r.lateralOffset=previousLateral;r.targetLateralOffset=0;
+    nextPose=r.pose;nextX=r.group.position.x;nextZ=r.group.position.z;nextYaw=r.group.rotation.y;
+   }
 
    if (r.speed > 0.01) {
     const travel = r.speed * dt;
@@ -456,12 +482,10 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
    }
 
    // 5. Update position with dynamic lateral avoidance offset and natural steer yaw
-   r.pose = getRoutePose(r.distance);
-   r.group.position.set(r.pose.x + nx * r.lateralOffset, 26.0, r.pose.z + nz * r.lateralOffset);
-   const latDelta = (r.lateralOffset - (r.prevLateralOffset ?? r.lateralOffset)) / Math.max(0.001, dt);
+   r.pose = nextPose;
+   r.group.position.set(nextX, 26.0, nextZ);
    r.prevLateralOffset = r.lateralOffset;
-   const steerAngle = Math.max(-0.22, Math.min(0.22, Math.atan2(latDelta, Math.max(1.0, r.speed)) * 0.35));
-   r.group.rotation.y = r.pose.yaw + steerAngle;
+   r.group.rotation.y = nextYaw;
   }
 
   // Handle passenger riding mechanics

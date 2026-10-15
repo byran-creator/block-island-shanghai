@@ -375,14 +375,14 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-update-v55-seen';
+const UPDATE_NOTICE_KEY='block-island-update-v54-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
 $('update-close')?.addEventListener('click',dismissUpdateNotice);
 $('update-start-btn')?.addEventListener('click',dismissUpdateNotice);
 updateDialog?.addEventListener('cancel',e=>{e.preventDefault();dismissUpdateNotice();});
-try{if(!localStorage.getItem(UPDATE_NOTICE_KEY)){updateDialog?.showModal();}}catch{}
+try{if(localStorage.getItem('block-island-update-v55-seen'))localStorage.setItem('block-island-update-v54-seen','true');if(!localStorage.getItem(UPDATE_NOTICE_KEY)){updateDialog?.showModal();}}catch{}
 refreshTimeControls();
 mountVoiceSettings();
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
