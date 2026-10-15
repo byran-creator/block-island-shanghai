@@ -121,12 +121,11 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  block('#88857a',-72,31.7,224,.7,.6,.7);
  block('#88857a',-72-.75,31.45,224,.4,.35,.4);block('#88857a',-72+.75,31.45,224,.4,.35,.4);
 
- // Other scenic Taihu rock groups throughout the garden
- lakeRock(-63.8,200.2,1.95,21.8);lakeRock(-67.6,199.7,.8,22.1);
- lakeRock(-47.4,201.3,1.12);lakeRock(-73.1,197,1.2);lakeRock(-63,195.5,.75);lakeRock(-32.7,205.6,.58);
- lakeRock(-8.1,202,1.4,21.8);lakeRock(-11.5,198.8,.65,22.1);lakeRock(-16.1,205.3,.55);
- lakeRock(-76,212,2.2,21.5);lakeRock(-78,228,2.4,21.5);
- lakeRock(-58,238,1.6,22.0);lakeRock(-48,246,1.4,22.0);lakeRock(-22,238,1.5,22.0);
+ // Other scenic Taihu rock groups on green lawn (全园景观叠石置于青翠草地绿坪上，坚决不在河道水体中，且不阻挡步道)
+ lakeRock(-72.5,196.5,1.1,26);lakeRock(-47.4,201.3,1.12,26);lakeRock(-73.1,197,1.2,26);lakeRock(-63,195.5,.75,26);lakeRock(-32.7,205.6,.58,26);
+ lakeRock(-2.0,202.5,.75,26);
+ lakeRock(-76,212,2.2,26);lakeRock(-78,228,2.4,26);
+ lakeRock(-58,238,1.6,26);lakeRock(-48,246,1.4,26);lakeRock(-22,238,1.5,26);
 
  // 4. The Iconic Undulating Dragon Wall (穿云龙墙)
  const dragonPts=[[-78,216],[-70,217],[-62,219],[-54,218],[-46,216],[-38,215],[-30,217]];
@@ -328,9 +327,9 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  function coveredGalleryBridge(x1,z1,x2,z2,width=2.4){
   const len=Math.hypot(x2-x1,z2-z1),yaw=Math.atan2(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2;
   const bGroup=new THREE.Group();bGroup.position.set(cx,26,cz);bGroup.rotation.y=yaw;group.add(bGroup);
-  // Taihu rock pier footings in water
+  // Architectural stone bridge piers
   for(let d=-len/2+1.2;d<=len/2-1.2;d+=2.8){
-   const pier=new THREE.Mesh(rock,rockMaterial);pier.position.set(0,-1.8,d);pier.scale.set(width*.6,2.2,1.4);bGroup.add(pier);
+   const pier=new THREE.Mesh(box,mat('#72776c'));pier.position.set(0,-1.8,d);pier.scale.set(width*.6,2.2,.45);bGroup.add(pier);
   }
   // Heavy timber deck & stone curbstones
   const deck=new THREE.Mesh(box,mat('#563a28'));deck.position.set(0,.12,0);deck.scale.set(width,.24,len);bGroup.add(deck);
@@ -349,24 +348,10 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   const ridge=new THREE.Mesh(box,mat('#56635d'));ridge.position.set(0,3.02,0);ridge.scale.set(.3,.16,len+.8);bGroup.add(ridge);
  }
 
- function stoneArchBridge(x1,z1,x2,z2,width=2.2){
-  const len=Math.hypot(x2-x1,z2-z1),yaw=Math.atan2(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2;
-  const aGroup=new THREE.Group();aGroup.position.set(cx,26,cz);aGroup.rotation.y=yaw;group.add(aGroup);
-  for(let i=0;i<9;i++){
-   const t=(i-4)/4,archY=(1-t*t)*.65,stepZ=t*(len/2-.3);
-   const slab=new THREE.Mesh(box,mat('#afb2a6'));slab.position.set(0,archY+.1,stepZ);slab.scale.set(width,.22,len/8.5);aGroup.add(slab);
-   for(const side of [-1,1]){
-    const post=new THREE.Mesh(box,mat('#9ba092'));post.position.set(side*(width/2-.1),archY+.55,stepZ);post.scale.set(.16,.68,.16);aGroup.add(post);
-    const finial=new THREE.Mesh(leaf,mat('#afb4a7'));finial.position.set(side*(width/2-.1),archY+.95,stepZ);finial.scale.set(.1,.14,.1);aGroup.add(finial);
-   }
-  }
-  for(const side of [-1,1]){
-   const rail=new THREE.Mesh(box,mat('#979c8e'));rail.position.set(side*(width/2-.1),.72,0);rail.scale.set(.08,.12,len);aGroup.add(rail);
-  }
- }
+ // Covered Water Gallery placed across West Lake (西池水上长廊：横跨西园湖面，独享西池碧波水景)
+ coveredGalleryBridge(-63.5,197.5,-63.5,202.5,2.4);
+ // South Garden dry walkway corridor (南园游廊)
  coveredGalleryBridge(-50,236,-34,236,2.5);
- coveredGalleryBridge(-16,203,-2,203,2.2);
- stoneArchBridge(-63.5,197,-63.5,203,2.2);
 
  // 7b. Dense Flowering Shrubs, Osmanthus & Peony Clusters (四季名花、杜鹃与桂花灌木丛)
  function flowerShrub(x,z,rx=1.1,ry=.7,rz=1.1,foliage='#3d6238',flower='#e85a7d'){
