@@ -21,7 +21,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  const lineNumber=config?.lineNumber??2,signOptions=config?.signOptions??{},trainOptions=config?.trainOptions??{},METRO_CARS=trainOptions.cars??BASE_CARS,METRO_SEATS=config?makeMetroSeats(METRO_CARS):BASE_SEATS,METRO_DOOR_CENTERS=METRO_CARS.flatMap(x=>[x-2,x+2]),nearestMetroDoor=x=>METRO_DOOR_CENTERS.reduce((a,b)=>Math.abs(b-x)<Math.abs(a-x)?b:a),halfTrain=METRO_CARS.at(-1)+3,cabinBlocked=(x,z,p)=>baseCabinBlocked(x,z,p,METRO_CARS);
 
  const root=new THREE.Group();root.name='shanghai-line-'+lineNumber;scene.add(root);
- const tileTexture=terrazzoTexture(),box=new THREE.BoxGeometry(1,1,1),mats=new Map(),stations=[],staff=[],trains=[];let clock=0,ride=null,scan=null,audioAllowed=false,ownSpeech=false,subtitleTime=0;
+ const tileTexture=terrazzoTexture(),box=new THREE.BoxGeometry(1,1,1),mats=new Map(),stations=[],staff=[],trains=[];let clock=0,treadTimer=0,ride=null,scan=null,audioAllowed=false,ownSpeech=false,subtitleTime=0;
  const hud=document.createElement('aside');hud.id=lineNumber===2?'metro-status':'metro-status-'+lineNumber;hud.className='metro-status';hud.hidden=true;document.body.append(hud);
  const caption=document.createElement('div');caption.id=lineNumber===2?'metro-caption':'metro-caption-'+lineNumber;caption.className='metro-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');document.body.append(caption);
  function mat(color,opacity=1){const k=color+opacity;if(!mats.has(k))mats.set(k,new THREE.MeshBasicMaterial({color,transparent:opacity<1,opacity,depthWrite:opacity===1}));return mats.get(k);}
@@ -113,8 +113,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function stationIndex(s){return METRO_STATIONS.findIndex(a=>a.id===s.id);}
  const dynamic=new Set([...trains.flatMap(t=>[t.root,...t.exchanges]),...staff.map(s=>s.root),...stations.flatMap(s=>[s.gateMesh,s.bag,...s.people.map(p=>p.root),...s.doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...s.routes])]);
  batchMeshes(root,staticMeshes(root,dynamic),'station-interior');
- function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked){notify('你已通过安检，请沿青色地面线去绿色箭头闸机按 V 刷票。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');announce('请把背包放上传送带，稍等一下。','Please place your bag on the belt.',{cue:'scan',speaker:'安检员'});}
- function gate(s){if(s.gatePass){notify('闸机已打开，请沿绿色箭头走过通道。');return;}const entering=!metroPaidHall(s,getPos().x,getPos().z);if(entering&&!s.checked){notify('这里是检票闸机。本次尚未通过安检。先到青色背包安检机器按 V，检查结束后再来刷票。');return;}s.gate=4;s.gatePass={entering,previousPaid:s.paid};notify(entering?'已刷免费体验票 · 请走过绿色箭头通道，再沿地面线去 B2 扶梯。':'已刷出站票 · 请走过闸机，再沿出口导向上楼。');}
+ function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked||s.paid){notify('你已通过安检并在付费区内，请直接前往站台乘车或换乘，无需重复安检。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');announce('请把背包放上传送带，稍等一下。','Please place your bag on the belt.',{cue:'scan',speaker:'安检员'});}
+ function gate(s){if(s.gatePass){notify('闸机已打开，请沿绿色箭头走过通道。');return;}const entering=!s.paid&&!metroPaidHall(s,getPos().x,getPos().z);if(entering&&!s.checked){notify('这里是检票闸机。本次尚未通过安检。先到青色背包安检机器按 V，检查结束后再来刷票。');return;}s.gate=4;s.gatePass={entering,previousPaid:s.paid};notify(entering?'已刷免费体验票 · 请走过绿色箭头通道，再沿地面线去 B2 扶梯。':'已刷出站票 · 请走过闸机，再沿出口导向上楼。');}
  function tickGate(s,dt){const pass=s.gatePass;if(!pass)return;const p=getPos(),gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
   const crossed=Math.abs(p.y-16)<1.1&&Math.abs(p.z-gz)<1&& (pass.entering?p.x>gx+.65:p.x<gx-.65);
   if(crossed){s.paid=pass.entering;if(!pass.entering){for(const station of stations){station.checked=false;station.paid=false;}notify('已出闸 · 再次进站需重新安检和刷票。');}s.gatePass=null;s.gate=0;return;}
@@ -182,7 +182,11 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   }
   if(!ride&&playing)tryBoard();
   if(playing)walkRider(dt,keys);positionRider();const p=getPos(),r=metroRampAt(p.x,p.z),h=metroRampFloor(p.x,p.z);if(!ride&&canCarry()&&r&&Math.abs(p.y-h)<.13){const d=(p.x-r.x)*r.dir;if(d>.05&&d<r.length-.05){const step=(p.z>=r.z?1:-1)*r.dir*dt*.7,x=p.x+step;place({x,y:metroRampFloor(x,p.z),z:p.z});}}
-  for(const [index,{r,i,side}]of treads.entries()){const u=((i/36+clock*.026*side)%1+1)%1;if(u<.025||u>.975){treadPose.scale.set(0,0,0);treadPose.position.set(r.x,0,r.z);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);continue;}const x=r.x+r.dir*r.length*u,dip=u<.06?(0.06-u)*2.5:u>.94?(u-.94)*2.5:0;treadPose.position.set(x,r.from+(r.to-r.from)*u+.015-dip,r.z+side*r.width*.5);treadPose.scale.set(r.length/36,.035,r.width*.91);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);}treadBatch.instanceMatrix.needsUpdate=true;
+  treadTimer+=dt;
+  if(treadTimer>=0.033||dt===0){
+   treadTimer=0;
+   for(const [index,{r,i,side}]of treads.entries()){const u=((i/36+clock*.026*side)%1+1)%1;if(u<.025||u>.975){treadPose.scale.set(0,0,0);treadPose.position.set(r.x,0,r.z);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);continue;}const x=r.x+r.dir*r.length*u,dip=u<.06?(0.06-u)*2.5:u>.94?(u-.94)*2.5:0;treadPose.position.set(x,r.from+(r.to-r.from)*u+.015-dip,r.z+side*r.width*.5);treadPose.scale.set(r.length/36,.035,r.width*.91);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);}treadBatch.instanceMatrix.needsUpdate=true;
+  }
   for(const s of stations){tickGate(s,dt);s.routes.forEach((r,i)=>r.visible=i===(s.paid?2:s.checked?1:0));if(s.gateMesh)s.gateMesh.visible=!s.gatePass;for(const d of s.doors){const t=trains.find(t=>t.direction===-d.side);d.set(t.state.station===stationIndex(s)?t.doorAmount:0);}
    s.people.forEach(p=>{const x=p.x+Math.sin(clock*p.speed+p.phase)*.65;if(p.clear(x,p.y,p.z))p.root.position.x=x;p.root.rotation.y=Math.sin(clock*.12+p.phase);});
    const second=Math.floor(clock);if(second!==s.lastSecond){s.lastSecond=second;for(const {screen,dir}of s.screens){const t=trains.find(t=>t.direction===dir),here=t.state.station===stationIndex(s)&&t.state.phase==='dwell',n=Math.ceil(arrivalSeconds(clock,stationIndex(s),t.offset,t.direction));screen.paint([metroPlatformDirection(s,dir).zh,here?(t.state.open?'列车已到站 · 请先下后上':'列车已到站 · 请留意车门'):'下一班 '+Math.floor(n/60)+'分 '+n%60+'秒']);if(dt>0&&n===5&&metroStationAt(getPos())?.id===s.id)announce('列车即将进站，请站在黄色安全线以内。','A train is approaching. Please stand behind the yellow line.',{cue:'arrival'});}}

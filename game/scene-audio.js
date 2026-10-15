@@ -11,6 +11,10 @@ export function soundScene(p,night=false){
  if(Math.abs(p.x-PEACE.x)<PEACE.rx&&Math.abs(p.z-PEACE.z)<PEACE.rz&&Math.abs(p.y-PEACE_DINING.y)<2)return {name:'龙凤厅',track:'dining',dining:1,traffic:0};
  if(p.y>=25&&p.y<30&&shops.some(b=>Math.abs(p.x-b.x)<b.rx&&Math.abs(p.z-b.z)<b.rz))return {name:'南京路店铺',track:'shop',shop:1,traffic:.05};
  if(p.y>=24&&p.y<32&&p.x>=NANJING_WEST&&p.x<roadX(66)-4&&Math.abs(p.z-66)<6)return {name:'南京路步行街',track:'shop',market:1,traffic:.12};
+ if(p.x>=-125&&p.x<=40&&p.z>=205&&p.z<=338){
+  const isInner=p.x>=-75&&p.x<=3&&p.z>=254&&p.z<=318;
+  return {name:isInner?'豫园古典园林':'豫园商城商圈',track:'yuyuan',garden:isInner,bazaar:!isInner,yuyuan:true,water:isInner?.45:.28,traffic:0};
+ }
  if(p.z>=270)return {name:'生活岛',track:'island',water:.15,traffic:0};
  const distance=Math.min(Math.abs(p.x-riverWestEdge(p.z)),Math.abs(p.x-riverEastEdge(p.z)));
  return {name:distance<18?'浦江岸边':'城市街区',track:night?'neon':'river',water:Math.max(0,1-distance/22)*.45,traffic:p.y<36?1:.12};
@@ -19,7 +23,7 @@ export function nearbyTraffic(agents,p,yaw=0){let best=null;for(const a of agent
 
 // Original synthesized ambience; spoken calls use explicitly matched Mandarin/English voices.
 export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,Utterance=globalThis.SpeechSynthesisUtterance}={}){
- let ctx,master,water,engine,engineOsc,engineHarmonic,panner,noise,enabled=true,clock=0,lastStep=0,lastDetail=0,lastCall=-25,lastHorn=-5,previous=null,previousScene='',ownSpeech=false;
+ let ctx,master,water,engine,engineOsc,engineHarmonic,panner,noise,enabled=true,clock=0,lastStep=0,lastDetail=0,lastBird=0,lastCall=-25,lastHorn=-5,previous=null,previousScene='',ownSpeech=false;
  const effects=new Set(),KEY='block-island-ambient-preferences';try{enabled=localStorage.getItem(KEY)!=='off';}catch{}
  function cancelCall(){if(ownSpeech){speech?.cancel();ownSpeech=false;}}
  function start(){try{ctx??=getContext();if(!ctx)return false;if(!master){master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);let seed=1743;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed/2147483648-1;}noise=ctx.createBufferSource();noise.buffer=buffer;noise.loop=true;const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=470;water=ctx.createGain();water.gain.value=0;noise.connect(filter);filter.connect(water);water.connect(master);noise.start();engine=ctx.createGain();engine.gain.value=0;panner=ctx.createStereoPanner();engine.connect(panner);panner.connect(master);engineOsc=ctx.createOscillator();engineOsc.type='triangle';engineOsc.connect(engine);engineHarmonic=ctx.createOscillator();engineHarmonic.type='sine';engineHarmonic.connect(engine);engineOsc.start();engineHarmonic.start();}ctx.resume()?.catch?.(()=>{});return true;}catch{return false;}}
@@ -36,10 +40,34 @@ export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,U
   engineOsc.frequency.setTargetAtTime(42+speed*9,ctx.currentTime,.18);engineHarmonic.frequency.setTargetAtTime(84+speed*18,ctx.currentTime,.18);panner.pan.setTargetAtTime(near?.pan??0,ctx.currentTime,.12);
   const travel=previous?Math.hypot(pos.x-previous.x,pos.z-previous.z):0;previous={...pos};
   if(!riding&&pos.y>=25&&pos.y<30&&travel>.002&&travel<3){lastStep+=travel;if(lastStep>.85){lastStep=0;tone(95+Math.sin(clock)*12,.085,.016,'triangle');}}
-  if(area.name!==previousScene){if(area.shop)for(const hz of [1047,1319])tone(hz,.45,.018);previousScene=area.name;}
-  if(clock-lastDetail>3.5){lastDetail=clock;if(area.dining)tone(1500+Math.sin(clock)*250,.15,.012,'sine',Math.sin(clock));else if(area.market||area.shop)tone(390,.07,.006,'triangle',Math.sin(clock));else if(near?.actor.kind==='bus'&&near.actor.dwell>0){tone(880,.22,.02,'sine',near.pan);tone(1175,.3,.012,'sine',near.pan);}}
+  if(area.name!==previousScene){if(area.shop||area.bazaar)for(const hz of [1047,1319])tone(hz,.45,.018);previousScene=area.name;}
+  if(area.yuyuan&&clock-lastBird>(area.garden?3.5:6)){
+   lastBird=clock+(Math.sin(clock*1.7)*1.2);const pan=Math.sin(clock*2.1)*.65,f1=2600+Math.sin(clock*3.7)*420;
+   tone(f1,.055,.015,'sine',pan);
+   if(typeof setTimeout!=='undefined'){setTimeout(()=>tone(f1+420+Math.cos(clock)*180,.065,.018,'sine',pan),60);if(area.garden&&Math.sin(clock*4.3)>.1)setTimeout(()=>tone(f1+780,.045,.012,'sine',pan),130);}
+  }
+  if(clock-lastDetail>3.5){
+   lastDetail=clock;
+   if(area.garden){tone(1760,.45,.012,'sine',Math.sin(clock));tone(2640,.35,.008,'sine',Math.sin(clock));}
+   else if(area.bazaar){tone(523,.18,.015,'triangle',Math.sin(clock));tone(659,.15,.012,'triangle',Math.sin(clock));}
+   else if(area.dining)tone(1500+Math.sin(clock)*250,.15,.012,'sine',Math.sin(clock));
+   else if(area.market||area.shop)tone(390,.07,.006,'triangle',Math.sin(clock));
+   else if(near?.actor.kind==='bus'&&near.actor.dwell>0){tone(880,.22,.02,'sine',near.pan);tone(1175,.3,.012,'sine',near.pan);}
+  }
   if(dialogue){cancelCall();return;}
-  if(clock-lastCall>24&&Utterance&&speech&&!speech.speaking&&!speech.pending){const vendor=vendors.find(v=>Math.abs(pos.y-v.root.position.y)<3&&Math.hypot(pos.x-v.root.position.x,pos.z-v.root.position.z)<10);if(vendor){lastCall=clock;const lines=announcementLines(speech,'market',vendor.food?'热乎的小笼生煎，来尝尝！':'海派纪念品，欢迎来看看！',vendor.food?'Fresh soup dumplings and pan-fried buns! Come and try some!':'Shanghai souvenirs! Come and take a look!');ownSpeech=speakVoiceLines(speech,Utterance,lines,{rate:.94,volume:Math.min(1,volume*.6),onEnd:()=>ownSpeech=false})>0;}}
+  const callInterval=area.bazaar?12:24;
+  if(clock-lastCall>callInterval&&Utterance&&speech&&!speech.speaking&&!speech.pending){
+   const list=typeof vendors==='function'?vendors():vendors;
+   const vendor=list.find(v=>{const vp=v.root?.position??v.position??v;return Math.abs(pos.y-vp.y)<4&&Math.hypot(pos.x-vp.x,pos.z-vp.z)<12;});
+   if(vendor){
+    lastCall=clock;
+    const callZh=vendor.callZh||(area.bazaar?(vendor.food?'南翔小笼馒头，现包现蒸，皮薄汁多！':'老城厢手作特产，欢迎进店观赏！'):(vendor.food?'热乎的小笼生煎，来尝尝！':'海派纪念品，欢迎来看看！'));
+    const callEn=vendor.callEn||(vendor.food?'Fresh soup dumplings! Come and taste!':'Shanghai souvenirs! Welcome inside!');
+    const lines=announcementLines(speech,'market',callZh,callEn);
+    ownSpeech=speakVoiceLines(speech,Utterance,lines,{rate:.93,volume:Math.min(1,volume*.7),onEnd:()=>ownSpeech=false})>0;
+    if(area.bazaar)tone(587,.12,.014,'triangle');
+   }
+  }
  }
  function horn(){if(!master||!enabled||clock-lastHorn<3)return;lastHorn=clock;tone(320,.22,.018,'triangle');tone(400,.2,.012,'triangle');}
  function setEnabled(value){enabled=!!value;try{localStorage.setItem(KEY,enabled?'on':'off');}catch{}if(!enabled){cancelCall();master?.gain.setTargetAtTime(0,ctx.currentTime,.08);}}

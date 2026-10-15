@@ -10,7 +10,7 @@ export const LINE10_RAMPS=LINE10_STATIONS.flatMap(s=>[...s.exits.map(e=>({statio
 export const LINE10_WORLD_STATIONS=LINE10_STATIONS.map(s=>({...s,...line10ToWorld({...s,y:16}),line:10,exits:s.exits.map(e=>({...e,...line10ToWorld({...e,y:26}),axis:'z'}))}));
 export const TRANSFER_POINTS=[[-100,79],[-100,85],[-114,85],[-114,124],[-107,124]];
 function segmentDistance(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);}
-export const transferInterior=p=>p.y>=15.5&&p.y<22&&TRANSFER_POINTS.some((b,i)=>i&&segmentDistance(p.x,p.z,TRANSFER_POINTS[i-1],b)<2.15);
+export const transferInterior=p=>p.y>=15.0&&p.y<22.5&&TRANSFER_POINTS.some((b,i)=>i&&segmentDistance(p.x,p.z,TRANSFER_POINTS[i-1],b)<4.2);
 export const line10RampAt=(x,z)=>LINE10_RAMPS.find(r=>{const d=(x-r.x)*r.dir;return d>=-2&&d<=r.length+2&&Math.abs(z-r.z)<r.width;});
 export const line10RampFloor=(x,z)=>{const r=line10RampAt(x,z);return r?r.from+(r.to-r.from)*Math.max(0,Math.min(1,(x-r.x)*r.dir/r.length)):null;};
 export const line10StationAt=p=>LINE10_STATIONS.find(s=>Math.abs(p.x-s.x)<37&&Math.abs(p.z)<17&&p.y>=2.7&&p.y<23);
