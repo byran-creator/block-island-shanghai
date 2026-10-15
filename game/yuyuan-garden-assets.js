@@ -235,8 +235,8 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
    block(garden,'#82877b',ax,24.5,az,isX?1.4:width,3.2,isX?width:1.4);
   }
  }
- // Single-Arch Moon Bridge placed inside Classical Inner Garden (跨过内园曲水河道，连接东西两岸)
- moonBridge(-8.0,202.5,{length:12.6,width:2.4,archH:2.2,dir:'x'});
+ // Grand Single-Arch Moon Bridge placed inside Classical Inner Garden (横跨东园扩大碧波大湖，宏丽石拱桥气魄宏大，步道实心平稳)
+ moonBridge(-12.0,206.0,{length:16.0,width:3.2,archH:2.6,dir:'x'});
 
  // =========================================================================
  // 5. LUSH LOTUS & WATER LILY DISPLAYS (荷塘翠盖、红莲睡莲与莲蓬)
@@ -321,10 +321,11 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   animatedSwans.push({root:rootObj,neck:neckGroup,wings,cx,cz,rx,rz,speed,phase});
  }
  // Active swimming swans (优雅白天鹅游弋于碧波之中，游动觅食与振翅)
- swimmingSwan(-8.0,200.2,3.2,1.1,0.48,0);   // Inner Garden East River (north of Moon Bridge)
- swimmingSwan(-8.0,204.8,3.2,1.1,0.46,2.1); // Inner Garden East River (south of Moon Bridge)
- swimmingSwan(-42.0,186.0,6.2,3.2,0.38,1.2); // Central Huxinting Lake
- swimmingSwan(-50.0,173.0,5.0,2.6,0.40,2.8); // Central North Lake
+ swimmingSwan(-12.0,200.0,5.5,2.8,0.62,0);    // Inner Garden East Lake (north of Moon Bridge)
+ swimmingSwan(-12.0,212.0,5.5,2.5,0.60,2.1);  // Inner Garden East Lake (south of Moon Bridge)
+ swimmingSwan(-45.0,234.0,8.0,2.2,0.58,1.4);  // Central Grand River (cruising along water channel)
+ swimmingSwan(-44.0,186.0,7.5,3.6,0.58,1.2);  // Central Huxinting Lake
+ swimmingSwan(-52.0,173.0,6.5,3.0,0.56,2.8);  // Central North Lake
 
  function swallow(type,cx,cy,cz,radius=5.0,speed=2.5){
   const rootObj=new THREE.Group();animatedGarden.add(rootObj);
