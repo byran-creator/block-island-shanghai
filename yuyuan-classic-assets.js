@@ -16,7 +16,9 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  // Lightweight cached 64x64 stone texture (Codex low-computation standard)
  function stoneTexture(){
   if(typeof document==='undefined'||!document.createElement)return new THREE.Texture();
-  const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d');ctx.fillStyle='#adaf9e';ctx.fillRect(0,0,64,64);
+  const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext?.('2d');
+  if(!ctx?.fillRect)return new THREE.Texture();
+  ctx.fillStyle='#adaf9e';ctx.fillRect(0,0,64,64);
   for(let i=0;i<80;i++){const gray=98+Math.floor(random()*85);ctx.fillStyle=`rgba(${gray},${gray+3},${gray-6},.27)`;ctx.fillRect(random()*64,random()*64,1+random()*6,1+random()*3);}
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;return texture;
  }
@@ -323,35 +325,35 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  const maples=[[-36,248],[-54,220],[-18,226],[-64,236],[-44,248],[-72,180],[-2,180],[-72,220],[-2,220]];
  for(const [mx,mz]of maples)mapleTree(mx,mz,4.8+random()*1.2);
 
- // 7c. Classical Garden Bridges: Covered Gallery Bridge (水上复廊长廊桥) & Stone Arch Bridge (太湖石石拱桥) (参考 grand_rockery.jpg)
- function coveredGalleryBridge(x1,z1,x2,z2,width=2.4){
+ // 7c. Classical Garden Covered Gallery Bridge (中央长河42米水上长廊：双侧美人靠坐椅、朱漆立柱与飞檐黑瓦)
+ function coveredGalleryBridge(x1,z1,x2,z2,width=3.2){
   const len=Math.hypot(x2-x1,z2-z1),yaw=Math.atan2(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2;
   const bGroup=new THREE.Group();bGroup.position.set(cx,26,cz);bGroup.rotation.y=yaw;group.add(bGroup);
-  // Architectural stone bridge piers
-  for(let d=-len/2+1.2;d<=len/2-1.2;d+=2.8){
-   const pier=new THREE.Mesh(box,mat('#72776c'));pier.position.set(0,-1.8,d);pier.scale.set(width*.6,2.2,.45);bGroup.add(pier);
+  // Architectural stone bridge piers down to riverbed
+  for(let d=-len/2+2;d<=len/2-2;d+=4.0){
+   const pier=new THREE.Mesh(box,mat('#72776c'));pier.position.set(0,-2.2,d);pier.scale.set(width*.65,3.6,.65);bGroup.add(pier);
   }
   // Heavy timber deck & stone curbstones
   const deck=new THREE.Mesh(box,mat('#563a28'));deck.position.set(0,.12,0);deck.scale.set(width,.24,len);bGroup.add(deck);
-  // Vermilion lacquer columns along both sides
-  for(let d=-len/2+.8;d<=len/2-.8;d+=2.2){
+  // Vermilion lacquer columns along both sides & comfortable lakeside resting benches (美人靠)
+  for(let d=-len/2+1.0;d<=len/2-1.0;d+=2.4){
    for(const side of [-1,1]){
-    const postX=side*(width/2-.15);
-    const post=new THREE.Mesh(pole,mat('#842c22'));post.position.set(postX,1.35,d);post.scale.set(.09,2.7,.09);bGroup.add(post);
-    const seat=new THREE.Mesh(box,mat('#72492f'));seat.position.set(postX,.5,d);seat.scale.set(.24,.14,2.2);bGroup.add(seat);
-    const rail=new THREE.Mesh(box,mat('#863628'));rail.position.set(postX,.82,d);rail.scale.set(.08,.08,2.2);bGroup.add(rail);
+    const postX=side*(width/2-.2);
+    const post=new THREE.Mesh(pole,mat('#842c22'));post.position.set(postX,1.4,d);post.scale.set(.1,2.8,.1);bGroup.add(post);
+    const seat=new THREE.Mesh(box,mat('#72492f'));seat.position.set(postX,.5,d);seat.scale.set(.32,.14,2.4);bGroup.add(seat);
+    const rail=new THREE.Mesh(box,mat('#863628'));rail.position.set(postX,.84,d);rail.scale.set(.1,.09,2.4);bGroup.add(rail);
    }
-   const blantern=new THREE.Mesh(new THREE.SphereGeometry(.2,8,6),mat('#e83a28',true));blantern.position.set(0,2.3,d);bGroup.add(blantern);
+   // Hanging translucent warm palace lantern ("红里透黄"灯笼)
+   const lCore=new THREE.Mesh(new THREE.SphereGeometry(.14,6,5),mat('#ffd24d',true));lCore.position.set(0,2.3,d);bGroup.add(lCore);
+   const lSkin=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshLambertMaterial({color:'#d32f2f',emissive:'#82221b',transparent:true,opacity:.82,depthWrite:false}));lSkin.position.set(0,2.3,d);lSkin.scale.y=1.3;bGroup.add(lSkin);
   }
-  // Covered bridge roof with black tiles and eaves
-  const roof=new THREE.Mesh(box,mat('#3a4743'));roof.position.set(0,2.85,0);roof.scale.set(width+1.1,.22,len+.6);bGroup.add(roof);
-  const ridge=new THREE.Mesh(box,mat('#56635d'));ridge.position.set(0,3.02,0);ridge.scale.set(.3,.16,len+.8);bGroup.add(ridge);
+  // Covered bridge roof with black tiles, eaves and flying rafters
+  const roof=new THREE.Mesh(box,mat('#364440'));roof.position.set(0,2.95,0);roof.scale.set(width+1.2,.26,len+.8);bGroup.add(roof);
+  const ridge=new THREE.Mesh(box,mat('#52615a'));ridge.position.set(0,3.15,0);ridge.scale.set(.36,.18,len+1.0);bGroup.add(ridge);
  }
 
- // Covered Water Gallery placed across West Lake (西池水上长廊：横跨西园湖面，独享西池碧波水景)
- coveredGalleryBridge(-63.5,197.5,-63.5,202.5,2.4);
- // South Garden dry walkway corridor (南园游廊)
- coveredGalleryBridge(-50,236,-34,236,2.5);
+ // Grand Central Covered Water Gallery spanning across Central River (42米横跨中央长河，气魄宏丽，两岸飞檐倚翠，与东湖拱桥完全分离)
+ coveredGalleryBridge(-66,236,-24,236,3.2);
 
  // 7b. Dense Flowering Shrubs, Osmanthus & Peony Clusters (四季名花、杜鹃与桂花灌木丛)
  function flowerShrub(x,z,rx=1.1,ry=.7,rz=1.1,foliage='#3d6238',flower='#e85a7d'){
@@ -480,9 +482,12 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  for(let i=0;i<profile.length;i++){const next=(i+1)%profile.length;titleIndices.push(i,next,profile.length+i,profile.length+i,next,profile.length+next);}
  const titleGeometry=new THREE.BufferGeometry();titleGeometry.setAttribute('position',new THREE.Float32BufferAttribute(titleVertices,3));const titleUvs=[];for(let i=0;i<titleVertices.length;i+=3)titleUvs.push((titleVertices[i+2]-titleZ+1.8)/3.6,(titleVertices[i+1]-26)/5);titleGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(titleUvs,2));titleGeometry.setIndex(titleIndices);titleGeometry.computeVertexNormals();const titleStone=new THREE.Mesh(titleGeometry,rockMaterial);group.add(titleStone);addFixture(titleStone);
  if(typeof document!=='undefined'&&document.createElement){
-  const lettering=document.createElement('canvas');lettering.width=128;lettering.height=384;const ctx=lettering.getContext('2d');ctx.clearRect(0,0,128,384);ctx.fillStyle='#e4c36c';ctx.font='bold 58px KaiTi,STKaiti,"Microsoft YaHei",serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  [...'海上名园'].forEach((character,i)=>ctx.fillText(character,64,63+i*82));
-  const titleTexture=new THREE.CanvasTexture(lettering);titleTexture.colorSpace=THREE.SRGBColorSpace;const titleText=new THREE.Mesh(new THREE.PlaneGeometry(1.45,3.75),new THREE.MeshBasicMaterial({map:titleTexture,transparent:true,alphaTest:.03,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));titleText.position.set(titleX-1.306,28.5,titleZ);titleText.rotation.y=-Math.PI/2;titleText.userData.panel=true;group.add(titleText);
+  const lettering=document.createElement('canvas');lettering.width=128;lettering.height=384;const ctx=lettering.getContext?.('2d');
+  if(ctx?.clearRect){
+   ctx.clearRect(0,0,128,384);ctx.fillStyle='#e4c36c';ctx.font='bold 58px KaiTi,STKaiti,"Microsoft YaHei",serif';ctx.textAlign='center';ctx.textBaseline='middle';
+   [...'海上名园'].forEach((character,i)=>ctx.fillText(character,64,63+i*82));
+   const titleTexture=new THREE.CanvasTexture(lettering);titleTexture.colorSpace=THREE.SRGBColorSpace;const titleText=new THREE.Mesh(new THREE.PlaneGeometry(1.45,3.75),new THREE.MeshBasicMaterial({map:titleTexture,transparent:true,alphaTest:.03,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));titleText.position.set(titleX-1.306,28.5,titleZ);titleText.rotation.y=-Math.PI/2;titleText.userData.panel=true;group.add(titleText);
+  }
  }
 
  batchMeshes(group,staticMeshes(group),'yuyuan-classic-finish');

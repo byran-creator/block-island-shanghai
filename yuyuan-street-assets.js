@@ -578,41 +578,59 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
  // 7.5 STEALTHY STREET HAWKERS / PEDDLERS (街头特色流动摊点与吆喝小贩)
  // -------------------------------------------------------------
  function createStreetPeddlers(){
-  // 1. 游商糖人张 (Sugar figurine & Candied hawthorns cart) at x=-101.8, z=212.5
+  // 1. 糖人张吹糖亭 (Tangren Zhang Sugar Stall & Kiosk) at x=-101.8, z=212.5
   {
-   const px = -101.8, pz = 212.5, cartG = new THREE.Group();
-   cartG.position.set(px, 26, pz); cartG.rotation.y = Math.PI / 2; root.add(cartG);
-   box(cartG, '#5a3d28', 0, .82, 0, 1.4, .08, .85);
-   box(cartG, '#442d1d', 0, .75, 0, 1.35, .06, .8);
-   for(const side of [-1, 1]){
-    mesh(cartG, ring, '#3c2517', side*.72, .5, 0, .45, .45, .45);
-    disk(cartG, '#2e1c11', side*.72, .5, 0, .08, .06);
-    box(cartG, '#3c2517', side*.72, .5, 0, .03, .9, .03);
-    const wCross = box(cartG, '#3c2517', side*.72, .5, 0, .03, .9, .03);
-    wCross.rotation.z = Math.PI/2;
+   const px = -101.8, pz = 212.5, stallG = new THREE.Group();
+   stallG.position.set(px, 26, pz); stallG.rotation.y = Math.PI / 2; root.add(stallG);
+
+   // 4 timber corner columns
+   for(const sx of [-0.95, 0.95]) for(const sz of [-0.55, 0.55]){
+    box(stallG, '#634227', sx, 1.4, sz, .08, 2.8, .08);
+    box(stallG, gold, sx, 0.15, sz, .12, .3, .12);
    }
-   box(cartG, '#5a3d28', -.75, .85, -.3, .55, .05, .05);
-   box(cartG, '#5a3d28', -.75, .85, .3, .55, .05, .05);
-   box(cartG, '#442d1d', .55, .38, -.35, .06, .76, .06);
-   box(cartG, '#442d1d', .55, .38, .35, .06, .76, .06);
-   disk(cartG, '#968153', .4, 1.4, .25, .14, .95);
-   disk(cartG, '#857143', .4, 1.4, .25, .16, .1);
-   for(let k = 0; k < 7; k++){
-    const ang = k * 0.9, h = 1.1 + (k % 4) * 0.18;
-    const sx = .4 + Math.cos(ang) * .18, sz = .25 + Math.sin(ang) * .18;
-    box(cartG, '#d4a259', sx, h, sz, .015, .32, .015);
-    for(let b = 0; b < 3; b++){
-     mesh(cartG, sphere, '#c8221a', sx, h - .08 + b * .06, sz, .032, .032, .032);
-     mesh(cartG, sphere, '#ffea9f', sx, h - .08 + b * .06, sz, .034, .01, .034);
+   // Eaves & striped fabric canopy awning (朱红与金黄相间布幔挑檐)
+   box(stallG, '#52341d', 0, 2.72, 0, 2.15, .08, 1.35);
+   box(stallG, '#8a231c', 0, 2.82, 0, 2.25, .12, 1.45);
+   for(let f = -0.9; f <= 0.9; f += 0.45){
+    box(stallG, '#dfa838', f, 2.83, 0, .22, .13, 1.46);
+   }
+   // Curved roof crest & brass finial
+   box(stallG, '#442b1a', 0, 2.94, 0, 2.0, .14, .3);
+   mesh(stallG, sphere, gold, 0, 3.12, 0, .1, .14, .1);
+
+   // Solid mahogany counter table with carved front panels
+   box(stallG, '#52341d', 0, 0.45, 0, 1.85, .9, 0.95);
+   box(stallG, '#704724', 0, 0.88, 0, 1.95, .06, 1.05);
+   box(stallG, '#3a2212', 0, 0.45, .46, 1.7, .7, .04);
+
+   // Brass sugar pot with simmering syrup
+   disk(stallG, '#baa054', -0.5, 0.95, 0.15, .22, .12);
+   disk(stallG, '#dfa234', -0.5, 0.98, 0.15, .18, .02);
+   box(stallG, '#422817', -0.5, 1.04, 0.15, .02, .16, .02);
+
+   // Revolving bronze zodiac fortune turntable (生肖糖画转盘)
+   disk(stallG, '#3a2516', 0.1, 0.92, -0.15, .26, .03);
+   disk(stallG, '#c49a42', 0.1, 0.94, -0.15, .24, .02);
+   box(stallG, '#a8241e', 0.1, 0.96, -0.15, .02, .01, .28);
+
+   // Wooden skewer stand displaying freshly blown sugar art (吹糖金龙、彩凤与晶莹糖葫芦)
+   box(stallG, '#684524', 0.62, 1.15, 0.12, .18, .5, .18);
+   for(let k = 0; k < 8; k++){
+    const ang = k * 0.78, h = 1.35 + (k % 3) * 0.16;
+    const sx = 0.62 + Math.cos(ang) * .12, sz = 0.12 + Math.sin(ang) * .12;
+    box(stallG, '#d4a259', sx, h, sz, .014, .36, .014);
+    if(k % 2 === 0){
+     for(let b = 0; b < 4; b++){
+      mesh(stallG, sphere, '#ba1d16', sx, h - .06 + b * .055, sz, .028, .028, .028);
+      mesh(stallG, sphere, '#ffe494', sx, h - .06 + b * .055, sz, .03, .01, .03);
+     }
+    }else{
+     mesh(stallG, sphere, '#eeb83e', sx, h + .05, sz, .045, .065, .045);
+     mesh(stallG, sphere, '#d99426', sx, h + .12, sz, .03, .03, .04);
     }
    }
-   box(cartG, '#d5dbd7', -.15, .88, -.05, .62, .04, .45);
-   disk(cartG, '#bfa054', -.15, .94, .26, .12, .08);
-   disk(cartG, '#8a5026', -.15, .96, .26, .1, .02);
-   mesh(cartG, sphere, '#f5c842', -.15, 1.05, -.05, .06, .08, .04);
-   box(cartG, '#d4a259', -.15, .96, -.05, .012, .18, .012);
-   box(cartG, '#b03328', 0, .45, .43, .8, .38, .02);
-   board('老北京 · 吹糖人 冰糖葫芦', px, 26.45, pz, 1.2, .45, 0);
+
+   board('非遗老号 · 糖人张', px, 28.5, pz, 2.2, .52, Math.PI / 2);
 
    vendors.push({
     root: {position: {x: px, y: 26, z: pz}},
@@ -626,35 +644,40 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
    });
   }
 
-  // 2. 挑担栗子王 (Shoulder carrying pole & hot roasted chestnuts) at x=11.8, z=181.0
+  // 2. 挑担栗子王 (King Chestnut Roasting Shop & Iron Wok) at x=11.8, z=181.0
   {
    const px = 11.8, pz = 181.0, stallG = new THREE.Group();
-   stallG.position.set(px, 26, pz); root.add(stallG);
-   const pole = box(stallG, '#8f7748', 0, .9, 0, .06, .04, 1.8);
-   pole.rotation.x = .04;
-   for(const [side, isWok] of [[-1, true], [1, false]]){
-    const bz = side * .72;
-    for(const rx of [-.14, .14]) box(stallG, '#6e5d3c', rx, .58, bz, .015, .65, .015);
-    disk(stallG, '#7a623c', 0, .24, bz, .28, .36);
-    disk(stallG, '#91784f', 0, .41, bz, .29, .04);
-    if(isWok){
-     disk(stallG, '#252528', 0, .42, bz, .26, .08);
-     disk(stallG, '#181412', 0, .45, bz, .24, .02);
-     for(let c = 0; c < 8; c++){
-      const ang = c * 0.8, r = .06 + (c % 3) * .05;
-      mesh(stallG, sphere, '#61341c', Math.cos(ang)*r, .47, bz+Math.sin(ang)*r, .035, .025, .03);
-     }
-     box(stallG, gold, .12, .48, bz+.08, .04, .08, .02);
-     box(stallG, '#442d1d', .14, .56, bz+.1, .015, .14, .015);
-    }else{
-     box(stallG, '#b39568', 0, .46, bz, .22, .14, .2);
-     box(stallG, '#915330', 0, .54, bz, .18, .04, .16);
-    }
+   stallG.position.set(px, 26, pz); stallG.rotation.y = -Math.PI / 2; root.add(stallG);
+
+   // 4 sturdy timber posts
+   for(const sx of [-0.95, 0.95]) for(const sz of [-0.55, 0.55]){
+    box(stallG, '#5a402a', sx, 1.4, sz, .08, 2.8, .08);
+    box(stallG, '#3a2717', sx, 0.15, sz, .12, .3, .12);
    }
-   box(stallG, '#6b4f2c', .42, .24, 0, .32, .04, .26);
-   for(const sx of [-.12, .12])for(const sz of [-.1, .1]){
-    box(stallG, '#523a1f', .42+sx, .12, sz, .03, .22, .03);
+   // Pitched eave canopy with cedar valance
+   box(stallG, '#4a321f', 0, 2.72, 0, 2.15, .08, 1.35);
+   box(stallG, '#3c4b42', 0, 2.84, 0, 2.28, .12, 1.48);
+   box(stallG, '#25302a', 0, 2.96, 0, 2.1, .14, .32);
+   box(stallG, '#785633', 0, 2.65, .66, 2.15, .15, .04);
+
+   // Masonry hearth stone stove base
+   box(stallG, '#686a64', -0.35, 0.45, 0, 1.05, .9, 0.95);
+   // Large cast-iron wok (热砂滚炒大铁锅)
+   disk(stallG, '#222326', -0.35, 0.92, 0, .42, .14);
+   disk(stallG, '#151618', -0.35, 0.96, 0, .38, .04);
+   for(let c = 0; c < 16; c++){
+    const ang = c * 0.52, r = .08 + (c % 4) * .065;
+    mesh(stallG, sphere, '#6e381b', -0.35 + Math.cos(ang) * r, 0.99, Math.sin(ang) * r, .04, .03, .045);
    }
+   box(stallG, '#b08b58', -0.35, 1.12, 0.15, .035, .32, .08);
+
+   // Wooden storage counter with paper packaging sacks and wooden measuring bowls
+   box(stallG, '#52341d', 0.55, 0.45, 0, .75, .9, 0.95);
+   box(stallG, '#704724', 0.55, 0.88, 0, .82, .06, 1.02);
+   box(stallG, '#8a6237', 0.55, 0.98, -0.22, .24, .16, .24);
+   box(stallG, '#967b58', 0.55, 0.96, 0.2, .26, .18, .26);
+
+   board('老城厢 · 栗子王', px, 28.5, pz, 2.2, .52, -Math.PI / 2);
 
    vendors.push({
     root: {position: {x: px, y: 26, z: pz}},
@@ -668,26 +691,43 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
    });
   }
 
-  // 3. 地摊古董刘 (Street mat curio & antique coin peddler) at x=-92.2, z=212.0
+  // 3. 地摊古董刘 (Antique Liu Curio & Relic Pavilion Stall) at x=-92.2, z=212.0
   {
-   const px = -92.2, pz = 212.0, matG = new THREE.Group();
-   matG.position.set(px, 26, pz); root.add(matG);
-   box(matG, '#1e385c', 0, .015, 0, 1.25, .012, .95);
-   box(matG, '#ffffff', 0, .018, 0, 1.15, .008, .85);
-   box(matG, '#1e385c', 0, .021, 0, 1.05, .008, .75);
-   for(let r = -2; r <= 2; r++)for(let c = -1; c <= 1; c++){
-    const cx = c * .22, cz = r * .13;
-    disk(matG, '#857348', cx, .03, cz, .04, .01);
-    box(matG, '#1e385c', cx, .036, cz, .018, .012, .018);
+   const px = -92.2, pz = 212.0, stallG = new THREE.Group();
+   stallG.position.set(px, 26, pz); stallG.rotation.y = -Math.PI / 2; root.add(stallG);
+
+   // 4 dark carved posts
+   for(const sx of [-0.95, 0.95]) for(const sz of [-0.55, 0.55]){
+    box(stallG, '#3a2318', sx, 1.4, sz, .08, 2.8, .08);
+    box(stallG, '#c89a42', sx, 0.15, sz, .12, .3, .12);
    }
-   mesh(matG, ring, '#eef3eb', -.35, .04, .24, .04, .04, .04);
-   mesh(matG, ring, '#3c825a', -.35, .04, -.24, .04, .04, .04);
-   disk(matG, '#df4638', .38, .06, .22, .035, .07);
-   disk(matG, '#e0ddcf', .38, .06, -.22, .035, .07);
-   box(matG, '#5a3d28', -.55, .26, 0, .28, .04, .32);
-   for(const sx of [-.1, .1])for(const sz of [-.11, .11]){
-    box(matG, '#442d1d', -.55+sx, .13, sz, .025, .24, .025);
+   // Classical roof with royal blue trim
+   box(stallG, '#321f15', 0, 2.72, 0, 2.15, .08, 1.35);
+   box(stallG, '#25354d', 0, 2.84, 0, 2.28, .12, 1.48);
+   box(stallG, '#1e2b3e', 0, 2.96, 0, 2.1, .14, .32);
+
+   // Large counter covered with royal blue silk runner (青蓝金边锦缎长案)
+   box(stallG, '#3a2318', 0, 0.45, 0, 1.85, .9, 0.95);
+   box(stallG, '#1a365d', 0, 0.88, 0, 1.95, .06, 1.05);
+   box(stallG, gold, 0, 0.885, 0, 1.9, .065, .15);
+
+   // Multi-tier stepped curio shelf (多宝格陈列架)
+   box(stallG, '#2c180e', -0.4, 1.15, -0.22, .85, .45, .32);
+   disk(stallG, '#3d6350', -0.6, 1.42, -0.22, .07, .12);
+   box(stallG, '#325442', -0.25, 1.42, -0.22, .12, .14, .12);
+   disk(stallG, '#ffffff', 0.22, 0.95, -0.2, .12, .08);
+   disk(stallG, '#1d428a', 0.22, 0.97, -0.2, .1, .02);
+   mesh(stallG, ring, '#eef3eb', 0.55, 0.93, 0.15, .06, .06, .06);
+   mesh(stallG, ring, '#3c825a', 0.55, 0.93, -0.15, .05, .05, .05);
+   for(let s = -1; s <= 1; s++){
+    box(stallG, '#f0ebd8', -0.3 + s * .12, 0.93, 0.25, .05, .05, .28);
+    box(stallG, '#8a3428', -0.3 + s * .12, 0.93, 0.38, .04, .04, .04);
    }
+   for(let c = 0; c < 5; c++){
+    disk(stallG, '#967842', 0.1 + c * .06, 0.93, 0.22, .04, .01);
+   }
+
+   board('金石珍玩 · 古董刘', px, 28.5, pz, 2.2, .52, -Math.PI / 2);
 
    vendors.push({
     root: {position: {x: px, y: 26, z: pz}},

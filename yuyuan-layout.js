@@ -12,9 +12,9 @@ export const GARDEN_WINDOWS=[{axis:'z',x:-46,z:194,y:28.5,r:1.1},{axis:'z',x:-46
 
 // Natural meandering ponds and commercial water-street canal
 export const GARDEN_PONDS=[
- {x1:-68.5,x2:-25.5,z1:166.0,z2:193.8}, // 0. Central Huxinting enlarged outdoor lake (大幅扩大湖面)
- {x1:-70,x2:-57,z1:198,z2:202},    // 1. West rockery pool
- {x1:-14,x2:-2,z1:198,z2:207}      // 2. East inner pond
+ {x1:-68.5,x2:-25.5,z1:166.0,z2:193.8}, // 0. Central Huxinting enlarged outdoor lake (大幅扩大九曲大湖)
+ {x1:-66.0,x2:-24.0,z1:230.0,z2:242.0}, // 1. Central Grand River dividing garden into two halves (42米宽阔中央长河，横贯园林)
+ {x1:-22.0,x2:-2.0,z1:196.0,z2:216.0}   // 2. Grand East Scenic Lake for Stone Moon Bridge (扩大东园大明湖，开阔映桥)
 ];
 
 // Rich planting zones: pines & bamboo on rockeries, willows at waterside, mondo grass carpet & seasonal flowers
@@ -113,9 +113,12 @@ export const YUYUAN_BUILDINGS=[
  {id:'yuyuan-south-west',x:-78,z:268,rx:6,rz:4,levels:2},
  {id:'yuyuan-south-east',x:-18,z:268,rx:6,rz:4,levels:2},
 
- // 5. Central Grand Classical Garden (核心园林区：房子退移拆除，全域青翠绿化草毯环抱)
- {id:'sansui-tang',x:-71,z:198,rx:4,rz:3,levels:1}, // 三穗堂 (假山前堂)
- {id:'wangjiang-ting',x:-72,z:224,rx:3,rz:3,levels:1} // 望江亭 (大假山绝顶)
+ // 5. Central Grand Classical Garden (核心园林区历史文化遗迹建筑群)
+ {id:'sansui-tang',x:-71,z:198,rx:4,rz:3,levels:1,historic:'sansui'},     // 三穗堂: 乾隆五开间高敞正堂、水磨砖雕
+ {id:'yangshan-tang',x:-62,z:216,rx:4,rz:3,levels:2,historic:'yangshan'}, // 仰山堂与卷雨楼: 二层临水观山名楼
+ {id:'dianchun-tang',x:-16,z:232,rx:4,rz:3,levels:1,historic:'dianchun'}, // 点春堂: 小刀会起义指挥所旧址、红柱重檐
+ {id:'yuhua-tang',x:-36,z:248,rx:3.5,rz:3,levels:1,historic:'yuhua'},     // 玉华堂: 潘允端明代书斋、冰裂花窗对玉玲珑
+ {id:'wangjiang-ting',x:-72,z:224,rx:2.5,rz:2.5,levels:1,historic:'wangjiang'} // 望江亭: 张南阳大假山绝顶四角攒尖古亭
 ];
 
 export function buildYuyuan(world){
@@ -155,6 +158,14 @@ export function buildYuyuan(world){
   w.fill(stream.x1,20,stream.z1,stream.x2,20,stream.z2,3);
   w.fill(stream.x1,21,stream.z1,stream.x2,25,stream.z2,0);
  }
+
+ // Solid walking deck for Moon Bridge across East Lake (全跨坚实石桥步道，踩踏平稳绝不踏空落水)
+ w.fill(-20,25,204,-4,25,208,7);
+ w.fill(-20,26,204,-4,31,208,0); // Clear air across bridge walking deck
+
+ // Solid walking deck for Long Covered Gallery across Central River (中央长河42米水上长廊通达两岸)
+ w.fill(-66,25,234,-24,25,238,7);
+ w.fill(-66,26,234,-24,29,238,0); // Clear headroom inside gallery
 
  // 5. Continuous 100% emerald green garden lawn coverage (全域核心区青翠草毯覆盖，无裸露黄土/多余石板)
  for(let x=-76; x<=3; x++) for(let z=148; z<=265; z++){
