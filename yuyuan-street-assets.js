@@ -2,7 +2,7 @@ import * as THREE from './three.module.js';
 import {YUYUAN_BUILDINGS,GARDEN_PONDS} from './yuyuan-layout.js';
 
 // Geometry stays in district-local coordinates; the district root supplies Z+60.
-export function createYuyuanStreetAssets(root,{cube,mat,board}){
+export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
  const fixtures=[],dynamicRoots=new Set(),shops=[],extraShops=[],goods={},stockCaps={};
  const vendors=[],swayingObjects=[],flickeringLights=[],shopLights=[];
  
@@ -490,6 +490,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
   flickeringLights.push({mat: chMat, baseColor: new THREE.Color('#ffc966'), phase: x*3+z*2});
 
   const shopLight = new THREE.PointLight('#ffdb94', 1.8, 8.5, 1.4);
+  shopLight.visible = false;
   shopLight.position.set(x, 28.4, z);
   root.add(shopLight);
   shopLights.push(shopLight);
@@ -842,10 +843,18 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
  setStocks();
 
  // Animation tick: smooth harmonic swaying in the wind + soft hazy breathing glow (30Hz节流避免逐帧CPU占用)
- let clock = 0, animTimer = 0;
+ let clock = 0, animTimer = 0, districtNear = false;
  function tick(dt, {night=false}={}){
   clock += dt;
   animTimer += dt;
+  // Point lights enter every lit shader even when their district is off screen.
+  // Keep all local lights together; the wider exit radius prevents edge flicker.
+  if(getPos){
+   const p=getPos(),radius=districtNear?80:64;
+   districtNear=shopLights.some(l=>(l.position.x-p.x)**2+(l.position.y-p.y)**2+(l.position.z-p.z)**2<radius*radius);
+  }else districtNear=true;
+  // Visibility must update while paused or before the animation throttle yields.
+  for(const sl of shopLights)sl.visible=night&&districtNear;
   if(animTimer < 0.033) return;
   animTimer = 0;
   const t = clock;
@@ -867,10 +876,10 @@ export function createYuyuanStreetAssets(root,{cube,mat,board}){
    }
   }
   for(const sl of shopLights){
-   sl.visible = night;
    if(night) sl.intensity = 1.4 + 0.25 * Math.sin(t * 2.0);
   }
  }
 
+ tick(0);
  return {fixtures,dynamicRoots,shops,extraShops,goods,stockCaps,setStocks,vendors,tick};
 }
