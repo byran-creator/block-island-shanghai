@@ -1,4 +1,5 @@
 import {createShanghaiJourney} from './shanghai-journey.js';
+import {createSceneInstances} from './scene-instancing.js';
 import {createWorldBaseline} from './world-baseline.js';
 import {runPlayerInteraction} from './interaction-routing.js';
 import {blocksMetroClearance} from './metro-clearance.js';
@@ -392,6 +393,7 @@ mountVoiceSettings();
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
+const sceneInstances=createSceneInstances(scene);
 requestAnimationFrame(frame);
 
 

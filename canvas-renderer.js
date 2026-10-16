@@ -7,9 +7,10 @@ export class CanvasRenderer {
  render(scene,camera){
   const now=performance.now();if(now-this.last<65)return;this.last=now;
   const ctx=this.ctx,w=this.domElement.width,h=this.domElement.height;ctx.fillStyle=scene.background.getStyle();if(scene.userData.skyGradient){const sky=scene.userData.skyGradient,g=ctx.createLinearGradient(0,0,0,h*.75);g.addColorStop(0,sky.zenith);g.addColorStop(1,sky.horizon);ctx.fillStyle=g;}ctx.fillRect(0,0,w,h);
-  scene.updateMatrixWorld();camera.updateMatrixWorld();this.pv.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);camera.getWorldDirection(this.direction);
+  scene.updateMatrixWorld();camera.updateMatrixWorld();scene.onBeforeRender?.(this,scene,camera);this.pv.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);camera.getWorldDirection(this.direction);
   const polygons=[],sprites=[];const point=this.v,color=this.color;
   scene.traverseVisible(obj=>{
+   if(!obj.layers.test(camera.layers))return;
    if(obj.isSprite){const p=new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld),distance=p.distanceTo(camera.position);p.project(camera);if(p.z>0&&p.z<1&&distance<22)sprites.push({img:obj.material.map?.image,x:(p.x+1)*w/2,y:(1-p.y)*h/2,width:obj.scale.x*w/(distance*1.6),height:obj.scale.y*w/(distance*1.6),depth:distance});return;}
    if(!obj.isMesh||obj.userData.skyGradient||!obj.geometry.attributes.position)return;
    const geo=obj.geometry,pos=geo.attributes.position,norm=geo.attributes.normal,uv=geo.attributes.uv,colors=geo.attributes.color,ix=geo.index,mat=obj.material;
