@@ -1,0 +1,43 @@
+import * as THREE from './three.module.js';
+
+// Three's instance normal transform supports rotation and scale, but not shear.
+function supportedTransform(m){
+ const e=m.elements,a=e[0]*e[0]+e[1]*e[1]+e[2]*e[2],b=e[4]*e[4]+e[5]*e[5]+e[6]*e[6],c=e[8]*e[8]+e[9]*e[9]+e[10]*e[10],ab=e[0]*e[4]+e[1]*e[5]+e[2]*e[6],ac=e[0]*e[8]+e[1]*e[9]+e[2]*e[10],bc=e[4]*e[8]+e[5]*e[9]+e[6]*e[10];
+ return m.determinant()>=0&&ab*ab<=1e-12*a*b&&ac*ac<=1e-12*a*c&&bc*bc<=1e-12*b*c;
+}
+
+// Share draw submissions for identical opaque parts. Source scene objects remain
+// intact for walking, doors, dialogue, seats, collision and save logic.
+export function createSceneInstances(scene){
+ const candidates=new Map(),batches=[],sphere=new THREE.Sphere(),frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),inverse=new THREE.Matrix4(),matrix=new THREE.Matrix4();
+ scene.updateMatrixWorld(true);
+ scene.traverse(o=>{
+  if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||o.morphTargetInfluences||o.castShadow||Array.isArray(o.material)||!o.geometry?.attributes.position||o.geometry.isInstancedBufferGeometry||o.material.isShaderMaterial||o.material.transparent||o.material.opacity!==1||o.layers.mask!==1||o.onBeforeRender!==THREE.Object3D.prototype.onBeforeRender||o.matrixWorld.determinant()<=0)return;
+  const key=[o.geometry.uuid,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,o.userData.range??65,!!o.userData.panel].join(':');
+  if(!candidates.has(key))candidates.set(key,[]);candidates.get(key).push(o);
+ });
+ for(const sources of candidates.values()){
+  if(sources.length<3)continue;
+  const first=sources[0],mesh=new THREE.InstancedMesh(first.geometry,first.material,sources.length);mesh.name='scene-shared-parts';mesh.frustumCulled=false;mesh.renderOrder=first.renderOrder;mesh.castShadow=first.castShadow;mesh.receiveShadow=first.receiveShadow;mesh.layers.mask=first.layers.mask;mesh.userData.range=first.userData.range??65;mesh.userData.panel=!!first.userData.panel;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.count=0;scene.add(mesh);
+  if(!first.geometry.boundingSphere)first.geometry.computeBoundingSphere();
+  const entries=sources.map(source=>({source,mask:source.layers.mask}));for(const e of entries)e.source.layers.mask=e.mask&~1;
+  batches.push({mesh,entries});
+ }
+ function update(camera){
+  projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(projection);inverse.copy(scene.matrixWorld).invert();
+  for(const {mesh,entries}of batches){let count=0;
+   for(const {source,mask}of entries){
+    let visible=true,attached=false;for(let p=source;p;p=p.parent){if(p===scene)attached=true;if(!p.visible)visible=false;}
+    // Fall back to its original draw path if another system replaces a part.
+    if(!attached||source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1||!supportedTransform(source.matrixWorld)){source.layers.mask=mask;continue;}
+    source.layers.mask=mask&~1;
+    if(!visible||!(mask&camera.layers.mask))continue;
+    if(source.frustumCulled&&!frustum.intersectsSphere(sphere.copy(source.geometry.boundingSphere).applyMatrix4(source.matrixWorld)))continue;
+    mesh.setMatrixAt(count++,matrix.multiplyMatrices(inverse,source.matrixWorld));
+   }
+   mesh.count=count;mesh.visible=count>0;if(count)mesh.instanceMatrix.needsUpdate=true;
+  }
+ }
+ const before=scene.onBeforeRender,hook=function(renderer,renderScene,camera,...rest){before?.call(this,renderer,renderScene,camera,...rest);update(camera);};scene.onBeforeRender=hook;
+ return {batches,update,dispose(){if(scene.onBeforeRender===hook)scene.onBeforeRender=before;for(const {mesh,entries}of batches){for(const e of entries)e.source.layers.mask=e.mask;mesh.removeFromParent();mesh.dispose();}}};
+}
