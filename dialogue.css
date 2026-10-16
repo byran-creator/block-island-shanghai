@@ -1,0 +1,85 @@
+/* Shared conversations: the scene stays clear; only the bottom text has shading. */
+.game-dialog.conversation-dialog,
+#npc-dialog.conversation-dialog {
+  position:fixed; inset:auto 0 0; transform:none; width:100%; max-width:none;
+  margin:0; padding:12px 8vw max(8px,env(safe-area-inset-bottom)); min-height:0;
+  max-height:58dvh; overflow:visible; border:0; border-radius:0; box-shadow:none;
+  background:linear-gradient(transparent,rgba(9,20,29,.08) 35%,rgba(9,20,29,.24));
+  color:#fffdf4; text-shadow:0 2px 4px #000,0 0 14px #000a;
+}
+.game-dialog.conversation-dialog::backdrop {background:transparent;backdrop-filter:none;}
+.conversation-dialog header {max-width:1000px;margin:0 auto;border:0!important;padding:0!important;justify-content:center;}
+.conversation-dialog header>div>small,.conversation-dialog header>div>h2 {display:none;}
+.conversation-dialog header>button {position:fixed;right:24px;top:20px;background:#14262c44;border:1px solid #f6e6bd33;color:#fff8df;padding:7px 12px;font-size:12px;}
+.conversation-dialog .journey-content {padding:0;max-width:1000px;margin:auto;}
+.conversation-dialog .journey-speaker,#npc-dialog.conversation-dialog #npc-title {display:block;text-align:center;color:#f5d985;font-size:21px;letter-spacing:.1em;margin:0;line-height:1.4;}
+.conversation-dialog .dialogue-role {display:block;text-align:center;letter-spacing:.08em;color:#ead79d;font-size:11px;margin:3px 0 9px;}
+.conversation-dialog .journey-line,#npc-dialog.conversation-dialog #npc-answer {font-size:18px;line-height:1.75;min-height:0;color:#fffdf4;text-align:center;max-width:1000px;margin:10px auto 2px;white-space:pre-wrap;}
+.conversation-dialog .journey-line::before,#npc-dialog.conversation-dialog #npc-answer::before {content:'';display:block;height:1px;margin:0 auto 10px;background:linear-gradient(90deg,transparent,#dfc87899 25%,#dfc87899 75%,transparent);width:100%;}
+.conversation-dialog .journey-actions {display:flex;justify-content:center;margin:0;min-height:38px;position:relative;}
+.game-dialog .dialogue-continue {display:block;margin:0 auto;padding:0!important;width:56px;min-width:44px;height:38px;min-height:38px;flex:none;border:0!important;background:transparent!important;border-radius:50%;font-size:0!important;cursor:pointer;}
+.dialogue-continue::after {content:'';display:block;margin:auto;width:7px;height:7px;background:#f4d47c;transform:rotate(45deg);box-shadow:0 0 12px #f0d07b66;animation:dialogue-breath 1.8s ease-in-out infinite;}
+.game-dialog .dialogue-continue:hover::after {background:#fff4c7;box-shadow:0 0 16px #ffe393;}
+.game-dialog .dialogue-continue:focus-visible {outline:none;}
+.dialogue-continue:focus-visible::after {outline:1px solid #fff0bd;outline-offset:5px;}
+.game-dialog .dialogue-back {position:absolute;left:0;bottom:6px;font-size:12px;color:#f5e8c3;padding:7px 10px;min-height:30px;border:0;background:transparent;flex:none;}
+.conversation-dialog [hidden],#npc-actions[hidden] {display:none!important;}
+#npc-dialog.conversation-dialog #npc-actions {position:absolute;right:6vw;bottom:calc(100% + 16px);width:min(380px,40vw);display:grid;grid-template-columns:1fr;gap:7px;}
+#npc-dialog.conversation-dialog #npc-actions .recipe-card {text-align:left;border:1px solid #eadab555!important;border-radius:7px!important;background:#172b335c!important;color:#fff9e9!important;padding:10px 16px!important;text-shadow:0 1px 3px #000;font-size:14px;}
+#npc-dialog.conversation-dialog #npc-actions .recipe-card::before {content:'›';color:#e7ce85;margin-right:12px;}
+#npc-dialog.conversation-dialog #npc-actions .recipe-card:hover {background:#cbb47a44!important;border-color:#e8d394!important;}
+body.in-conversation .hud,body.in-conversation .hud *,body.in-conversation #crosshair,body.in-conversation #toast,body.in-conversation .quest-tracker,body.in-conversation .journey-toast,body.in-conversation .journey-tutorial,body.in-conversation .journey-reflection {visibility:hidden!important;}
+@keyframes dialogue-breath {50%{opacity:.45;transform:translateY(3px) rotate(45deg);}}
+@media(prefers-reduced-motion:reduce){.dialogue-continue::after{animation:none;}}
+
+/* The quest journal keeps selection, objective and rewards in one place. */
+#tasks-dialog.quest-browser-dialog {width:min(1120px,94vw);max-width:1120px;height:min(720px,90dvh);padding:24px 28px;background:linear-gradient(90deg,rgba(30,53,65,.92) 0%,rgba(30,53,65,.88) 34%,rgba(24,44,58,.48) 34%,rgba(24,44,58,.32) 100%);border:1px solid #d4c49366;overflow:hidden;}
+#tasks-dialog.quest-browser-dialog::backdrop {background:rgba(8,17,28,.18);backdrop-filter:blur(4px);}
+.quest-browser-dialog>header {height:58px;border-bottom:1px solid #d9c89644;}
+.quest-browser-dialog #task-summary {margin:10px 0 14px;color:#c4d3cc;font-size:12px;}
+.quest-browser {display:grid;grid-template-columns:minmax(240px,34%) 1fr;gap:28px;height:calc(100% - 132px);min-height:0;}
+.quest-sidebar {overflow:auto;padding-right:14px;border-right:1px solid #d4c49333;}
+.quest-sidebar,.quest-detail {scrollbar-width:thin;scrollbar-color:#dfcd9b88 transparent;}
+.quest-categories {display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.quest-categories button {font-size:11px;padding:7px 9px;border-radius:20px;background:transparent;color:#c9d7d2;}
+.quest-categories button[aria-pressed=true] {background:#e3d4ad;color:#193138;border-color:#e3d4ad;}
+.quest-browser #task-list {display:grid;gap:8px;}
+.quest-browser .quest-row {position:relative;text-align:left;width:100%;padding:14px 16px;background:#112a315c;border:1px solid #c9d7cc22;border-radius:5px;}
+.quest-row strong {display:block;font-size:15px;font-weight:600;margin:4px 0;}
+.quest-row small {display:block;font-size:11px;letter-spacing:0;color:#b6c6c4;}
+.quest-row .quest-kind {color:#e7cf8b;font-size:10px;letter-spacing:.08em;}
+.quest-browser .quest-row[aria-current=true] {background:#e8dfc7;color:#183039;border-color:#f5e6b7;box-shadow:inset 3px 0 #a88b4b;}
+.quest-row[aria-current=true] small,.quest-row[aria-current=true] .quest-kind {color:#536366;}
+.quest-detail {overflow:auto;padding:4px 8px 24px 0;text-shadow:0 1px 4px #0b1524;}
+.quest-detail>small {color:#e0c788;letter-spacing:.12em;}
+.quest-detail h3 {font-size:26px;line-height:1.4;margin:12px 0 8px;color:#fff3d6;}
+.quest-detail .quest-place {font-size:12px;color:#c2d2ce;border-bottom:1px solid #d4c49344;padding-bottom:20px;}
+.quest-detail .quest-objective {border-left:3px solid #d7bb75;padding:12px 16px;background:#0c202744;font-size:17px;color:#fff8e4;}
+.quest-detail .quest-description {font-size:14px;line-height:1.9;color:#c7d8d1;}
+.quest-detail h4 {font-size:12px;color:#d4c7a1;letter-spacing:.1em;margin:24px 0 12px;}
+.quest-rewards {display:flex;flex-wrap:wrap;gap:10px;}
+.quest-reward-tile {padding:12px 15px;border-radius:6px;min-width:96px;background:linear-gradient(140deg,#55686788,#2a434d99);border:1px solid #cbb67b55;color:#f6e3b2;font-size:13px;}
+.quest-detail-actions {display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;}
+.quest-detail-actions button {min-height:42px;padding:10px 20px;}
+.quest-detail-actions button.primary {background:#e8dfc7;color:#19313a;border-color:#eadcad;}
+.quest-detail details {margin-top:20px;font-size:13px;color:#c5d4ce;}
+.quest-detail details p {border-left:1px solid #c3b47a55;padding-left:12px;}
+.quest-legacy {margin-top:12px;color:#b6c8c2;font-size:11px;}
+.quest-legacy[open] {position:absolute;inset:100px 24px 20px;overflow:auto;padding:20px;background:#183039;border:1px solid #d4c49355;border-radius:8px;}
+.journey-tutorial {border-radius:6px;max-width:min(310px,80vw);font-size:13px;}
+@media(max-width:700px){
+ .game-dialog.conversation-dialog,#npc-dialog.conversation-dialog{padding:10px 6vw 4px;max-height:65dvh;overflow-y:auto;}
+ .conversation-dialog .journey-speaker,#npc-dialog.conversation-dialog #npc-title{font-size:18px;}
+ .conversation-dialog .journey-line,#npc-dialog.conversation-dialog #npc-answer{font-size:15px;line-height:1.7;margin:8px auto 0;}
+ .conversation-dialog header>button{top:12px;right:12px;font-size:11px;}
+ #npc-dialog.conversation-dialog #npc-actions{position:static;width:100%;margin:12px auto 6px;}
+ #tasks-dialog.quest-browser-dialog{padding:16px;width:96vw;height:94dvh;}
+ .quest-browser{grid-template-columns:minmax(125px,34%) 1fr;gap:14px;height:calc(100% - 132px);}
+ .quest-sidebar{padding-right:8px;}.quest-browser .quest-row{padding:10px;}.quest-row strong{font-size:13px;}.quest-categories button{font-size:10px;padding:5px 7px;}
+ .quest-detail h3{font-size:21px;}.quest-detail .quest-objective{font-size:14px;padding:10px;}.quest-detail .quest-description{font-size:13px;}.quest-detail-actions button{width:100%;}
+}
+
+.dialogue-riddle header h2{color:#f5d985;font-size:21px;text-align:center;margin:0}.dialogue-riddle #yuyuan-result{max-width:1000px;margin:14px auto 6px;text-align:center;color:#fffdf4;font-size:17px}.dialogue-riddle #yuyuan-actions{position:absolute;right:6vw;bottom:calc(100% + 16px);width:min(380px,40vw);display:grid;grid-template-columns:1fr;gap:7px}.dialogue-riddle #yuyuan-actions button{background:#172b335c;border:1px solid #eadab555;color:#fff9e9;text-align:left}.menu-journey-note{font-size:12px!important;color:#d3d9c7!important;line-height:1.6;margin:10px 0 18px!important}
+@media(max-width:700px){.dialogue-riddle #yuyuan-actions{position:static;width:100%;margin:14px auto 8px;}.dialogue-riddle #yuyuan-result{font-size:15px}}
+
+#tasks-dialog.quest-browser-dialog #task-list{grid-template-columns:minmax(0,1fr);}

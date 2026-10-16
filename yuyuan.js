@@ -298,9 +298,10 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
 
  const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
  const crowd=world?createYuyuanCrowd({scene,world,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
- function close(){if(!panel)return;panel=false;$('yuyuan-dialog').close();resume();}
+ function close(){if(!panel)return;panel=false;$('yuyuan-dialog').close();document.body?.classList.remove('in-dialogue','in-conversation');resume();}
+ const endTalk=document.createElement('button');endTalk.className='dialogue-continue';endTalk.textContent='结束对话';endTalk.setAttribute?.('aria-label','结束猜谜对话，继续游园');endTalk.title='继续游园';endTalk.hidden=true;endTalk.onclick=()=>close();$('yuyuan-dialog').appendChild(endTalk);
  function action(text,fn){const b=document.createElement('button');b.className='recipe-card';b.textContent=text;b.onclick=fn;$('yuyuan-actions').appendChild(b);return b;}
- function use(){if(rickshaws.use())return true;const p=localPos();if(p.y<25||p.y>28)return false;
+ function use(){if(rickshaws.use())return true;$('yuyuan-dialog').className='game-dialog';endTalk.hidden=true;const p=localPos();if(p.y<25||p.y>28)return false;
   const gate=gates.near(p);if(gate){pause();panel=true;$('yuyuan-title').textContent='海上名园 · 内园检票';$('yuyuan-result').textContent=insideGarden(p)?'离园请过闸，出园后再次进入需重新领票。':'九曲桥、湖心亭与商街可自由游览；内园使用免费游戏体验票。';$('yuyuan-actions').replaceChildren();
    if(!insideGarden(p)&&!gates.ticket)action('领取免费游园体验票',()=>{gates.claim();close();use();});
    const button=action(insideGarden(p)?'开闸离园':'检票入园',()=>{if(gates.open(gate)){close();notify('闸机已开，请从月洞门中央走过。');}});button.disabled=!insideGarden(p)&&!gates.ticket;$('yuyuan-dialog').showModal();return true;}
@@ -322,7 +323,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    action('淘一枚古铜钱 (康熙通宝)',()=>{collectibles['康熙通宝铜钱']=(collectibles['康熙通宝铜钱']??0)+1;$('yuyuan-result').textContent='【古董刘】识货！祖传生坑官铸古铜钱，包浆浑厚，给您留个念想！';});
    action('鉴赏古玉扳指 (温润包浆)',()=>{collectibles['老坑古玉扳指']=(collectibles['老坑古玉扳指']??0)+1;$('yuyuan-result').textContent='【古董刘】老坑和田青白玉扳指，温润油亮，大开门的好器物！';});
   }
-  if(near.id==='riddle'){const index=YUYUAN_RIDDLES.findIndex((_,i)=>!solved.has(i));if(index<0)$('yuyuan-result').textContent='三道灯谜都答对了，夜晚可来赏灯。';else{const q=YUYUAN_RIDDLES[index];$('yuyuan-result').textContent=q.question;for(const [i,answer]of q.answers.entries())action(answer,()=>{if(i!==q.correct){$('yuyuan-result').textContent='再想想：'+q.question;return;}if(solved.has(index))return;solved.add(index);if(solved.size===3)onEvent({type:'yuyuan-riddle',solved:3});onProgress();$('yuyuan-result').textContent='答对了！'+solved.size+'/3；关闭后再来下一题。';});}}
+  if(near.id==='riddle'){$('yuyuan-dialog').className='game-dialog conversation-dialog dialogue-riddle';document.body?.classList.add('in-dialogue','in-conversation');endTalk.hidden=false;const index=YUYUAN_RIDDLES.findIndex((_,i)=>!solved.has(i));if(index<0)$('yuyuan-result').textContent='三道灯谜都答对了，夜晚可来赏灯。';else{const q=YUYUAN_RIDDLES[index];$('yuyuan-result').textContent=q.question;for(const [i,answer]of q.answers.entries())action(answer,()=>{if(i!==q.correct){$('yuyuan-result').textContent='再想想：'+q.question;return;}if(solved.has(index))return;solved.add(index);if(solved.size===3)onEvent({type:'yuyuan-riddle',solved:3});onProgress();$('yuyuan-result').textContent='答对了！'+solved.size+'/3；关闭后再来下一题。';});}}
   $('yuyuan-dialog').showModal();return true;
  }
  $('yuyuan-close').onclick=close;$('yuyuan-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});
