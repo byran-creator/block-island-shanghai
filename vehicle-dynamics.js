@@ -3,7 +3,12 @@ import {MathUtils} from './three.module.js';
 export const DRIVE_MODES=['慢速','巡航','快速'];
 export function vehiclePenetration(v,x,y,z,a,o){
  const p=o.root.position;if(o.person&&o.root.visible===false)return 0;if(o.root===v.root||y>=p.y+(o.height??1.85)||y+1.7<=p.y)return 0;
- const dx=p.x-x,dz=p.z-z,c=Math.cos(a),s=Math.sin(a),side=dx*c-dz*s,front=dx*s+dz*c;
+ const dx=p.x-x,dz=p.z-z;
+ // A rotated rectangle fits inside this conservative square. Distant actors
+ // cannot touch it, so avoid trigonometry and SAT work for those pairs.
+ const reach=v.halfWidth+v.halfLength+(o.person?.36:(o.halfWidth??.88)+(o.halfLength??1.55)+.1);
+ if(Math.abs(dx)>reach||Math.abs(dz)>reach)return 0;
+ const c=Math.cos(a),s=Math.sin(a),side=dx*c-dz*s,front=dx*s+dz*c;
  if(o.person){const ex=Math.max(0,Math.abs(side)-v.halfWidth),ez=Math.max(0,Math.abs(front)-v.halfLength);return ex||ez?Math.max(0,.36-Math.hypot(ex,ez)):Math.min(v.halfWidth+.36-Math.abs(side),v.halfLength+.36-Math.abs(front));}
  const b=o.root.rotation.y,bc=Math.cos(b),bs=Math.sin(b),w=o.halfWidth??.88,l=o.halfLength??1.55;
  const radius=Math.hypot(v.halfWidth,v.halfLength)+Math.hypot(w,l)+.1;if(dx*dx+dz*dz>radius*radius)return 0;
