@@ -49,16 +49,28 @@ for(const kind of ['glass','hotel','mall','brick']){
  const evening=groups.filter(g=>lightGroupVisible(g,true,140)).length,late=groups.filter(g=>lightGroupVisible(g,true,200)).length;
  assert(evening>60&&evening<320,`${kind}: night windows should have both lit and dark rooms`);assert(late<evening,`${kind}: occupancy should fall after midnight`);
 }
+const shoppingBuilding={id:'nanjing-test',kind:'baroque',bank:'west',entranceSide:1};
+const shoppingGroups=Array.from({length:400},(_,i)=>windowLightGroup(shoppingBuilding,5,i,'z:1:5')),backGroups=Array.from({length:400},(_,i)=>windowLightGroup(shoppingBuilding,5,i,'z:-1:-5'));
+for(const [floor,face]of [[9,'z:1:5'],[5,'z:-1:-5'],[5,'x:1:5']])assert(windowLightGroup(shoppingBuilding,floor,1,face).startsWith('home:'),'Upper floors and non-shopping faces retain residential occupancy');
+const litAt=t=>shoppingGroups.filter(g=>lightGroupVisible(g,true,t)).length;
+assert(litAt(165)>backGroups.filter(g=>lightGroupVisible(g,true,165)).length,'Trading floors need more occupied windows than back-of-building rooms');
+assert(litAt(165)>litAt(200)&&litAt(140)<400,'Trading floors quieten after midnight without an identical all-lit grid');
+assert(shoppingGroups.every(g=>!lightGroupVisible(g,false,36)));
 // Exercise real static batching: dark windows must not join a globally visible night batch.
 const savedDocument=globalThis.document;
 globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},clearRect(){},save(){},restore(){},translate(){},scale(){},rotate(){},fill(){},closePath(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}})})};
 try{
  const scene=new THREE.Scene(),civil=createBund({scene,world,getPos:()=>({x:0,y:26,z:84})});
+ const bounce=new Set();scene.traverse(o=>{if(o.material?.name==='nanjing-stone-bounce')bounce.add(o.material);});
+ assert(bounce.size>0&&bounce.size<16,'Shopping bounce must reuse a small set of stone materials');
+ assert([...bounce].every(m=>m.map===m.emissiveMap),'Bounce keeps the existing stone texture');
  assert(civil.windows.length<130,'Occupancy batching must keep draw calls bounded');
  assert(civil.windows.every(m=>m.parent===scene),'Night visibility must control the actual merged meshes');
  civil.tick(0,{night:true,dayClock:140});assert(civil.windows.some(m=>m.visible)&&civil.windows.some(m=>!m.visible));
+ assert([...bounce].every(m=>m.emissiveIntensity>0));
  const roomCount=()=>civil.windows.filter(m=>m.visible).reduce((n,m)=>n+m.geometry.attributes.position.count/4,0),evening=roomCount();
  civil.tick(0,{night:true,dayClock:200});assert(roomCount()<evening);
  civil.tick(0,{night:false,dayClock:36});assert(civil.windows.every(m=>!m.visible));
+ assert([...bounce].every(m=>m.emissiveIntensity===0),'Night bounce must be completely off in daylight');
 }finally{globalThis.document=savedDocument;}
 console.log('PASS: broad navigable river, shore/save migration, southeast infill, balanced Bund massing, sparse stable night occupancy and real merged-mesh visibility.');

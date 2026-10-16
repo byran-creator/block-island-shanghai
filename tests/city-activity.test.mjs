@@ -40,6 +40,9 @@ try{
  activity.tick(4,{night:true});assert(activity.neons.every(m=>m.visible));assert(activity.signs.every(s=>s.mesh.material===s.night));
  for(const p of activity.tourists)assert(!overlaps(world,p.root.position.x,26,p.root.position.z),'Tourist placed inside a wall');
  activity.tick(0,{night:false});assert(activity.neons.every(m=>!m.visible));
+ const street=activity.signs[0].mesh.parent,visibleLights=()=>{let count=0;street.traverse(o=>{if(o.isPointLight&&o.visible)count++;});return count;};
+ assert.equal(visibleLights(),0,'Street lights must turn off during the day');
+ for(const x of [-170,-109,-50,0]){pos={x,y:26,z:66};activity.tick(0,{night:true});assert(visibleLights()<=4,'Moving along the street must preserve the four-light budget');}
  const vendor=activity.vendors.find(v=>v.food);pos={x:vendor.x,y:26,z:vendor.z};assert(activity.use());assert(paused);ids.get('city-actions').children[0].onclick();assert.equal(food,2);ids.get('city-actions').children[0].onclick();assert.equal(food,2);activity.close();assert(!paused);assert.deepEqual(events,[{type:'shop'}],'Rejected repeat purchase must not emit progress');
  const saved=activity.serialize();activity.restore(saved);assert.deepEqual(activity.serialize(),saved);
  pos={...activity.landings[0]};assert(activity.use());assert(activity.isRiding());assert.equal(activity.safeSavePoint().y,26);for(let i=0;i<440;i++)activity.tick(.1,{night:false});assert(!activity.isRiding());assert.equal(pos.name,activity.landings[1].name);assert(!overlaps(world,pos.x,pos.y,pos.z)&&overlaps(world,pos.x,pos.y-.1,pos.z));assert(progress>=2);assert.deepEqual(events.at(-1),{type:'ferry',from:0,to:1,departed:true});
