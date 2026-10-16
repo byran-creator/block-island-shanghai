@@ -5,6 +5,7 @@
 <meta name="theme-color" content="#182c32"><meta name="description" content="文强的方块小岛。探索、挖掘、搭建，一个轻量的第一人称方块沙盒。">
 <title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style.css">
 <link rel="stylesheet" href="./journey.css">
+<link rel="stylesheet" href="./dialogue.css">
 </head>
 <body>
 <canvas id="world" aria-label="三维方块世界"></canvas>
@@ -40,6 +41,7 @@
   <h1 id="menu-title">初到上海，故事从这里开始。</h1>
   <p id="menu-description">收下一张明信片，逛南京路，乘地铁去陆家嘴登高，再到豫园慢慢喝一杯茶。</p>
   <button id="play" class="play hero-cta" disabled>正在加载城市与建筑… <span>→</span></button>
+  <p class="menu-journey-note">首次进入会自动开始两章新手引导 · 游戏内按 I 查看进度</p>
   <div class="mode-entry">
    <button id="go-yuyuan" class="mode-pill highlight-pill">🏮 豫园商肆直达</button>
    <button id="start-survival" class="mode-pill">🏕️ 生存挑战</button>
@@ -157,7 +159,7 @@
 <div id="guide-prompt" class="hud guide-prompt" hidden></div>
 <dialog id="npc-dialog" class="game-dialog" aria-labelledby="npc-title"><header><h2 id="npc-title">街区向导</h2><button id="npc-close">结束对话</button></header><p id="npc-answer" aria-live="polite"></p><div id="npc-actions" class="recipe-grid"></div></dialog>
 <aside id="quest-tracker" class="quest-tracker" hidden><strong id="tracked-title"></strong><div><span id="tracked-arrow">↑</span><span id="tracked-place"></span></div><p id="tracked-step"></p><button id="quest-map">M 地图看目标</button><button id="quest-stop">停止追踪</button></aside>
-<dialog id="tasks-dialog" class="game-dialog" aria-labelledby="tasks-title"><header><div><small>CITY JOURNAL / I 任务</small><h2 id="tasks-title">主线旅程与城市支线</h2></div><button id="tasks-close">返回游戏</button></header><p id="task-summary" aria-live="polite"></p><p>引导默认关闭，可以自由探索。需要帮助时点“追踪目标”，再按 M 看黄色菱形。目标会按操作步骤更新；到达地点不会代替实际操作。</p><p>奖励加入当前存档的背包；创造模式也可领取，切到生存模式仍可使用。每项只领取一次。</p><div id="task-list"></div><section class="main-quest"><h3>支线 · 明珠灵感收集</h3><div class="quest-eyebrow">奶龙的委托 · PEARL QUEST</div><strong><span id="quest-title">寻找 5 枚灵感晶体</span><span id="quest-count">0 / 5</span></strong><div class="quest-track"><i id="quest-fill"></i></div><p id="quest-description">让东方明珠亮起来。</p><div class="gem-list"><span id="gem-village"></span><span id="gem-gallery"></span><span id="gem-forest"></span><span id="gem-deck"></span><span id="gem-race"></span></div></section></dialog>
+<dialog id="tasks-dialog" class="game-dialog quest-browser-dialog" aria-labelledby="tasks-title"><header><div><small>SHANGHAI / 你的旅程</small><h2 id="tasks-title">旅程与委托</h2></div><button id="tasks-close">返回游戏 · I</button></header><p id="task-summary"></p><div class="quest-browser"><nav class="quest-sidebar" aria-label="任务列表"><div id="task-categories" class="quest-categories"></div><div id="task-list"></div></nav><section id="task-detail" class="quest-detail" aria-live="polite"></section></div><details class="quest-legacy"><summary>明珠灵感收集 · 城市长期目标</summary><section class="main-quest"><h3>支线 · 明珠灵感收集</h3><div class="quest-eyebrow">奶龙的委托 · PEARL QUEST</div><strong><span id="quest-title">寻找 5 枚灵感晶体</span><span id="quest-count">0 / 5</span></strong><div class="quest-track"><i id="quest-fill"></i></div><p id="quest-description">让东方明珠亮起来。</p><div class="gem-list"><span id="gem-village"></span><span id="gem-gallery"></span><span id="gem-forest"></span><span id="gem-deck"></span><span id="gem-race"></span></div></section></details></dialog>
 <dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title">
  <header>
   <div>
@@ -170,7 +172,7 @@
 
 
   <p class="update-intro">2026年10月16日 · 把南京路、陆家嘴和豫园串成一次有开场、相遇与纪念的上海初游。已有存档与个人建造继续保留。</p>
-<article class="update-section"><div class="update-badge-row"><span class="update-tag">故事旅程</span><h3>一张明信片，认识江的两岸</h3></div><ul class="update-list"><li>新玩家从外滩短片与志愿者相遇开始：南京路逛店、2号线过江、上海中心观景、返回南京东路换乘10号线，再游豫园、品茶。</li><li>十段主线按真实操作承接，带分段NPC对话、原创任务提示音、地图追踪与新手操作提示。前两段后明确开放自由探索，I 随时接着走。</li><li>主线全部完成后可选择旅行记忆，获得唯一纪念卡，观看可跳过的终章短片与旅程结算；O 背包可点击纪念卡，I 可重看。</li><li>开场与终章支持跳过，减少动态效果设置会停用航拍运动。旧存档不强制重开，从暂停菜单“初到上海”主动开启即可。生存、建造与城市支线独立保留。</li></ul></article>
+<article class="update-section"><div class="update-badge-row"><span class="update-tag">故事旅程</span><h3>一张明信片，认识江的两岸</h3></div><ul class="update-list"><li>新玩家从外滩短片与志愿者相遇开始：南京路逛店、2号线过江、上海中心观景、返回南京东路换乘10号线，再游豫园、品茶。</li><li>十段主线按真实操作承接，NPC采用底部透明对话，I任务栏集中展示主线、城市和生存委托、目标与奖励，配合原创任务提示音、地图追踪与两章新手操作提示。前两段后明确开放自由探索，I 随时接着走。</li><li>主线全部完成后可选择旅行记忆，获得唯一纪念卡，观看可跳过的终章短片与旅程结算；O 背包可点击纪念卡，I 可重看。</li><li>开场与终章支持跳过，减少动态效果设置会停用航拍运动。首次进入自动开始前两章新手引导；旧存档不强制重开，从 I 任务栏“初到上海”主动开启即可。生存、建造与城市支线独立保留。</li></ul></article>
 <details class="update-history"><summary>📚 豫园烟火商街与园林盛景（2026.10.15）</summary>
 <p class="update-intro">2026年10月15日 · 全面升级<b>豫园老城厢商业街区与古典园林</b>：两侧商铺彻底告别中空毛坯、全景精装修有烟火气店铺、大幅提升商业街区人流量、园林核心区全域草毯覆盖、九曲桥优化为单层通透水榭亭台。已有存档、背包与个人建造继续保留。</p>
   <article class="update-section">
