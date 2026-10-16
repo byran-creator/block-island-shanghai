@@ -7,25 +7,37 @@ const faces=[
  {d:[0,0,-1],v:[[1,0,0],[0,0,0],[0,1,0],[1,1,0]],light:.8}
 ];
 
-// Work on a few columns at a time, without copying the voxel world.
+// Count exposed faces with a compact mask, then write final GPU arrays directly.
+// Both passes yield by column; no temporary JS vertex arrays or world copy.
 export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false}){
- const data={p:[],norm:[],uv:[],col:[],indices:[]};let column=0;
+ const data={p:null,norm:null,uv:null,col:null,indices:null};
+ const columns=chunk*chunk;let masks=new Uint8Array(columns*height),column=0,faceCount=0,writing=false,vertex=0,index=0,done=false;
  function step(count=8){
-  const end=Math.min(chunk*chunk,column+count);
+  if(done)return true;
+  const end=Math.min(columns,column+count);
   for(;column<end;column++){
    const x=cx*chunk+Math.floor(column/chunk),z=cz*chunk+column%chunk;
    for(let y=0;y<height;y++){
-    const id=world.get(x,y,z);if(!id||skip(x,y,z,id))continue;
-    for(const f of faces){
-     if(world.get(x+f.d[0],y+f.d[1],z+f.d[2]))continue;
+    const at=column*height+y;
+    if(writing&&!masks[at])continue;
+    const id=world.get(x,y,z);if(!id||(!writing&&skip(x,y,z,id)))continue;
+    for(let face=0;face<faces.length;face++){
+     const f=faces[face];
+     if(!writing){if(!world.get(x+f.d[0],y+f.d[1],z+f.d[2])){masks[at]|=1<<face;faceCount++;}continue;}
+     if(!(masks[at]&(1<<face)))continue;
      let tile=id-1;if(id===1)tile=f.d[1]===1?0:f.d[1]===-1?1:8;if(id===4&&f.d[1]!==0)tile=9;if(id>=9)tile=id+1;
-     const start=data.p.length/3,nx=f.d[0],ny=f.d[1],nz=f.d[2],lt=f.light;
-     for(let i=0;i<4;i++){const v=f.v[i];data.p.push(x+v[0],y+v[1],z+v[2]);data.norm.push(nx,ny,nz);data.col.push(lt,lt,lt);const u=i===1||i===2?1:0,vv=i>=2?1:0;data.uv.push((tile+(.025+u*.95))/14,.025+vv*.95);}
-     data.indices.push(start,start+1,start+2,start,start+2,start+3);
+     const start=vertex,nx=f.d[0],ny=f.d[1],nz=f.d[2],lt=f.light;
+     for(let i=0;i<4;i++,vertex++){
+      const v=f.v[i],a=vertex*3,b=vertex*2;data.p[a]=x+v[0];data.p[a+1]=y+v[1];data.p[a+2]=z+v[2];data.norm[a]=nx;data.norm[a+1]=ny;data.norm[a+2]=nz;data.col[a]=lt;data.col[a+1]=lt;data.col[a+2]=lt;
+      const u=i===1||i===2?1:0,vv=i>=2?1:0;data.uv[b]=(tile+(.025+u*.95))/14;data.uv[b+1]=.025+vv*.95;
+     }
+     data.indices[index++]=start;data.indices[index++]=start+1;data.indices[index++]=start+2;data.indices[index++]=start;data.indices[index++]=start+2;data.indices[index++]=start+3;
     }
    }
   }
-  return column===chunk*chunk;
+  if(column<columns)return false;
+  if(!writing){const vertices=faceCount*4;data.p=new Float32Array(vertices*3);data.norm=new Float32Array(vertices*3);data.uv=new Float32Array(vertices*2);data.col=new Float32Array(vertices*3);data.indices=vertices>=65536?new Uint32Array(faceCount*6):new Uint16Array(faceCount*6);writing=true;column=0;if(faceCount)return false;}
+  masks=null;done=true;return true;
  }
  return {step,data};
 }

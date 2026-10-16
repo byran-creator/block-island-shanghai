@@ -1,0 +1,105 @@
+{
+  "sourceCommit": "65d92aa7c54cd4717f5bb6ca350815a8a5ff1ca1",
+  "cases": [
+    {
+      "kind": "city",
+      "cx": 1,
+      "cz": 5,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 5196,
+      "indices": 7794,
+      "sha256": "508fc53363e2e294793b56e85759cc28a4fc1e39f9d62c9e7c57b9ef96694042"
+    },
+    {
+      "kind": "city",
+      "cx": -5,
+      "cz": 4,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 12388,
+      "indices": 18582,
+      "sha256": "ac3f998163179ed99529562e1dfeb9d63d3b1e47b71c843b8df040ee24f1bd5b"
+    },
+    {
+      "kind": "city",
+      "cx": -4,
+      "cz": 17,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 4504,
+      "indices": 6756,
+      "sha256": "6432f61c1b42b6ce18e59f10d6f2ce4d240260cfe95c6450237b2e1ae7f7831d"
+    },
+    {
+      "kind": "city",
+      "cx": 12,
+      "cz": 5,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 7392,
+      "indices": 11088,
+      "sha256": "182525d0471173c2aecc278ff569c871f2b15d14f9a103b72e7a42745c65a962"
+    },
+    {
+      "kind": "city",
+      "cx": -14,
+      "cz": -14,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 5376,
+      "indices": 8064,
+      "sha256": "3c7608126af57e7c49bc777093c33bfe7fc27ad7841c3f55194056c86008c990"
+    },
+    {
+      "kind": "city",
+      "cx": 24,
+      "cz": 24,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 2856,
+      "indices": 4284,
+      "sha256": "af13589daa4b8ff5dc29b4adaab566b26915cb2c1eb51e396fba663e66ad46fc"
+    },
+    {
+      "kind": "city",
+      "cx": 0,
+      "cz": 0,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 4372,
+      "indices": 6558,
+      "sha256": "a113c1d6f7ea7e51e9b7f2ebdcf4b82e2c5108ac79da8f8f5da9e579b4c65a64"
+    },
+    {
+      "kind": "city",
+      "cx": 16,
+      "cz": 13,
+      "chunk": 16,
+      "height": 144,
+      "vertices": 4328,
+      "indices": 6492,
+      "sha256": "81283140804d166574fea65e70be2bcc2f0304b1672838dace50f263acaa25d5"
+    },
+    {
+      "kind": "checkerboard",
+      "cx": 0,
+      "cz": 0,
+      "chunk": 16,
+      "height": 32,
+      "vertices": 98304,
+      "indices": 147456,
+      "sha256": "20c293eb824c30fc3283b644cd3f7de59eb15781cb9e4fa130a5886c467d9b48"
+    },
+    {
+      "kind": "empty",
+      "cx": 0,
+      "cz": 0,
+      "chunk": 16,
+      "height": 32,
+      "vertices": 0,
+      "indices": 0,
+      "sha256": "db2665ff1c86b09b825c54d0bbf12c058da8835f566157fa4c63bdc3ba361d26"
+    }
+  ]
+}
