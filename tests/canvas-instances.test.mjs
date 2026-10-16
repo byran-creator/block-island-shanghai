@@ -9,4 +9,7 @@ const geometry=new THREE.BoxGeometry(1,1,1),material=new THREE.MeshBasicMaterial
 const ordinary=new THREE.Mesh(geometry,material);scene.add(ordinary);renderer.last=-100;renderer.render(scene,camera);assert.equal(strokes.length,12);
 ordinary.removeFromParent();strokes.length=0;const instances=new THREE.InstancedMesh(geometry,material,2);instances.position.x=1;instances.setMatrixAt(0,new THREE.Matrix4().makeTranslation(-2,0,0));instances.setMatrixAt(1,new THREE.Matrix4().makeTranslation(2,0,0));scene.add(instances);renderer.last=-100;renderer.render(scene,camera);
 assert.equal(strokes.length,24,'Both fountain instances must be drawn in the CPU fallback');assert.equal(strokes.filter(([x])=>x<200).length,12);assert.equal(strokes.filter(([x])=>x>230).length,12,'Instance and parent transforms must place the two meshes on distinct sides');
+material.clippingPlanes=[new THREE.Plane(new THREE.Vector3(1,0,0),0)];renderer.localClippingEnabled=true;strokes.length=0;renderer.last=-100;renderer.render(scene,camera);
+assert.equal(strokes.length,12,'Compatibility rendering must also reject geometry beyond the train portal plane');
+assert(strokes.every(([x])=>x>230),'Clipping uses transformed world coordinates, including instance transforms');
 console.log('PASS: ordinary mesh rendering retained; every instance uses its own matrix and parent transform in compatibility rendering.');

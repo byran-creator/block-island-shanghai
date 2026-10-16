@@ -1,15 +1,16 @@
 import * as THREE from './three.module.js';
 import {createMetro} from './metro.js';
-import {trainPose} from './metro-service.js';
+import {LINE10_TRAIN_BOUNDS,line10TrainPose,boundLine10TrainMeshes} from './metro-line10-service.js';
 import {metroInterior,metro2Interior} from './metro-layout.js';
 import {LINE10_COLOR,LINE10_ORIGIN,LINE10_ROTATION,LINE10_STATIONS,LINE10_RAMPS,line10StationAt,line10InteriorLocal,line10Interior,line10RampAt,line10RampFloor,line10Direction,line10ToLocal,line10ToWorld,TRANSFER_POINTS,transferInterior} from './metro-line10-layout.js';
 export function createMetroNetwork(options){
  const {scene,getPos,place,setView,getYaw=()=>0,notify,onEvent=()=>{}}=options;
  const config2={networkInterior:p=>(fare&&p.y<23.5)||metroInterior(p),wallOpenings:[{station:'nanjing',side:1,x:-100,width:7}]};
  const two=createMetro({...options,config:config2});
- const config10={lineNumber:10,stations:LINE10_STATIONS,ramps:LINE10_RAMPS,stationAt:line10StationAt,interior:line10InteriorLocal,rampAt:line10RampAt,rampFloor:line10RampFloor,direction:line10Direction,networkInterior:p=>(fare&&p.y<23.5)||metroInterior(line10ToWorld(p)),trainPose:s=>trainPose(s,{stations:LINE10_STATIONS,lineZ:()=>0}),wallOpenings:[{station:'nanjing10',side:1,x:164,width:5}],signOptions:{lineNumber:10,lineColor:LINE10_COLOR,routeNames:['天潼路','南京东路','豫园','老西门','一大会址·新天地'],routeEnglish:['Tiantong Rd.','East Nanjing Rd.','Yuyuan Garden','Laoximen','Xintiandi'],routePair:['南京东路','豫园']},trainOptions:{lineNumber:10,lineColor:LINE10_COLOR,cars:[-20,-12,-4,4,12,20],modelName:'10A01',destinationLabels:['虹桥 / 航中路','基隆路']}};
+ const config10={lineNumber:10,stations:LINE10_STATIONS,ramps:LINE10_RAMPS,stationAt:line10StationAt,interior:line10InteriorLocal,rampAt:line10RampAt,rampFloor:line10RampFloor,direction:line10Direction,networkInterior:p=>(fare&&p.y<23.5)||metroInterior(line10ToWorld(p)),trainPose:line10TrainPose,trainBounds:LINE10_TRAIN_BOUNDS,wallOpenings:[{station:'nanjing10',side:1,x:164,width:5}],signOptions:{lineNumber:10,lineColor:LINE10_COLOR,routeNames:['天潼路','南京东路','豫园','老西门','一大会址·新天地'],routeEnglish:['Tiantong Rd.','East Nanjing Rd.','Yuyuan Garden','Laoximen','Xintiandi'],routePair:['南京东路','豫园']},trainOptions:{lineNumber:10,lineColor:LINE10_COLOR,cars:[-20,-12,-4,4,12,20],modelName:'10A01',destinationLabels:['虹桥 / 航中路','基隆路']}};
  const ten=createMetro({...options,config:config10,getPos:()=>line10ToLocal(getPos()),place:p=>place(line10ToWorld(p)),setView:(a,p)=>setView(a+LINE10_ROTATION,p),getYaw:()=>getYaw()-LINE10_ROTATION,onEvent:e=>{if(e.type==='metro')onEvent({...e,type:'metro10',line:10,from:e.from==='nanjing10'?'nanjing':e.from,to:e.to==='nanjing10'?'nanjing':e.to});else if(e.type==='security')onEvent({...e,station:e.station==='nanjing10'?'nanjing':e.station,line:10});}});
  ten.root.position.set(LINE10_ORIGIN.x,0,LINE10_ORIGIN.z);ten.root.rotation.y=LINE10_ROTATION;
+ boundLine10TrainMeshes(ten);if(options.renderer)options.renderer.localClippingEnabled=true;
  // Staff are also used by the global NPC dialog/collision system, so keep their
  // real scene roots in world coordinates while the station engine remains local.
  for(const person of ten.staff){const p=line10ToWorld(person.root.position);person.root.removeFromParent();scene.add(person.root);person.root.position.set(p.x,p.y,p.z);person.root.rotation.y+=LINE10_ROTATION;person.guide={intro:'欢迎乘坐10号线。南京东路可在付费区换乘2号线；本站安检和闸机与2号线一样。',choices:[['怎么去豫园？','乘虹桥火车站 / 航中路方向，下一站就是豫园；出站先刷闸，再上扶梯。'],['怎样换乘？','在南京东路上到B1，沿紫色10号线或绿色2号线导向走付费换乘通道，无需出闸和重复安检。']]};}

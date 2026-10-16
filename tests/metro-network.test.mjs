@@ -4,6 +4,8 @@ import {VoxelWorld,overlaps} from '../game/world.js';
 import {createMetroNetwork} from '../game/metro-network.js';
 import {metroRampFloor,metroInterior,METRO_STATIONS} from '../game/metro-layout.js';
 import {LINE10_STATIONS,LINE10_WORLD_STATIONS,line10ToWorld,line10ToLocal,line10Direction,TRANSFER_POINTS} from '../game/metro-line10-layout.js';
+import {LINE10_TRAIN_BOUNDS,line10TrainPose} from '../game/metro-line10-service.js';
+import {trainState,trainPose} from '../game/metro-service.js';
 const previous=globalThis.document,ctx=new Proxy({},{get:(_,key)=>key==='measureText'?t=>({width:t.length*16}):()=>{}}),node=()=>({hidden:true,children:[],classList:{toggle(){}},append(...items){this.children.push(...items);},appendChild(c){this.children.push(c);},getContext:()=>ctx,setAttribute(){}});
 globalThis.document={createElement:node,body:node(),hidden:false};
 try{
@@ -11,6 +13,22 @@ try{
  const network=createMetroNetwork({scene,getPos:()=>pos,place:p=>Object.assign(pos,p),setView(){},getAudio(){throw Error('Muted');},getSound:()=>false,notify:m=>messages.push(m),onEvent:e=>events.push(e)});
  const tick=dt=>network.tick(dt,{playing:true,sound:false,keys:new Set()});tick(0);
  assert.equal(network.lines[10].trains[0].root.name,'line-10-10A01');assert.equal(network.lines[10].trains[0].doors.length,24);
+ // The old northbound overrun put its nose in Line 2 at cycle time 9.2s.
+ const old=trainPose(trainState(9.2,30,-1),{stations:LINE10_STATIONS,lineZ:()=>0});
+ assert(line10ToWorld(old).z-24.3<78,'Fixture must reproduce the reported crossing');
+ const materials=new Set(),planes=new Set();
+ for(const t of network.lines[10].trains)t.root.traverse(o=>{if(o.isMesh){materials.add(o.material);for(const p of o.material.clippingPlanes??[])planes.add(p);}});
+ assert.equal(planes.size,2,'Both trains share the same two physical portal limits');
+ assert(materials.size<80,'Bounds must not create a new material for each passenger/door');
+ for(const t of network.lines[2].trains)t.root.traverse(o=>{if(o.isMesh)assert(!o.material.clippingPlanes,'Line 2 materials must remain unaffected');});
+ for(const z of [54,66,78])for(const plane of [...planes].slice(0,1))assert(plane.distanceToPoint(new THREE.Vector3(-102,6,z))<0,'The north tube plane must reject every Line 2 platform point');
+ for(const s of LINE10_STATIONS)for(const plane of planes)assert(plane.distanceToPoint(new THREE.Vector3(...Object.values(line10ToWorld({x:s.x,y:6,z:8}))))>=0);
+ for(const direction of [-1,1])for(let t=0;t<180;t+=.025){
+  const state=trainState(t,0,direction),pose=line10TrainPose(state);
+  if(state.phase!=='through')assert.deepEqual(pose,trainPose(state,{stations:LINE10_STATIONS,lineZ:()=>0}),'Boarding and interstation motion must stay exact');
+  else if(pose.visible)assert(pose.x+24.3>=LINE10_TRAIN_BOUNDS.minX&&pose.x-24.3<=LINE10_TRAIN_BOUNDS.maxX);
+ }
+ tick(9.2);const outside=line10ToLocal({x:-102,y:6,z:75});assert.equal(network.lines[10].floorAt(outside.x,outside.z),null,'Clipped train tails must not create phantom floors inside Line 2');
  const transfers=[];network.lines[10].root.traverse(o=>{if(o.userData.signFaces?.front?.lineNumber===2)transfers.push(o);});assert(transfers.length>0,'Line 10 transfer back to Line 2 must use a green 2 badge, not its purple 10 default');
  assert.equal(network.lines[10].staff[0].root.position.x,-88);assert(network.staff.every(a=>a.root.position.y===16));
  // The old security/gate workflow creates one fare session shared by the paid passage.
