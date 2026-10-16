@@ -20,6 +20,8 @@ export class CanvasRenderer {
     const objectWorld=obj.isInstancedMesh?(obj.getMatrixAt(instance,this.instanceMatrix),this.instanceWorld.multiplyMatrices(obj.matrixWorld,this.instanceMatrix)):obj.matrixWorld;this.mvp.multiplyMatrices(this.pv,objectWorld);
    for(let i=start;i<count;i+=3){const ids=[ix?ix.getX(i):i,ix?ix.getX(i+1):i+1,ix?ix.getX(i+2):i+2];
     point.fromBufferAttribute(pos,ids[0]).applyMatrix4(objectWorld);const dist=point.distanceTo(camera.position);if(dist>(obj.userData.range??65)&&obj!==scene.userData.water)continue;
+    // Conservative clipping in compatibility mode, like the existing near-plane cull.
+    if(this.localClippingEnabled&&mat.clippingPlanes?.length&&ids.some(id=>{point.fromBufferAttribute(pos,id).applyMatrix4(objectWorld);return mat.clippingPlanes.some(p=>p.distanceToPoint(point)<0);}))continue;
     const screen=[];let invalid=false;for(const id of ids){point.fromBufferAttribute(pos,id).applyMatrix4(this.mvp);if(point.z<-.99||point.z>=1.001){invalid=true;break}screen.push([(point.x+1)*w/2,(1-point.y)*h/2,point.z])}if(invalid)continue;
     const [a,b,c]=screen;const cross=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);if(cross>=0&&mat.side!==THREE.DoubleSide)continue;
     if(screen.every(v=>v[0]<0)||screen.every(v=>v[0]>w)||screen.every(v=>v[1]<0)||screen.every(v=>v[1]>h))continue;
