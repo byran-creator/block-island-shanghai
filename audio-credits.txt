@@ -17,3 +17,5 @@ Text: original game dialogue; generic Mandarin male synthetic voice, zh-CN-Yunji
 Produced as three short MP3 assets on 2026-10-15 with edge-tts 7.3.1; rate +8%, pitch unchanged. No runtime TTS service or extra player network request to a speech provider. Files are served by this game.
 Voice information: https://learn.microsoft.com/zh-cn/azure/ai-services/speech-service/language-support
 Production tool: https://pypi.org/project/edge-tts/
+
+初到上海任务提示音：原创五声音阶正弦音合成，未使用《原神》或其他商业游戏音频。剧情对话为原创分段文字，不冒称真人配音。
