@@ -1,8 +1,11 @@
 // Stable occupancy groups keep rooms consistent across reloads and limit rendering batches.
 export function windowLightGroup(b,floor,bay,face){
  let hash=2166136261;for(const c of `${b.id}:${floor}:${bay}:${face}`)hash=Math.imul(hash^c.charCodeAt(0),16777619);
+ // The first two street-facing storeys are trading floors, not residential rooms.
+ const shopping=b.id.startsWith('nanjing-')&&floor<=8&&face.startsWith(`z:${b.entranceSide}:`);
  const use=b.kind==='hotel'?'hotel':b.kind==='mall'?'retail':b.bank==='west'&&b.kind!=='glass'?'home':'office';
- return `${use}:${(hash>>>0)%16}`;
+ // Bias trading floors toward occupied groups, reusing existing render batches.
+ return `${use}:${(hash>>>0)%(shopping?10:16)}`;
 }
 export function lightGroupVisible(group,night,dayClock){
  if(!night)return false;

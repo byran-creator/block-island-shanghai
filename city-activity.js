@@ -113,8 +113,10 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   cube(root,'#fff8dd',b.x,28.95,b.z,1.25,.16,1.25,true);
   cube(root,'#fff3c7',b.x,28.75,b.z,.8,.2,.8,true);
   cube(root,'#ffea9f',b.x,28.55,b.z,.32,.16,.32,true);
-  const chandelierLight=new THREE.PointLight('#ffe49e',3.6,10,1.4);
-  chandelierLight.position.set(b.x,28.8,b.z);root.add(chandelierLight);shopLights.push(chandelierLight);
+  // Put the shared light toward the window, with reach into the shop and street.
+  // Keep it inside so browsing displays retain their illumination.
+  const chandelierLight=new THREE.PointLight('#ffe7bf',4.2,16,1.4);
+  chandelierLight.position.set(front.x,28.9,(b.z+front.z)/2);root.add(chandelierLight);shopLights.push(chandelierLight);
   // Back-wall luxury illuminated display vitrines
   const backZ=b.z-side*3.6;
   cube(root,'#2e1f14',b.x-0.6,27.6,backZ,5.6,3.1,.55);
