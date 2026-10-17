@@ -33,10 +33,10 @@ export function createJunctionControl(points=JUNCTION_POINTS,{getPose}={}){
   // The bridge loop doubles back at its eastern end. Opposite approaches
   // briefly face along the same curve before splitting into their lanes, so
   // parallel-path admission is unsafe here. Reserve the complete bend.
-  if(bund||bridgeEnd){const j=g.zones[0];if(j.owner&&nearest(j.owner,g)>j.range)j.owner=null;if(!j.owner)j.owner=agents.filter(a=>!a.yielding&&!a.detour&&(!bund||!rider(a))&&nearest(a,g)<j.range).sort((a,b)=>nearest(a,g)-nearest(b,g)||a.trafficId-b.trafficId)[0]??null;g.holders=new Set(j.owner?[j.owner]:[]);g.owner=j.owner;continue;}
+  if(bund||bridgeEnd){const j=g.zones[0];if(j.owner&&nearest(j.owner,g)>j.range)j.owner=null;if(!j.owner)j.owner=agents.filter(a=>!a.yielding&&!a.detour&&(!bund||!rider(a))&&nearest(a,g)<j.range).sort((a,b)=>(b.waitTime>1||a.waitTime>1?b.waitTime-a.waitTime:0)||nearest(a,g)-nearest(b,g)||a.trafficId-b.trafficId)[0]??null;g.holders=new Set(j.owner?[j.owner]:[]);g.owner=j.owner;continue;}
   for(const a of g.holders)if(margin(a.root.position,g,'range')>0)g.holders.delete(a);
   const arrivals=agents.filter(a=>!a.yielding&&!g.holders.has(a)&&margin(a.root.position,g,'range')<0);
-  arrivals.sort((a,b)=>(margin(a.root.position,g,'stop')<0?0:1)-(margin(b.root.position,g,'stop')<0?0:1)||nearest(a,g)-nearest(b,g)||a.trafficId-b.trafficId);
+  arrivals.sort((a,b)=>(b.waitTime>1||a.waitTime>1?b.waitTime-a.waitTime:0)||(margin(a.root.position,g,'stop')<0?0:1)-(margin(b.root.position,g,'stop')<0?0:1)||nearest(a,g)-nearest(b,g)||a.trafficId-b.trafficId);
   // Every admitted path must be compatible with EVERY path already admitted.
   // Checking only one owner admits two turns that are mutually conflicting.
   for(const a of arrivals)if([...g.holders].every(b=>compatible(a,b,g)))g.holders.add(a);
