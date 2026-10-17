@@ -41,4 +41,9 @@ assert(js.includes('updateOrientationUI'),'game.js should define updateOrientati
 assert(js.includes("window.addEventListener('orientationchange'"),'game.js should listen to orientationchange');
 assert(js.includes('btn.dataset.active='),'game.js should set dataset.active on pointerdown');
 
+// 6. Mobile task relocation away from WASD controls
+assert(css.includes('body.touch .quest-launcher'),'style.css should relocate quest launcher on touch');
+assert(css.includes('body.force-landscape'),'style.css should define force-landscape rotation');
+assert(html.includes('name="x5-orientation" content="landscape"'),'index.html should declare x5-orientation landscape');
+
 console.log('PASS: mobile orientation tip, landscape fullscreen toggle, and WASD D-pad controls fully verified.');

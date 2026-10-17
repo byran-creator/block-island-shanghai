@@ -48,18 +48,32 @@ const $=id=>document.getElementById(id),canvas=$('world');canvas.tabIndex=0;
 document.body.classList.add('in-menu');
 let touch=('ontouchstart' in window)||(navigator.maxTouchPoints>0)||matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 function updateOrientationUI(){
- const portrait=window.innerHeight>window.innerWidth;
+ const isForced=document.body.classList.contains('force-landscape');
+ const portrait=!isForced&&(window.innerHeight>window.innerWidth);
  const tip=$('orientation-tip');
  if(tip)tip.hidden=!touch||!portrait||tip.dataset.dismissed==='true';
  const fsBtn=$('mobile-fullscreen');
- if(fsBtn)fsBtn.hidden=!touch;
+ if(fsBtn){
+  fsBtn.hidden=!touch;
+  fsBtn.textContent=isForced?'📱 竖屏':'📱 横屏';
+  fsBtn.title=isForced?'切回竖屏模式':'切换横屏模式';
+ }
+ const menuFs=$('mobile-menu-fullscreen');
+ if(menuFs)menuFs.textContent=isForced?'📱 切回竖屏模式':'📱 切换横屏模式';
+}
+function setForceLandscape(enable){
+ document.body.classList.toggle('force-landscape',Boolean(enable));
+ onResize();
+}
+function toggleForceLandscape(){
+ setForceLandscape(!document.body.classList.contains('force-landscape'));
 }
 async function toggleLandscapeFullscreen(){
  try{
   const docEl=document.documentElement;
   if(!document.fullscreenElement&&!document.webkitFullscreenElement){
-   if(docEl.requestFullscreen)await docEl.requestFullscreen();
-   else if(docEl.webkitRequestFullscreen)await docEl.webkitRequestFullscreen();
+   if(docEl.requestFullscreen)await docEl.requestFullscreen().catch(()=>{});
+   else if(docEl.webkitRequestFullscreen)await docEl.webkitRequestFullscreen().catch(()=>{});
   }
   if(screen.orientation?.lock){
    await screen.orientation.lock('landscape').catch(()=>{});
@@ -67,7 +81,12 @@ async function toggleLandscapeFullscreen(){
  }catch(err){
   console.warn('Fullscreen/landscape lock failed or not supported:',err);
  }
- updateOrientationUI();
+ if(window.innerHeight>window.innerWidth){
+  toggleForceLandscape();
+ }else{
+  document.body.classList.remove('force-landscape');
+ }
+ onResize();
 }
 $('tip-fullscreen-btn')?.addEventListener('click',()=>{
  toggleLandscapeFullscreen();
@@ -258,7 +277,7 @@ for(const btn of document.querySelectorAll('[data-key]')){
 }
 $('touch-run').onclick=()=>{runLocked=!runLocked;notify(runLocked?'持续跑步已开启':'已切回步行');};$('touch-mine').onclick=()=>edit(false);$('touch-place').onclick=()=>edit(true);$('touch-fly').onclick=toggleFly;$('touch-talk').onclick=()=>interact();$('touch-follow').onclick=()=>interact(true);$('touch-use').onclick=useScene;$('touch-glide').onclick=toggleGlider;$('touch-craft').onclick=()=>life.craft();$('touch-eat').onclick=()=>life.eat();$('touch-dive').onclick=()=>life.dive();$('touch-paint').onclick=()=>adventure.paint();$('map-button').onclick=()=>adventure.map();$('mouse-mode').onclick=()=>{dragMode=!dragMode;fallback=dragMode;$('mouse-mode').textContent=dragMode?'鼠标：拖动环顾':'鼠标：自动锁定';$('mouse-mode').setAttribute('aria-pressed',String(dragMode));};
 canvas.addEventListener('pointerdown',e=>{if(!touch||!active)return;lookPointer=e.pointerId;lastLook={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener('pointermove',e=>{if(e.pointerId===lookPointer&&lastLook){look((e.clientX-lastLook.x)*1.6,(e.clientY-lastLook.y)*1.6);lastLook={x:e.clientX,y:e.clientY}}});
+canvas.addEventListener('pointermove',e=>{if(e.pointerId===lookPointer&&lastLook){const isForced=document.body.classList.contains('force-landscape');const dx=isForced?(e.clientY-lastLook.y):(e.clientX-lastLook.x);const dy=isForced?-(e.clientX-lastLook.x):(e.clientY-lastLook.y);look(dx*1.6,dy*1.6);lastLook={x:e.clientX,y:e.clientY}}});
 for(const event of ['pointerup','pointercancel'])canvas.addEventListener(event,e=>{if(e.pointerId===lookPointer){lookPointer=null;lastLook=null}});
 const shipSurfaces=()=>vesselSurfaces;
 function staticCollides(x,y,z,ignoreFurniture=null){const h=metroRampFloor(x,z)??nanpuFloor(world,x,z)??yuyuan?.floorAt?.(x,z),slope=h!==null&&Math.abs(y-h)<1.5;return boatSolid(shipSurfaces(),x,y,z)||!!metro?.collides(x,y,z)||slope&&y<h-.015||overlaps(world,x,slope?Math.max(y,Math.ceil(h)):y,z)||!!life?.collides(x,y,z,ignoreFurniture)||!!yuyuan?.collides(x,y,z)||!!story?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!privateSuites?.collides(x,y,z)||!!activity?.collides(x,y,z)||!!commute?.collides(x,y,z);}
@@ -308,9 +327,15 @@ function frame(now){
  yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?keys:new Set()});privateSuites?.tick(active,active?dt:0);restaurant?.tick(active?dt:0);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?keys:new Set());$('commute-status').hidden=!active||!commuteText;$('commute-label').textContent=commuteText||'';const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;$('drive-power').textContent=drive?.brake?'刹车':power+'%';if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;$('run-status').textContent=isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步';const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}renderer.render(scene,camera);
 }
 function onResize(){
- camera.aspect=innerWidth/innerHeight;
+ if(window.innerWidth>window.innerHeight){
+  document.body.classList.remove('force-landscape');
+ }
+ const isForced=document.body.classList.contains('force-landscape');
+ const w=isForced?innerHeight:innerWidth;
+ const h=isForced?innerWidth:innerHeight;
+ camera.aspect=w/h;
  camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
+ renderer.setSize(w,h);
  updateOrientationUI();
 }
 window.addEventListener('resize',onResize);
