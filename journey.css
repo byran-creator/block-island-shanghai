@@ -3,6 +3,8 @@
 
 .journey-reflection{position:fixed;left:50%;bottom:145px;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));box-sizing:border-box;padding:15px 20px;color:#fff6dc;background:#182d33e8;border-left:3px solid #dabd77;z-index:22;pointer-events:none;border-radius:5px}.journey-reflection[hidden]{display:none!important}.journey-reflection small{font-size:12px;color:#e0c784}.journey-reflection p{margin:6px 0;font-size:16px;line-height:1.6}.journey-reflection button{pointer-events:auto;float:right;font-size:12px;background:transparent;color:#e0c784;border:0;cursor:pointer}
 @media(max-width:600px){.journey-reflection{bottom:125px;padding:10px 14px}.journey-reflection p{font-size:14px}}
+body.touch .journey-tutorial,body.force-landscape .journey-tutorial{left:auto!important;right:16px!important;bottom:auto!important;top:108px!important;max-width:min(260px,50vw)!important;font-size:11px!important;line-height:1.5!important;padding:8px 12px!important;z-index:10!important}
+body.touch .journey-reflection,body.force-landscape .journey-reflection{bottom:auto!important;top:95px!important;left:50%!important;transform:translateX(-50%)!important;width:min(320px,86vw)!important;font-size:12px!important;padding:8px 12px!important}
 
 body.in-journey-film .hud,body.in-journey-film #crosshair,body.in-journey-film #toast,body.in-journey-film .journey-toast,body.in-journey-film .journey-tutorial,body.in-journey-film .journey-reflection,body.in-journey-film #save-status,body.in-journey-film .touch-controls{visibility:hidden!important}
 
