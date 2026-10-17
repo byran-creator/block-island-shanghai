@@ -1,4 +1,5 @@
 /* Shared conversations: the scene stays clear; only the bottom text has shading. */
+.journey-tutorial { display: none !important; }
 .game-dialog.conversation-dialog,
 #npc-dialog.conversation-dialog {
   position:fixed; inset:auto 0 0; transform:none; width:100%; max-width:none;

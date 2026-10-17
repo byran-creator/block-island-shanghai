@@ -569,17 +569,18 @@ export function drawHeritageSign(canvas, text, brandIndex = 0, isVertical = fals
   const effectiveStyle = signStyle !== 'horizontal' ? signStyle : (isVertical ? 'vertical-blade' : 'horizontal');
 
   // Font stacks: Authentic Chinese Calligraphy (楷体/宋体) for dignified historical presence
-  const calliFont = 'sans-serif, "Microsoft YaHei", "Noto Serif SC", serif';
+  const calliFont = '"KaiTi", "STKaiti", "KaiTi_GB2312", "Noto Serif SC", "Songti SC", "SimSun", serif';
   const latinFont = '"Times New Roman", "Baskerville", "Georgia", serif';
 
   // 1. Lacquer / Enamel Background
   if (isNight) {
-    ctx.fillStyle = '#172232';
+    ctx.fillStyle = '#080a10';
     ctx.fillRect(0, 0, w, h);
+    // Subtle ambient neon reflection wash on glossy black lacquer
     const rad = ctx.createRadialGradient ? ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.max(w, h) * 0.6) : null;
     if (rad?.addColorStop) {
-      rad.addColorStop(0, neonColor + '44');
-      rad.addColorStop(1, '#172232');
+      rad.addColorStop(0, neonColor + '22');
+      rad.addColorStop(1, '#080a10');
       ctx.fillStyle = rad;
       ctx.fillRect(0, 0, w, h);
     }
