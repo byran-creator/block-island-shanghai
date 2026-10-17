@@ -8,11 +8,17 @@
 <link rel="stylesheet" href="./dialogue.css">
 </head>
 <body>
+<div id="orientation-tip" class="orientation-tip" hidden>
+  <span class="tip-icon">🔄</span>
+  <span class="tip-text">建议横屏游玩 · 视野更开阔</span>
+  <button id="tip-fullscreen-btn" class="tip-btn">进入横屏全屏</button>
+  <button id="tip-dismiss-btn" class="tip-close" aria-label="关闭提示">✕</button>
+</div>
 <canvas id="world" aria-label="三维方块世界"></canvas>
 <div id="shade"></div>
 <header class="hud topbar">
   <div class="brand"><span class="brand-mark">▦</span><div><strong>方块小岛</strong><small>上海天际线 / BLOCK ISLAND</small></div></div>
-  <div class="top-actions"><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
+  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
 </header>
 <div id="coordinates" class="hud coordinates">X 0 · Y 0 · Z 0</div>
 <aside id="island-tasks" class="hud island-tasks quest-launcher"><button id="task-open" aria-haspopup="dialog" aria-controls="tasks-dialog">I 城市任务 0/8</button><p>I 选任务并追踪 · M 看黄色目标</p><span id="task-count" hidden>0 / 8</span></aside>
@@ -30,9 +36,40 @@
   <nav id="hotbar" aria-label="方块物品栏"></nav>
   <div class="desktop-hint"><span><kbd>WASD</kbd> 移动</span><span><kbd>空格</kbd> 跳跃</span><span>左键 挖掘 · 右键 放置</span><span><kbd>Alt</kbd> 自由光标</span><span><kbd>G</kbd> 打招呼</span><span><kbd>H</kbd> 跟随</span><span><kbd>V</kbd> 场景互动</span><span><kbd>C</kbd> 制作</span><span><kbd>Z</kbd> 进食</span><span><kbd>L</kbd> 潜水装备</span><span><kbd>P</kbd> 滑翔</span><span><kbd>M</kbd> 地图</span><span><kbd>I</kbd> 任务</span><span><kbd>Esc</kbd> 暂停</span></div>
 </div>
-<div id="touch-controls">
- <div class="dpad"><button data-key="KeyW" aria-label="前进">▲</button><button data-key="KeyA" aria-label="左移">◀</button><button data-key="KeyS" aria-label="后退">▼</button><button data-key="KeyD" aria-label="右移">▶</button></div>
- <div class="touch-actions"><button id="touch-mine">挖掘</button><button id="touch-place">放置</button><button data-key="Space">跳跃 / 上升</button><button data-key="ShiftLeft">下降</button><button id="touch-fly">飞行</button><button id="touch-talk">打招呼</button><button id="touch-follow">跟随</button><button id="touch-use">互动 V</button><button id="touch-paint">涂鸦 B</button><button id="touch-craft">制作 C</button><button id="touch-eat">吃东西 Z</button><button id="touch-dive">潜水装备 L</button><button id="touch-run">跑步</button><button id="touch-glide">滑翔 P</button></div>
+<div id="touch-controls" aria-label="移动与操作按键">
+ <div class="dpad-box">
+  <div class="dpad-label">WASD 移动</div>
+  <div class="dpad">
+   <button data-key="KeyW" class="dpad-btn dpad-w" aria-label="前进 (W)"><b>W</b><small>▲</small></button>
+   <button data-key="KeyA" class="dpad-btn dpad-a" aria-label="左移 (A)"><b>A</b><small>◀</small></button>
+   <div class="dpad-center" aria-hidden="true"></div>
+   <button data-key="KeyD" class="dpad-btn dpad-d" aria-label="右移 (D)"><b>D</b><small>▶</small></button>
+   <button data-key="KeyS" class="dpad-btn dpad-s" aria-label="后退 (S)"><b>S</b><small>▼</small></button>
+  </div>
+  <button id="touch-run" class="touch-chip run-chip" aria-label="跑步切换">🏃 跑步</button>
+ </div>
+ <div class="touch-actions">
+  <div class="touch-primary-actions">
+   <button id="touch-mine" class="action-btn mine-btn">⛏ 挖掘</button>
+   <button id="touch-place" class="action-btn place-btn">🧱 放置</button>
+   <button id="touch-use" class="action-btn use-btn">💬 互动 V</button>
+   <button data-key="Space" class="action-btn jump-btn" aria-label="跳跃 / 上升">⎵ 跳跃</button>
+  </div>
+  <details class="touch-more-actions">
+   <summary class="touch-chip more-chip">更多按键 ▾</summary>
+   <div class="touch-secondary-grid">
+    <button id="touch-fly" class="touch-chip">🕊 飞行</button>
+    <button data-key="ShiftLeft" class="touch-chip">⬇ 下降</button>
+    <button id="touch-eat" class="touch-chip">🍖 进食 Z</button>
+    <button id="touch-glide" class="touch-chip">🪂 滑翔 P</button>
+    <button id="touch-craft" class="touch-chip">🔨 制作 C</button>
+    <button id="touch-dive" class="touch-chip">🤿 潜水 L</button>
+    <button id="touch-paint" class="touch-chip">🎨 涂鸦 B</button>
+    <button id="touch-talk" class="touch-chip">👋 问好 G</button>
+    <button id="touch-follow" class="touch-chip">🐾 跟随 H</button>
+   </div>
+  </details>
+ </div>
 </div>
 <div id="survival-goal" class="survival-goal" hidden></div>
 <main id="menu" class="menu">
@@ -43,6 +80,7 @@
   <button id="play" class="play hero-cta" disabled>正在加载城市与建筑… <span>→</span></button>
   <p class="menu-journey-note">首次进入会自动开始两章新手引导 · 游戏内按 I 查看进度</p>
   <div class="mode-entry">
+   <button id="mobile-menu-fullscreen" class="mode-pill mobile-only">📱 切换横屏全屏</button>
    <button id="go-yuyuan" class="mode-pill highlight-pill">🏮 豫园商肆直达</button>
    <button id="start-survival" class="mode-pill">🏕️ 生存挑战</button>
    <button id="settings-open" class="mode-pill settings-pill" aria-haspopup="dialog" aria-controls="settings-dialog">⚙️ 系统偏好</button>
