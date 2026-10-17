@@ -8,7 +8,7 @@ const assets=await collectSiteAssets();globalThis.SITE_ASSETS=assets;
 const html=assets['/index.html'].body;
 for(const match of html.matchAll(/<img\b[^>]*src="\.\/([^"?]+)"/g)){
  const name=match[1],response=await worker.fetch(new Request('https://island.test/'+name),{});
- assert.equal(response.status,200,'Built update image is served');assert.equal(response.headers.get('Content-Type'),'image/jpeg');
+ assert.equal(response.status,200,'Built update image is served');assert.equal(response.headers.get('Content-Type'),name.endsWith('.png')?'image/png':'image/jpeg');
  assert.deepEqual(Buffer.from(await response.arrayBuffer()),await readFile('game/'+name),'Binary bytes survive packaging and response');
 }
 const missing=await worker.fetch(new Request('https://island.test/assets/missing.jpg'),{});assert.equal(missing.status,404);
