@@ -23,25 +23,36 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,material(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=240;parent.add(m);return m;}
  function board(text,color,x,y,z,w,h,angle=0,graffiti=false,brandIndex=-1,style='horizontal'){
-  let cw=512,ch=144;
-  if(style==='vertical-blade'){cw=192;ch=512;}
-  else if(style==='medallion'||graffiti){cw=256;ch=256;}
-  else if(style==='arch'){cw=512;ch=192;}
+  const isBlade=style==='vertical-blade';
+  const cw=isBlade?256:(style==='arch'?512:(graffiti?256:512)),ch=isBlade?512:(style==='arch'?192:(graffiti?256:144));
   const compact=graffiti&&[...text].length===1;
-  const cDay=document.createElement('canvas');cDay.width=compact?128:cw;cDay.height=compact?128:ch;
-  const cNight=document.createElement('canvas');cNight.width=cDay.width;cNight.height=cDay.height;
+  const c=document.createElement('canvas');c.width=compact?128:cw;c.height=compact?128:ch;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#172232';ctx.fillRect(0,0,c.width,c.height);
+  ctx.strokeStyle=color;ctx.lineWidth=isBlade?12:10;ctx.strokeRect(8,8,c.width-16,c.height-16);
+  ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.strokeRect(14,14,c.width-28,c.height-28);
+  ctx.textAlign='center';ctx.textBaseline='middle';
   if(text==='H'){
-   const drawH=(c,col)=>{const ctx=c.getContext('2d');ctx.fillStyle='#232c33';ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle=col;ctx.lineWidth=14;ctx.strokeRect(10,10,c.width-20,c.height-20);ctx.font='bold 80px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',c.width/2,c.height/2);};
-   drawH(cDay,'#f9f2c6');drawH(cNight,'#ffe66d');
+   ctx.font='bold 88px sans-serif';ctx.fillStyle=color;ctx.fillText('H',c.width/2,c.height/2);
+  }else if(isBlade){
+   const chars=[...text].slice(0,5),sp=(c.height-48)/Math.max(1,chars.length),fs=Math.floor(Math.min(c.width*0.62,sp*0.78));
+   ctx.font=`bold ${fs}px sans-serif`;
+   chars.forEach((ch,idx)=>{
+    const cy=24+sp*(idx+0.5);
+    ctx.strokeStyle='#050b16';ctx.lineWidth=8;ctx.strokeText(ch,c.width/2,cy);
+    ctx.fillStyle=color;ctx.fillText(ch,c.width/2,cy);
+   });
   }else{
-   const bIdx=brandIndex>=0?brandIndex:(typeof color==='number'?color:0);
-   drawHeritageSign(cDay,text,bIdx,false,false,color,style);
-   drawHeritageSign(cNight,text,bIdx,false,true,color,style);
+   const fs=Math.floor(Math.min(c.height*0.58,(c.width/Math.max(3,[...text].length))*1.05));
+   ctx.font=`bold ${graffiti?72:fs}px sans-serif`;
+   ctx.strokeStyle='#050b16';ctx.lineWidth=8;ctx.strokeText(text,c.width/2,c.height/2);
+   ctx.fillStyle=color;ctx.fillText(text,c.width/2,c.height/2);
   }
-  const mapDay=new THREE.CanvasTexture(cDay);mapDay.colorSpace=THREE.SRGBColorSpace;mapDay.generateMipmaps=true;mapDay.minFilter=THREE.LinearMipmapLinearFilter;mapDay.anisotropy=8;
-  const mapNight=new THREE.CanvasTexture(cNight);mapNight.colorSpace=THREE.SRGBColorSpace;mapNight.generateMipmaps=true;mapNight.minFilter=THREE.LinearMipmapLinearFilter;mapNight.anisotropy=8;
-  const day=new THREE.MeshLambertMaterial({map:mapDay,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),night=new THREE.MeshBasicMaterial({map:mapNight,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;root.add(m);signs.push({mesh:m,day,night});return m;
+  const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;
+  const day=new THREE.MeshLambertMaterial({map,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
+  const night=new THREE.MeshBasicMaterial({map,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;
+  root.add(m);signs.push({mesh:m,day,night});return m;
  }
  const fronts=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-'));
  for(const [index,b]of fronts.entries()){
@@ -62,8 +73,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    cube(root,'#d4af37',bladeX,34.25,bladeZ,.15,.14,1.34);
    cube(root,'#d4af37',bladeX,30.15,bladeZ,.15,.14,1.34);
    // Two independent outward-facing graphic planes (+X and -X), strictly outside the casing faces (no flickering!)
-   board(name,color,bladeX+.066,32.2,bladeZ,1.24,3.94,Math.PI/2,false,i,'vertical-blade');
-   board(name,color,bladeX-.066,32.2,bladeZ,1.24,3.94,-Math.PI/2,false,i,'vertical-blade');
+   board(name,color,bladeX+.08,32.2,bladeZ,1.24,3.94,Math.PI/2,false,i,'vertical-blade');
+   board(name,color,bladeX-.08,32.2,bladeZ,1.24,3.94,-Math.PI/2,false,i,'vertical-blade');
    neons.push(cube(root,color,bladeX,34.28,bladeZ,.14,.04,1.3,true),cube(root,color,bladeX,30.12,bladeZ,.14,.04,1.3,true),cube(root,color,bladeX,32.2,bladeZ+side*.66,.14,4.04,.04,true));
    // Ornamental Wrought-Iron Cantilever Wall Brackets: connect wall to INNER edge of the frame only, NEVER crossing graphic faces!
    const innerZ=bladeZ-side*.64,wallZ=front.z+side*.06,armLen=Math.abs(innerZ-wallZ),armMidZ=(innerZ+wallZ)/2;
