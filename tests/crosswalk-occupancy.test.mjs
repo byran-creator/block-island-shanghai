@@ -3,6 +3,7 @@ import {pedestrianCrossingOccupied,trafficTravel} from '../game/city-traffic.js'
 assert(pedestrianCrossingOccupied({x:18,y:26,z:66},'bund-66'));
 assert(!pedestrianCrossingOccupied({x:18,y:6,z:66},'bund-66'),'Underground metro passengers cannot hold surface traffic');
 assert(!pedestrianCrossingOccupied({x:18,y:26,z:66},'stele-66'),'Each crossing has its own pedestrian occupancy');
+assert(!pedestrianCrossingOccupied({x:27,y:26,z:66},'bund-66'),'People on the outer approach must not reserve the complete carriageway');
 assert(pedestrianCrossingOccupied({x:-28,y:26,z:66},'stele-66'));
 const signal={id:'stele-66',offset:0},agent={route:{lengthMeters:100},t:0,dir:1,speed:3,halfLength:1,crossings:[{signal,axis:'ns',d:7}]};
 assert.equal(trafficTravel(agent,.1,5,[],null,()=>{},s=>s.id==='bund-66'),3*.1,'A remote occupied crossing cannot stop this green light');

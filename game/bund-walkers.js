@@ -1,5 +1,6 @@
 import {promenadeX} from './city-layout.js';
 import {pedestrianStepClear} from './pedestrian-traffic.js';
+import {PEDESTRIAN_CROSSINGS} from './pedestrian-crossings.js';
 
 // All state changes retain physical position. Never snap a walker into a queue
 // or back from sightseeing; the return leg is part of the route.
@@ -11,13 +12,17 @@ export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers}={}
  function animate(p,distance,dt){p.phase+=distance*5;p.walkBlend=(p.walkBlend??0)+((distance>1e-6?1:0)-(p.walkBlend??0))*(1-Math.exp(-dt*8));const gait=Math.sin(p.phase)*.3*p.walkBlend;for(let i=0;i<2;i++){p.legs[i].rotation.x=i?-gait:gait;p.arms[i].rotation.x=i?gait:-gait;}}
  function advance(dt,clock,vehicles,canCross){
   const neighbours=people();
-  function available(p,q){if(!clear(q)||!pedestrianStepClear(p.root.position,q,vehicles))return false;const at=p.root.position;return neighbours.every(o=>{if(o===p||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2||o.ready===false)return true;const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;return d>=.9**2||(old<.9**2&&d>old+1e-8);});}
+  function available(p,q){const at=p.root.position;
+   for(const c of PEDESTRIAN_CROSSINGS){const green=typeof canCross==='function'?canCross(c):canCross;if(!green&&(at.x<=c.west+1e-6&&q.x>c.west+1e-6||at.x>=c.east-1e-6&&q.x<c.east-1e-6))return false;}
+   if(!clear(q)||!pedestrianStepClear(at,q,vehicles))return false;return neighbours.every(o=>{if(o===p||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2||o.ready===false)return true;const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;return d>=.9**2||(old<.9**2&&d>old+1e-8);});}
   for(let k=0;k<walkers.length;k++){
    const p=walkers[(first+k)%walkers.length],at=p.root.position;let goal,pace=p.speed,wait=false;
    // Once on the zebra crossing, clear it even if the admission light changes.
    // Cancelling a passing manoeuvre here traps opposing pedestrians and holds
    // the cycle lane's green light indefinitely. Red-light queues stay in place.
-   const onCrossing=at.x>11.2&&at.x<24.8||at.x>-33.5&&at.x<-23.5,mayManeuver=canCross||onCrossing;
+   const crossing=PEDESTRIAN_CROSSINGS.find(c=>at.x>c.west+1e-6&&at.x<c.east-1e-6);
+   const admitted=c=>typeof canCross==='function'?canCross(c):canCross;
+   const onCrossing=!!crossing,mayManeuver=onCrossing||PEDESTRIAN_CROSSINGS.some(admitted);
    if(p.strollState==='bund_stroll'||p.strollState==='nanjing_stroll'){
     p.strollTime-=dt;
     if(p.strollTime<=0)p.strollState=p.strollState==='bund_stroll'?'bund_return':'nanjing_return';
@@ -34,8 +39,10 @@ export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers}={}
     const end=p.dir>0?p.bundEnd:p.nanjingEnd;
     if(Math.abs(at.x-end)<.08){p.strollState=p.dir>0?'bund_stroll':'nanjing_stroll';p.strollTime=24+(p.phase*7%26);p.strollTarget=p.dir>0?52+(p.phase*17%28):-105+(p.phase*13%45);animate(p,0,dt);continue;}
     pace=at.x>13&&at.x<23||at.x>-31.5&&at.x<-26?Math.max(1.8,p.speed):p.speed;
-    let x=p.dir>0?Math.min(end,at.x+pace*dt):Math.max(end,at.x-pace*dt);
-    if(!canCross)for(const line of p.dir>0?[-33.5,11.2]:[-23.5,24.8]){if(p.dir*(line-at.x)>=-1e-8&&p.dir*(x-line)>0){x=line;wait=Math.abs(x-at.x)<1e-7;}}
+    // Look ahead along the route. A one-frame target pulled sideways walkers
+    // straight back into the person they had just stepped around.
+    let x=p.dir>0?Math.min(end,at.x+2):Math.max(end,at.x-2);
+    for(const c of PEDESTRIAN_CROSSINGS)if(!admitted(c)){const line=p.dir>0?c.west:c.east;if(p.dir*(line-at.x)>=-1e-8&&p.dir*(x-line)>0){x=line;wait=Math.abs(x-at.x)<1e-7;}}
     goal={x,z:corridor(p,x)};
    }
    if(p.detour&&mayManeuver){goal=p.detour;if(Math.hypot(goal.x-at.x,goal.z-at.z)<.1)p.detour=null;}else if(!mayManeuver)p.detour=null;
