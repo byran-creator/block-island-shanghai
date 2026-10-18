@@ -41,13 +41,13 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  // With the plane tipped onto XZ, positive Z rotation follows the sampled
  // road tangent. Negating it mirrors bends and leaves cars outside the asphalt.
  function roadSegment(ax,az,bx,bz,y,width=7.1){const a=new THREE.Vector3(ax,y,az),b=new THREE.Vector3(bx,y,bz),v=b.clone().sub(a),m=new THREE.Mesh(new THREE.PlaneGeometry(width,v.length()+.2),roadMat);m.rotation.set(-Math.PI/2,0,Math.atan2(v.x,v.z));m.position.copy(a.add(b).multiplyScalar(.5));m.userData.range=170;scene.add(m);}
- for(const r of ROADS)for(let i=4;i<r.samples.length;i+=4){const a=r.samples[i-4],b=r.samples[i];roadSegment(a.x+.5,a.z+.5,b.x+.5,b.z+.5,26.035,r.width*2+.5);if(i%16===0){const stripe=new THREE.Mesh(new THREE.PlaneGeometry(.12,1.2),mat('#f8df8c',true));stripe.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stripe.position.set(b.x+.5,26.065,b.z+.5);stripe.userData.range=285;scene.add(stripe);}}
- for(const s of BUND_STREETS){label(s.name+' · '+(s.kind==='pedestrian'?'步行':'车行'),roadX(s.z)-6,29,s.z);for(const x of [roadX(s.z),westSpine(s.z)])for(let i=-3;i<=3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(8,.35),mat('#faf4df',true));m.rotation.x=-Math.PI/2;m.position.set(x+.5,26.065,s.z+.5+i*.7);m.userData.range=285;scene.add(m);}}
+ for(const r of ROADS)for(let i=4;i<r.samples.length;i+=4){const a=r.samples[i-4],b=r.samples[i];roadSegment(a.x+.5,a.z+.5,b.x+.5,b.z+.5,26.015,r.width*2+.5);if(i%16===0){const stripe=new THREE.Mesh(new THREE.PlaneGeometry(.12,1.2),mat('#f8df8c',true));stripe.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stripe.position.set(b.x+.5,26.04,b.z+.5);stripe.userData.range=285;scene.add(stripe);}}
+ for(const s of BUND_STREETS){label(s.name+' · '+(s.kind==='pedestrian'?'步行':'车行'),roadX(s.z)-6,29,s.z);for(const x of [roadX(s.z),westSpine(s.z)])for(let i=-3;i<=3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(8,.35),mat('#faf4df',true));m.rotation.x=-Math.PI/2;m.position.set(x+.5,26.04,s.z+.5+i*.7);m.userData.range=285;scene.add(m);}}
  const bridgeFloor=(x,z=206)=>bridgeRoadFloor(world,x,z);
  const bridgeDeck=new THREE.Group();bridgeDeck.name='nanpu-continuous-carriageway';scene.add(bridgeDeck);
  function slopeSegment(ax,ay,az,bx,by,bz,width,material,thickness=.08){const a=new THREE.Vector3(ax,ay,az),b=new THREE.Vector3(bx,by,bz),direction=b.clone().sub(a),m=new THREE.Mesh(new THREE.BoxGeometry(width,thickness,direction.length()+.015),material);m.position.copy(a.add(b).multiplyScalar(.5));m.quaternion.copy(roadSegmentOrientation(direction));m.userData.range=300;bridgeDeck.add(m);return m;}
  for(let x=120;x<282.5;x+=.5){const y=nanpuSurfaceAt(x,206.5),yy=nanpuSurfaceAt(x+.5,206.5);slopeSegment(x,y-.34,206.5,x+.5,yy-.34,206.5,7,mat('#899599'),.7);slopeSegment(x,y+.009,206.5,x+.5,yy+.009,206.5,6.35,roadMat,.015);if(Math.floor(x)%4===0)slopeSegment(x,y+.02,206.5,x+.5,yy+.02,206.5,.13,mat('#fff0a7',true),.006);}
- roadSegment(120.5,187.5,120.5,206.5,26.04,6.35);
+ roadSegment(120.5,187.5,120.5,206.5,26.025,6.35);
 
  function buildExquisiteBench(root){
   const ironMat='#1c2b24',ironTrim='#2a3d34';
