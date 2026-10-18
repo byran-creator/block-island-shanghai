@@ -21,7 +21,7 @@ assert(dialogueCss.includes('#npc-dialog.conversation-dialog #npc-actions'), 'di
 
 // Landscape map dialog rules
 assert(styleCss.includes('@media(orientation: landscape) and (max-height:540px)'), 'style.css should have landscape map media query');
-assert(styleCss.includes('#large-map{height:min(160px'), 'style.css should constrain large-map height on landscape');
+assert(styleCss.includes('#large-map{height:min('), 'style.css should constrain large-map height on landscape');
 assert(styleCss.includes('body.force-landscape dialog:modal'), 'style.css should support force-landscape modal rotation');
 
 // 2. Bund Benches and Sitting Interaction
