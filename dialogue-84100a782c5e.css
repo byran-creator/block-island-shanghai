@@ -84,3 +84,42 @@ body.in-conversation .hud,body.in-conversation .hud *,body.in-conversation #cros
 @media(max-width:700px){.dialogue-riddle #yuyuan-actions{position:static;width:100%;margin:14px auto 8px;}.dialogue-riddle #yuyuan-result{font-size:15px}}
 
 #tasks-dialog.quest-browser-dialog #task-list{grid-template-columns:minmax(0,1fr);}
+
+@media(orientation: landscape) and (max-height:540px),(max-height:520px){
+ .game-dialog.conversation-dialog,#npc-dialog.conversation-dialog,#npc-dialog{padding:8px 3vw max(6px,env(safe-area-inset-bottom))!important;min-height:0!important;max-height:72dvh!important;overflow:visible!important;background:linear-gradient(transparent,rgba(9,20,29,.45) 20%,rgba(9,20,29,.90))!important}
+ .conversation-dialog header,#npc-dialog header{border:0!important;padding:0!important;margin:0 0 2px 0!important;justify-content:flex-start!important}
+ .conversation-dialog header>button,#npc-dialog header>button,#npc-close{top:8px!important;right:12px!important;padding:4px 10px!important;font-size:11px!important;min-height:26px!important}
+ .conversation-dialog .journey-content,#npc-dialog .journey-content{max-width:calc(100vw - 320px)!important;margin:0 0 0 1vw!important;text-align:left!important}
+ .conversation-dialog .journey-speaker,#npc-dialog.conversation-dialog #npc-title,#npc-dialog #npc-title{font-size:15px!important;margin:0!important;display:inline-block!important;text-align:left!important}
+ .conversation-dialog .dialogue-role{display:inline-block!important;margin:0 0 0 8px!important;font-size:11px!important}
+ .conversation-dialog .journey-line,#npc-dialog.conversation-dialog #npc-answer,#npc-dialog #npc-answer{font-size:13px!important;line-height:1.45!important;text-align:left!important;margin:3px 0 2px!important;max-height:95px!important;max-width:calc(100vw - 330px)!important;overflow-y:auto!important}
+ .conversation-dialog .journey-line::before,#npc-dialog.conversation-dialog #npc-answer::before,#npc-dialog #npc-answer::before{margin:3px 0 5px!important}
+ #npc-dialog.conversation-dialog #npc-actions,#npc-dialog #npc-actions,.dialogue-riddle #yuyuan-actions{position:absolute!important;right:2vw!important;bottom:max(6px,env(safe-area-inset-bottom))!important;width:min(290px,36vw)!important;max-height:calc(72dvh - 12px)!important;overflow-y:auto!important;display:flex!important;flex-direction:column!important;gap:5px!important;margin:0!important}
+ #npc-dialog.conversation-dialog #npc-actions .recipe-card,#npc-dialog #npc-actions .recipe-card,.dialogue-riddle #yuyuan-actions button{padding:6px 10px!important;font-size:12px!important;min-height:28px!important;line-height:1.35!important;border-radius:6px!important}
+ .conversation-dialog .journey-actions{min-height:30px!important;margin-top:2px!important;justify-content:flex-start!important}
+
+ #tasks-dialog.quest-browser-dialog{width:96vw!important;max-width:96vw!important;height:96dvh!important;max-height:96dvh!important;padding:8px 14px!important;border-radius:10px!important}
+ .quest-browser-dialog>header{height:34px!important;border-bottom:1px solid rgba(212,196,147,0.25)!important}
+ .quest-browser-dialog h2{font-size:16px!important;margin:0!important}
+ .quest-browser-dialog header small{display:none!important}
+ .quest-browser-dialog header button{padding:4px 10px!important;font-size:11px!important;min-height:26px!important}
+ .quest-browser-dialog #task-summary{margin:2px 0 6px!important;font-size:11px!important}
+ .quest-browser{display:grid!important;grid-template-columns:minmax(180px,28%) 1fr!important;gap:12px!important;height:calc(100% - 46px)!important;min-height:0!important}
+ .quest-sidebar{padding-right:6px!important;overflow-y:auto!important}
+ .quest-categories{gap:4px!important;margin-bottom:6px!important}
+ .quest-categories button{font-size:10px!important;padding:3px 7px!important}
+ .quest-browser .quest-row{padding:6px 8px!important}
+ .quest-row strong{font-size:12px!important;margin:2px 0!important}
+ .quest-row small{font-size:10px!important}
+ .quest-detail{padding:2px 6px 14px 0!important;overflow-y:auto!important}
+ .quest-detail h3{font-size:16px!important;margin:2px 0 4px!important}
+ .quest-detail .quest-place{font-size:11px!important;padding-bottom:4px!important}
+ .quest-detail .quest-objective{font-size:12px!important;padding:6px 10px!important;margin:4px 0!important}
+ .quest-detail .quest-description{font-size:12px!important;line-height:1.45!important}
+ .quest-detail h4{font-size:11px!important;margin:6px 0 3px!important}
+ .quest-rewards{gap:6px!important}
+ .quest-reward-tile{padding:4px 8px!important;font-size:11px!important;min-width:60px!important}
+ .quest-detail-actions{margin-top:8px!important;gap:6px!important}
+ .quest-detail-actions button{min-height:30px!important;padding:5px 12px!important;font-size:12px!important;width:auto!important}
+}
+body.force-landscape #tasks-dialog.quest-browser-dialog{width:96vh!important;max-width:96vh!important;height:96vw!important;max-height:96vw!important;transform:rotate(90deg)!important;transform-origin:center center!important}

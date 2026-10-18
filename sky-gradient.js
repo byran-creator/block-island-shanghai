@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js';
 
 export function createSkyGradient(scene,camera){
- const geometry=new THREE.SphereGeometry(220,24,16),colors=new THREE.Float32BufferAttribute(new Float32Array(geometry.attributes.position.count*3),3);geometry.setAttribute('color',colors);
+ const geometry=new THREE.SphereGeometry(220,64,48),colors=new THREE.Float32BufferAttribute(new Float32Array(geometry.attributes.position.count*3),3);geometry.setAttribute('color',colors);
  const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}),dome=new THREE.Mesh(geometry,material);dome.name='graduated-sky';dome.userData.skyGradient=true;dome.renderOrder=-1000;dome.frustumCulled=false;scene.add(dome);
  const horizon=new THREE.Color(),zenith=new THREE.Color(),sample=new THREE.Color();let previous='';
  const fireGold=new THREE.Color('#ffa644');
@@ -53,7 +53,7 @@ export function createSkyGradient(scene,camera){
   if(key!==previous){
    for(let i=0;i<colors.count;i++){
     const y=Math.max(0,geometry.attributes.normal.getY(i));
-    const t=Math.pow(y,0.52);
+    const t=Math.pow(y,0.72);
     if(dusk>0.02&&isSunset){
      if(isFiery){
       // Dramatic "火烧云 + 蓝调时刻" (Fiery Sunset & Sapphire Blue Hour) matching user reference photo:
