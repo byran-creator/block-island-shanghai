@@ -582,7 +582,7 @@ function makeDraggable(el,storageKey){
  let dragging=false,startX=0,startY=0,startLeft=0,startTop=0,hasMoved=false;
  if(storageKey){
   try{
-   const isMobile=window.innerWidth<=800||window.innerHeight<=600||document.body.classList.contains('touch')||document.body.classList.contains('force-landscape');if(isMobile&&storageKey==='pos_quest_tracker')try{sessionStorage.removeItem('pos_quest_tracker');}catch(_){}const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
+   if(storageKey==='pos_quest_tracker')try{sessionStorage.removeItem('pos_quest_tracker');}catch(_){}const isMobile=window.innerWidth<=800||window.innerHeight<=600||document.body.classList.contains('touch')||document.body.classList.contains('force-landscape');const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
    if(saved&&typeof saved.left==='number'&&typeof saved.top==='number'){
     const isForced=document.body.classList.contains('force-landscape');
     const maxX=Math.max(0,(isForced?window.innerHeight:window.innerWidth)-80);
@@ -598,7 +598,7 @@ function makeDraggable(el,storageKey){
  }
  const onPointerDown=e=>{
   if(e.button!==undefined&&e.button!==0)return;
-  if(e.isPrimary===false)return;
+  if(e.isPrimary===false)return;if(e.target&&e.target.closest('button'))return;
   dragging=true;hasMoved=false;
   startX=e.clientX;startY=e.clientY;
   const isForced=document.body.classList.contains('force-landscape');
