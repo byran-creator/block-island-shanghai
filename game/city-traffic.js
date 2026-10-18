@@ -126,7 +126,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  // This remains the game's riverside loop, not a fictitious real-world route.
  const steleStop=rear.reduce((best,s)=>{const p=routePose(rear,s.d,4.8),distance=Math.hypot(p.x+35,p.z-73);return !best||distance<best.distance?{d:s.d,p,distance}:best;},null);
  const bundBuses=buses.filter(b=>b.route===rear);for(const [i,b]of bundBuses.entries()){b.stopDs=[80,steleStop.d];if(i===1){b.t=steleStop.d;b.stopD=steleStop.d;}}
- if(clearPoint(steleStop.p.x,steleStop.p.z)){const r=new THREE.Group();r.position.set(steleStop.p.x+.5,26,steleStop.p.z+.5);root.add(r);r.add(createBusStopSign({name:'南京路石碑',code:'游1',line:'滨江环线',stations:['南京路石碑','滨江候车点'],yaw:steleStop.p.yaw}));stops.push({root:r,route:rear,d:steleStop.d,name:'南京路石碑'});}
+ if(clearPoint(steleStop.p.x,steleStop.p.z)){const r=new THREE.Group();r.position.set(steleStop.p.x+.5,26,steleStop.p.z+.5);root.add(r);r.add(createBusStopSign({name:'南京路步行街',code:'游1',line:'滨江环线',stations:['南京路步行街','滨江候车点'],yaw:steleStop.p.yaw}));stops.push({root:r,route:rear,d:steleStop.d,name:'南京路步行街'});}
  // Painted cycle lanes sit beside the motor lanes; markings add no physical barriers.
  for(const route of [rear,outer]){
   const count=Math.ceil(route.lengthMeters/2),paint=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1,1),mat('#426b62'),count),edge=new THREE.InstancedMesh(new THREE.PlaneGeometry(.07,.8),mat('#c4dcc3'),count),stamp=new THREE.Object3D();
@@ -155,7 +155,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   return {root:r,wheels,route,t:route.lengthMeters*(i/5+trafficSeed(seedIndex,33)*.17),dir:1,lane:4,speed:(delivery?1.35:.95)+trafficSeed(seedIndex,12)*1.5,halfLength:1.06,halfWidth:.45,height:2.22,phase,kind:delivery?'delivery':'bicycle',crossings:routeCrossings(route,signals),deliveryD:route.lengthMeters*trafficSeed(seedIndex,47),deliveryDwell:0,deliveryCooldown:0};
  }
  for(const route of [rear,outer])for(let i=0;i<5;i++)riders.push(rider(route,i));
- for(const b of buses.filter((b,i)=>i%2===0)){const p=routePose(b.route,b.stopD,0),a=p.yaw;const x=p.x+Math.cos(a)*4.8,z=p.z-Math.sin(a)*4.8;if(!clearPoint(x,z))continue;const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const bund=b.route===rear,name=bund?'滨江候车点':'陆家嘴候车点';r.add(createBusStopSign({name,code:bund?'游1':'游2',line:bund?'滨江环线':'陆家嘴环线',stations:bund?['滨江候车点','南京路石碑']:['陆家嘴候车点'],yaw:a}));stops.push({root:r,route:b.route,d:b.stopD,name});}
+ for(const b of buses.filter((b,i)=>i%2===0)){const p=routePose(b.route,b.stopD,0),a=p.yaw;const x=p.x+Math.cos(a)*4.8,z=p.z-Math.sin(a)*4.8;if(!clearPoint(x,z))continue;const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const bund=b.route===rear,name=bund?'滨江候车点':'陆家嘴候车点';r.add(createBusStopSign({name,code:bund?'游1':'游2',line:bund?'滨江环线':'陆家嘴环线',stations:bund?['滨江候车点','南京路步行街']:['陆家嘴候车点'],yaw:a}));stops.push({root:r,route:b.route,d:b.stopD,name});}
  for(const c of cars)c.crossings=routeCrossings(c.route,signals);
  const agents=[...cars,...buses,...riders];agents.forEach((a,i)=>a.trafficId=i);let clock=0,first=0,junctionClock=-1,junctions=createJunctionControl(undefined,{getPose:junctionPose});
  function pose(c,t){const at=routePose(c.route,t,c.lane);at.x+=.5;at.z+=.5;if(c.kind==='bridge')at.y=nanpuFloor(world,at.x,at.z)??at.y;at.yaw+=c.dir<0?Math.PI:0;return at;}
