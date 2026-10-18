@@ -1,9 +1,10 @@
 import * as THREE from './three.module.js';
 
-// Twelve of the 44 private cars change appearance. Route, speed and the
+// Eighteen of the 44 private cars change appearance; eleven circulate past
+// Nanjing Road on the existing Bund/bridge loops. Route, speed and the
 // existing .72 x 1.32 collision half-extents remain entirely traffic-owned.
 export function cityCarAppearance(route,index){
- const selected={bund:{1:'lime',4:'gt-red',6:'champagne'},lujiazui:{0:'fastback-silver',3:'orange'},pudong:{1:'gt-wine',4:'executive'},bridge:{2:'fastback-white',7:'formal'},'north-bund':{2:'cyan',5:'fastback-blue'},'north-pudong':{4:'pearl'}};
+ const selected={bund:{0:'fastback-silver',1:'lime',3:'formal',4:'gt-red',6:'champagne',7:'gt-wine'},lujiazui:{0:'fastback-silver',3:'orange'},pudong:{1:'gt-wine',4:'executive'},bridge:{0:'gt-red',2:'fastback-white',5:'lime',7:'formal',10:'executive'},'north-bund':{2:'cyan',5:'fastback-blue'},'north-pudong':{4:'pearl'}};
  return selected[route]?.[index]??null;
 }
 const colors={lime:'#a5d72f',orange:'#f78b31',cyan:'#36b7c8',pearl:'#deded6',executive:'#253340',champagne:'#c7b99a',formal:'#161e28','gt-red':'#c92e39','gt-wine':'#842738','fastback-silver':'#aebec9','fastback-white':'#eee9d8','fastback-blue':'#427bb6'},models=new Map(),lampGeometries=new Map();

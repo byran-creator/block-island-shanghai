@@ -16,13 +16,20 @@ for(const route of CAR_ROUTES){const count=route.id==='bund'?8:route.id==='bridg
   const copy=createCitySpecialCar(style);assert.equal(copy.root.children[0].geometry,car.root.children[0].geometry);assert.equal(copy.root.children[0].material,car.root.children[0].material,'Reuse cached geometry and atlas');
  }
 }
-assert.equal(total,44);assert.equal(styles.length,12);assert(styles.length/total<.3,'Ordinary cars remain the clear majority');
+assert.equal(total,44);assert.equal(styles.length,18);assert(styles.length/total<.5,'Ordinary cars remain the majority');
+let nanjingCars=0;const localDirections=new Set();
+for(const route of CAR_ROUTES){
+ if(!route.samples.some(p=>Math.hypot(p.x+27,p.z-66)<3))continue;
+ const count=route.id==='bund'?8:route.id==='bridge'?12:6;
+ for(let i=0;i<count;i++)if(cityCarAppearance(route.id,i)){nanjingCars++;localDirections.add(i%2?1:-1);}
+}
+assert.equal(nanjingCars,11,'Eleven luxury cars must run on existing routes actually reaching the Nanjing crossing');assert.equal(localDirections.size,2,'Both travel directions must show luxury cars');
 const atlas=scene.children[0].children[0].material.map;assert.equal(atlas.image.width,256);assert.equal(atlas.image.height,64);
 for(const car of scene.children)assert.equal(car.children[0].material.map,atlas);
-const batching=createSceneInstances(scene),camera=new THREE.PerspectiveCamera(65,1,.1,100);camera.position.set(0,3,-7);camera.lookAt(0,.5,0);camera.updateMatrixWorld(true);scene.onBeforeRender(null,scene,camera);assert.equal(batching.batches.reduce((n,b)=>n+b.entries.length,0),24,'All headlamps share geometry and draws within their four lamp designs');batching.dispose();
+const batching=createSceneInstances(scene),camera=new THREE.PerspectiveCamera(65,1,.1,100);camera.position.set(0,3,-7);camera.lookAt(0,.5,0);camera.updateMatrixWorld(true);scene.onBeforeRender(null,scene,camera);assert.equal(batching.batches.reduce((n,b)=>n+b.entries.filter(e=>e.source.material.isMeshBasicMaterial).length,0),36,'All headlamps share geometry and draws within their four lamp designs');batching.dispose();
 const fills=[],ctx={fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){fills.push(this.fillStyle);},stroke(){}};
 const cpu=new CanvasRenderer({canvas:{getContext:()=>ctx}});cpu.setSize(400,300);
 const fallbackScene=new THREE.Scene();fallbackScene.background=new THREE.Color('black');fallbackScene.fog=new THREE.Fog('black',50,100);
 fallbackScene.add(createCitySpecialCar('gt-red').root);camera.position.set(-3,2,-4);camera.lookAt(0,.5,0);cpu.last=-100;cpu.render(fallbackScene,camera);
 assert(fills.some(s=>{const c=new THREE.Color(s);return c.r>c.g*2&&c.r>c.b*2;}),'Software fallback must retain red paint instead of treating RGB as grey ambient occlusion');
-console.log(JSON.stringify({cars:total,special:styles.length,styles,triangles,atlasBytes:atlas.image.data.byteLength,collisionFootprint:'unchanged',realtimeLights:0}));
+console.log(JSON.stringify({cars:total,special:styles.length,nanjingCars,styles,triangles,atlasBytes:atlas.image.data.byteLength,collisionFootprint:'unchanged',realtimeLights:0}));
