@@ -54,7 +54,7 @@ body.touch #run-status,body.force-landscape #run-status,.touch #run-status,.touc
 @media(hover:none) and (pointer:coarse){#run-status,.run-status{display:none!important;visibility:hidden!important}}
 @media(max-width:768px){#run-status,.run-status{display:none!important;visibility:hidden!important}}
 @media(orientation: landscape) and (max-height:540px),(max-height:520px){
- #map-dialog{width:96vw!important;max-width:96vw!important;height:96dvh!important;max-height:96dvh!important;padding:8px 14px!important;border-radius:10px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+ #map-dialog{width:min(920px,96vw)!important;max-width:96vw!important;height:min(520px,96dvh)!important;max-height:96dvh!important;padding:8px 14px!important;border-radius:10px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
  #map-dialog header{height:32px!important;margin-bottom:3px!important;flex-shrink:0!important}
  #map-dialog h2{font-size:16px!important;margin:0!important}
  #map-dialog header small{display:none!important}
@@ -70,8 +70,44 @@ body.touch #run-status,body.force-landscape #run-status,.touch #run-status,.touc
  .map-guide ol{font-size:11px!important;line-height:1.45!important;padding-left:14px!important;margin:0!important}
  .map-guide li{margin-bottom:3px!important}
  .map-source,.map-note{font-size:10px!important;line-height:1.35!important}
+ .settings-dialog{width:min(920px,96vw)!important;max-width:96vw!important;height:min(520px,96dvh)!important;max-height:96dvh!important;padding:10px 16px!important}
+ .settings-dialog header{height:32px!important;margin-bottom:4px!important;padding-bottom:4px!important;flex-shrink:0!important}
+ .settings-dialog h2{font-size:16px!important;margin:0!important}
+ .settings-dialog header small{display:none!important}
+ .settings-dialog header button{padding:4px 10px!important;font-size:11px!important;min-height:26px!important}
+ .settings-content{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-top:6px!important;height:calc(100% - 38px)!important;overflow-y:auto!important;padding-right:4px!important}
+ .settings-group{padding:8px 12px!important;border-radius:8px!important}
+ .settings-group h3{font-size:13px!important;margin:0 0 6px!important}
+ .music-controls,.time-controls,.weather-controls{gap:6px!important;margin-bottom:4px!important;font-size:12px!important}
+ .music-controls button,.time-controls button,.weather-controls button,.music-controls select,.time-controls select,.weather-controls select,.time-controls input{padding:3px 6px!important;font-size:11px!important;min-height:24px!important}
 }
-body.force-landscape dialog:modal:not(.conversation-dialog),body.force-landscape .game-dialog:not(.conversation-dialog){width:95vh!important;max-width:95vh!important;height:94vw!important;max-height:94vw!important;transform:rotate(90deg)!important;transform-origin:center center!important}
+body.force-landscape dialog:modal:not(.conversation-dialog),body.force-landscape .game-dialog:not(.conversation-dialog){position:fixed!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;margin:0!important;width:calc(96vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;max-width:calc(98vh - 10px)!important;height:calc(94vw - env(safe-area-inset-left) - env(safe-area-inset-right))!important;max-height:calc(96vw - 10px)!important;transform:translate(-50%,-50%) rotate(90deg)!important;transform-origin:center center!important;box-sizing:border-box!important;overflow:hidden!important}
+body.force-landscape #map-dialog{padding:8px 14px!important;display:flex!important;flex-direction:column!important}
+body.force-landscape #map-dialog header{height:32px!important;margin-bottom:3px!important;flex-shrink:0!important}
+body.force-landscape #map-dialog h2{font-size:16px!important;margin:0!important}
+body.force-landscape #map-dialog header small{display:none!important}
+body.force-landscape #map-dialog header button{padding:3px 9px!important;font-size:11px!important;min-height:24px!important}
+body.force-landscape .map-layout{display:grid!important;grid-template-columns:minmax(200px,38%) 1fr!important;gap:12px!important;height:calc(100% - 35px)!important;min-height:0!important;overflow:hidden!important;align-items:stretch!important}
+body.force-landscape .map-layout>div:first-child{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;overflow:hidden!important}
+body.force-landscape .map-layout>div:first-child>p{font-size:10px!important;line-height:1.25!important;margin:0 0 3px!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;flex-shrink:0!important}
+body.force-landscape #large-map{height:min(150px,36vw)!important;width:min(150px,36vw)!important;max-width:100%!important;aspect-ratio:1/1!important;margin:0 auto 4px!important;flex-shrink:0!important;display:block!important}
+body.force-landscape .map-destinations{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:4px!important;overflow-y:auto!important;flex:1!important;min-height:0!important;max-height:90px!important;margin-top:2px!important}
+body.force-landscape .map-destinations button{padding:3px 5px!important;font-size:10px!important;min-height:22px!important}
+body.force-landscape .map-guide{height:100%!important;overflow-y:auto!important;padding-right:6px!important}
+body.force-landscape .map-guide p{font-size:11px!important;margin:0 0 3px!important;line-height:1.4!important}
+body.force-landscape .map-guide ol{font-size:11px!important;line-height:1.45!important;padding-left:14px!important;margin:0!important}
+body.force-landscape .map-guide li{margin-bottom:3px!important}
+body.force-landscape .map-source,body.force-landscape .map-note{font-size:10px!important;line-height:1.35!important}
+body.force-landscape .settings-dialog{padding:10px 16px!important}
+body.force-landscape .settings-dialog header{height:32px!important;margin-bottom:4px!important;padding-bottom:4px!important;flex-shrink:0!important}
+body.force-landscape .settings-dialog h2{font-size:16px!important;margin:0!important}
+body.force-landscape .settings-dialog header small{display:none!important}
+body.force-landscape .settings-dialog header button{padding:4px 10px!important;font-size:11px!important;min-height:26px!important}
+body.force-landscape .settings-content{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-top:6px!important;height:calc(100% - 38px)!important;overflow-y:auto!important;padding-right:4px!important}
+body.force-landscape .settings-group{padding:8px 12px!important;border-radius:8px!important}
+body.force-landscape .settings-group h3{font-size:13px!important;margin:0 0 6px!important}
+body.force-landscape .music-controls,body.force-landscape .time-controls,body.force-landscape .weather-controls{gap:6px!important;margin-bottom:4px!important;font-size:12px!important}
+body.force-landscape .music-controls button,body.force-landscape .time-controls button,body.force-landscape .weather-controls button,body.force-landscape .music-controls select,body.force-landscape .time-controls select,body.force-landscape .weather-controls select,body.force-landscape .time-controls input{padding:3px 6px!important;font-size:11px!important;min-height:24px!important}
 .touch .desktop-hint{display:none}.touch .bottom{z-index:4}.touch .instructions{display:none}.touch .top-actions{position:relative;z-index:5}.touch .menu p{margin-bottom:18px}@media(max-width:700px){.topbar{padding:20px}.brand strong{font-size:17px}.brand small{font-size:8px}.coordinates{left:20px;top:80px}.menu{padding:105px 26px 36px;background:linear-gradient(90deg,#122b32e8,#122b3280)}.menu-card{max-width:380px}.menu h1{font-size:42px;margin:17px 0}.island-caption{display:none}.slot{width:40px;height:49px;padding:8px 3px}.slot img{width:28px;height:28px}#hotbar{gap:3px;padding:5px}.bottom{bottom:20px}.selected-label{font-size:13px}.desktop-hint{display:none}.pill{font-size:11px;padding:9px}.menu p.footnote{margin-top:16px}.menu-secondary{margin:20px 0}.instructions{gap:7px;padding-top:14px}}@media(max-height:700px) and (min-width:701px){.menu{padding:85px 8vw 20px}.menu h1{font-size:43px;margin:12px 0}.menu p{margin-bottom:16px}.instructions{gap:6px;padding-top:12px}.menu-secondary{margin:15px 0}.menu p.footnote{margin-top:12px}.island-caption{bottom:35px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .island-tasks{left:36px;top:134px;padding:16px 18px;border:1px solid #ffffff30;border-radius:10px;background:#17333b9c;backdrop-filter:blur(8px);width:234px;font-size:12px;line-height:2;color:#dce9dd;pointer-events:none}.island-tasks strong{display:flex;justify-content:space-between;color:#fff;font-size:14px;margin-bottom:6px}.island-tasks strong span{font-size:11px;color:#d5fd87}.island-tasks .done{color:#d5fd87}.day-status{right:36px;top:88px;text-align:right;font-size:13px;text-shadow:0 2px 5px #102a32}.day-status small{display:block;font-size:10px;margin-top:6px;color:#e1f0df}.npc-prompt{left:50%;bottom:174px;transform:translateX(-50%);padding:10px 17px;background:#21372ad9;border:1px solid #d5fd8770;border-radius:8px;font-size:14px;text-align:center;white-space:nowrap;display:none;box-shadow:0 3px 12px #0002}.npc-prompt.visible{display:block}body.in-menu .island-tasks,body.in-menu .day-status,body.in-menu .npc-prompt{display:none}#world{outline:none}.menu-secondary{flex-wrap:wrap}.compat-help{font-size:12px;color:#d5fd87}@media(max-width:700px){.island-tasks{top:105px;left:20px;font-size:11px;width:196px;padding:10px 12px}.island-tasks strong{font-size:12px}.day-status{right:20px;top:76px}.npc-prompt{bottom:123px;max-width:94vw;white-space:normal;font-size:12px}.touch .island-tasks{top:97px}}@media(max-height:580px){.island-tasks{display:none}.menu{align-items:flex-start}.npc-prompt{bottom:134px}.menu h1{font-size:32px}}
 /* Pearl Quest expansion */

@@ -118,7 +118,7 @@ try{
   canvas,
   antialias:true,
   powerPreference:'high-performance',
-  logarithmicDepthBuffer:!isMobile,
+  logarithmicDepthBuffer:true,
   precision:'highp'
  });
 }catch(e){
@@ -299,7 +299,7 @@ canvas.addEventListener('wheel',e=>{if(active){e.preventDefault();select(((selec
 window.addEventListener('blur',()=>{keys.clear();mouseHeld=-1;if(active){document.exitPointerLock?.();openMenu()}});
 document.addEventListener('visibilitychange',()=>{music.update({playing:active||story?.filming,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden});if(document.hidden)sceneAudio.suspend();if(document.hidden&&active){document.exitPointerLock?.();openMenu()}});
 for(const btn of document.querySelectorAll('[data-key]')){
- btn.addEventListener('pointerdown',e=>{e.preventDefault();uiClick();btn.dataset.active='true';btn.setPointerCapture(e.pointerId);keys.add(btn.dataset.key)});
+ btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.dataset.active='true';btn.setPointerCapture(e.pointerId);keys.add(btn.dataset.key)});
  for(const event of ['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(event,()=>{delete btn.dataset.active;keys.delete(btn.dataset.key)});
 }
 $('touch-run').onclick=()=>{runLocked=!runLocked;notify(runLocked?'持续跑步已开启':'已切回步行');};$('touch-mine').onclick=()=>edit(false);$('touch-place').onclick=()=>edit(true);$('touch-fly').onclick=toggleFly;$('touch-talk').onclick=()=>interact();$('touch-follow').onclick=()=>interact(true);$('touch-use').onclick=useScene;$('touch-glide').onclick=toggleGlider;$('touch-craft').onclick=()=>life.craft();$('touch-eat').onclick=()=>life.eat();$('touch-dive').onclick=()=>life.dive();$('touch-paint').onclick=()=>adventure.paint();$('map-button').onclick=()=>adventure.map();$('mouse-mode').onclick=()=>{dragMode=!dragMode;fallback=dragMode;$('mouse-mode').textContent=dragMode?'鼠标：拖动环顾':'鼠标：自动锁定';$('mouse-mode').setAttribute('aria-pressed',String(dragMode));};
@@ -671,5 +671,6 @@ window.addEventListener('touchend',unlockAudioGestures,{passive:true});
 window.addEventListener('pointerdown',unlockAudioGestures,{passive:true});
 document.addEventListener('click',e=>{
  unlockAudioGestures();
- if(e.target.closest('button, [role="button"], .slot, .recipe-card, .quest-row, .dpad-btn, .action-btn, .touch-chip, .hud-sun-icon, .hud-moon-icon'))uiClick();
+ if(e.target.closest('.dpad-btn, [data-key], #world, canvas'))return;
+ if(e.target.closest('button, [role="button"], .slot, .recipe-card, .quest-row, .action-btn, .touch-chip, .hud-sun-icon, .hud-moon-icon'))uiClick();
 },{passive:true});
