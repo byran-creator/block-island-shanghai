@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';import * as T from '../game/three.module.js';import {createBundWalkers} from '../game/bund-walkers.js';
 const person=(x,z=65,dir=1)=>({root:new T.Group(),x,z,baseZ:z,dir,isNorth:dir>0,speed:1,phase:0,strollState:'transit',arms:[{rotation:{}},{rotation:{}}],legs:[{rotation:{}},{rotation:{}}]});
+const crossing=[person(17,65.5,1),person(18,65.5,-1)];for(const p of crossing){p.root.position.set(p.x,26,p.z);p.root.rotation.y=p.dir>0?-Math.PI/2:Math.PI/2;}
+const clearing=createBundWalkers(crossing);for(let i=0;i<1200;i++){clearing.tick(.05,i*.05,[],false);assert(crossing[0].root.position.distanceTo(crossing[1].root.position)>=.9-1e-6);}
+assert(crossing.every(p=>p.x<11.2||p.x>24.8),'Opposing pedestrians already on the crossing must clear it after the light changes');
 const p=person(10.9);p.root.position.set(p.x,26,p.z);p.root.rotation.y=-Math.PI/2;const flow=createBundWalkers([p]);
 for(let i=0;i<120;i++){const before=p.root.position.clone();flow.tick(.05,i*.05,[],false);assert(p.root.position.distanceTo(before)<=.091);assert(p.x<=11.2+1e-8);}assert(Math.abs(p.x-11.2)<1e-6);
 p.root.position.x=p.x=12;flow.tick(.05,7,[],false);assert(p.x>=12,'Already entering a crossing must not teleport back into the waiting area');

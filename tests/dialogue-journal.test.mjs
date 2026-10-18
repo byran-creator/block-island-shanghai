@@ -5,7 +5,7 @@ import {createQuestJournal} from '../game/quest-journal.js';
 import {JOURNEY_CHAPTERS} from '../game/shanghai-journey-state.js';
 const previous=globalThis.document,nodes=new Map(),classes=new Set();
 const node=()=>({children:[],style:{},attrs:{},events:{},classList:{add(...x){x.forEach(v=>classes.add(v));},remove(...x){x.forEach(v=>classes.delete(v));}},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(...x){this.children=x;},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,v){this.events[k]=v;},getContext:()=>({fillRect(){},fillText(){}}),showModal(){this.open=true;},close(){this.open=false;},focus(){this.focused=true;},querySelector(){return this.children[0];}});
-globalThis.document={body:node(),createElement:node,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);}};
+globalThis.document={body:node(),createElement:node,querySelector:()=>null,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);}};
 try{
  const root=new THREE.Group();root.position.set(1,26,0);let paused=0,resumed=0;
  const npc=createNpcGuides({scene:new THREE.Scene(),world:{},civil:{pedestrians:[],traffic:{officers:[],riders:[],agents:[]}},activity:{tourists:[],vendors:[]},extraPeople:[{root,npcRole:'地铁安检员',guide:{intro:'请先安检。',choices:[['怎么进站？','放包后刷票。']]}}],getPos:()=>({x:0,y:26,z:0}),getVehicles:()=>[],pause(){paused++;},resume(){resumed++;},notify(){}});

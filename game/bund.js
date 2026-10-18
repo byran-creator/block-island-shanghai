@@ -9,6 +9,8 @@ import {riverCenter,CITY,MAP_BOUNDS,BUND_SHIFT} from './shanghai-map.js';
 import {windowLightGroup,lightGroupVisible} from './city-lighting.js';
 import {createCityTraffic,trafficSeed} from './city-traffic.js';
 import {pedestrianBlocked,pedestrianStepClear} from './pedestrian-traffic.js';
+import {createStreetCrowd} from './street-crowd.js';
+import {overlaps} from './world.js';
 import {buildingStyle,buildingSection,facadeRuns} from './city-architecture.js';
 import {nanpuFloor,nanpuSurfaceAt} from './bridge-road.js';
 import {showCue} from './show-cues.js';
@@ -311,6 +313,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   waibaidu.tick(night);traffic.tick(dt,{night,rain});
   for(const car of cars){const at=car.root.position,a=car.root.rotation.y,front=nanpuFloor(world,at.x-Math.sin(a),at.z-Math.cos(a)),back=nanpuFloor(world,at.x+Math.sin(a),at.z+Math.cos(a));car.root.rotation.x=front!==null&&back!==null?Math.atan2(front-back,2):0;}
   const vehicles=[...traffic.agents,...getObstacles().filter(o=>!o.person)];
+  promenadeFlow.tick(dt,vehicles);
    for(const person of pedestrians){if(person.crowdManaged)continue;const close=Math.hypot(p.x-person.root.position.x,p.z-person.root.position.z)<1.1&&Math.abs(p.y-26)<2;if(person.route){const next=close?person.t:(person.t+dt*person.speed)%person.route.lengthMeters,at=routePose(person.route,next);if(pedestrianStepClear(person.root.position,{x:at.x,y:26,z:at.z},vehicles)){person.t=next;person.root.position.set(at.x,26,at.z);person.root.rotation.y=at.yaw;}for(const limb of person.limbs){limb.leg.rotation.x=Math.sin(clock*4+person.phase)*.34*limb.side;limb.arm.rotation.x=-limb.leg.rotation.x*.6;}}else{person.root.position.set(person.point.x,26,person.point.z);const baseYaw=Math.atan2(CITY.shanghai.x-person.point.x,CITY.shanghai.z-person.point.z)+Math.PI;const lArm=person.limbs.find(l=>l.side===-1)?.arm,rArm=person.limbs.find(l=>l.side===1)?.arm;if(person.kind==='photo'){posePhotographer(person,clock,dt,baseYaw);}else{const cycleTime=16,t=((clock*.75+person.phase)%cycleTime);let tTorsoX=0,headTurn=Math.sin(clock*.6+person.phase)*.16;if(t>=4.0&&t<=8.5){if(rArm)rArm.rotation.set(-1.4,.22,-.15);if(lArm)lArm.rotation.set(-.15,0,-.05);headTurn=.24;}else{tTorsoX=.08;if(lArm)lArm.rotation.set(-.76,0,-.12);if(rArm)rArm.rotation.set(-.76,0,.12);}if(person.torso)person.torso.rotation.x=tTorsoX;if(person.head)person.head.rotation.y=headTurn;person.root.rotation.y=baseYaw+headTurn*.3;}}person.root.visible=!pedestrianBlocked(person.root.position,vehicles)&&(Math.hypot(p.x-person.root.position.x,p.z-person.root.position.z)>1||Math.abs(p.y-26)>2);}
   for(const boat of boats){boat.z+=dt*boat.dir*1.9;if(boat.z>122){boat.z=122;boat.dir=-1;}if(boat.z<63){boat.z=63;boat.dir=1;}const avoidPier=(boat.lane<0?7:2)*Math.max(0,Math.min(1,(boat.z-106)/8));boat.root.position.set(riverCenter(boat.z)+boat.lane+avoidPier,22.28+Math.sin(clock*1.5+boat.z)*.06,boat.z);boat.root.rotation.y=Math.atan2((riverCenter(boat.z+.2)-riverCenter(boat.z-.2))/.4,1)+(boat.dir>0?Math.PI:0);}
  }
@@ -324,12 +327,22 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  for(const b of batches.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(b.position,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(b.normal,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(b.uv,2));g.setIndex(b.index);g.computeBoundingSphere();const m=new THREE.Mesh(g,b.material);m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
  for(const p of pedestrians){const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
  const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
+ const promenadePeople=pedestrians.filter(p=>p.kind==='walk');
+ for(const p of promenadePeople){p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);}
+ const promenadeFlow=createStreetCrowd(promenadePeople,{
+  area:{x1:22,x2:145,z1:22,z2:202},seedOffset:100,
+  clear:q=>!overlaps(world,q.x,q.y,q.z)&&overlaps(world,q.x,q.y-.1,q.z)&&![-.45,.45].some(dx=>[-.45,.45].some(dz=>roadContains(q.x+dx,q.z+dz))),
+  others:()=>[...getObstacles().filter(o=>o.person),...pedestrians.filter(p=>!p.route),...traffic.officers],
+  pickGoal:p=>{p.t=(p.t+2)%p.route.lengthMeters;return {...routePose(p.route,p.t),y:26};},
+  spawnPoint:p=>{p.t=p.crowd.random()*p.route.lengthMeters;return {...routePose(p.route,p.t),y:26};}
+ });
  function getNearBench(p=getPos()){return benches.find(b=>Math.hypot(p.x-b.x,p.z-b.z)<1.8&&Math.abs(p.y-26)<1.8)||null;}
  function isSeated(){return !!seatedBench;}
+ function leaveSeat(){seatedBench=null;}
  function sit(b){seatedBench=b;place({x:b.seatX,y:b.seatY,z:b.z});setView(b.facingYaw,-.04);notify('已在外滩长椅坐下 · 临江欣赏陆家嘴天际线 · 按 V 或 WASD 起身');return true;}
  function standUp(){if(!seatedBench)return false;const b=seatedBench;seatedBench=null;place({x:b.seatX+.85,y:26,z:b.z});notify('已起身 · 继续漫步外滩');return true;}
  function use(){if(seatedBench)return standUp();const b=getNearBench();if(b)return sit(b);return false;}
  function getPrompt(p=getPos()){if(seatedBench)return 'V / WASD 起身';const b=getNearBench(p);if(b)return 'V 坐在长椅上欣赏外滩与江景';return '';}
  tick(0,{});
- return {tick,customsClock,cars,boats,pedestrians,windows,facadeLights,goldSurfaces,skylineLEDs,traffic,benches,getNearBench,isSeated,sit,standUp,use,getPrompt,collides:(x,y,z)=>traffic.collides(x,y,z)||cars.some(c=>{if(y>=c.root.position.y+1.3||y+1.75<=c.root.position.y)return false;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<.9&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<1.55;})};
+ return {tick,customsClock,cars,boats,pedestrians,windows,facadeLights,goldSurfaces,skylineLEDs,traffic,benches,getNearBench,isSeated,sit,standUp,leaveSeat,use,getPrompt,collides:(x,y,z)=>traffic.collides(x,y,z)||cars.some(c=>{if(y>=c.root.position.y+1.3||y+1.75<=c.root.position.y)return false;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<.9&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<1.55;})};
 }

@@ -86,6 +86,13 @@ try {
   assert.equal(civil.standUp(), true, 'civil.standUp() should stand up directly');
   assert.equal(civil.isSeated(), false);
 
+  civil.sit(bench);
+  playerPos = {x: -100, y: 26, z: 66};
+  civil.leaveSeat();
+  assert.equal(civil.isSeated(), false, 'Travel clears the old seat without moving the arrival point');
+  assert.equal(civil.standUp(), false);
+  assert.deepEqual(playerPos, {x: -100, y: 26, z: 66});
+
   console.log('PASS: Bund benches, refined teak/iron craftsmanship, sitting/standing interaction, and mobile landscape dialog layouts verified.');
 } finally {
   globalThis.document = savedDocument;

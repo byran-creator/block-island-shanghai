@@ -5,6 +5,7 @@ import worker from '../worker/index.js';
 import {createSettingsPanel} from '../game/settings-panel.js';
 
 const assets=await collectSiteAssets();globalThis.SITE_ASSETS=assets;
+assert(Object.keys(assets).every(path=>!path.split('/').at(-1).startsWith('__')),'Private preview pages and bundles cannot be published');
 const html=assets['/index.html'].body;
 for(const match of html.matchAll(/<img\b[^>]*src="\.\/([^"?]+)"/g)){
  const name=match[1],response=await worker.fetch(new Request('https://island.test/'+name),{});

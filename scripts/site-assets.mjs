@@ -8,7 +8,7 @@ export async function collectSiteAssets(directory='game'){
   for(const entry of await readdir(path.join(directory,relative),{withFileTypes:true})){
    const name=relative?relative+'/'+entry.name:entry.name;
    if(entry.isDirectory()){if(name==='assets'||name.startsWith('assets/'))await collect(name);continue;}
-   if(!entry.isFile()||entry.name.startsWith('__playtest'))continue;
+   if(!entry.isFile()||entry.name.startsWith('__'))continue;
    const ext=path.extname(name).toLowerCase(),type=binaryTypes[ext]||textTypes[ext];if(!type)continue;
    const bytes=await readFile(path.join(directory,name));
    assets['/'+name]={body:bytes.toString(binaryTypes[ext]?'base64':'utf8'),type,...(binaryTypes[ext]?{encoding:'base64'}:{})};
