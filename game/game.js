@@ -582,13 +582,13 @@ function makeDraggable(el,storageKey){
  let dragging=false,startX=0,startY=0,startLeft=0,startTop=0,hasMoved=false;
  if(storageKey){
   try{
-   const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
+   const isMobile=window.innerWidth<=800||window.innerHeight<=600||document.body.classList.contains('touch')||document.body.classList.contains('force-landscape');if(isMobile&&storageKey==='pos_quest_tracker')try{sessionStorage.removeItem('pos_quest_tracker');}catch(_){}const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
    if(saved&&typeof saved.left==='number'&&typeof saved.top==='number'){
     const isForced=document.body.classList.contains('force-landscape');
     const maxX=Math.max(0,(isForced?window.innerHeight:window.innerWidth)-80);
     const maxY=Math.max(0,(isForced?window.innerWidth:window.innerHeight)-40);
     const clampX=Math.min(Math.max(6,saved.left),maxX);
-    const clampY=Math.min(Math.max(50,saved.top),maxY);
+    const clampY=Math.min(Math.max(40,saved.top),isMobile?50:maxY);
     el.style.setProperty('left',clampX+'px','important');
     el.style.setProperty('top',clampY+'px','important');
     el.style.setProperty('right','auto','important');
@@ -622,7 +622,7 @@ function makeDraggable(el,storageKey){
    const maxX=Math.max(0,(isForced?window.innerHeight:window.innerWidth)-(el.offsetWidth||100));
    const maxY=Math.max(0,(isForced?window.innerWidth:window.innerHeight)-(el.offsetHeight||40));
    const clampX=Math.min(Math.max(6,newLeft),maxX);
-   const clampY=Math.min(Math.max(50,newTop),maxY);
+   const isMobile=window.innerWidth<=800||window.innerHeight<=600||document.body.classList.contains('touch')||isForced;const clampY=Math.min(Math.max(40,newTop),(isMobile&&storageKey==='pos_quest_tracker')?Math.min(60,maxY):maxY);
    el.style.setProperty('left',clampX+'px','important');
    el.style.setProperty('top',clampY+'px','important');
    el.style.setProperty('right','auto','important');
