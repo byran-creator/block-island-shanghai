@@ -28,7 +28,7 @@ export class CanvasRenderer {
     if(screen.every(v=>v[0]<0)||screen.every(v=>v[0]>w)||screen.every(v=>v[1]<0)||screen.every(v=>v[1]>h))continue;
     color.copy(mat.color??new THREE.Color('white'));if(palette){const tile=Math.min(13,Math.floor(uv.getX(ids[0])*14));color.multiply(palette[tile]);}
     let light=1;if(!mat.isMeshBasicMaterial){this.normal.fromBufferAttribute(norm,ids[0]).transformDirection(objectWorld);light=.68+Math.max(0,this.normal.y)*.28+Math.max(0,-this.normal.x)*.06;light*=scene.userData.softwareLight??1;}
-    if(colors)light*=colors.getX(ids[0]);color.multiplyScalar(light);const fog=mat.fog===false?0:Math.max(0,Math.min(1,(dist-scene.fog.near)/(scene.fog.far-scene.fog.near)));color.lerp(scene.fog.color,fog);
+    if(colors){if(obj.userData.rgbColors){color.r*=colors.getX(ids[0]);color.g*=colors.getY(ids[0]);color.b*=colors.getZ(ids[0]);}else light*=colors.getX(ids[0]);}color.multiplyScalar(light);const fog=mat.fog===false?0:Math.max(0,Math.min(1,(dist-scene.fog.near)/(scene.fog.far-scene.fog.near)));color.lerp(scene.fog.color,fog);
     polygons.push({screen,depth:(a[2]+b[2]+c[2])/3,fill:color.getStyle(),alpha:mat.opacity??1,image:obj.userData.panel?mat.map?.image:null,tex:obj.userData.panel?ids.map(id=>[uv.getX(id)*mat.map.image.width,(1-uv.getY(id))*mat.map.image.height]):null});
    }
    }
