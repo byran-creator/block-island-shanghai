@@ -1,0 +1,28 @@
+import * as THREE from './three.module.js';
+import {styleNpc} from './npc-appearance.js';
+
+export function photoCameraPose({pos,yaw,pitch,selfie=true,distance=3,orbit=0,clear=()=>true}){
+ const focus=new THREE.Vector3(pos.x,pos.y+1.25,pos.z),angle=yaw+orbit;
+ if(!selfie){const position=new THREE.Vector3(pos.x,pos.y+1.62,pos.z);return {position,focus:position.clone().add(new THREE.Vector3(-Math.sin(angle)*Math.cos(pitch),Math.sin(pitch),-Math.cos(angle)*Math.cos(pitch))),distance:0};}
+ const wanted=new THREE.Vector3(focus.x-Math.sin(angle)*distance,focus.y+.35+pitch*.5,focus.z-Math.cos(angle)*distance),delta=wanted.clone().sub(focus),length=delta.length();let reach=.35;
+ for(let d=.35;d<=length;d+=.05){const q=focus.clone().addScaledVector(delta,d/length);if(!clear(q))break;reach=d;}
+ return {position:focus.clone().addScaledVector(delta,Math.min(1,reach/length)),focus,distance:reach};
+}
+export function createPhotoMode({scene,camera,renderer,canvas,world,getPos,getYaw,pause,resume,canOpen,notify=()=>{},beforeRender=()=>{}}){
+ const el=(tag,text)=>{const n=document.createElement(tag);if(text)n.textContent=text;return n;};
+ const panel=el('section');panel.className='photo-studio';panel.hidden=true;panel.setAttribute('aria-label','小岛相机');
+ const title=el('p','小岛相机 · 拖动画面构图'),toolbar=el('div'),flip=el('button','切换拍景'),shot=el('button','拍摄'),save=el('a','导出照片'),exit=el('button','退出相机 · Esc'),status=el('p');toolbar.className='photo-toolbar';save.className='photo-download';save.hidden=true;save.download='上海小岛.png';status.setAttribute('role','status');status.className='photo-status';
+ const preview=el('img');preview.className='photo-preview';preview.alt='刚拍摄的小岛照片';preview.hidden=true;toolbar.append(flip,shot,save,exit);panel.append(title,toolbar,status,preview);document.body.append(panel);
+ let opened=false,selfie=true,orbit=0,tilt=0,url=null,capturing=false,token=0,saved=null,pointer=null,dirty=true;const labels=new Map();
+ const avatar=new THREE.Group();avatar.name='photo-traveller';avatar.visible=false;scene.add(avatar);const box=new THREE.BoxGeometry(1,1,1),mat=new THREE.MeshLambertMaterial({color:'#679b9c'});
+ function part(x,y,z,w,h,d){const m=new THREE.Mesh(box,mat);m.position.set(x,y,z);m.scale.set(w,h,d);avatar.add(m);return m;}
+ const torso=part(0,1,0,.47,.64,.28),head=part(0,1.52,0,.35,.37,.34),arms=[part(-.31,1.02,0,.15,.58,.18),part(.31,1.02,0,.15,.58,.18)],legs=[part(-.13,.36,0,.18,.7,.2),part(.13,.36,0,.18,.7,.2)];styleNpc({root:avatar,head,torso,arms,legs},12,'visitor');
+ function update(){if(!opened)return;for(const o of labels.keys())o.visible=false;if(!dirty)return;dirty=false;const pos=getPos(),pose=photoCameraPose({pos,yaw:getYaw(),pitch:tilt,selfie,orbit,clear:q=>{for(const dx of [-.18,.18])for(const dz of [-.18,.18])if(world.get(Math.floor(q.x+dx),Math.floor(q.y),Math.floor(q.z+dz)))return false;return true;}});avatar.position.set(pos.x,pos.y,pos.z);avatar.rotation.y=getYaw();avatar.visible=selfie;camera.position.copy(pose.position);camera.lookAt(pose.focus);camera.updateMatrixWorld();}
+ function open(){if(opened)return;if(!canOpen()){notify('请在自由游玩时打开相机，并先结束对话或离开载具。');return;}saved={position:camera.position.clone(),quaternion:camera.quaternion.clone(),fov:camera.fov};pause();opened=true;selfie=true;orbit=0;tilt=0;panel.hidden=false;flip.textContent='切换拍景';status.textContent='自拍 · 世界暂时暂停，照片不包含界面';document.body.classList.add('in-photo');scene.traverse(o=>{if(o.isSprite)labels.set(o,o.visible);});dirty=true;update();shot.focus();}
+ function close(restorePlay=true){if(!opened)return;opened=false;token++;capturing=false;pointer=null;panel.hidden=true;avatar.visible=false;document.body.classList.remove('in-photo');camera.position.copy(saved.position);camera.quaternion.copy(saved.quaternion);camera.fov=saved.fov;camera.updateProjectionMatrix();for(const [o,v]of labels)o.visible=v;labels.clear();if(url){URL.revokeObjectURL(url);url=null;}preview.removeAttribute('src');preview.hidden=true;save.removeAttribute('href');save.hidden=true;shot.disabled=false;if(restorePlay)resume();}
+ async function capture(){if(!opened||capturing)return;capturing=true;shot.disabled=true;const id=++token;try{update();beforeRender();renderer.render(scene,camera);const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('照片生成失败，请重试。')),'image/png'));if(!opened||id!==token)return;if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(blob);preview.src=url;preview.hidden=false;save.href=url;save.download='上海小岛-'+new Date().toISOString().replace(/[:.]/g,'-')+'.png';save.hidden=false;status.textContent='照片已拍好 · 点击“导出照片”保存到设备';}catch(error){status.textContent=error.message||'照片生成失败，请重试。';}finally{if(id===token){capturing=false;shot.disabled=false;}}}
+ flip.onclick=()=>{selfie=!selfie;orbit=0;tilt=0;flip.textContent=selfie?'切换拍景':'切换自拍';status.textContent=selfie?'自拍 · 拖动画面调整角度':'拍景 · 拖动画面环顾';dirty=true;update();};shot.onclick=capture;exit.onclick=close;
+ panel.addEventListener('pointerdown',e=>{if(e.target.closest('button,a,img'))return;pointer={id:e.pointerId,x:e.clientX,y:e.clientY};panel.setPointerCapture?.(e.pointerId);});
+ panel.addEventListener('pointermove',e=>{if(!pointer||pointer.id!==e.pointerId)return;orbit-=(e.clientX-pointer.x)*.005;tilt=Math.max(-.8,Math.min(.8,tilt-(e.clientY-pointer.y)*.005));pointer.x=e.clientX;pointer.y=e.clientY;dirty=true;update();});for(const name of ['pointerup','pointercancel'])panel.addEventListener(name,()=>{pointer=null;});
+ return {open,close,update,capture,get opened(){return opened;},handleKey(e){if(!opened)return false;if(e.code==='Escape'){e.preventDefault();close();}else if(e.code==='Enter'&&!e.repeat){e.preventDefault();capture();}return true;}};
+}

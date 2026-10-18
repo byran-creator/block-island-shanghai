@@ -1,3 +1,4 @@
+import {createWorldCaption} from './world-caption.js';
 import * as THREE from './three.module.js';
 import {LANDMARKS,SHANGHAI,towerProfile,WORLD_SHIFT} from './world.js';
 import {CITY,BRIDGES} from './shanghai-map.js';
@@ -6,7 +7,7 @@ import {nanpuSurfaceAt} from './bridge-road.js';
 const $=id=>document.getElementById(id);
 export function createSkyline({scene,getPos,notify,pause,resume,teleport,grantGlider,onProgress,onEvent=()=>{}}){
  let panel=false,visited=false;const lines=[];const material=new THREE.MeshBasicMaterial({color:'#a6e8ff',fog:true});
- function sign(text,p){const c=document.createElement('canvas');c.width=640;c.height=112;const ctx=c.getContext('2d');ctx.fillStyle='#193442ed';ctx.fillRect(0,0,640,112);ctx.textAlign='center';ctx.fillStyle='#c2f1ff';ctx.font='bold 31px sans-serif';ctx.fillText(text,320,68);const root=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c)}));root.position.set(p.x,p.y+3,p.z);root.scale.set(5.7,1,1);root.userData.wayfinding=true;scene.add(root);}
+ function sign(text,p){const root=createWorldCaption(text,{color:'#c2f1ff',width:5.7});root.position.set(p.x,p.y+3,p.z);scene.add(root);}
  sign('上海中心大厦 · V 乘电梯',LANDMARKS.shanghai);sign('空中花园 · V 换楼层',LANDMARKS.skyGarden);sign('巅峰观景台 · P 展开滑翔伞',LANDMARKS.skyDeck);
  for(const [id,text] of [['jinmao','金茂大厦 · V 乘电梯'],['jinmaoDeck','金茂观景台 · V 返回'],['swfc','环球金融中心 · V 乘电梯'],['swfcDeck','环球 · 云端天桥 · V 返回'],['nanpu','南浦风格斜拉桥 · 双向车道']])sign(text,LANDMARKS[id]);
  const geometry=new THREE.BoxGeometry(.25,1.8,.25);

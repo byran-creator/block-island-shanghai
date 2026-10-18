@@ -1,13 +1,16 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
+<meta name="block-island-storage" content="browser">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="x5-orientation" content="landscape"><meta name="x5-fullscreen" content="true"><meta name="x5-page-mode" content="app">
 <meta name="screen-orientation" content="landscape"><meta name="full-screen" content="yes"><meta name="browsermode" content="application">
 <meta name="theme-color" content="#182c32"><meta name="description" content="文强的方块小岛。探索、挖掘、搭建，一个轻量的第一人称方块沙盒。">
-<title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style.css?v=20261018f">
-<link rel="stylesheet" href="./journey.css?v=20261018f">
-<link rel="stylesheet" href="./dialogue.css?v=20261018f">
+<title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style-ea00095f06a0.css">
+<link rel="stylesheet" href="./journey-451acec04df5.css">
+<link rel="stylesheet" href="./dialogue-a64865796022.css">
+<link rel="stylesheet" href="./world-hints-c7ef3fdd3587.css">
+<link rel="stylesheet" href="./photo-mode-e8e492afde51.css">
 </head>
 <body>
 <div id="orientation-tip" class="orientation-tip" hidden>
@@ -20,7 +23,7 @@
 <div id="shade"></div>
 <header class="hud topbar">
   <div class="brand"><span class="brand-mark">▦</span><div><strong>方块小岛</strong><small>上海天际线 / BLOCK ISLAND</small></div></div>
-  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="backpack-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="backpack-dialog" title="背包 (快捷键 O)">🎒 背包</button><button id="handbook-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="handbook-dialog" title="游玩手册">📖 手册</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
+  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="backpack-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="backpack-dialog" title="背包 (快捷键 O)">🎒 背包</button><button id="handbook-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="handbook-dialog" title="游玩手册">📖 手册</button><button id="photo-open" class="icon-btn" aria-label="打开相机" title="相机 · 自拍 / 拍景">📷</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
 </header>
 <div id="coordinates" class="hud coordinates">X 0 · Y 0 · Z 0</div>
 <aside id="island-tasks" class="hud island-tasks quest-launcher"><button id="task-open" aria-haspopup="dialog" aria-controls="tasks-dialog">I 城市任务 0/8</button><p>I 选任务并追踪 · M 看黄色目标</p><span id="task-count" hidden>0 / 8</span></aside>
@@ -174,6 +177,7 @@
     <button id="save-game">手动云端保存</button>
     <button id="load-game" disabled>继续最近存档</button>
     <button id="save-history">存档记录</button>
+    <button id="export-save">导出存档</button><button id="import-save">导入存档</button><input id="import-save-file" type="file" accept="application/json,.json" hidden>
     <button id="rebuild-cache" title="清除地图缓存并重新构建豫园与全城">重建城市地图</button>
     <span id="save-status">正在连接云端存档…</span>
    </div>
@@ -186,7 +190,7 @@
 </dialog>
 <dialog id="paint-dialog" class="game-dialog paint-dialog" aria-labelledby="paint-title"><header><div><small>GRAFFITI STUDIO</small><h2 id="paint-title">把灵感留在墙上</h2></div><button data-close-panel aria-label="关闭涂鸦面板">关闭</button></header><p>用鼠标或手指绘画，完成后点击「喷到墙上」。也可以选一张海报打底。</p><div class="paint-presets"><button data-preset="chatgpt">ChatGPT 创意广告</button><button data-preset="nailong">奶龙应援</button><button data-preset="shanghai">你好，上海</button><button id="paint-clear">清空画布</button></div><canvas id="paint-canvas" width="1024" height="448" aria-label="自由涂鸦画布"></canvas><div class="paint-tools"><div class="inks"><button data-ink="#c4ff78" class="chosen" style="--ink:#c4ff78" aria-label="荧光绿"></button><button data-ink="#ff6bba" style="--ink:#ff6bba" aria-label="粉色"></button><button data-ink="#78dfff" style="--ink:#78dfff" aria-label="蓝色"></button><button data-ink="#ffe16f" style="--ink:#ffe16f" aria-label="黄色"></button><button data-ink="#ffffff" style="--ink:#ffffff" aria-label="白色"></button><button data-ink="#102f2c" style="--ink:#102f2c" aria-label="底色橡皮"></button></div><label>笔刷 <input id="brush-size" type="range" min="3" max="48" value="12"></label><button id="paint-apply" class="accent">喷到墙上</button></div></dialog>
 <dialog id="map-dialog" class="game-dialog map-dialog" aria-labelledby="map-title"><header><div><small>ISLAND FIELD GUIDE</small><h2 id="map-title">你的下一站</h2></div><button data-close-panel aria-label="关闭小岛地图">关闭</button></header><div class="map-layout"><div><p>黄色菱形是当前任务的下一步，点击可查看操作提示。青色圆点或下方景点名称可传送；地铁和轮渡任务需要实际乘坐。跑酷中暂不可用。</p><canvas id="large-map" width="512" height="512" aria-label="黄色菱形为任务目标，青色景点可传送，白点为玩家，亮绿点为晶体"></canvas><div id="map-destinations" class="map-destinations"></div></div><div class="map-guide"><p><b>白点是你，亮绿点是晶体。</b><br>上北下南、左西右东；弯弯的黄浦江分开两岸。</p><ol><li><b>生活岛 · 奶龙村</b> · 木屋与涂鸦已搬到南部生活岛，G 打招呼、H 跟随。</li><li><b>涂鸦街</b> · 沿沙色步道向东，靠墙按 B。</li><li><b>东方明珠</b> · 东侧粉色高塔，塔下按 V 乘电梯。</li><li><b>森林观景台</b> · 村庄西南侧，木平台上藏着晶体。</li><li><b>空中跑酷</b> · 生活岛南部起点 V 选择海港 / 森林 / 悬崖三条赛道。</li><li><b>上海中心</b> · 明珠东南侧，V 乘电梯至空中花园 / 巅峰观景台；登顶领取滑翔伞，P 开伞。</li><li><b>金茂 / 环球</b> · 环球在金茂东南，上海中心在金茂西南；三座楼集中布置；楼下 V 乘电梯，环球顶部可走过云端天桥。</li><li><b>黄浦江与外滩</b> · 江湾西岸有观景步道、沿江马路与行驶车辆；路后是和平饭店、海关钟楼、汇丰圆顶等方块建筑。黄浦江上有游船。</li><li><b>潜水码头</b> · 陆家嘴南侧滨江，V 免费领取潜水套装。</li><li><b>海底世界</b> · 东南海域，珊瑚、海龟、沉船与神殿，宝箱旁 G 开启。</li><li><b>新群岛</b> · 沿木桥和跨海桥步行到东北山岛、东南林岛、西南沙岛与远岛；浆果、羊、猪和鸡等着你。</li><li><b>弹跳广场</b> · 踩上荧光地板，一飞冲天。</li></ol><p>跑酷最佳：<strong id="best-time">尚未完成</strong></p><p class="map-source">街区参考 <a href="https://www.swfc-shanghai.com/pdf/swfc_access_en.pdf" target="_blank" rel="noopener">环球金融中心区位图</a> 与上海市道路资料；距离按游戏比例压缩。参考本次提供的地图和实景照片调整：三件套保持紧凑，外滩建筑沿西岸江湾排列，观景台拓宽；主城区专供陆家嘴与外滩。夜幕降临，两岸建筑自动亮灯。</p><p class="map-note">跑酷中禁用飞行与搭建；掉落回到检查点。其他区域可自由创造。三条赛道共 66 关，间距、转弯和升降各不相同。按 K 播放无人机、烟花与陆家嘴交错聚光灯。Shift 跑步，CapsLock 持续跑步；路边自行车、停放汽车、公交站和白玉兰停机坪按 V 搭乘。</p></div></div></dialog>
-<dialog id="saves-dialog" class="game-dialog saves-dialog" aria-labelledby="saves-title"><header><div><small>YOUR ISLAND / CLOUD SAVES</small><h2 id="saves-title">小岛存档记录</h2></div><button id="saves-close">关闭</button></header><p>每 30 秒自动保存，暂停时也会同步。自动存档保留最新进度，手动存档保留最近 10 条，可回到之前的世界。</p><p id="cloud-status" role="status">正在连接…</p><div id="save-list"></div></dialog>
+<dialog id="saves-dialog" class="game-dialog saves-dialog" aria-labelledby="saves-title"><header><div><small>YOUR ISLAND / CLOUD SAVES</small><h2 id="saves-title">小岛存档记录</h2></div><button id="saves-close">关闭</button></header><p id="save-description">每 30 秒自动保存，暂停时也会同步。自动存档保留最新进度，手动存档保留最近 10 条，可回到之前的世界。</p><p id="cloud-status" role="status">正在连接…</p><div id="save-list"></div></dialog>
 <dialog id="craft-dialog" class="game-dialog life-dialog"><header><div><small>CRAFT / MAKE A HOME</small><h2>制作、装备与家具</h2></div><button id="craft-close">返回游戏</button></header><p>生存模式需要收集材料。创造模式免费制作。制作家具后瞄准地面按 E 放置，靠近 G 使用，Q 回收。床能睡到天亮并设置重生点，箱子能储存方块，篝火每批最多烤4份生肉/鱼，30秒后 G 领取。C 制作鱼竿，站在水边看向水面 G 抛线，咬钩后 G 收竿。按 I 可追踪生存任务并领取奖励。菜圃每 60 秒成熟，G 收获；木镐和石镐能加快采集。灯与篝火能驱退夜影。</p><p id="craft-summary"></p><p id="bag-summary" class="bag-summary"></p><div class="life-tools"><button id="craft-eat">Z 吃东西</button><button id="dive-button">L 穿脱潜水装备</button><button id="craft-stow">收起手持家具</button></div><div id="packed-items" class="life-tools"></div><div id="recipes" class="recipe-grid"></div></dialog>
 <dialog id="chest-dialog" class="game-dialog life-dialog"><header><h2>储物箱</h2><button id="chest-close">关闭</button></header><p id="chest-summary"></p><div class="life-tools"><button id="chest-store">存入背包全部方块</button><button id="chest-take">取出全部方块</button></div><p>箱子的内容会随家具一起写入云端存档。</p></dialog>
 <dialog id="race-dialog" class="game-dialog life-dialog"><header><h2>选择跑酷赛道</h2><button data-close-panel>关闭</button></header><p>选好后直接到达起点。沿亮绿检查点前进，落下自动重试。挑战期间不能飞行或拆建，V 退出。</p><div id="race-options" class="recipe-grid"></div></dialog>
@@ -203,16 +207,20 @@
 <dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title">
  <header>
   <div>
-   <small>FEATURE UPDATE · 初到上海 / 2026.10.16</small>
-   <h2 id="update-title">✉ 初到上海 · 一张明信片的两岸旅程</h2>
+   <small>FEATURE UPDATE · 城市留影 / 2026.10.18</small>
+   <h2 id="update-title">📷 城市留影 · 把上海装进相册</h2>
   </div>
   <button id="update-close" aria-label="关闭更新通知">关闭并返回</button>
  </header>
  <div class="update-body">
 
 
+  <p class="update-intro">2026年10月18日 · 新增小岛相机，可自拍、拍景并导出照片。建筑说明与操作提示采用无底板文字；南京路保留霓虹氛围，采用轻量窗光预烘焙。已有存档和个人建造保留。</p>
+<article class="update-section"><div class="update-badge-row"><span class="update-tag">城市留影</span><h3>记录你的上海之旅</h3></div><ul class="update-list"><li>游玩时点击右上角 📷，切换自拍与拍景，拖动画面构图，拍摄后导出不含界面的 PNG 照片。</li><li>相机暂时暂停世界，退出即可继续探索；手册中可查看操作说明。</li><li>GitHub Pages 为主要分享入口；旧网址继续保留云存档，可用导出、导入迁移进度，两个网址不自动同步。</li></ul></article>
+<details class="update-history"><summary>📚 初到上海 · 一张明信片的两岸旅程（2026.10.16）</summary>
   <p class="update-intro">2026年10月16日 · 把南京路、陆家嘴和豫园串成一次有开场、相遇与纪念的上海初游。已有存档与个人建造继续保留。</p>
 <article class="update-section"><div class="update-badge-row"><span class="update-tag">故事旅程</span><h3>一张明信片，认识江的两岸</h3></div><ul class="update-list"><li>新玩家从外滩短片与志愿者相遇开始：南京路逛店、2号线过江、上海中心观景、返回南京东路换乘10号线，再游豫园、品茶。</li><li>十段主线按真实操作承接，NPC采用底部透明对话，I任务栏集中展示主线、城市和生存委托、目标与奖励，配合原创任务提示音、地图追踪与两章新手操作提示。前两段后明确开放自由探索，I 随时接着走。</li><li>主线全部完成后可选择旅行记忆，获得唯一纪念卡，观看可跳过的终章短片与旅程结算；O 背包可点击纪念卡，I 可重看。</li><li>开场与终章支持跳过，减少动态效果设置会停用航拍运动。首次进入自动开始前两章新手引导；旧存档不强制重开，从 I 任务栏“初到上海”主动开启即可。生存、建造与城市支线独立保留。</li></ul></article>
+</details>
 <details class="update-history"><summary>📚 豫园烟火商街与园林盛景（2026.10.15）</summary>
 <p class="update-intro">2026年10月15日 · 全面升级<b>豫园老城厢商业街区与古典园林</b>：两侧商铺彻底告别中空毛坯、全景精装修有烟火气店铺、大幅提升商业街区人流量、园林核心区全域草毯覆盖、九曲桥优化为单层通透水榭亭台。已有存档、背包与个人建造继续保留。</p>
   <article class="update-section">
@@ -317,8 +325,9 @@
  <details><summary>背包、整理和制作</summary><p>O 或画面上的“背包”打开分类库存：方块、食材、装备、家具。同种材料自动堆叠为数量，无需逐个拖动整理。点击方块可选中；生存模式零库存不能选择使用。C 打开配方，Z 食用熟食，L 穿脱潜水装备，P 展开滑翔伞。</p><p>手持家具 E 放置，Q 回收；箱子 G 打开，存入/取回方块。食材和装备留在随身背包。创造模式可无限使用方块，但仍保留真实收集数量，切回生存时使用这些库存。</p></details>
  <details><summary>城市游览与地铁</summary><p>I 可选任务追踪，M 看黄色目标；也可以不追踪自由探索。V 用于商店、地铁、载具和建筑服务，G 用于生活岛采食、家具和奶龙互动。</p><p>地铁：从入口扶梯下到 B1 → V 放背包安检，等检查结束 → 到旁边闸机 V 刷票并走过 → 下扶梯到站台 → 看清方向，门开后走入列车（V 为辅助上车）。车内 WASD 走动，靠近空座位 F 坐下/起身。到站下车，返回 B1 刷出站闸机再上地面。</p><p>去豫园：2号线在南京东路下车，上扶梯到B1付费区，跟紫色10号线导向走换乘通道，无需出闸和重复安检。再下扶梯乘「虹桥火车站 / 航中路方向」，下一站豫园；返回乘「基隆路方向」到南京东路；上扶梯到B1后沿绿色「2号线 / 地面出口」牌回原2号线站厅，再按黄色出口路线到原闸机 V 刷出站，上原入口扶梯回地面。共享站厅没有独立出站闸机，10号线站台保持紫色。站名旁的小字标出下一站；灰色延伸站暂未开放。I 可追踪这趟旅程。</p></details>
  <details><summary>豫园 · 喝茶、逛店和赏灯</summary><p>从南京路石碑附近沿现有道路与巷道向南走（M 可看步行路线），石碑旁有停站的滨江环线公交，或坐10号线到豫园站，出闸上地面后从园门旁的两处入口进入西北门/西门。M 也可直接传送到豫园，传送不计乘车任务。</p><p>走九曲桥进湖心亭，靠近茶席 V 品茶。南侧南翔小笼和江南手作、北侧湖畔茶坊都是可进入的店铺；靠近店内柜台 V 购买，买一份就少一份展示商品，20秒后可再买。食物 Z 食用，纪念品与茶具 O 背包查看，库存随存档保存。</p><p>内园由粉墙灰瓦围合，月洞门旁 V 领取免费游戏体验票，再 V 检票，走过闸机入园；离园也要开闸，再次入园需重新领票。九曲桥、湖心亭和商街可自由逛。池水清绿，锦鲤在水下巡游；沿曲径看假山、错落花木和圆窗框景，西门前有“海上名园”题石。灯谜向导处 V 答三道题，I 领取任务奖励。夜晚檐线、窗灯与红灯笼自动亮起；池中有实心桥面的水廊、柳竹花草、湖石、粉墙花窗、水榭、花岛和喷泉。点右上角时钟可调整时间来看夜景。</p></details>
+ <details><summary>相机、自拍与照片导出</summary><p>进入游戏后点击右上角 📷。相机里可切换自拍或拍景，拖动画面调整构图，点击“拍摄”后再点击“导出照片”保存 PNG。照片不包含操作界面；打开相机会暂时暂停世界，Esc 或“退出相机”回到游玩。拍照不会改变建造或任务进度。</p></details>
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>
-<script type="module" src="./game.js?v=20261018f"></script>
+<script type="module" src="./game-LR2UPLBU.js"></script>
 </body></html>

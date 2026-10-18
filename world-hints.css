@@ -1,0 +1,9 @@
+/* Floating explanations share the light, unboxed treatment of NPC names. */
+:is(#world-prompt,#npc-prompt,#guide-prompt,#skyline-prompt,#peace-prompt,#city-prompt,#life-prompt,#run-status,#glide-status,#commute-status){
+ background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;
+ color:#fff1c9;font-weight:600;letter-spacing:.025em;text-shadow:0 2px 3px #071520,0 0 7px #071520;
+ padding:5px 10px!important;line-height:1.65;
+}
+#guide-prompt,#npc-prompt{color:#effbf3}#life-prompt{color:#d9efb9}#world-prompt,#skyline-prompt{color:#ffe5ac}
+.journey-reflection{background:transparent!important;border:0!important;box-shadow:none!important;color:#fff0ce;text-shadow:0 2px 4px #071520,0 0 8px #071520}
+.journey-reflection small{color:#f1d393}.journey-toast{background:transparent;border:0;box-shadow:none;text-shadow:0 2px 5px #071520,0 0 8px #071520}
