@@ -122,4 +122,38 @@ body.in-conversation .hud,body.in-conversation .hud *,body.in-conversation #cros
  .quest-detail-actions{margin-top:8px!important;gap:6px!important}
  .quest-detail-actions button{min-height:30px!important;padding:5px 12px!important;font-size:12px!important;width:auto!important}
 }
-body.force-landscape #tasks-dialog.quest-browser-dialog{width:96vh!important;max-width:96vh!important;height:96vw!important;max-height:96vw!important;transform:rotate(90deg)!important;transform-origin:center center!important}
+body.force-landscape #tasks-dialog.quest-browser-dialog{position:fixed!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;margin:0!important;width:calc(96vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;max-width:calc(98vh - 10px)!important;height:calc(94vw - env(safe-area-inset-left) - env(safe-area-inset-right))!important;max-height:calc(96vw - 10px)!important;transform:translate(-50%,-50%) rotate(90deg)!important;transform-origin:center center!important;padding:8px 14px!important;border-radius:10px!important;box-sizing:border-box!important;overflow:hidden!important}
+body.force-landscape .quest-browser-dialog>header{height:34px!important;border-bottom:1px solid rgba(212,196,147,0.25)!important}
+body.force-landscape .quest-browser-dialog h2{font-size:16px!important;margin:0!important}
+body.force-landscape .quest-browser-dialog header small{display:none!important}
+body.force-landscape .quest-browser-dialog header button{padding:4px 10px!important;font-size:11px!important;min-height:26px!important}
+body.force-landscape .quest-browser-dialog #task-summary{margin:2px 0 6px!important;font-size:11px!important}
+body.force-landscape .quest-browser{display:grid!important;grid-template-columns:minmax(180px,28%) 1fr!important;gap:12px!important;height:calc(100% - 46px)!important;min-height:0!important}
+body.force-landscape .quest-sidebar{padding-right:6px!important;overflow-y:auto!important}
+body.force-landscape .quest-categories{gap:4px!important;margin-bottom:6px!important}
+body.force-landscape .quest-categories button{font-size:10px!important;padding:3px 7px!important}
+body.force-landscape .quest-browser .quest-row{padding:6px 8px!important}
+body.force-landscape .quest-row strong{font-size:12px!important;margin:2px 0!important}
+body.force-landscape .quest-row small{font-size:10px!important}
+body.force-landscape .quest-detail{padding:2px 6px 14px 0!important;overflow-y:auto!important}
+body.force-landscape .quest-detail h3{font-size:16px!important;margin:2px 0 4px!important}
+body.force-landscape .quest-detail .quest-place{font-size:11px!important;padding-bottom:4px!important}
+body.force-landscape .quest-detail .quest-objective{font-size:12px!important;padding:6px 10px!important;margin:4px 0!important}
+body.force-landscape .quest-detail .quest-description{font-size:12px!important;line-height:1.45!important}
+body.force-landscape .quest-detail h4{font-size:11px!important;margin:6px 0 3px!important}
+body.force-landscape .quest-rewards{gap:6px!important}
+body.force-landscape .quest-reward-tile{padding:4px 8px!important;font-size:11px!important;min-width:60px!important}
+body.force-landscape .quest-detail-actions{margin-top:8px!important;gap:6px!important}
+body.force-landscape .quest-detail-actions button{min-height:30px!important;padding:5px 12px!important;font-size:12px!important;width:auto!important}
+
+body.force-landscape .game-dialog.conversation-dialog,body.force-landscape #npc-dialog.conversation-dialog,body.force-landscape #npc-dialog{position:fixed!important;top:50%!important;left:calc(min(200px, 42vw) * 0.5 + env(safe-area-inset-bottom, 0px))!important;right:auto!important;bottom:auto!important;margin:0!important;width:calc(98vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))!important;max-width:98vh!important;height:min(200px, 42vw)!important;max-height:46vw!important;transform:translate(-50%,-50%) rotate(90deg)!important;transform-origin:center center!important;padding:8px 16px max(6px,env(safe-area-inset-bottom))!important;min-height:0!important;overflow:visible!important;background:linear-gradient(transparent,rgba(9,20,29,.45) 20%,rgba(9,20,29,.90))!important;box-sizing:border-box!important}
+body.force-landscape .conversation-dialog header,body.force-landscape #npc-dialog header{border:0!important;padding:0!important;margin:0 0 2px 0!important;display:flex!important;justify-content:flex-start!important}
+body.force-landscape .conversation-dialog header>button,body.force-landscape #npc-dialog header>button,body.force-landscape #npc-close{position:absolute!important;top:8px!important;right:12px!important;padding:4px 10px!important;font-size:11px!important;min-height:26px!important}
+body.force-landscape .conversation-dialog .journey-content,body.force-landscape #npc-dialog .journey-content{max-width:calc(100% - 310px)!important;margin:0!important;text-align:left!important}
+body.force-landscape .conversation-dialog .journey-speaker,body.force-landscape #npc-dialog.conversation-dialog #npc-title,body.force-landscape #npc-dialog #npc-title{font-size:15px!important;margin:0!important;display:inline-block!important;text-align:left!important}
+body.force-landscape .conversation-dialog .dialogue-role{display:inline-block!important;margin:0 0 0 8px!important;font-size:11px!important}
+body.force-landscape .conversation-dialog .journey-line,body.force-landscape #npc-dialog.conversation-dialog #npc-answer,body.force-landscape #npc-dialog #npc-answer{font-size:13px!important;line-height:1.45!important;text-align:left!important;margin:3px 0 2px!important;max-height:85px!important;max-width:calc(100% - 310px)!important;overflow-y:auto!important}
+body.force-landscape .conversation-dialog .journey-line::before,body.force-landscape #npc-dialog.conversation-dialog #npc-answer::before,body.force-landscape #npc-dialog #npc-answer::before{margin:3px 0 5px!important}
+body.force-landscape #npc-dialog.conversation-dialog #npc-actions,body.force-landscape #npc-dialog #npc-actions,body.force-landscape .dialogue-riddle #yuyuan-actions{position:absolute!important;right:12px!important;bottom:max(6px,env(safe-area-inset-bottom))!important;width:min(290px,36%)!important;max-height:calc(100% - 16px)!important;overflow-y:auto!important;display:flex!important;flex-direction:column!important;gap:5px!important;margin:0!important}
+body.force-landscape #npc-dialog.conversation-dialog #npc-actions .recipe-card,body.force-landscape #npc-dialog #npc-actions .recipe-card,body.force-landscape .dialogue-riddle #yuyuan-actions button{padding:6px 10px!important;font-size:12px!important;min-height:28px!important;line-height:1.35!important;border-radius:6px!important}
+body.force-landscape .conversation-dialog .journey-actions{min-height:30px!important;margin-top:2px!important;justify-content:flex-start!important}
