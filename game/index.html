@@ -22,7 +22,7 @@
 <div id="shade"></div>
 <header class="hud topbar">
   <div class="brand"><span class="brand-mark">▦</span><div><strong>方块小岛</strong><small>上海天际线 / BLOCK ISLAND</small></div></div>
-  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="backpack-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="backpack-dialog" title="背包 (快捷键 O)">🎒 背包</button><button id="handbook-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="handbook-dialog" title="游玩手册">📖 手册</button><button id="photo-open" class="icon-btn" aria-label="打开相机" title="相机 · 自拍 / 拍景">📷</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
+  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="backpack-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="backpack-dialog" title="背包 (快捷键 O)">🎒 背包</button><button id="handbook-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="handbook-dialog" title="游玩手册">📖 手册</button><button id="photo-open" class="icon-btn" aria-label="打开相机" title="相机 · 自拍 / 拍景">📷</button><button id="firework-quick" class="icon-btn" aria-label="放烟花" title="烟花灯光秀 (快捷键 K)">🎆</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
 </header>
 <div id="coordinates" class="hud coordinates">X 0 · Y 0 · Z 0</div>
 <aside id="island-tasks" class="hud island-tasks quest-launcher"><button id="task-open" aria-haspopup="dialog" aria-controls="tasks-dialog">I 城市任务 0/8</button><p>I 选任务并追踪 · M 看黄色目标</p><span id="task-count" hidden>0 / 8</span></aside>
@@ -59,10 +59,16 @@
    <button id="touch-use" class="action-btn use-btn">💬 互动 V</button>
    <button data-key="Space" class="action-btn jump-btn" aria-label="跳跃 / 上升">⎵ 跳跃</button>
   </div>
+  <div class="touch-quick-row">
+   <button id="touch-fly" class="touch-chip fly-chip" aria-label="切换飞行模式">🕊 飞行</button>
+   <button id="touch-descend" data-key="ShiftLeft" class="touch-chip descend-chip" hidden aria-label="飞行下降">⬇ 下降</button>
+   <button id="touch-firework" class="touch-chip firework-chip" aria-label="烟花灯光秀 (K)">🎆 烟花 K</button>
+  </div>
   <details class="touch-more-actions">
    <summary class="touch-chip more-chip">更多按键 ▾</summary>
    <div class="touch-secondary-grid">
-    <button id="touch-fly" class="touch-chip">🕊 飞行</button>
+    <button id="touch-fly-more" class="touch-chip">🕊 飞行</button>
+    <button id="touch-firework-more" class="touch-chip">🎆 烟花 K</button>
     <button data-key="ShiftLeft" class="touch-chip">⬇ 下降</button>
     <button id="touch-eat" class="touch-chip">🍖 进食 Z</button>
     <button id="touch-glide" class="touch-chip">🪂 滑翔 P</button>
@@ -104,8 +110,8 @@
    <button id="mouse-mode" aria-pressed="false">鼠标：自动锁定</button>
   </div>
   <div class="instructions">
-   <div><kbd>W A S D</kbd><span>移动行走</span><kbd>空格</kbd><span>跳跃</span><kbd>左键 / 右键</kbd><span>挖掘 / 放置</span></div>
-   <div><kbd>V</kbd><span>互动 / 乘车</span><kbd>O</kbd><span>背包</span><kbd>I</kbd><span>任务</span><kbd>Esc</kbd><span>暂停</span></div>
+   <div><kbd>W A S D</kbd><span>移动行走</span><kbd>空格</kbd><span>跳跃/上升</span><kbd>F</kbd><span>飞行模式</span><kbd>K</kbd><span>烟花秀</span></div>
+   <div><kbd>V</kbd><span>互动/乘车</span><kbd>O</kbd><span>背包</span><kbd>I</kbd><span>任务</span><kbd>M</kbd><span>城市地图</span><kbd>左/右键</kbd><span>挖掘/放置</span><kbd>Esc</kbd><span>暂停</span></div>
   </div>
   <p class="footnote">
    <span id="device-note">🎮 电脑鼠标键盘体验更佳 · <a href="./audio-credits.txt" target="_blank" rel="noopener">音频素材署名</a></span>
@@ -156,6 +162,9 @@
     <div class="weather-celestial">
      <button id="look-sun">去草坪看太阳</button>
      <button id="look-moon">去草坪看月亮</button>
+    </div>
+    <div class="settings-env-badge" style="width:100%;margin-top:8px;padding:8px 12px;background:rgba(255,255,255,0.06);border-radius:8px;font-size:12px;color:#c9ded7">
+     <span>当前环境状态：</span><strong id="settings-daytime" style="color:#f3d486">晴朗 · 上午</strong> · <strong id="settings-weather-status" style="color:#9be9ff">晴天 · 湿度 48%</strong> · <span id="settings-render-mode" style="color:#a5d8b8">触控模式</span>
     </div>
    </div>
   </section>

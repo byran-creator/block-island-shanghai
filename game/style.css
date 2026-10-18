@@ -217,7 +217,17 @@ body.cursor-free,body.cursor-free #world{cursor:default!important}
 #settings-quick:hover{background:rgba(212,175,55,0.36);color:#fff;border-color:#fedb84}
 
 /* In-Game Conspicuous Time Scrubber in HUD */
-.day-status{pointer-events:auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.day-status #daytime,.day-status #weather-status,.day-status #render-mode,.hud #daytime,.hud #weather-status,.hud #render-mode,#daytime,#weather-status,#render-mode{display:none!important}
+.day-status{position:fixed!important;right:20px!important;top:56px!important;pointer-events:auto;display:flex;flex-direction:column;align-items:flex-end;gap:0;z-index:5}
+.minimap-card{position:fixed!important;right:20px!important;top:92px!important;z-index:4}
+#firework-quick{background:rgba(255,103,82,0.18);border:1px solid rgba(255,180,120,0.45);color:#fff;transition:all .15s;cursor:pointer}
+#firework-quick:hover{background:rgba(255,103,82,0.36);border-color:#ffaa80;transform:scale(1.08)}
+.touch-quick-row{display:flex;gap:6px;margin:2px 0;align-items:center}
+.touch-chip.firework-chip{background:rgba(255,103,82,0.25)!important;border:1px solid rgba(255,180,120,0.55)!important;color:#fff4e6!important;font-weight:700!important}
+.touch-chip.firework-chip:active{background:rgba(255,103,82,0.48)!important;border-color:#ffd6a0!important}
+.touch-chip.fly-chip.flying{background:rgba(125,235,160,0.3)!important;border-color:#a2ffb8!important;color:#d8ffe2!important}
+.touch-chip.descend-chip{background:rgba(80,160,220,0.3)!important;border-color:#80d0ff!important;color:#e0f4ff!important;font-weight:700!important}
+.jump-btn.flying{background:rgba(80,200,160,0.35)!important;border-color:#9df0b8!important;color:#ffffff!important;box-shadow:0 0 10px rgba(130,250,180,0.4)!important}
 .day-time-bar{display:inline-flex;align-items:center;gap:10px;background:rgba(16,36,44,0.82);border:1px solid rgba(212,175,55,0.45);padding:5px 12px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.4);backdrop-filter:blur(10px)}
 #clock-quick{background:transparent;border:none;color:#fedb84;font-weight:700;font-size:13px;cursor:pointer;padding:0;letter-spacing:.3px;transition:color .15s;white-space:nowrap}
 #clock-quick:hover{color:#fff;text-shadow:0 0 8px rgba(254,219,132,0.6)}
