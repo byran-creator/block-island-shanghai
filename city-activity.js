@@ -1,4 +1,5 @@
 import {createBundWalkers} from './bund-walkers.js';
+import {createBusPassengers} from './bus-passengers.js';
 import {createStreetCrowd,moveShopper} from './street-crowd.js';
 import {styleNpc} from './npc-appearance.js';
 import {createProduct,SHOP_PRODUCTS,BRAND_PRODUCTS} from './city-products.js';
@@ -18,7 +19,7 @@ export const FERRY_STOPS=[{name:'金陵东路渡口',x:riverWestEdge(185)-11,z:1
 export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:0,u:0};if(t<47)return {port:null,u:(t-12)/35};if(t<59)return {port:1,u:1};return {port:null,u:1-(t-59)/35};}
 export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestEdge(185)+7,z:185},b={x:riverEastEdge(136)-13,z:136};return {...phase,x:a.x+(b.x-a.x)*phase.u,z:a.z+(b.z-a.z)*phase.u,y:22.3,yaw:Math.atan2(b.x-a.x,b.z-a.z)+(time%94<59?Math.PI:0)};}
 
-export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null}){
+export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null}){
  const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map();let clock=0,ride=null,panel=false,cooldown=0,purchases=0;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
@@ -293,9 +294,11 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(port>=0){if(ferryPhase(clock).port!==port){notify('轮渡还未靠岸，请在渡口候船。');return true;}ride={from:port};notify('已登上轮渡，正在前往'+landings[1-port].name+'。');return true;}
   const v=nearestVendor();if(!v)return false;pause();panel=true;$('city-title').textContent=v.name;$('city-result').textContent='柜台现货 '+v.remaining+' 份 · 购物袋已有 '+(goods[v.product]??0)+' 份'+SHOP_PRODUCTS[v.product].name+'。';$('city-actions').replaceChildren();const button=document.createElement('button');button.className='recipe-card';const label=()=>button.textContent=v.remaining?'购买'+SHOP_PRODUCTS[v.product].name+' · 库存 '+v.remaining:'已售罄';label();button.disabled=!v.remaining;button.onclick=()=>{if(!v.remaining)return;if(cooldown>0){$('city-result').textContent='刚买过一份，稍后再来。';return;}if(v.food){const state=getState();state.food+=2;if(state.hunger<20)state.eat();}v.remaining--;goods[v.product]=(goods[v.product]??0)+1;showStock(v);label();button.disabled=!v.remaining;purchases++;cooldown=30;onEvent({type:'shop'});$('city-result').textContent='已购买'+SHOP_PRODUCTS[v.product].name+'，柜台少一份；购物袋共 '+goods[v.product]+' 份'+(v.food?'，食物已加入背包。':'。');onProgress();};$('city-actions').appendChild(button);$('city-dialog').showModal();return true;
  }
+ const busGuests=transit?Array.from({length:2},(_,i)=>{const p={...person(i+250,root,'visitor'),kind:'bus-guest',stationary:true,ready:false,phase:i};p.root.visible=false;tourists.push(p);return p;}):[];
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
  const shopperClear=p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
+ const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
  const crowd=createStreetCrowd([...tourists,...sharedWalkers],{others:[...bundWalkers,...otherPeople],clear:shopperClear});
  const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
  function tick(dt,{night=false}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
@@ -305,11 +308,12 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   for(const m of ferryLamps)m.visible=night;const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
+  busFlow?.tick(dt);
   crowd.tick(dt,vehicles);
-  const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.8&&p.x<=23.2)||(p.x>=-30.8&&p.x<=-25.2))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
-  bundFlow.tick(dt,clock,vehicles,ewGreen&&bPhase.remaining>=10&&!nearCar);
+  const crossingAdmission={};
+  bundFlow.tick(dt,clock,vehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
   for(const p of tourists){
-   if(p.stationary){
+   if(p.stationary&&p.kind!=='bus-guest'){
     if(p.browse){
      p.arms[0].rotation.x=-.4+Math.sin(clock*1.2+p.phase)*.15;p.arms[1].rotation.x=-.2;
      p.root.rotation.y=(p.side>0?0:Math.PI)+Math.sin(clock*0.8+p.phase)*0.25;

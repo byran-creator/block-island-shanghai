@@ -9,9 +9,9 @@ const bounds={x1:-179,x2:-38,z1:64.4,z2:68.45};
 export const CROWD_SEPARATION=.9;
 // Counter customers also move physically: their shopping animation must not
 // overwrite a walker that has already yielded or passed in front of the shop.
-export function moveShopper(p,target,dt,{clear,people,vehicles=[]}){
+export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
  if(dt<=0)return false;
- const at=p.root.position,dx=target.x-at.x,dz=target.z-at.z,d=Math.hypot(dx,dz),step=Math.min(d,.45*dt);
+ const at=p.root.position,dx=target.x-at.x,dz=target.z-at.z,d=Math.hypot(dx,dz),step=Math.min(d,speed*dt);
  const yaw=d>.02?Math.atan2(dx,dz)+Math.PI:(p.side>0?0:Math.PI);
  const turn=Math.atan2(Math.sin(yaw-p.root.rotation.y),Math.cos(yaw-p.root.rotation.y));
  p.root.rotation.y+=Math.sign(turn)*Math.min(Math.abs(turn),dt*3.5);
