@@ -230,7 +230,7 @@ for(let id=1;id<BLOCKS.length;id++){
 }
 function select(id,clearHeld=true){uiClick();if(clearHeld)life?.clearHeld();selected=id;$('selected-name').textContent=BLOCKS[id].name;[...$('hotbar').children].forEach((e,i)=>{e.classList.toggle('active',i===id-1);e.setAttribute('aria-pressed',i===id-1?'true':'false')});}
 function respawn(){adventure?.cancelRace();const home=life?.home();if(home&&!collides(home.x,home.y,home.z))teleport(home);else teleport(LANDMARKS.village);vy=0;yaw=0;pitch=-.08;notify(home?'已回到床旁':'已回到出生点');}
-function toggleFly(){if(metro?.seat())return;if(commute?.isRiding()){notify('先按 V 离开载具，再切换飞行。');return;}if(life?.state.survival){notify('生存模式无法飞行；可以在暂停菜单切回创造模式。');return;}if(adventure?.state.race){notify('跑酷中暂时不能飞行，按 V 退出挑战。');return;}setFlight(!flying);notify(flying?'飞行模式开启 · 双击跳跃或点“降落”结束飞行':'飞行已关闭');}
+function toggleFly(){if(metro?.seat())return;if(commute?.isRiding()){notify('先按 V 离开载具，再切换飞行。');return;}if(life?.state.survival){notify('生存模式无法飞行；可以在暂停菜单切回创造模式。');return;}if(adventure?.state.race){notify('跑酷中暂时不能飞行，按 V 退出挑战。');return;}setFlight(!flying);notify(flying?'飞行模式开启 · 可点击“上升”与“下降”按键升降':'飞行模式已关闭');}
 function openMenu(){story?.suspend();refreshTimeControls();sceneAudio.suspend();metro?.suspend();if(active)saves?.save('auto');pendingMine=null;active=false;keys.clear();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;$('menu').classList.remove('hidden');document.body.classList.add('in-menu');$('menu-title').innerHTML=started?'歇一会儿。<br><em>世界在等你。</em>':'你的世界。<br><em>由你搭建。</em>';$('menu-description').innerHTML=started?`已挖掘 ${mined} 块 · 已放置 ${placed} 块<br>你的下一座建筑，会是什么？`:'初到上海，从一张明信片开始。<br>逛南京路，过江看陆家嘴，再到豫园喝一杯茶。';$('play').innerHTML=(started?'继续探索':'开启上海之旅')+'';$('play').focus();}
 function recordCityEvent(e){quests?.record(e);story?.record(e);}
 function enter(){active=true;if(!started){teleport(LANDMARKS.bund);lookTowards({x:201,y:76,z:88});started=true;}document.body.classList.remove('in-menu');$('menu').classList.add('hidden');beep(1);music.start();sceneAudio.start();if(story?.maybeStart())return;canvas.focus();if(!touch&&!dragMode){try{const result=canvas.requestPointerLock?.();if(result?.catch)result.catch(()=>{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');});if(!canvas.requestPointerLock){fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}catch{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}}
@@ -302,8 +302,7 @@ for(const btn of document.querySelectorAll('[data-key]')){
  btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.dataset.active='true';btn.setPointerCapture(e.pointerId);keys.add(btn.dataset.key)});
  for(const event of ['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(event,()=>{delete btn.dataset.active;keys.delete(btn.dataset.key)});
 }
-let lastJumpTap=0;
-document.querySelector('.jump-btn')?.addEventListener('pointerdown',()=>{const now=performance.now();if(now-lastJumpTap<380){toggleFly();lastJumpTap=0;}else{lastJumpTap=now;}});
+
 for(const id of ['firework-quick','touch-firework','touch-firework-more']){$(id)?.addEventListener('click',()=>adventure?.launch?.());}
 $('touch-fly-more')?.addEventListener('click',toggleFly);
 $('touch-run').onclick=()=>{runLocked=!runLocked;notify(runLocked?'持续跑步已开启':'已切回步行');};$('touch-mine').onclick=()=>edit(false);$('touch-place').onclick=()=>edit(true);$('touch-fly').onclick=toggleFly;$('touch-talk').onclick=()=>interact();$('touch-follow').onclick=()=>interact(true);$('touch-use').onclick=useScene;$('touch-glide').onclick=toggleGlider;$('touch-craft').onclick=()=>life.craft();$('touch-eat').onclick=()=>life.eat();$('touch-dive').onclick=()=>life.dive();$('touch-paint').onclick=()=>adventure.paint();$('map-button').onclick=()=>adventure.map();$('mouse-mode').onclick=()=>{dragMode=!dragMode;fallback=dragMode;$('mouse-mode').textContent=dragMode?'鼠标：拖动环顾':'鼠标：自动锁定';$('mouse-mode').setAttribute('aria-pressed',String(dragMode));};
@@ -389,11 +388,12 @@ canvas.addEventListener('webglcontextrestored',e=>{e.preventDefault();$('play').
 function setFlight(value){
   flying=value&&!life?.state.survival;vy=0;
   $('mode').textContent=life?.state.survival?'生存模式':flying?'创造模式 · 飞行':'创造模式';
-  const jumpBtn=document.querySelector('.jump-btn');
-  if(jumpBtn){jumpBtn.textContent=flying?'🕊 上升':'⎵ 跳跃';jumpBtn.classList.toggle('flying',flying);}
+  const ascBtn=$('touch-ascend');if(ascBtn)ascBtn.hidden=!flying;
   const descBtn=$('touch-descend');if(descBtn)descBtn.hidden=!flying;
-  const flyChip=$('touch-fly');if(flyChip){flyChip.textContent=flying?'🕊 降落':'🕊 飞行';flyChip.classList.toggle('flying',flying);}
-  const flyMoreChip=$('touch-fly-more');if(flyMoreChip)flyMoreChip.textContent=flying?'🕊 降落 F':'🕊 飞行 F';
+  const ascMore=$('touch-ascend-more');if(ascMore)ascMore.hidden=!flying;
+  const descMore=$('touch-descend-more');if(descMore)descMore.hidden=!flying;
+  const flyChip=$('touch-fly');if(flyChip){flyChip.textContent=flying?'🕊 关闭飞行':'🕊 飞行模式';flyChip.classList.toggle('flying',flying);}
+  const flyMoreChip=$('touch-fly-more');if(flyMoreChip){flyMoreChip.textContent=flying?'🕊 关闭飞行 F':'🕊 飞行模式 F';flyMoreChip.classList.toggle('flying',flying);}
 }
 function placePlayer(point){ensureChunks(point);pos.x=point.x;pos.y=point.y;pos.z=point.z;vy=0;grounded=false;yaw=point.z>=270&&point.x<=170?0:point.z>=68?-Math.PI/2:point.x>=80?Math.PI/2:0;pitch=-.12;}
 function teleport(point){metro?.end(true);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.dismount?.('传送');placePlayer(point);}
