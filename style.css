@@ -287,3 +287,5 @@ body:not(.touch):not(.force-landscape) .minimap-card{position:fixed!important;ri
 body.in-menu .metro-status,body.in-menu .metro-caption{display:none}
 
 .update-history{margin-top:22px}.update-history>summary{padding:14px 2px;color:#d6ffa3;font-weight:700;cursor:pointer}.update-history[open]>summary{margin-bottom:10px}
+/* Desktop coordinates follow the tracker; mobile keeps its compact top row. */
+body.has-tracker:not(.touch):not(.force-landscape) .coordinates{top:var(--quest-coordinate-top,260px)}

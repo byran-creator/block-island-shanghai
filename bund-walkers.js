@@ -14,6 +14,10 @@ export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers}={}
   function available(p,q){if(!clear(q)||!pedestrianStepClear(p.root.position,q,vehicles))return false;const at=p.root.position;return neighbours.every(o=>{if(o===p||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2||o.ready===false)return true;const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;return d>=.9**2||(old<.9**2&&d>old+1e-8);});}
   for(let k=0;k<walkers.length;k++){
    const p=walkers[(first+k)%walkers.length],at=p.root.position;let goal,pace=p.speed,wait=false;
+   // Once on the zebra crossing, clear it even if the admission light changes.
+   // Cancelling a passing manoeuvre here traps opposing pedestrians and holds
+   // the cycle lane's green light indefinitely. Red-light queues stay in place.
+   const onCrossing=at.x>11.2&&at.x<24.8||at.x>-33.5&&at.x<-23.5,mayManeuver=canCross||onCrossing;
    if(p.strollState==='bund_stroll'||p.strollState==='nanjing_stroll'){
     p.strollTime-=dt;
     if(p.strollTime<=0)p.strollState=p.strollState==='bund_stroll'?'bund_return':'nanjing_return';
@@ -34,7 +38,7 @@ export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers}={}
     if(!canCross)for(const line of p.dir>0?[-33.5,11.2]:[-23.5,24.8]){if(p.dir*(line-at.x)>=-1e-8&&p.dir*(x-line)>0){x=line;wait=Math.abs(x-at.x)<1e-7;}}
     goal={x,z:corridor(p,x)};
    }
-   if(p.detour&&canCross){goal=p.detour;if(Math.hypot(goal.x-at.x,goal.z-at.z)<.1)p.detour=null;}else if(!canCross)p.detour=null;
+   if(p.detour&&mayManeuver){goal=p.detour;if(Math.hypot(goal.x-at.x,goal.z-at.z)<.1)p.detour=null;}else if(!mayManeuver)p.detour=null;
    let moved=0;
    if(goal&&!wait&&dt>0){
     const dx=goal.x-at.x,dz=goal.z-at.z,n=Math.hypot(dx,dz),step=Math.min(n,pace*dt);
@@ -44,7 +48,7 @@ export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers}={}
       else{p.blocked=(p.blocked??0)+dt;
        // A small deterministic side step lets sightseeing walkers pass rather
        // than mutually waiting forever. Queues at a red stop never sidestep.
-       if(p.blocked>1.2&&canCross){for(const angle of [Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]){const c=Math.cos(angle),s=Math.sin(angle),sideQ={x:at.x+(dx*c-dz*s)/n*1.3,y:26,z:at.z+(dx*s+dz*c)/n*1.3};if(sideQ.x>-112&&sideQ.x<38&&sideQ.z>49&&sideQ.z<82&&available(p,sideQ)){p.detour=sideQ;p.blocked=0;break;}}}
+       if(p.blocked>1.2&&mayManeuver){for(const angle of [Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]){const c=Math.cos(angle),s=Math.sin(angle),sideQ={x:at.x+(dx*c-dz*s)/n*1.3,y:26,z:at.z+(dx*s+dz*c)/n*1.3};if(sideQ.x>-112&&sideQ.x<38&&sideQ.z>49&&sideQ.z<82&&(!onCrossing||Math.abs(sideQ.z-p.baseZ)<2.2)&&available(p,sideQ)){p.detour=sideQ;p.blocked=0;break;}}}
       }
      }
     }

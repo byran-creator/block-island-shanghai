@@ -4,6 +4,15 @@ import {questTarget} from './quest-guidance.js';
 import * as THREE from './three.module.js';
 export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},canOpen=()=>true,scene=null,getContext=()=>null,getYaw=()=>0,getStory=()=>null,getJourney=()=>null,onJourneyAction=()=>{},onTrack=()=>{},openMap=()=>{}}){
  const $=id=>document.getElementById(id),state=new CityQuestState();let panel=false,clock=0,marker=null,selected=null,category='all',openedOnce=false;
+ // Follow the real tracker height, including wrapping and manual dragging.
+ // Observe layout changes rather than measuring during every game frame.
+ const tracker=$('quest-tracker'),syncCoordinates=()=>{
+  if(!tracker||tracker.hidden)return;
+  document.documentElement.style.setProperty('--quest-coordinate-top',Math.min(tracker.getBoundingClientRect().bottom+12,innerHeight-28)+'px');
+ };
+ if(tracker&&typeof ResizeObserver!=='undefined')new ResizeObserver(syncCoordinates).observe(tracker);
+ if(tracker&&typeof MutationObserver!=='undefined')new MutationObserver(syncCoordinates).observe(tracker,{attributes:true,attributeFilter:['style','hidden']});
+ if(typeof window!=='undefined')window.addEventListener('resize',syncCoordinates);
  if(scene){
   const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');
   ctx.beginPath();ctx.moveTo(64,10);ctx.lineTo(118,64);ctx.lineTo(64,118);ctx.lineTo(10,64);ctx.closePath();
