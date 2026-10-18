@@ -124,7 +124,11 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  const outer=CAR_ROUTES.find(r=>r.id==='lujiazui').samples;
  // Add a real stop on the existing carriageway beside the Nanjing stele.
  // This remains the game's riverside loop, not a fictitious real-world route.
- const steleStop=rear.reduce((best,s)=>{const p=routePose(rear,s.d,4.8),distance=Math.hypot(p.x+35,p.z-73);return !best||distance<best.distance?{d:s.d,p,distance}:best;},null);
+ const steleCorner=rear.reduce((best,s)=>{const p=routePose(rear,s.d,4.8),distance=Math.hypot(p.x+35,p.z-73);return !best||distance<best.distance?{d:s.d,distance}:best;},null);
+ // Keep the complete bus and its queue away from the zebra crossing. Move
+ // the scheduled stopping distance with the pole, not just the artwork.
+ const stopD=(steleCorner.d-14+rear.lengthMeters)%rear.lengthMeters;
+ const steleStop={d:stopD,p:routePose(rear,stopD,5.6)};
  const bundBuses=buses.filter(b=>b.route===rear);for(const [i,b]of bundBuses.entries()){b.stopDs=[80,steleStop.d];if(i===1){b.t=steleStop.d;b.stopD=steleStop.d;}}
  if(clearPoint(steleStop.p.x,steleStop.p.z)){const r=new THREE.Group();r.position.set(steleStop.p.x+.5,26,steleStop.p.z+.5);root.add(r);r.add(createBusStopSign({name:'南京路步行街',code:'游1',line:'滨江环线',stations:['南京路步行街','滨江候车点'],yaw:steleStop.p.yaw}));stops.push({root:r,route:rear,d:steleStop.d,name:'南京路步行街'});}
  // Painted cycle lanes sit beside the motor lanes; markings add no physical barriers.
