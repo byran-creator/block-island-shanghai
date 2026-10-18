@@ -5,9 +5,9 @@
 <meta name="x5-orientation" content="landscape"><meta name="x5-fullscreen" content="true"><meta name="x5-page-mode" content="app">
 <meta name="screen-orientation" content="landscape"><meta name="full-screen" content="yes"><meta name="browsermode" content="application">
 <meta name="theme-color" content="#182c32"><meta name="description" content="文强的方块小岛。探索、挖掘、搭建，一个轻量的第一人称方块沙盒。">
-<title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style.css?v=20261018c">
-<link rel="stylesheet" href="./journey.css?v=20261018c">
-<link rel="stylesheet" href="./dialogue.css?v=20261018c">
+<title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style.css?v=20261018d">
+<link rel="stylesheet" href="./journey.css?v=20261018d">
+<link rel="stylesheet" href="./dialogue.css?v=20261018d">
 </head>
 <body>
 <div id="orientation-tip" class="orientation-tip" hidden>
@@ -20,11 +20,11 @@
 <div id="shade"></div>
 <header class="hud topbar">
   <div class="brand"><span class="brand-mark">▦</span><div><strong>方块小岛</strong><small>上海天际线 / BLOCK ISLAND</small></div></div>
-  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
+  <div class="top-actions"><button id="mobile-fullscreen" class="icon-btn mobile-only" aria-label="全屏/横屏模式" title="切换横屏全屏 (📱)">📱</button><span id="mode" class="pill">创造模式</span><button id="cursor-toggle" class="pill cursor-pill" title="按 Alt 键或点击此处释放光标，可自由点击HUD控件">Alt 鼠标</button><button id="backpack-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="backpack-dialog" title="背包 (快捷键 O)">🎒 背包</button><button id="handbook-open" class="pill top-tool-pill" aria-haspopup="dialog" aria-controls="handbook-dialog" title="游玩手册">📖 手册</button><button id="settings-quick" class="icon-btn" aria-label="游戏内系统设置" title="系统偏好设置 (⚙️)">⚙️</button><button id="music-quick" class="icon-btn" aria-label="下一首背景音乐" aria-pressed="true">♫</button><button id="pause" class="icon-btn" aria-label="暂停游戏">Ⅱ</button></div>
 </header>
 <div id="coordinates" class="hud coordinates">X 0 · Y 0 · Z 0</div>
 <aside id="island-tasks" class="hud island-tasks quest-launcher"><button id="task-open" aria-haspopup="dialog" aria-controls="tasks-dialog">I 城市任务 0/8</button><p>I 选任务并追踪 · M 看黄色目标</p><span id="task-count" hidden>0 / 8</span></aside>
-<button id="craft-button" class="hud craft-quick">C 制作 / 家具</button><div class="hud player-tools"><button id="backpack-open" aria-haspopup="dialog" aria-controls="backpack-dialog">O 背包</button><button id="handbook-open" aria-haspopup="dialog" aria-controls="handbook-dialog">新手手册</button></div><button id="map-button" class="hud minimap-card" aria-label="打开小岛地图"><canvas id="minimap" width="192" height="192"></canvas><span>M 城市地图</span></button>
+<button id="craft-button" class="hud craft-quick" hidden style="display:none">C 制作</button><button id="map-button" class="hud minimap-card" aria-label="打开小岛地图"><canvas id="minimap" width="192" height="192"></canvas><span>M 城市地图</span></button>
 <div id="skyline-prompt" class="hud skyline-prompt" hidden></div><div id="commute-status" class="hud commute-status" hidden><span id="commute-label"></span><div id="drive-meter" hidden><label>油门 <progress id="drive-throttle" max="100" value="0" aria-label="油门进度"></progress><span id="drive-power">0%</span></label></div></div><div id="run-status" class="hud run-status" hidden></div><div id="glide-status" class="hud glide-status" hidden></div><div id="mining-progress" class="hud mining-progress" hidden><span id="mining-label">采集中</span><div><i id="mining-fill"></i></div></div>
 <div id="vitals" class="hud vitals" hidden></div><div id="life-prompt" class="hud life-prompt"></div>
 <div id="race-status" class="hud race-status"></div>
@@ -320,5 +320,5 @@
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>
-<script type="module" src="./game.js?v=20261018c"></script>
+<script type="module" src="./game.js?v=20261018d"></script>
 </body></html>

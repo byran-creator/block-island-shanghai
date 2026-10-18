@@ -191,9 +191,11 @@ body.cursor-free,body.cursor-free #world{cursor:default!important}
 .update-cta-btn:hover{background:#deffa3;transform:translateY(-1px)}
 .update-pill{background:#1f3f3c;border-color:#71a89c;color:#dcfaea}
 .update-pill:hover{background:#2a534f;color:#fff}
-.player-tools{right:25px;top:368px;display:flex;gap:6px}
-body.in-menu .player-tools{display:none}
-.player-tools button{background:#173038dd;border:1px solid #a4c9b777;border-radius:9px;padding:10px 12px;font-size:13px}
+.top-tool-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(22,45,52,0.88);border:1px solid rgba(175,215,195,0.45);border-radius:9px;color:#eafbe0;font-size:12px;padding:5px 9px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:background .12s,border-color .12s,transform .1s}
+.top-tool-pill:hover{background:rgba(38,72,82,0.95);border-color:#d5fd87;color:#fff}
+.top-tool-pill:active{transform:scale(0.96)}
+.player-tools{display:none!important}
+.craft-quick{display:none!important}
 .player-dialog{width:min(740px,94vw);max-height:85dvh;overflow:auto}
 .player-dialog details{border:1px solid #8bbb9b55;border-radius:10px;padding:14px;margin:12px 0;background:#18383566}
 .player-dialog summary{cursor:pointer;font-weight:700;color:#d7ffab}
