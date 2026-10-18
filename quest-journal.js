@@ -45,6 +45,6 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
  function changed(ok){if(!ok)return;render();onProgress();}
  function close(){if(!panel)return;panel=false;$('tasks-dialog').close();resume();}
  function open(){if(panel){close();return;}if(!canOpen())return;if(!openedOnce&&getJourney()){selected='journey';category='all';}openedOnce=true;pause();panel=true;render();$('tasks-dialog').showModal();}
- $('task-open').onclick=open;$('tasks-close').onclick=close;$('tasks-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});if($('quest-map'))$('quest-map').onclick=openMap;if($('quest-stop'))$('quest-stop').onclick=()=>track(null);render();
+ $('task-open').onclick=open;if($('tracked-title')){$('tracked-title').style.cursor='pointer';$('tracked-title').title='点击打开任务与委托 (快捷键 I)';$('tracked-title').onclick=open;}if(document.querySelector('.quest-tracker-icon')){document.querySelector('.quest-tracker-icon').style.cursor='pointer';document.querySelector('.quest-tracker-icon').onclick=open;}$('tasks-close').onclick=close;$('tasks-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});if($('quest-map'))$('quest-map').onclick=openMap;if($('quest-stop'))$('quest-stop').onclick=()=>track(null);render();
  return {refresh:()=>{if(panel)render();else updateLauncher();},state,open,close,track,tick,target,isPanelOpen:()=>panel,record:e=>changed(state.record(e)),setBuildCount:n=>changed(state.set('build',n)),serialize:()=>state.serialize(),restore:(d,legacy)=>{state.restore(d,legacy);render();}};
 }
