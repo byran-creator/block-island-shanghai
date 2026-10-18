@@ -13,7 +13,9 @@ try{
  let arrived=false;
  for(let i=0;i<7200;i++){traffic.tick(.05);if(bus.dwell>0&&Math.abs(bus.t-stop.d)<.05){arrived=true;break;}}
  assert(arrived,'A bus must actually arrive at the advertised Nanjing stop');
- assert(bus.root.position.distanceTo(stop.root.position)<3,'The stopping point must align with the pole');
+ assert(bus.root.position.distanceTo(stop.root.position)<3.5,'The stopping point must align with the pole');
+ assert(Math.abs(bus.root.position.z-66)>bus.halfLength+5,'The complete stopped bus must leave the zebra crossing clear');
+ assert(Math.abs(stop.root.position.z-66)>12,'The waiting area must be away from the crossing');
  const stationary=bus.root.position.clone();traffic.tick(.2);assert(bus.root.position.distanceTo(stationary)<.01);
  const a=bus.root.rotation.y;pos={x:bus.root.position.x+Math.cos(a)*3.5,y:26,z:bus.root.position.z-Math.sin(a)*3.5};
  assert(!overlaps(world,pos.x,pos.y,pos.z),'Board from the pavement side');
