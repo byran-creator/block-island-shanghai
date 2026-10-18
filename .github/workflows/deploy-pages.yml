@@ -28,10 +28,18 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:release
+      - run: npm run build:pages
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'game/'
+          path: 'dist/pages/'
 
       - name: Deploy to GitHub Pages
         id: deployment

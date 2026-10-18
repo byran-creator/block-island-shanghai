@@ -1,3 +1,5 @@
+import {createPhotoMode} from './photo-mode.js';
+import {createNanjingBakedLight} from './nanjing-baked-light.js';
 import {createShanghaiJourney} from './shanghai-journey.js';
 import {createSceneInstances} from './scene-instancing.js';
 import {createWorldBaseline} from './world-baseline.js';
@@ -123,10 +125,11 @@ try{
  renderer=new CanvasRenderer({canvas});
  $('render-mode').textContent='兼容画质 · 无需显卡加速';
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio,2.0));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-if(isMobile&&$('render-mode'))$('render-mode').textContent=isWeChat?'微信高清模式':'移动端高清模式';
+if(isMobile&&$('render-mode'))$('render-mode').textContent=isWeChat?'微信触控模式':'移动端触控模式';
+let streetBounce=null,photo=null;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.fog=new THREE.Fog('#a0d6ed',isMobile?36:48,isMobile?150:190);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.35,270);camera.rotation.order='YXZ';
 const ambient=new THREE.HemisphereLight('#fff9dd','#6d9277',1.6);scene.add(ambient);
@@ -160,7 +163,7 @@ function rebuild(cx,cz){
 function installChunk(key,{p,norm,uv,col,indices}){
  const [cx,cz]=key.split(',').map(Number),old=chunks.get(key);
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(p,3));geo.setAttribute('normal',new THREE.BufferAttribute(norm,3));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(indices,1));geo.computeBoundingSphere();
- const mesh=new THREE.Mesh(geo,terrainMaterial);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;if(old){scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);
+ const mesh=new THREE.Mesh(geo,terrainMaterial);streetBounce?.bakeMesh(mesh);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;if(old){scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);
 }
 function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',').map(Number);const maxRetain=isMobile?4:6;if(Math.abs(x-cx)<=maxRetain&&Math.abs(z-cz)<=maxRetain)return true;if(!isMobile&&x>=7&&x<=18&&z>=1&&z<=14)return true;const chunkX=(x+.5)*CHUNK,chunkZ=(z+.5)*CHUNK;const buildings=nearbyBuildings||ALL_BUILDINGS;if(buildings.some(b=>Math.abs(chunkX-b.x)<24&&Math.abs(chunkZ-b.z)<24&&(!nearbyBuildings||Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?220:315))))return true;if(Object.values(CITY).some(p=>Math.abs(chunkX-p.x)<28&&Math.abs(chunkZ-p.z)<28&&Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?260:380)))return true;return false;}
 function ensureChunks(point,force=false,immediate=false){const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();const lookRadius=isMobile?4:5,maxDist=isMobile?240:360;for(let x=cx-lookRadius;x<=cx+lookRadius;x++)for(let z=cz-lookRadius;z<=cz+lookRadius;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<maxDist)for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<(isMobile?240:340))for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<maxDist)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<maxDist){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?260:380));for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}chunkWork.setDesired(needed,point,CHUNK,force);const isSkylineChunk=(x,z)=>(x>=7&&x<=18&&z>=1&&z<=14)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate)for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);const maxImmediate=isMobile?1:3;if(!force&&(Math.abs(x-cx)>maxImmediate||Math.abs(z-cz)>maxImmediate)&&(isMobile||!isSkylineChunk(x,z)))continue;rebuild(x,z);}}
@@ -184,7 +187,7 @@ const cityMedia=createCityMedia({scene});
 const companions=createCompanions(scene,world,notify,()=>{talkDone=true;updateTasks();beep(1)});
 function updateTasks(){if(talkDone)quests?.record({type:'hello'});quests?.setBuildCount(placed);}
 function interact(follow=false){runPlayerInteraction({life,companions,pos,camera,follow,notify,onFollow:()=>{followDone=true;updateTasks();}})}
-function updateSky(dt){dayClock=advanceDay(dayClock,dt,timeOptions);const label=clockLabel(dayClock);if(label!==lastClockLabel){$('clock-quick').textContent=label+' · 调整时间';lastClockLabel=label;}const phase=dayClock/240,alt=Math.sin(phase*Math.PI*2),day=Math.max(0,alt);sun.intensity=.15+day*1.7;ambient.intensity=.48+day*1.2;sun.position.set(40+Math.cos(phase*Math.PI*2)*50,10+alt*65,30);sunBlock.position.copy(sun.position);scene.userData.softwareLight=.38+day*.62;const sky=new THREE.Color('#14233f').lerp(new THREE.Color('#9fd4e8'),Math.max(.08,day));if(alt>0&&alt<.3)sky.lerp(new THREE.Color('#eaae8c'),.3);const underground=metroInterior(pos)&&started;const underwater=!underground&&camera.position.y<WATER_LEVEL&&active;scene.fog.near=underwater?0:48;scene.fog.far=underwater?(life?.state.equipped?55:20):440;scene.fog.color.copy(underwater?new THREE.Color('#3296a7'):sky);if(underground){scene.fog.near=8;scene.fog.far=105;scene.fog.color.set('#202c36');}water.visible=!underground;scene.background.copy(scene.fog.color);const segment=Math.floor(dayClock/60);if(segment!==lastSky){$('daytime').textContent=['晴朗 · 上午','暖阳 · 午后','宁静 · 夜晚','夜色 · 深夜'][segment];lastSky=segment;}}
+function updateSky(dt){dayClock=advanceDay(dayClock,dt,timeOptions);streetBounce?.setNight(dayClock>=120);const label=clockLabel(dayClock);if(label!==lastClockLabel){$('clock-quick').textContent=label+' · 调整时间';lastClockLabel=label;}const phase=dayClock/240,alt=Math.sin(phase*Math.PI*2),day=Math.max(0,alt);sun.intensity=.15+day*1.7;ambient.intensity=.48+day*1.2;sun.position.set(40+Math.cos(phase*Math.PI*2)*50,10+alt*65,30);sunBlock.position.copy(sun.position);scene.userData.softwareLight=.38+day*.62;const sky=new THREE.Color('#14233f').lerp(new THREE.Color('#9fd4e8'),Math.max(.08,day));if(alt>0&&alt<.3)sky.lerp(new THREE.Color('#eaae8c'),.3);const underground=metroInterior(pos)&&started;const underwater=!underground&&camera.position.y<WATER_LEVEL&&active;scene.fog.near=underwater?0:48;scene.fog.far=underwater?(life?.state.equipped?55:20):(isMobile?150:250);scene.fog.color.copy(underwater?new THREE.Color('#3296a7'):sky);if(underground){scene.fog.near=8;scene.fog.far=105;scene.fog.color.set('#202c36');}water.visible=!underground;scene.background.copy(scene.fog.color);const segment=Math.floor(dayClock/60);if(segment!==lastSky){$('daytime').textContent=['晴朗 · 上午','暖阳 · 午后','宁静 · 夜晚','夜色 · 深夜'][segment];lastSky=segment;}}
 
 function notify(msg){$('toast').textContent=msg;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),2400)}
 function getAudio(){audioCtx??=new (window.AudioContext||window.webkitAudioContext)();return audioCtx;}
@@ -209,7 +212,7 @@ function toggleFly(){if(metro?.seat())return;if(commute?.isRiding()){notify('先
 function openMenu(){story?.suspend();refreshTimeControls();sceneAudio.suspend();metro?.suspend();if(active)saves?.save('auto');pendingMine=null;active=false;keys.clear();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;$('menu').classList.remove('hidden');document.body.classList.add('in-menu');$('menu-title').innerHTML=started?'歇一会儿。<br><em>世界在等你。</em>':'你的世界。<br><em>由你搭建。</em>';$('menu-description').innerHTML=started?`已挖掘 ${mined} 块 · 已放置 ${placed} 块<br>你的下一座建筑，会是什么？`:'初到上海，从一张明信片开始。<br>逛南京路，过江看陆家嘴，再到豫园喝一杯茶。';$('play').innerHTML=(started?'继续探索':'开启上海之旅')+'';$('play').focus();}
 function recordCityEvent(e){quests?.record(e);story?.record(e);}
 function enter(){active=true;if(!started){teleport(LANDMARKS.bund);lookTowards({x:201,y:76,z:88});started=true;}document.body.classList.remove('in-menu');$('menu').classList.add('hidden');beep(1);music.start();sceneAudio.start();if(story?.maybeStart())return;canvas.focus();if(!touch&&!dragMode){try{const result=canvas.requestPointerLock?.();if(result?.catch)result.catch(()=>{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');});if(!canvas.requestPointerLock){fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}catch{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}}
-$('play').onclick=async()=>{if(started){enter();return;}$('play').disabled=true;$('play').textContent='正在找回你的小岛…';try{let restored=false;try{restored=await Promise.race([saves?.continueLatest?.()??Promise.resolve(false),new Promise(r=>setTimeout(()=>r(false),300))]);}catch{restored=false;}if(!restored&&!started)enter();}finally{if(!started)enter();$('play').disabled=false;$('play').textContent='继续探索';}};$('pause').onclick=()=>{document.exitPointerLock?.();openMenu()};$('respawn').onclick=()=>{respawn();enter()};$('sound').onclick=()=>{sound=!sound;music.setSound(sound);if(!sound){story?.suspend();sceneAudio.suspend();metro?.suspend();}$('sound').textContent='声音：'+(sound?'开':'关');$('sound').setAttribute('aria-pressed',String(sound))};
+$('play').onclick=async()=>{if(started){enter();return;}$('play').disabled=true;$('play').textContent='正在找回你的小岛…';try{let restored=false;try{restored=await (saves?.continueLatest?.()??Promise.resolve(false));}catch(error){notify(error.message||'存档读取失败，请稍后重试。');return;}if(!restored&&!started)enter();}finally{$('play').disabled=false;$('play').textContent=started?'继续探索':'重试读取存档';}};$('pause').onclick=()=>{document.exitPointerLock?.();openMenu()};$('respawn').onclick=()=>{respawn();enter()};$('sound').onclick=()=>{sound=!sound;music.setSound(sound);if(!sound){story?.suspend();sceneAudio.suspend();metro?.suspend();}$('sound').textContent='声音：'+(sound?'开':'关');$('sound').setAttribute('aria-pressed',String(sound))};
 let cursorFree=false,settingsPanel;
 function isAnyDialogOpen(){return Boolean($('settings-dialog')?.open||$('tasks-dialog')?.open||quests?.isPanelOpen?.()||npcGuides?.isPanelOpen?.()||activity?.isPanelOpen?.()||restaurant?.isPanelOpen?.()||skyline?.isPanelOpen?.()||life?.isPanelOpen?.()||adventure?.isPanelOpen?.()||document.querySelector?.('dialog[open]'));}
 function setFreeCursor(free){
@@ -260,6 +263,7 @@ canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('mousedown',e=>{if(!active||touch)return;if(cursorFree){setFreeCursor(false);return;}if(fallback||dragMode){if(e.button===0)dragging=true;else if(e.button===2)edit(true);return;}if(e.button===0||e.button===2){mouseHeld=e.button;edit(e.button===2)}});
 document.addEventListener('mouseup',()=>{mouseHeld=-1;dragging=false});
 document.addEventListener('keydown',e=>{
+ if(photo?.handleKey(e))return;
  if(story?.handleKey(e))return;
  if(e.code==='KeyO'&&!e.repeat&&started&&(active||handbook?.isPanelOpen())){e.preventDefault();handbook.openBackpack();return;}
  if(e.code==='Escape'&&handbook?.isPanelOpen()){e.preventDefault();handbook.close();return;}
@@ -306,8 +310,10 @@ function physics(dt){
  if(pos.y>HEIGHT+12)pos.y=HEIGHT+12;
  if(pos.y<-5)respawn();
 }
-let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0;
+let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0,lastIdleFrame=-Infinity;
 function frame(now){
+ if(document.hidden||!active&&!story?.filming&&now-lastIdleFrame<(photo?.opened?1000/30:1000/15)){prev=now;requestAnimationFrame(frame);return;}
+ lastIdleFrame=now;
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}npcGuides?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?keys:new Set()});
  if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?2:3);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
@@ -325,7 +331,7 @@ function frame(now){
  if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
  trafficFlash.style.opacity=active?String(Math.max(0,(trafficHitUntil-elapsed-.6)*.6)):'0';
  sceneAudio.update(active?dt:0,{playing:active,hidden:document.hidden,sound,volume:music.volume,pos,yaw,agents:civil.traffic.agents,vendors:()=>[...(activity?.vendors??[]),...(yuyuan?.vendors??[])],riding:commute?.isRiding()||activity?.isRiding()||yuyuan?.isRiding(),dialogue:npcGuides?.isPanelOpen(),night:dayClock>=120,rain:climate.rain});
- yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?keys:new Set()});privateSuites?.tick(active,active?dt:0);restaurant?.tick(active?dt:0);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?keys:new Set());$('commute-status').hidden=!active||!commuteText;$('commute-label').textContent=commuteText||'';const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;$('drive-power').textContent=drive?.brake?'刹车':power+'%';if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;if(!isMobile&&!touch)$('run-status').textContent=isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步';const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}renderer.render(scene,camera);
+ yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?keys:new Set()});privateSuites?.tick(active,active?dt:0);restaurant?.tick(active?dt:0);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?keys:new Set());$('commute-status').hidden=!active||!commuteText;$('commute-label').textContent=commuteText||'';const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;$('drive-power').textContent=drive?.brake?'刹车':power+'%';if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;if(!isMobile&&!touch)$('run-status').textContent=isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步';const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}photo?.update();renderer.render(scene,camera);
 }
 function onResize(){
  if(window.innerWidth>window.innerHeight){
@@ -336,7 +342,7 @@ function onResize(){
  const h=isForced?innerWidth:innerHeight;
  camera.aspect=w/h;
  camera.updateProjectionMatrix();
- renderer.setPixelRatio(Math.min(devicePixelRatio,2.0));
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
  renderer.setSize(w,h);
  updateOrientationUI();
 }
@@ -347,7 +353,7 @@ window.addEventListener('orientationchange',()=>{
 });
 document.addEventListener('fullscreenchange',updateOrientationUI);
 document.addEventListener('webkitfullscreenchange',updateOrientationUI);
-canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();active=false;openMenu();$('play').disabled=true;$('play').textContent='画面已挂起，正在等待恢复…'});
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();photo?.close(false);active=false;openMenu();$('play').disabled=true;$('play').textContent='画面已挂起，正在等待恢复…'});
 canvas.addEventListener('webglcontextrestored',e=>{e.preventDefault();$('play').disabled=false;$('play').textContent='画面已恢复 · 点击继续探索';notify('画面已恢复，点击继续探索');});
 
 function setFlight(value){flying=value&&!life?.state.survival;vy=0;$('mode').textContent=life?.state.survival?'生存模式':flying?'创造模式 · 飞行':'创造模式';}
@@ -430,12 +436,12 @@ if(p&&[p.x,p.y,p.z].every(Number.isFinite)&&p.y<HEIGHT+12&&!overlaps(world,p.x,p
  }catch{notify('未能读取存档，当前游戏仍然可以继续。');throw new Error('存档格式不正确');}}
 function lookTowards(point){const dx=point.x-pos.x,dz=point.z-pos.z; yaw=Math.atan2(-dx,-dz);pitch=Math.atan2(point.y-pos.y-1.62,Math.hypot(dx,dz));camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();}
 function lookCelestial(night){adventure.cancelRace();enter();teleport(LANDMARKS.bund);dayClock=night?165:36;updateSky(0);camera.position.set(pos.x,pos.y+1.62,pos.z);weather.tick(0,dayClock);lookTowards(night?weather.moon.position:sunBlock.position);notify(night?'已转向月亮；拖动鼠标继续环顾。':'已转向太阳；拖动鼠标继续环顾。');}
-$('start-survival').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(story?.filming)story?.filmDone?.();adventure.cancelRace();const first=life.enterSurvival();if(first){teleport(LANDMARKS.survivalCamp);dayClock=36;updateSky(0);}saves?.save('auto');};
-$('go-city').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.shanghai);lookTowards({x:201,y:76,z:88});notify('陆家嘴：环球在金茂东南，上海中心在金茂西南。对岸是外滩。');};
-$('go-yuyuan').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.yuyuan);lookTowards({x:-46,y:28,z:240});notify('豫园：九曲桥、湖心亭，外围明清仿古商圈，内园扩建4倍古典园林。');};
-$('go-bund').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.bund);lookTowards({x:184,y:65,z:66});};
-$('go-north-bund').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.northBund);lookTowards({x:193,y:76,z:82});};
-$('go-home').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.village);lookTowards({x:74,y:28,z:325});notify('欢迎回生活岛！木屋、奶龙、涂鸦和海港跑酷都在这里。');};
+$('start-survival').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(!started)return;if(story?.filming)story?.filmDone?.();adventure.cancelRace();const first=life.enterSurvival();if(first){teleport(LANDMARKS.survivalCamp);dayClock=36;updateSky(0);}saves?.save('auto');};
+$('go-city').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(!started)return;if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.shanghai);lookTowards({x:201,y:76,z:88});notify('陆家嘴：环球在金茂东南，上海中心在金茂西南。对岸是外滩。');};
+$('go-yuyuan').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(!started)return;if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.yuyuan);lookTowards({x:-46,y:28,z:240});notify('豫园：九曲桥、湖心亭，外围明清仿古商圈，内园扩建4倍古典园林。');};
+$('go-bund').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(!started)return;if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.bund);lookTowards({x:184,y:65,z:66});};
+$('go-north-bund').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(!started)return;if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.northBund);lookTowards({x:193,y:76,z:82});};
+$('go-home').onclick=async()=>{story?.bypassAutoStart?.();if(story?.filming)story?.filmDone?.();await $('play').onclick();if(!started)return;if(story?.filming)story?.filmDone?.();adventure.cancelRace();teleport(LANDMARKS.village);lookTowards({x:74,y:28,z:325});notify('欢迎回生活岛！木屋、奶龙、涂鸦和海港跑酷都在这里。');};
 $('rebuild-cache')?.addEventListener('click',async()=>{if(confirm('确定要清除城市地图缓存并重新构建吗？个人游戏存档会保留。')){await clearWorldCache();location.reload();}});
 $('look-sun').onclick=()=>lookCelestial(false);$('look-moon').onclick=()=>lookCelestial(true);
 $('weather-choice').addEventListener('change',e=>{weather.state.setMode(e.target.value);saves?.save('auto');$('weather-pace').disabled=weather.state.mode!=='auto';notify('天气：'+(e.target.value==='auto'?'自动变化':{clear:'晴天',cloudy:'多云',rain:'雨天',fog:'江雾'}[e.target.value]))});
@@ -520,7 +526,7 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-journey-20261016-seen';
+const UPDATE_NOTICE_KEY='block-island-photo-20261018-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
@@ -561,7 +567,7 @@ function makeDraggable(el,storageKey){
   const rect=el.getBoundingClientRect();
   startLeft=isForced?el.offsetLeft:(rect.left||el.offsetLeft);
   startTop=isForced?el.offsetTop:(rect.top||el.offsetTop);
-  try{el.setPointerCapture(e.pointerId);}catch(_){}
+  // Capture only after a drag starts, so a tap still reaches child buttons.
  };
  const onPointerMove=e=>{
   if(!dragging)return;
@@ -570,6 +576,7 @@ function makeDraggable(el,storageKey){
   const dx=isForced?rawDy:rawDx,dy=isForced?-rawDx:rawDy;
   if(!hasMoved&&Math.hypot(rawDx,rawDy)>6){
    hasMoved=true;
+   try{el.setPointerCapture(e.pointerId);}catch(_){}
    el.style.cursor='grabbing';
   }
   if(hasMoved){
@@ -618,6 +625,9 @@ makeDraggable($('survival-goal'),'pos_survival_goal');
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
+streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);streetBounce.setNight(dayClock>=120);
+photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,beforeRender:()=>{outline.visible=false;}});
+$('photo-open').onclick=()=>photo.open();
 const sceneInstances=createSceneInstances(scene);
 requestAnimationFrame(frame);
 

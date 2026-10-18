@@ -1,3 +1,4 @@
+import {createBundWalkers} from './bund-walkers.js';
 import {createStreetCrowd} from './street-crowd.js';
 import {styleNpc} from './npc-appearance.js';
 import {createProduct,SHOP_PRODUCTS,BRAND_PRODUCTS} from './city-products.js';
@@ -227,7 +228,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const bundWalkers=[];
  for(let i=0;i<20;i++){
   const p=person(i+200,root,'visitor'),dir=i%2===0?1:-1;
-  const x=-80+i*5.8,baseZ=65.2+(i%3)*.7,isNorth=i%2===0;
+  const x=-80+i*5.8,baseZ=dir>0?64.6+(i%3)*.45:67+(i%3)*.45,isNorth=i%2===0;
   p.root.position.set(x,26,baseZ);
   p.root.rotation.y=dir>0?Math.PI/2:-Math.PI/2;
   const bag=i%3===0?cube(p.root,['#fc869b','#50caca','#d4b572'][i%3],.35,.57,0,.3,.38,.2):null;
@@ -293,7 +294,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const v=nearestVendor();if(!v)return false;pause();panel=true;$('city-title').textContent=v.name;$('city-result').textContent='柜台现货 '+v.remaining+' 份 · 购物袋已有 '+(goods[v.product]??0)+' 份'+SHOP_PRODUCTS[v.product].name+'。';$('city-actions').replaceChildren();const button=document.createElement('button');button.className='recipe-card';const label=()=>button.textContent=v.remaining?'购买'+SHOP_PRODUCTS[v.product].name+' · 库存 '+v.remaining:'已售罄';label();button.disabled=!v.remaining;button.onclick=()=>{if(!v.remaining)return;if(cooldown>0){$('city-result').textContent='刚买过一份，稍后再来。';return;}if(v.food){const state=getState();state.food+=2;if(state.hunger<20)state.eat();}v.remaining--;goods[v.product]=(goods[v.product]??0)+1;showStock(v);label();button.disabled=!v.remaining;purchases++;cooldown=30;onEvent({type:'shop'});$('city-result').textContent='已购买'+SHOP_PRODUCTS[v.product].name+'，柜台少一份；购物袋共 '+goods[v.product]+' 份'+(v.food?'，食物已加入背包。':'。');onProgress();};$('city-actions').appendChild(button);$('city-dialog').showModal();return true;
  }
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
- const crowd=createStreetCrowd([...tourists,...sharedWalkers],{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29)});
+ const crowd=createStreetCrowd([...tourists,...sharedWalkers],{others:bundWalkers,clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29)});
+ const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>[...bundWalkers,...tourists,...sharedWalkers,...vendors]});
  function tick(dt,{night=false}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
 
@@ -302,76 +304,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
   crowd.tick(dt,vehicles);
-  for(const bw of bundWalkers){
-   if(bw.waitTimer>0){bw.waitTimer-=dt;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.2;bw.arms[1].rotation.x=-.2;continue;}
-   // 1. Destination stroll & sightseeing at the Bund or Nanjing Road
-   if(bw.strollState==='bund_stroll'){
-    bw.strollTime-=dt;
-    if(bw.strollTime>0){
-     const dZ=bw.strollTarget-bw.z;
-     if(Math.abs(dZ)>0.4){
-      bw.z+=Math.sign(dZ)*(bw.speed*.6)*dt;bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=dZ>0?0:Math.PI;
-      bw.phase+=dt*bw.speed*4;const gait=Math.sin(bw.phase);bw.legs[0].rotation.x=gait*.3;bw.legs[1].rotation.x=-gait*.3;bw.arms[0].rotation.x=-gait*.3;bw.arms[1].rotation.x=gait*.3;
-     }else{
-      bw.root.rotation.y=-Math.PI/2;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.22+Math.sin(clock*1.5+bw.phase)*.06;bw.arms[1].rotation.x=-.2;bw.root.position.set(bw.x,26,bw.z);
-      if(Math.floor(bw.strollTime)%9===0&&Math.abs(bw.strollTime-Math.floor(bw.strollTime))<dt*1.5)bw.strollTarget=52+((clock+bw.phase)*11%28);
-     }
-     continue;
-    }
-    bw.strollState='transit';bw.dir=-1;bw.x=33.5;bw.z=bw.baseZ;
-   }else if(bw.strollState==='nanjing_stroll'){
-    bw.strollTime-=dt;
-    if(bw.strollTime>0){
-     const dX=bw.strollTarget-bw.x;
-     if(Math.abs(dX)>0.5){
-      bw.x+=Math.sign(dX)*(bw.speed*.65)*dt;bw.root.position.set(bw.x,26,bw.baseZ);bw.root.rotation.y=dX>0?-Math.PI/2:Math.PI/2;
-      bw.phase+=dt*bw.speed*4;const gait=Math.sin(bw.phase);bw.legs[0].rotation.x=gait*.3;bw.legs[1].rotation.x=-gait*.3;bw.arms[0].rotation.x=-gait*.3;bw.arms[1].rotation.x=gait*.3;
-     }else{
-      bw.root.rotation.y=bw.isNorth?0:Math.PI;bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;bw.arms[0].rotation.x=-.3+Math.sin(clock*1.2+bw.phase)*.08;bw.arms[1].rotation.x=-.2;bw.root.position.set(bw.x,26,bw.baseZ);
-      if(Math.floor(bw.strollTime)%8===0&&Math.abs(bw.strollTime-Math.floor(bw.strollTime))<dt*1.5)bw.strollTarget=-105+((clock+bw.phase)*13%48);
-     }
-     continue;
-    }
-    bw.strollState='transit';bw.dir=1;bw.x=-85;bw.z=bw.baseZ;
-   }
-
-   // 2. Obey Pedestrian Traffic Light with crosswalk clearance
-   let redWait=false;
-   const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.8&&p.x<=23.2)||(p.x>=-30.8&&p.x<=-25.2))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
-   const canStartCrossing=ewGreen&&bPhase.remaining>=10&&!nearCar;
-   if(!canStartCrossing){
-    if(bw.dir===1&&bw.x>=11.0&&bw.x<=13.0){redWait=true;bw.x=11.2;}
-    else if(bw.dir===-1&&bw.x<=25.0&&bw.x>=23.0){redWait=true;bw.x=24.8;}
-    else if(bw.dir===1&&bw.x>=-34.0&&bw.x<=-31.5){redWait=true;bw.x=-33.5;}
-    else if(bw.dir===-1&&bw.x<=-23.5&&bw.x>=-26.0){redWait=true;bw.x=-23.5;}
-   }
-   if(redWait){
-    bw.legs[0].rotation.x=0;bw.legs[1].rotation.x=0;
-    bw.arms[0].rotation.x=-.15+Math.sin(clock*2+bw.phase)*.05;bw.arms[1].rotation.x=-.15-Math.sin(clock*2+bw.phase)*.05;
-    bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=bw.dir>0?-Math.PI/2:Math.PI/2;
-    continue;
-   }
-   // 3. Advance walker along corridor connecting Bund and Commercial Street
-   const onRoadway=bw.x>13.0&&bw.x<23.0;const currentSpeed=onRoadway?Math.max(bw.speed,1.8):bw.speed;bw.x+=bw.dir*currentSpeed*dt;
-   if(bw.x>=34&&bw.dir===1){bw.x=34;bw.strollState='bund_stroll';bw.strollTime=24+(bw.phase*7%26);bw.strollTarget=52+(bw.phase*17%28);}
-   else if(bw.x<=-85&&bw.dir===-1){bw.x=-85;bw.strollState='nanjing_stroll';bw.strollTime=22+(bw.phase*9%24);bw.strollTarget=-105+(bw.phase*13%45);}
-   // 4. Smooth S-curve bypass around the Nanjing Road Monument Stele (at x = -35, z = 66)
-   let curZ=bw.baseZ,curDZ=0;
-   if(bw.x>=-41&&bw.x<=-29){
-    const progress=(bw.x-(-41))/12;
-    const bell=Math.sin(progress*Math.PI);
-    const lateralShift=bw.isNorth?-2.55:2.45;
-    curZ=bw.baseZ+lateralShift*bell;
-    const dZdx=lateralShift*(Math.PI/12)*Math.cos(progress*Math.PI);
-    curDZ=dZdx*bw.dir;
-   }
-   bw.z=curZ;
-   const yaw=Math.atan2(bw.dir,curDZ)+Math.PI;
-   bw.phase+=dt*bw.speed*5;const gait=Math.sin(bw.phase);
-   bw.legs[0].rotation.x=gait*.3;bw.legs[1].rotation.x=-gait*.3;
-   bw.arms[0].rotation.x=-gait*.3;bw.arms[1].rotation.x=gait*.3;
-   bw.root.position.set(bw.x,26,bw.z);bw.root.rotation.y=yaw;
-  }
+  const nearCar=vehicles.some(v=>{const p=v.root?.position;return p&&p.z>=56&&p.z<=76&&((p.x>=12.8&&p.x<=23.2)||(p.x>=-30.8&&p.x<=-25.2))&&Math.abs(v.travelSpeed??v.speed??0)>.2;});
+  bundFlow.tick(dt,clock,vehicles,ewGreen&&bPhase.remaining>=10&&!nearCar);
   for(const p of tourists){
    if(p.stationary){
     if(p.browse){

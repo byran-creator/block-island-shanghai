@@ -39,7 +39,7 @@ import {createShanghaiJourney} from '../game/shanghai-journey.js';
 const originalDocument=globalThis.document,originalMatchMedia=globalThis.matchMedia;
 const context=new Proxy({measureText:s=>({width:String(s).length*10}),createLinearGradient:()=>({addColorStop(){}})},{get:(o,k)=>k in o?o[k]:()=>{}}),elements=new Map();
 const element=()=>({style:{},children:[],classList:{add(){},remove(){}},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(...x){this.children=x;},setAttribute(){},addEventListener(){},insertAdjacentElement(){},focus(){},showModal(){this.open=true;},close(){this.open=false;},getContext:()=>context});
-globalThis.document={hidden:false,body:element(),createElement:element,getElementById:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);},querySelector:()=>null};
+globalThis.document={hidden:false,body:element(),createElement:element,getElementById:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);},querySelector:()=>null,querySelectorAll:()=>[]};
 try{
  for(const reduced of [false,true]){
   globalThis.matchMedia=()=>({matches:reduced});const scene=new THREE.Scene(),label=new THREE.Sprite();scene.add(label);const camera=new THREE.PerspectiveCamera(72,1.5,.1,360);camera.position.set(10,30,80);camera.lookAt(0,30,20);const initial=camera.position.clone(),rotation=camera.quaternion.clone(),prefetched=[];
