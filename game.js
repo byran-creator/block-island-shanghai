@@ -116,7 +116,7 @@ try{
   canvas,
   antialias:true,
   powerPreference:'high-performance',
-  logarithmicDepthBuffer:!isMobile,
+  logarithmicDepthBuffer:true,
   precision:'highp'
  });
 }catch(e){
@@ -128,10 +128,10 @@ renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 if(isMobile&&$('render-mode'))$('render-mode').textContent=isWeChat?'微信高清模式':'移动端高清模式';
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.fog=new THREE.Fog('#a0d6ed',isMobile?36:48,isMobile?150:190);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.2,380);camera.rotation.order='YXZ';
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.35,270);camera.rotation.order='YXZ';
 const ambient=new THREE.HemisphereLight('#fff9dd','#6d9277',1.6);scene.add(ambient);
 const sun=new THREE.DirectionalLight('#fff0c7',1.5);sun.position.set(-20,65,30);scene.add(sun);
-const world=await loadWorld(message=>{$('play').textContent=message;}),initialWorld=createWorldBaseline(world.data),savedEdits=new Map();let adventure,saves,life,skyline,civil,weather,restaurant,activity,commute,npcGuides,metro,quests,handbook,yuyuan,story;let runLocked=false;
+const world=await loadWorld(message=>{$('play').textContent=message;}),initialWorld=createWorldBaseline(world.data),savedEdits=new Map();let adventure,saves,life,skyline,civil,weather,restaurant,activity,commute,npcGuides,metro,quests,handbook,yuyuan,story;let runLocked=false,isScrubbingTime=false;
 const atlasCanvas=document.createElement('canvas');atlasCanvas.width=16*14;atlasCanvas.height=16;const ctx=atlasCanvas.getContext('2d');
 const tiles=['#77ad42','#956a45','#939e9c','#88603d','#498548','#e5d59b','#c29b61','#b76950','#956a45','#bb9259','#deded5','#db6594','#61c9df','#c4f77c'];
 for(let tile=0;tile<14;tile++){
@@ -321,7 +321,7 @@ function frame(now){
  $('music-track').textContent=music.track.name+' · '+(music.automatic?area.name:adventure?.isShowActive()?'明珠夜游变奏':'手选曲目');$('music-choice').value=music.track.id;
  const festival=adventure?.isShowActive(),showTime=adventure?.show.elapsed??0;
  skyline.tick(active?dt:0,{night:dayClock>=120,festival,time:elapsed,showTime});
- updateSky(active?dt:0);const climate=weather.tick(active?dt:0,dayClock);const hts=$('hud-time-slider');if(hts&&document.activeElement!==hts)hts.value=String(clockMinutes(dayClock));civil.tick(active?dt:0,{night:dayClock>=120,rain:climate.rain,dayClock,festival,showTime});if(carried){const q=boatWorld(carried.root,carried.local);pos.x+=q.x-carried.old.x;pos.z+=q.z-carried.old.z;pos.y+=carried.root.position.y+carried.top-carried.y;camera.position.set(pos.x,pos.y+1.62,pos.z);}$('weather-status').textContent=climate.name+' · 湿度 '+climate.humidity+'%';if(clouds.tick)clouds.tick(active?dt:0,elapsed,climate);
+ updateSky(active?dt:0);const climate=weather.tick(active?dt:0,dayClock);const hts=$('hud-time-slider');if(hts&&!isScrubbingTime&&document.activeElement!==hts)hts.value=String(clockMinutes(dayClock));civil.tick(active?dt:0,{night:dayClock>=120,rain:climate.rain,dayClock,festival,showTime});if(carried){const q=boatWorld(carried.root,carried.local);pos.x+=q.x-carried.old.x;pos.z+=q.z-carried.old.z;pos.y+=carried.root.position.y+carried.top-carried.y;camera.position.set(pos.x,pos.y+1.62,pos.z);}$('weather-status').textContent=climate.name+' · 湿度 '+climate.humidity+'%';if(clouds.tick)clouds.tick(active?dt:0,elapsed,climate);
  if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
  trafficFlash.style.opacity=active?String(Math.max(0,(trafficHitUntil-elapsed-.6)*.6)):'0';
  sceneAudio.update(active?dt:0,{playing:active,hidden:document.hidden,sound,volume:music.volume,pos,yaw,agents:civil.traffic.agents,vendors:()=>[...(activity?.vendors??[]),...(yuyuan?.vendors??[])],riding:commute?.isRiding()||activity?.isRiding()||yuyuan?.isRiding(),dialogue:npcGuides?.isPanelOpen(),night:dayClock>=120,rain:climate.rain});
@@ -452,14 +452,55 @@ $('time-slider').onchange=e=>applyTime(Number(e.target.value));
 for(const b of document.querySelectorAll('[data-time]'))b.onclick=()=>applyTime(Number(b.dataset.time));
 const hudSlider=$('hud-time-slider');
 if(hudSlider){
+ function updateFromPointer(e){
+  const isForced=document.body.classList.contains('force-landscape');
+  const rect=hudSlider.getBoundingClientRect();
+  const fraction=isForced
+   ? (e.clientY-rect.top)/Math.max(1,rect.height)
+   : (e.clientX-rect.left)/Math.max(1,rect.width);
+  const clamped=Math.max(0,Math.min(1,fraction));
+  const minutes=Math.round(clamped*1439);
+  hudSlider.value=String(minutes);
+  dayClock=phaseFromMinutes(minutes);
+  updateSky(0);
+  $('clock-quick').textContent=clockLabel(dayClock)+' · 调整时间';
+  $('time-choice').value=clockLabel(dayClock);
+  $('time-slider').value=clockMinutes(dayClock);
+ }
+ const onPointerDown=e=>{
+  if(e.button!==undefined&&e.button!==0)return;
+  isScrubbingTime=true;
+  try{hudSlider.setPointerCapture(e.pointerId);}catch(_){}
+  updateFromPointer(e);
+ };
+ const onPointerMove=e=>{
+  if(!isScrubbingTime)return;
+  updateFromPointer(e);
+ };
+ const onPointerUp=e=>{
+  if(!isScrubbingTime)return;
+  isScrubbingTime=false;
+  try{hudSlider.releasePointerCapture(e.pointerId);}catch(_){}
+  applyTime(Number(hudSlider.value));
+ };
+ hudSlider.addEventListener('pointerdown',onPointerDown);
+ hudSlider.addEventListener('pointermove',onPointerMove);
+ hudSlider.addEventListener('pointerup',onPointerUp);
+ hudSlider.addEventListener('pointercancel',onPointerUp);
  hudSlider.addEventListener('input',e=>{
+  if(isScrubbingTime)return;
   dayClock=phaseFromMinutes(Number(e.target.value));
   updateSky(0);
   $('clock-quick').textContent=clockLabel(dayClock)+' · 调整时间';
   $('time-choice').value=clockLabel(dayClock);
   $('time-slider').value=clockMinutes(dayClock);
  });
- hudSlider.addEventListener('change',e=>applyTime(Number(e.target.value)));
+ hudSlider.addEventListener('change',e=>{
+  if(isScrubbingTime)return;
+  applyTime(Number(e.target.value));
+ });
+ document.querySelector('.hud-sun-icon')?.addEventListener('click',()=>{applyTime(720);notify('已切换到白天 ☀️');});
+ document.querySelector('.hud-moon-icon')?.addEventListener('click',()=>{applyTime(1260);notify('已切换到夜晚 🌙');});
 }
 handbook=createPlayerHandbook({getState:()=>life.state,getPacked:()=>life.serialize().packed,getCollectibles:()=>({...yuyuan.inventory,...story.inventory}),openCollectible:()=>story.openSettlement(),selectBlock:select,craft:()=>life.craft(),pause:pauseForPanel,resume:enter,isPlaying:()=>active,canOpen:()=>!document.querySelector('dialog[open]'),notify});
 settingsPanel=createSettingsPanel({dialog:$('settings-dialog'),isPlaying:()=>active,pause:pauseForPanel,resume:enter,onOpen:()=>{if(cursorFree)setFreeCursor(false);refreshTimeControls();}});
