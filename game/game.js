@@ -113,21 +113,21 @@ let renderer;
 try{
  renderer=new THREE.WebGLRenderer({
   canvas,
-  antialias:!isMobile,
-  powerPreference:isMobile?'default':'high-performance',
+  antialias:true,
+  powerPreference:'high-performance',
   logarithmicDepthBuffer:!isMobile,
-  precision:isMobile?'mediump':'highp'
+  precision:'highp'
  });
 }catch(e){
  renderer=new CanvasRenderer({canvas});
  $('render-mode').textContent='兼容画质 · 无需显卡加速';
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio,isMobile?1.0:1.25));
+renderer.setPixelRatio(Math.min(devicePixelRatio,2.0));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-if(isMobile&&$('render-mode'))$('render-mode').textContent=isWeChat?'微信极速流畅模式':'移动端极速模式';
+if(isMobile&&$('render-mode'))$('render-mode').textContent=isWeChat?'微信高清模式':'移动端高清模式';
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.fog=new THREE.Fog('#a0d6ed',isMobile?36:48,isMobile?150:190);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.2,isMobile?260:360);camera.rotation.order='YXZ';
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.2,380);camera.rotation.order='YXZ';
 const ambient=new THREE.HemisphereLight('#fff9dd','#6d9277',1.6);scene.add(ambient);
 const sun=new THREE.DirectionalLight('#fff0c7',1.5);sun.position.set(-20,65,30);scene.add(sun);
 const world=await loadWorld(message=>{$('play').textContent=message;}),initialWorld=createWorldBaseline(world.data),savedEdits=new Map();let adventure,saves,life,skyline,civil,weather,restaurant,activity,commute,npcGuides,metro,quests,handbook,yuyuan,story;let runLocked=false;
@@ -335,6 +335,7 @@ function onResize(){
  const h=isForced?innerWidth:innerHeight;
  camera.aspect=w/h;
  camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,2.0));
  renderer.setSize(w,h);
  updateOrientationUI();
 }
