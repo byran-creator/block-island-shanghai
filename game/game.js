@@ -102,6 +102,7 @@ $('mobile-menu-fullscreen')?.addEventListener('click',toggleLandscapeFullscreen)
 function enableTouch(){
  touch=true;
  document.body.classList.add('touch');
+ if($('run-status'))$('run-status').hidden=true;
  if($('device-note'))$('device-note').textContent='左侧 WASD 方向移动 · 右侧滑动环顾视角';
  updateOrientationUI();
 }
@@ -324,7 +325,7 @@ function frame(now){
  if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
  trafficFlash.style.opacity=active?String(Math.max(0,(trafficHitUntil-elapsed-.6)*.6)):'0';
  sceneAudio.update(active?dt:0,{playing:active,hidden:document.hidden,sound,volume:music.volume,pos,yaw,agents:civil.traffic.agents,vendors:()=>[...(activity?.vendors??[]),...(yuyuan?.vendors??[])],riding:commute?.isRiding()||activity?.isRiding()||yuyuan?.isRiding(),dialogue:npcGuides?.isPanelOpen(),night:dayClock>=120,rain:climate.rain});
- yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?keys:new Set()});privateSuites?.tick(active,active?dt:0);restaurant?.tick(active?dt:0);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?keys:new Set());$('commute-status').hidden=!active||!commuteText;$('commute-label').textContent=commuteText||'';const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;$('drive-power').textContent=drive?.brake?'刹车':power+'%';if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;$('run-status').textContent=isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步';const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}renderer.render(scene,camera);
+ yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?keys:new Set()});privateSuites?.tick(active,active?dt:0);restaurant?.tick(active?dt:0);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?keys:new Set());$('commute-status').hidden=!active||!commuteText;$('commute-label').textContent=commuteText||'';const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;$('drive-power').textContent=drive?.brake?'刹车':power+'%';if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;if(!isMobile&&!touch)$('run-status').textContent=isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步';const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}renderer.render(scene,camera);
 }
 function onResize(){
  if(window.innerWidth>window.innerHeight){
@@ -488,6 +489,91 @@ updateDialog?.addEventListener('cancel',e=>{e.preventDefault();dismissUpdateNoti
 try{if(localStorage.getItem('block-island-update-v55-seen'))localStorage.setItem('block-island-update-v54-seen','true');if(!localStorage.getItem(UPDATE_NOTICE_KEY)){updateDialog?.showModal();}}catch{}
 refreshTimeControls();
 mountVoiceSettings();
+function makeDraggable(el,storageKey){
+ if(!el)return;
+ el.style.touchAction='none';
+ el.style.userSelect='none';
+ el.style.webkitUserSelect='none';
+ let dragging=false,startX=0,startY=0,startLeft=0,startTop=0,hasMoved=false;
+ if(storageKey){
+  try{
+   const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
+   if(saved&&typeof saved.left==='number'&&typeof saved.top==='number'){
+    const isForced=document.body.classList.contains('force-landscape');
+    const maxX=Math.max(0,(isForced?window.innerHeight:window.innerWidth)-80);
+    const maxY=Math.max(0,(isForced?window.innerWidth:window.innerHeight)-40);
+    const clampX=Math.min(Math.max(6,saved.left),maxX);
+    const clampY=Math.min(Math.max(50,saved.top),maxY);
+    el.style.setProperty('left',clampX+'px','important');
+    el.style.setProperty('top',clampY+'px','important');
+    el.style.setProperty('right','auto','important');
+    el.style.setProperty('bottom','auto','important');
+   }
+  }catch(_){}
+ }
+ const onPointerDown=e=>{
+  if(e.button!==undefined&&e.button!==0)return;
+  if(e.isPrimary===false)return;
+  dragging=true;hasMoved=false;
+  startX=e.clientX;startY=e.clientY;
+  const isForced=document.body.classList.contains('force-landscape');
+  const rect=el.getBoundingClientRect();
+  startLeft=isForced?el.offsetLeft:(rect.left||el.offsetLeft);
+  startTop=isForced?el.offsetTop:(rect.top||el.offsetTop);
+  try{el.setPointerCapture(e.pointerId);}catch(_){}
+ };
+ const onPointerMove=e=>{
+  if(!dragging)return;
+  const isForced=document.body.classList.contains('force-landscape');
+  const rawDx=e.clientX-startX,rawDy=e.clientY-startY;
+  const dx=isForced?rawDy:rawDx,dy=isForced?-rawDx:rawDy;
+  if(!hasMoved&&Math.hypot(rawDx,rawDy)>6){
+   hasMoved=true;
+   el.style.cursor='grabbing';
+  }
+  if(hasMoved){
+   const newLeft=startLeft+dx,newTop=startTop+dy;
+   const maxX=Math.max(0,(isForced?window.innerHeight:window.innerWidth)-(el.offsetWidth||100));
+   const maxY=Math.max(0,(isForced?window.innerWidth:window.innerHeight)-(el.offsetHeight||40));
+   const clampX=Math.min(Math.max(6,newLeft),maxX);
+   const clampY=Math.min(Math.max(50,newTop),maxY);
+   el.style.setProperty('left',clampX+'px','important');
+   el.style.setProperty('top',clampY+'px','important');
+   el.style.setProperty('right','auto','important');
+   el.style.setProperty('bottom','auto','important');
+  }
+ };
+ const onPointerUp=e=>{
+  if(!dragging)return;
+  dragging=false;
+  el.style.cursor='grab';
+  try{el.releasePointerCapture(e.pointerId);}catch(_){}
+  if(hasMoved&&storageKey){
+   try{
+    const isForced=document.body.classList.contains('force-landscape');
+    const rect=el.getBoundingClientRect();
+    const curLeft=isForced?el.offsetLeft:(rect.left||el.offsetLeft);
+    const curTop=isForced?el.offsetTop:(rect.top||el.offsetTop);
+    sessionStorage.setItem(storageKey,JSON.stringify({left:curLeft,top:curTop}));
+   }catch(_){}
+  }
+ };
+ el.addEventListener('pointerdown',onPointerDown);
+ el.addEventListener('pointermove',onPointerMove);
+ el.addEventListener('pointerup',onPointerUp);
+ el.addEventListener('pointercancel',onPointerUp);
+ el.addEventListener('click',e=>{
+  if(hasMoved){
+   e.preventDefault();
+   e.stopPropagation();
+   e.stopImmediatePropagation();
+   hasMoved=false;
+  }
+ },true);
+}
+makeDraggable($('island-tasks'),'pos_island_tasks');
+makeDraggable($('quest-tracker'),'pos_quest_tracker');
+makeDraggable($('survival-goal'),'pos_survival_goal');
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
