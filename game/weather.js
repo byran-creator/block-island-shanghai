@@ -49,15 +49,16 @@ function createSunBloomTexture(){
  if(typeof document==='undefined')return null;
  const c=document.createElement('canvas');c.width=256;c.height=256;
  const ctx=c.getContext('2d');if(!ctx)return null;
- const cx=128,cy=128,r=124;
+ const cx=128,cy=128,r=120;
  const grad=ctx.createRadialGradient(cx,cy,2,cx,cy,r);
  grad.addColorStop(0,'rgba(255,255,255,1.0)');
  grad.addColorStop(0.08,'rgba(255,252,225,0.92)');
  grad.addColorStop(0.20,'rgba(255,238,165,0.52)');
  grad.addColorStop(0.42,'rgba(255,205,100,0.20)');
  grad.addColorStop(0.68,'rgba(255,170,55,0.05)');
+ grad.addColorStop(0.92,'rgba(255,140,25,0.0)');
  grad.addColorStop(1.0,'rgba(255,140,25,0.0)');
- ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=grad;ctx.fillRect(0,0,256,256);
  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
 
@@ -65,13 +66,14 @@ function createLunarGlowTexture(){
  if(typeof document==='undefined')return null;
  const c=document.createElement('canvas');c.width=256;c.height=256;
  const ctx=c.getContext('2d');if(!ctx)return null;
- const cx=128,cy=128,r=124;
+ const cx=128,cy=128,r=120;
  const grad=ctx.createRadialGradient(cx,cy,12,cx,cy,r);
  grad.addColorStop(0,'rgba(210,235,255,0.72)');
  grad.addColorStop(.35,'rgba(165,205,255,0.30)');
  grad.addColorStop(.7,'rgba(130,175,250,0.08)');
+ grad.addColorStop(.92,'rgba(100,150,245,0)');
  grad.addColorStop(1,'rgba(100,150,245,0)');
- ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=grad;ctx.fillRect(0,0,256,256);
  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
 
