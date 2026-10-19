@@ -1,4 +1,5 @@
 import {createBundWalkers} from './bund-walkers.js';
+import {createLujiazuiPeople,createLujiazuiFlow} from './lujiazui-life.js';
 import {createBusPassengers} from './bus-passengers.js';
 import {createStreetCrowd,moveShopper} from './street-crowd.js';
 import {styleNpc} from './npc-appearance.js';
@@ -296,10 +297,12 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  }
  const busGuests=transit?Array.from({length:2},(_,i)=>{const p={...person(i+250,root,'visitor'),kind:'bus-guest',stationary:true,ready:false,phase:i};p.root.visible=false;tourists.push(p);return p;}):[];
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
+ const financialPeople=createLujiazuiPeople({person,cube});tourists.push(...financialPeople);
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
  const shopperClear=p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
  const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
- const crowd=createStreetCrowd([...tourists,...sharedWalkers],{others:[...bundWalkers,...otherPeople],clear:shopperClear});
+ const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear});
+ const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople});
  const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
  function tick(dt,{night=false}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
@@ -310,6 +313,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const vehicles=getVehicles();
   busFlow?.tick(dt);
   crowd.tick(dt,vehicles);
+  financialFlow.tick(dt,vehicles);
   const crossingAdmission={};
   bundFlow.tick(dt,clock,vehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
   for(const p of tourists){

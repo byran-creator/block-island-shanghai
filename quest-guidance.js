@@ -63,7 +63,7 @@ export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,tra
 }
 
 export function drawQuestTarget(ctx,goal,size,min,worldSize){
- if(!goal)return;const x=(goal.x-min)/worldSize*size,y=(goal.z-min)/worldSize*size,r=size>=400?9:4;
+ if(!goal)return;const x=(goal.x-min)/worldSize*size,y=(goal.z-min)/worldSize*size,r=size>=400?11:6;
  ctx.fillStyle='#ffd45e';ctx.strokeStyle='#1c333b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-r);ctx.lineTo(x+r,y);ctx.lineTo(x,y+r);ctx.lineTo(x-r,y);ctx.closePath();ctx.fill();ctx.stroke();
  if(size>=400){ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeText('追踪：'+goal.label,x,y-14);ctx.fillStyle='#ffe99c';ctx.fillText('追踪：'+goal.label,x,y-14);}
 }
