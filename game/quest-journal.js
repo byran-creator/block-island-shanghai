@@ -18,7 +18,7 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
   ctx.beginPath();ctx.moveTo(64,10);ctx.lineTo(118,64);ctx.lineTo(64,118);ctx.lineTo(10,64);ctx.closePath();
   ctx.lineJoin='round';ctx.shadowColor='#17202d';ctx.shadowBlur=8;ctx.strokeStyle='#94691f';ctx.lineWidth=13;ctx.stroke();ctx.shadowBlur=0;ctx.strokeStyle='#ffe49a';ctx.lineWidth=6;ctx.stroke();
   ctx.beginPath();ctx.moveTo(64,47);ctx.lineTo(81,64);ctx.lineTo(64,81);ctx.lineTo(47,64);ctx.closePath();ctx.fillStyle='#f7d474';ctx.fill();
-  marker=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthWrite:false,fog:false}));marker.name='tracked-quest-marker';marker.scale.set(.2,.2,1);marker.visible=false;scene.add(marker);
+  marker=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthWrite:false,fog:false}));marker.name='tracked-quest-marker';marker.scale.set(.32,.32,1);marker.visible=false;scene.add(marker);
  }
  const rewards=r=>[...Object.entries(r.blocks??{}).map(([id,n])=>BLOCKS[id].name+' ×'+n),r.food&&'食物 ×'+r.food,r.wool&&'羊毛 ×'+r.wool,r.pearls&&'珍珠 ×'+r.pearls].filter(Boolean).join(' · ');
  function target(){const main=getStory();if(main?.goal)return main.goal;const context=getContext();return state.tracked&&!state.done(state.tracked)&&context?questTarget(state.tracked,context):null;}
