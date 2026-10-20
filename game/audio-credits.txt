@@ -19,3 +19,13 @@ Voice information: https://learn.microsoft.com/zh-cn/azure/ai-services/speech-se
 Production tool: https://pypi.org/project/edge-tts/
 
 初到上海任务提示音：原创五声音阶正弦音合成，未使用《原神》或其他商业游戏音频。剧情对话为原创分段文字，不冒称真人配音。
+
+
+柔和雨声 / Gentle rain (V76)
+Title: Rain_01.wav
+Author: Q.K.
+Source: https://freesound.org/people/Q.K./sounds/56306/
+License: CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
+Public source recording: https://cdn.freesound.org/previews/56/56306_91374-hq.mp3
+Changes: 2–22 second excerpt; 70 Hz high-pass and 4.2 kHz low-pass; resampled to 16 kHz stereo PCM16; 2-second equal-power crossfade into an 18-second seamless loop; gentle level adjustment and soft peak limiting.
+Runtime: served locally by this game, loaded only on rain; no Freesound connection or synthetic drop-click layer during play. The author does not endorse this game.

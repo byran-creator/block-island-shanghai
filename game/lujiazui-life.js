@@ -1,4 +1,5 @@
 import * as THREE from './three.module.js';
+import {LUJIAZUI_CONVERSATIONS} from './lujiazui-conversations.js';
 import {createStreetCrowd} from './street-crowd.js';
 import {overlaps} from './world.js';
 import {CITY} from './shanghai-map.js';
@@ -14,19 +15,8 @@ export function createLujiazuiPeople({person,cube}){
  const people=[];
  for(const [index,area]of LUJIAZUI_FORECOURTS.entries())for(let i=0;i<area.count;i++){
   const p={...person(320+index*8+i,undefined,area.role),district:'lujiazui',forecourt:area.id,kind:area.role==='office'?'office-walk':'tower-visitor',phase:i*1.7+index};
-  if(area.role==='office'){
-   p.npcRole=['沈先生','陈女士','许女士','林先生','周先生','姜先生','程女士','俞女士'][index*4+i];
-   p.guide={intro:area.id==='financial-plaza'?'刚开完会，出来透口气。你是第一次来上海吧？我刚来上班时，也总忍不住抬头看这些楼。现在走得再急，偶尔还是会为眼前的天际线停一会儿。':'今天的工作总算告一段落。别光顾着赶下一站，站在这里看看三件套，白天和夜晚是两种心情。要是你刚到上海，我很愿意帮你指个方向。',choices:[
-    ['第一次来，怎么逛陆家嘴？','先抬头看看三件套，再去上海中心体验登高。玩够了可以去陆家嘴地铁站，乘2号线到南京东路，再换10号线去豫园。地图上的箭头会标出你的朝向。'],
-    ['每天在这里工作是什么感觉？','忙的时候，上海就是一封封邮件和一场场会议；慢下来，它又是江风、亮起来的窗户，还有等你回家的那盏灯。祝你今天能发现自己的上海。']
-   ]};
-  }else if(area.role==='visitor'&&i%2===1){
-   p.npcRole=(index===2?['小夏','阿远']:['小陶','小顾'])[(i-1)/2];
-   p.guide={intro:'我也刚到上海！以前只在照片里见过这些楼，真的站在下面，才发现抬头都看不全。刚拍了好几张，还是觉得眼睛看到的最震撼。你也是来打卡的吗？',choices:[
-    ['哪里适合拍照？','可以先在这片广场找个角度，把几座楼一起放进画面。用相机按钮可以拍景或切换自拍，拍好后还能导出照片。也记得去江边看看对岸的外滩。'],
-    ['接下来打算去哪里？','我想坐地铁去豫园，换个节奏看看园林、喝杯茶。这里的高楼让人兴奋，园子里的小路大概又会让人安静下来。南京东路可以从2号线换10号线。']
-   ]};
-  }
+  const dialogueIndex=area.role==='office'?index*4+i:8+(index-2)*2+(i-1)/2;
+  if(area.role==='office'||i%2===1){const profile=LUJIAZUI_CONVERSATIONS[dialogueIndex];p.npcRole=profile.name;p.guide=profile;}
   if(area.role==='office'){
    cube(p.root,i%2?'#283645':'#69523e',.39,.57,.04,.22,.34,.38);
    cube(p.root,'#b8b2a0',.39,.77,.04,.13,.06,.17);
