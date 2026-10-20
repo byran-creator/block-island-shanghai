@@ -293,9 +293,9 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const shopperClear=p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
  const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
  const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear});
- const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople});
+ const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos});
  const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
- function tick(dt,{night=false}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
+ function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
 
   if(getPos){const p=getPos();for(const l of shopLights)l.userData.distSq=(l.position.x-p.x)**2+(l.position.z-p.z)**2;shopLights.sort((a,b)=>a.userData.distSq-b.userData.distSq);for(let idx=0;idx<shopLights.length;idx++)shopLights[idx].visible=night&&idx<4&&shopLights[idx].userData.distSq<1600;}else{for(const m of shopLights)m.visible=night;}
@@ -304,7 +304,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const vehicles=getVehicles();
   busFlow?.tick(dt);
   crowd.tick(dt,vehicles);
-  financialFlow.tick(dt,vehicles);
+  financialFlow.tick(dt,vehicles,dayClock);
   const crossingAdmission={};
   bundFlow.tick(dt,clock,vehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
   for(const p of tourists){
