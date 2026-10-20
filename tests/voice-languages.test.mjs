@@ -22,7 +22,7 @@ const previousStorage=globalThis.localStorage;
 try{
  globalThis.localStorage=storage;
  const param=()=>({value:0,setValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}}),node=()=>({gain:param(),frequency:param(),pan:param(),connect(){},disconnect(){},start(){},stop(){}});
- const ctx={currentTime:0,sampleRate:32,destination:{},resume(){},createGain:node,createOscillator:node,createStereoPanner:node,createBiquadFilter:node,createBufferSource:node,createBuffer:()=>({getChannelData:()=>new Float32Array(64)})};
+ const ctx={currentTime:0,sampleRate:32,destination:{},resume(){},createGain:node,createOscillator:node,createStereoPanner:node,createBiquadFilter:node,createBufferSource:node,createBuffer:(c,n)=>({getChannelData:()=>new Float32Array(n)})};
  const state={playing:true,sound:true,pos:{x:-90,y:26,z:66},vendors:[{food:true,root:{position:{x:-89,y:26,z:66}}}],agents:[]};
  for(const [mode,languages] of [['zh-CN',['zh-CN']],['en',['en-US']],['bilingual',['zh-CN','en-US']]]){
   setVoicePreference('marketLanguage',mode,storage);spoken.length=0;

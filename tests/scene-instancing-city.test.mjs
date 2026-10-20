@@ -6,12 +6,14 @@ import {createCityActivity} from '../game/city-activity.js';
 import {createMetroNetwork} from '../game/metro-network.js';
 import {createYuyuan} from '../game/yuyuan.js';
 import {createSceneInstances} from '../game/scene-instancing.js';
+import {createRainCrowd} from '../game/rain-crowd.js';
 const ctx=new Proxy({},{get:(_,k)=>k==='measureText'?t=>({width:t.length*16}):k==='createLinearGradient'||k==='createRadialGradient'?()=>({addColorStop(){}}):()=>{}});
 const node=()=>({style:{},dataset:{},classList:{toggle(){},add(){},remove(){}},children:[],append(...a){this.children.push(...a)},appendChild(a){this.children.push(a)},replaceChildren(){this.children=[]},addEventListener(){},setAttribute(){},getContext:()=>ctx});
 globalThis.document={hidden:false,createElement:node,getElementById:()=>node(),body:node()};
 const scene=new T.Scene(),world=new VoxelWorld(),pos={x:-109,y:26,z:66},camera=new T.PerspectiveCamera(72,1280/720,.1,360),base={scene,world,getPos:()=>pos,getVehicles:()=>[],getState:()=>({}),place(){},setView(){},notify(){},getSound:()=>false};
 const civil=createBund(base),activity=createCityActivity({...base,transit:civil.traffic,getVehicles:()=>civil.traffic.agents,extraCrowd:civil.pedestrians.filter(p=>p.kind==='shop')}),metro=createMetroNetwork(base),garden=createYuyuan(base);
 civil.tick(0);activity.tick(0);metro.tick(0);garden.tick(0);scene.updateMatrixWorld(true);
+const umbrellas=createRainCrowd([...civil.pedestrians,...activity.tourists,...activity.bundWalkers,...garden.actors],{world});umbrellas.tick(0,1);scene.updateMatrixWorld(true);
 const frustum=new T.Frustum(),projection=new T.Matrix4();
 function draws(){let calls=0,triangles=0;scene.traverseVisible(o=>{if(!o.isMesh||!o.layers.test(camera.layers)||o.isInstancedMesh&&o.count===0)return;if(o.frustumCulled&&!frustum.intersectsObject(o))return;calls++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);});return {calls,triangles};}
 const rows=[];for(const p of [{x:-109,y:26,z:66},{x:-99,y:26,z:235}])for(let i=0;i<12;i++){Object.assign(pos,p);camera.position.set(p.x,p.y+1.62,p.z);camera.rotation.set(0,i*Math.PI/6,0,'YXZ');camera.updateMatrixWorld(true);projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(projection);rows.push({p,yaw:i*30,before:draws()});}
