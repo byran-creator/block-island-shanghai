@@ -45,7 +45,7 @@ export function createHuangpuCruises(scene){
   const holes=CRUISE_STAIRS.map(s=>({x1:s.x-.74,x2:s.x+.74,z1:Math.min(s.z1,s.z2)-.25,z2:Math.max(s.z1,s.z2)+.25}));
   for(let level=0;level<3;level++){
    const y=CRUISE_LEVELS[level],opening=level?[holes[level-1]]:[];plate(root,y,opening);if(level)surfaces.push({top:y,rx:2.55,rz:7.45,z:.35,holes:opening});
-   for(const side of [-1,1]){cube(root,'#e8e9e0',side*2.59,y-.18,.35,.16,.36,14.9);cube(root,trimMaterial,side*2.69,y-.17,.35,.09,.25,14.9);cube(night,tint,side*2.74,y-.04,.35,.055,.12,14.9,true);cube(night,warm,side*2.74,y-.30,.35,.05,.075,14.9,true);for(let z=-6.8;z<7.7;z+=.58)cube(night,warm,side*2.71,y-.18,z,.045,.055,.09,true);}
+   for(const side of [-1,1]){cube(root,'#e8e9e0',side*2.59,y-.205,.35,.16,.36,14.9);cube(root,trimMaterial,side*2.69,y-.17,.35,.09,.25,14.9);cube(night,tint,side*2.74,y-.04,.35,.055,.12,14.9,true);cube(night,warm,side*2.74,y-.30,.35,.05,.075,14.9,true);for(let z=-6.8;z<7.7;z+=.58)cube(night,warm,side*2.71,y-.18,z,.045,.055,.09,true);}
    if(level===2)continue;
    const glassMat=new THREE.MeshLambertMaterial({color:'#a2d6df',transparent:true,opacity:.3,emissive:'#000000',emissiveIntensity:.65,depthWrite:false,side:THREE.DoubleSide});
    glassMaterials.push(glassMat);
@@ -59,9 +59,10 @@ export function createHuangpuCruises(scene){
    for(const z of [-5.7,5.5]){cube(root,'#bd9c6e',0,y+.73,z,.8,.09,.75);wall(0,y+.4,z,.85,.8,.8);}
   }
   for(const s of CRUISE_STAIRS){const run=Math.abs(s.z2-s.z1),rise=s.high-s.low,sign=Math.sign(s.z2-s.z1),count=22;
-   for(let i=0;i<count;i++){const z=s.z1+(i+.5)/count*(s.z2-s.z1),h=rise*(i+1)/count;cube(root,'#c7b58e',s.x,s.low+h-.055,z,1.36,.11,run/count+.01);cube(night,warm,s.x,s.low+h-.03,z-sign*run/count/2,1.25,.025,.025,true);}
+   for(let i=0;i<count;i++){const z=s.z1+(i+.5)/count*(s.z2-s.z1),h=rise*(i+1)/count;cube(root,'#c7b58e',s.x,s.low+h-.055,z,1.36,.11,run/count+(i===count-1?0:.01));cube(night,warm,s.x,s.low+h-.03,z-sign*run/count/2,1.25,.025,.025,true);}
    surfaces.push({x:s.x,z:(s.z1+s.z2)/2,rx:.68,rz:run/2+.55,minTop:s.low,maxTop:s.high,top:(s.low+s.high)/2,slopeZ:rise/(s.z2-s.z1),solidHeight:.11,stair:true});
-   for(const [z,y]of [[s.z1,s.low],[s.z2,s.high]])cube(root,'#c7b58e',s.x,y-.055,z,1.36,.11,.7);
+   // The lower landing is already the deck; the upper landing fills only the stairwell gap.
+   cube(root,'#c7b58e',s.x,s.high-.055,s.z2+sign*.125,1.36,.11,.25);
    for(const side of [-1,1])for(let i=0;i<=8;i++){const t=i/8;cube(root,'#e8e9e0',s.x+side*.72,s.low+t*rise+.5,s.z1+t*(s.z2-s.z1),.035,1,.035);}
   }
   const top=CRUISE_LEVELS[2];for(const side of [-1,1]){rail(root,night,top,side*2.5,.35,14.5,'z',tint);wall(side*2.53,top+.5,.35,.045,1,14.9);}for(const z of [-7.05,7.75]){rail(root,night,top,0,z,5,'x',tint);wall(0,top+.5,z,5,1,.045);}
@@ -77,8 +78,8 @@ export function createHuangpuCruises(scene){
   for(let i=1;i<edge.length;i++){const [x,z]=edge[i-1],[xx,zz]=edge[i],m=cube(night,tint,(x+xx)/2,.83,(z+zz)/2,.045,.055,Math.hypot(xx-x,zz-z),true);m.rotation.y=Math.atan2(xx-x,zz-z);}
   for(const side of [-1,1])for(let i=0;i<5;i++){const m=cube(night,warm,side*2.71,1.55+i*.13,-5.7+i*.32,.035,.14,.14,true);m.rotation.x=Math.PI/4;}
   namePanels(root,night,name,tint);batchMeshes(root,staticMeshes(root,new Set([night,glass])),'cruise-body');batchMeshes(night,staticMeshes(night),'cruise-night-decoration');
-  const gate=cube(root,'#c9d6d7',2.5,2.1,5.1,.075,1.8,3);gate.name='boarding-gate';surfaces.push({x:2.5,z:5.1,rx:.04,rz:1.5,top:3.1,solidHeight:2,solidOnly:true,active:()=>!boat.moored});
+  const gate=cube(root,'#c9d6d7',2.5,2.1,5.1,.075,1.8,3);gate.name='boarding-gate';surfaces.push({x:2.5,z:5.1,rx:.04,rz:1.5,top:3.1,solidHeight:2,solidOnly:true,active:()=>!boat.moored||boat.remaining<=2.5});
   const boat={root,night,gate,glassMaterials,kind:'luxury-cruise',name,index,deckSurfaces:[...surfaces,...walls],levels:CRUISE_LEVELS};tickHuangpuCruise(boat,0,false);return boat;
  });
 }
-export function tickHuangpuCruise(boat,time,isNight){const p=cruisePose(time,boat.index);boat.root.position.set(p.x,p.y,p.z);boat.root.rotation.y=p.yaw;boat.moored=p.moored;boat.gate.visible=!p.moored;boat.remaining=p.remaining;boat.night.visible=isNight;for(const m of boat.glassMaterials)m.emissive.set(isNight?'#d7a34a':'#000000');if(deckMaterial?.isMeshLambertMaterial){deckMaterial.emissive.set(isNight?'#6d4f2c':'#000000');deckMaterial.emissiveIntensity=isNight?.5:0;}}
+export function tickHuangpuCruise(boat,time,isNight){const p=cruisePose(time,boat.index);boat.root.position.set(p.x,p.y,p.z);boat.root.rotation.y=p.yaw;boat.moored=p.moored;boat.gate.visible=!p.moored||p.remaining<=2.5;boat.remaining=p.remaining;boat.night.visible=isNight;for(const m of boat.glassMaterials)m.emissive.set(isNight?'#d7a34a':'#000000');if(deckMaterial?.isMeshLambertMaterial){deckMaterial.emissive.set(isNight?'#6d4f2c':'#000000');deckMaterial.emissiveIntensity=isNight?.5:0;}}
