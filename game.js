@@ -8,6 +8,7 @@ import {blocksMetroClearance} from './metro-clearance.js';
 import {createPlayerHandbook} from './player-handbook.js';
 import {createSettingsPanel} from './settings-panel.js';
 import {createChunkMesher,createChunkQueue} from './chunk-work.js';
+import {menuVisibleChunks} from './menu-background.js';
 import {createQuestJournal} from './quest-journal.js';
 import {mountVoiceSettings} from './voice-settings.js';
 import * as THREE from './three.module.js';
@@ -360,7 +361,7 @@ function frame(now){
   if((mouseHeld!==-1||keys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
   hudTime+=dt;if(hudTime>.15){$('coordinates').textContent=`X ${(pos.x-40).toFixed(1)} · Y ${pos.y.toFixed(1)} · Z ${(pos.z-40).toFixed(1)}`;$('target').textContent=target?BLOCKS[target.id].name:'';const nearby=life?.hasUseTarget()?null:companions.nearest(pos,camera);$('npc-prompt').classList.toggle('visible',!!nearby);$('npc-prompt').textContent=nearby?`奶龙 · G 打招呼 / 跳舞 · H ${nearby.follow?'停止跟随':'一起散步'}`:'';hudTime=0;}
   $('glide-status').hidden=!gliding;hudText('glide-status',grounded?'滑翔伞准备好了 · 走向边缘起飞':'滑翔中 · WASD 转向 · Shift 下降 · P 收伞');life.tick(dt,{night:dayClock>=120,moving:keys.has('KeyW')||keys.has('KeyA')||keys.has('KeyS')||keys.has('KeyD'),racing:!!adventure.state.race});companions.update(dt,pos,camera,elapsed);const effect=adventure.tick(dt,pos,elapsed,dayClock>=120);if(effect?.bounce&&!flying){vy=effect.bounce;grounded=false;beep(1);}
- }else if(!started){camera.position.set(32+Math.sin(elapsed*.03)*1.5,29.8,68+Math.cos(elapsed*.025)*1.0);camera.lookAt(126,52,42);outline.visible=false;}
+ }else if(!started){chunkWork.process(isMobile?2:3);camera.position.set(32+Math.sin(elapsed*.03)*1.5,29.8,68+Math.cos(elapsed*.025)*1.0);camera.lookAt(126,52,42);outline.visible=false;}
  const area=soundScene(pos,dayClock>=120);
  music.update({playing:active,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden,sceneTrack:area.track,dt});
  hudText('music-track',music.track.name+' · '+(music.automatic?area.name:adventure?.isShowActive()?'明珠夜游变奏':'手选曲目'));$('music-choice').value=music.track.id;
@@ -678,7 +679,20 @@ const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfindin
 streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);streetBounce.setNight(dayClock>=120);
 photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,beforeRender:()=>{outline.visible=false;}});
 $('photo-open').onclick=()=>photo.open();
-const sceneInstances=createSceneInstances(scene);bootReady=true;
+const sceneInstances=createSceneInstances(scene);
+if(isMobile){
+ camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
+ const previewCamera=camera.clone();previewCamera.aspect=Math.max(camera.aspect,3);previewCamera.updateProjectionMatrix();previewCamera.updateMatrixWorld(true);
+ const visible=menuVisibleChunks(chunkWork.desired,previewCamera,CHUNK,HEIGHT);
+ chunkWork.prioritize(visible);
+ await loadingStage('正在补齐登录背景建筑…');
+ while([...visible].some(key=>!chunks.has(key))){
+  chunkWork.process(6);
+  await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ renderer.render(scene,camera);
+}
+bootReady=true;
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 requestAnimationFrame(frame);
 

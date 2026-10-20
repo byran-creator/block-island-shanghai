@@ -65,5 +65,10 @@ export function createChunkQueue({has,create,commit,now=()=>performance.now()}){
    }
   }while(now()-start<budget);
  }
- return {setDesired,request,cancel,invalidate,process,get pending(){return pending.size;}};
+ function prioritize(keys){
+  const ordered=[...pending].sort((a,b)=>Number(keys.has(b[0]))-Number(keys.has(a[0])));
+  pending.clear();for(const entry of ordered)pending.set(...entry);
+  if(current&&!keys.has(current.key))current=null;
+ }
+ return {setDesired,request,cancel,invalidate,process,prioritize,get desired(){return new Set(desired);},get pending(){return pending.size;}};
 }
