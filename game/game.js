@@ -5,6 +5,7 @@ import {createSceneInstances} from './scene-instancing.js';
 import {createWorldBaseline} from './world-baseline.js';
 import {runPlayerInteraction} from './interaction-routing.js';
 import {blocksMetroClearance} from './metro-clearance.js';
+import {registerBlockIcon} from './item-catalog.js';
 import {createPlayerHandbook} from './player-handbook.js';
 import {createSettingsPanel} from './settings-panel.js';
 import {createChunkMesher,createChunkQueue} from './chunk-work.js';
@@ -238,6 +239,7 @@ function beep(kind){if(!sound)return;try{audioCtx??=new (window.AudioContext||wi
 for(let id=1;id<BLOCKS.length;id++){
  const button=document.createElement('button');button.className='slot'+(id===1?' active':'');button.title=`${id<=9?id:id===10?'0':id===11?'-':'='} · ${BLOCKS[id].name}`;button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',id===1?'true':'false');
  const thumb=document.createElement('canvas');thumb.width=16;thumb.height=16;thumb.getContext('2d').drawImage(atlasCanvas,(id>=9?id+1:id-1)*16,0,16,16,0,0,16,16);
+ registerBlockIcon(id,thumb.toDataURL());
  button.innerHTML=`<span class="num">${id<=9?id:id===10?'0':id===11?'-':'='}</span><img src="${thumb.toDataURL()}" alt=""><span class="infinity">∞</span>`;button.onclick=()=>select(id);$('hotbar').appendChild(button);
 }
 function select(id,clearHeld=true){uiClick();if(clearHeld)life?.clearHeld();selected=id;$('selected-name').textContent=BLOCKS[id].name;[...$('hotbar').children].forEach((e,i)=>{e.classList.toggle('active',i===id-1);e.setAttribute('aria-pressed',i===id-1?'true':'false')});}
@@ -302,6 +304,7 @@ document.addEventListener('keydown',e=>{
  if(e.code==='KeyO'&&!e.repeat&&started&&(active||handbook?.isPanelOpen())){e.preventDefault();handbook.openBackpack();return;}
  if(e.code==='Escape'&&handbook?.isPanelOpen()){e.preventDefault();handbook.close();return;}
  if((e.code==='AltLeft'||e.code==='AltRight'||e.key==='Alt')&&!e.repeat&&started&&active){e.preventDefault();toggleFreeCursor();return;}
+ if(e.code==='KeyN'&&!e.repeat&&started&&active){e.preventDefault();story.openBook();return;}
  if(e.code==='KeyI'&&!e.repeat&&started&&(active||quests?.isPanelOpen())){e.preventDefault();quests.open();return;}
  if(e.code==='Escape'){if(cursorFree){e.preventDefault();setFreeCursor(false);return;}if(yuyuan?.isPanelOpen()){e.preventDefault();yuyuan.close();return;}if(quests?.isPanelOpen()){e.preventDefault();quests.close();return;}if(npcGuides?.isPanelOpen()){e.preventDefault();npcGuides.close();return;}if(activity?.isPanelOpen()){e.preventDefault();activity.close();return;}if(restaurant?.isPanelOpen()){e.preventDefault();restaurant.close();return;}if(skyline?.isPanelOpen()){e.preventDefault();skyline.close();return;}if(life?.isPanelOpen()){life.close();return;}if(adventure?.isPanelOpen()){adventure.close();return;}if(active){document.exitPointerLock?.();openMenu()}return;}if(!active)return;
  if(['Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(!keys.has(e.code))pressedAt.set(e.code,performance.now());releaseAt.delete(e.code);keys.add(e.code);
@@ -432,8 +435,8 @@ privateSuites=createPrivateSuites({scene,getPos:()=>pos,getState:()=>life.state,
 await loadingStage('正在构建豫园与老城商圈…');
 yuyuan=createYuyuan({scene,world,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
 residents=createBuildingResidents({scene,world,getPos:()=>pos,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])]});
-story=createShanghaiJourney({scene,camera,world,getAudio,getSound:()=>sound,getVolume:()=>music.volume,getContext:()=>({pos,life:life.state,vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],metroNetwork:metro}),pause:pauseForPanel,resume:enter,notify,prefetch:p=>ensureChunks(p),placeStart:a=>{teleport({x:a.x-1.5,y:a.y,z:a.z-2});setFlight(false);lookTowards({...a,y:a.y+1.5});},celebrate:()=>{if(adventure?.launch){adventure.launch(true);notify('外滩的灯光已经为你亮起，过去看看吧 · 随时按 K 放烟花');}},onProgress:()=>{quests?.refresh();saves?.save('auto');}});
-npcGuides=createNpcGuides({extraPeople:[...story.actors,...metro.staff,...residents.people,...yuyuan.actors,...civil.cruisePeople],scene,world,civil,activity,getPos:()=>pos,getVehicles:()=>commute?.vehicles??[],pause:pauseForPanel,resume:enter,notify,lookAt:p=>{camera.position.set(pos.x,pos.y+1.62,pos.z);lookTowards(p);}});
+story=createShanghaiJourney({scene,camera,world,getAudio,getSound:()=>sound,getVolume:()=>music.volume,getContext:()=>({pos,life:life.state,people:activity?.tourists??[],gardenShops:yuyuan?.streetArt.extraShops??[],photoGuest:civil.pedestrians.find(p=>p.kind==='photo'&&p.point?.z===72),collectibles:{...yuyuan?.inventory,...activity?.goods},vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],metroNetwork:metro}),pause:pauseForPanel,resume:enter,notify,prefetch:p=>ensureChunks(p),placeStart:a=>{teleport({x:a.x-1.5,y:a.y,z:a.z-2});setFlight(false);lookTowards({...a,y:a.y+1.5});},celebrate:()=>{if(adventure?.launch){adventure.launch(true);notify('外滩的灯光已经为你亮起，过去看看吧 · 随时按 K 放烟花');}},onProgress:()=>{quests?.refresh();saves?.save('auto');}});
+npcGuides=createNpcGuides({onConversation:recordCityEvent,extraPeople:[...story.actors,...metro.staff,...residents.people,...yuyuan.actors,...civil.cruisePeople],scene,world,civil,activity,getPos:()=>pos,getVehicles:()=>commute?.vehicles??[],pause:pauseForPanel,resume:enter,notify,lookAt:p=>{camera.position.set(pos.x,pos.y+1.62,pos.z);lookTowards(p);}});
 commute=createCommute({scene,world,civil,activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!activity?.collides(x,y,z),exitBlocked:collides,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},onExit:()=>{keys.clear();pressedAt.clear();releaseAt.clear();grounded=true;},turnView:a=>{yaw+=a;},notify,allowed:()=>!adventure.state.race&&!activity.isRiding()&&!metroInterior(pos),getActors:()=>npcGuides.actors,onImpact:(actor,vx,vz,strength)=>npcGuides.impact(actor,vx,vz,strength)});
 const lujiazuiShow=createLujiazuiShow(scene);
 skyline=createSkyline({onEvent:recordCityEvent,scene,getPos:()=>pos,notify,pause:pauseForPanel,resume:enter,teleport,grantGlider:()=>life.grantGlider(),onProgress:()=>saves?.save('auto')});
@@ -560,7 +563,7 @@ if(hudSlider){
  document.querySelector('.hud-sun-icon')?.addEventListener('click',()=>{applyTime(720);notify('已切换到白天 ☀️');});
  document.querySelector('.hud-moon-icon')?.addEventListener('click',()=>{applyTime(1260);notify('已切换到夜晚 🌙');});
 }
-handbook=createPlayerHandbook({getState:()=>life.state,getPacked:()=>life.serialize().packed,getCollectibles:()=>({...yuyuan.inventory,...story.inventory}),openCollectible:()=>story.openSettlement(),selectBlock:select,craft:()=>life.craft(),pause:pauseForPanel,resume:enter,isPlaying:()=>active,canOpen:()=>!document.querySelector('dialog[open]'),notify});
+handbook=createPlayerHandbook({getState:()=>life.state,getPacked:()=>life.serialize().packed,getCollectibles:()=>({...activity.goods,...yuyuan.inventory,...story.inventory}),openCollectible:()=>story.openSettlement(),selectBlock:select,craft:()=>life.craft(),pause:pauseForPanel,resume:enter,isPlaying:()=>active,canOpen:()=>!document.querySelector('dialog[open]'),notify});
 settingsPanel=createSettingsPanel({dialog:$('settings-dialog'),isPlaying:()=>active,pause:pauseForPanel,resume:enter,onOpen:()=>{if(cursorFree)setFreeCursor(false);refreshTimeControls();}});
 $('settings-quick')?.addEventListener('click',settingsPanel.open);
 $('day-length').onchange=e=>{timeOptions=clockOptions({...timeOptions,cycleSeconds:Number(e.target.value)});saves?.save('auto');};
@@ -578,7 +581,7 @@ $('clock-quick').onclick=()=>{
 $('settings-open')?.addEventListener('click',settingsPanel.open);
 $('settings-close')?.addEventListener('click',settingsPanel.close);
 $('settings-dialog')?.addEventListener('cancel',e=>{e.preventDefault();try{$('settings-dialog').close();}catch{}});
-const UPDATE_NOTICE_KEY='block-island-cruise-20261020-seen';
+const UPDATE_NOTICE_KEY='block-island-travel-journal-20261020-seen';
 const updateDialog=$('update-dialog');
 function dismissUpdateNotice(){try{localStorage.setItem(UPDATE_NOTICE_KEY,'true');}catch{}try{if(updateDialog?.open)updateDialog.close();}catch{}}
 $('update-open')?.addEventListener('click',()=>{try{updateDialog?.showModal();}catch{}});
@@ -678,7 +681,7 @@ saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>start
 await loadingStage('正在整理画面，即将进入…');
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
 streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);streetBounce.setNight(dayClock>=120);
-photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,beforeRender:()=>{outline.visible=false;}});
+photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,onCapture:meta=>story?.record({type:'travel-photo',...meta}),onKeepPhoto:photo=>story.keepPhoto(photo),beforeRender:()=>{outline.visible=false;}});
 $('photo-open').onclick=()=>photo.open();
 rainCrowd=createRainCrowd(npcGuides.actors.filter(p=>p.person&&!p.resident&&!p.metroRole),{world});
 const sceneInstances=createSceneInstances(scene);

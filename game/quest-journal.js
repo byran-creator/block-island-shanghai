@@ -1,3 +1,4 @@
+import {itemImage} from './item-catalog.js';
 import {CITY_QUESTS,CityQuestState} from './city-quests.js';
 import {BLOCKS} from './world.js';
 import {questTarget} from './quest-guidance.js';
@@ -34,14 +35,15 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
   for(const row of rows){const b=el('button',null,'quest-row');if(row.id==='journey')b.id='journey-journal';b.setAttribute('aria-current',String(selected===row.id));b.append(el('small',row.kind,'quest-kind'),el('strong',row.name),el('small',row.status+' · '+row.progress));b.onclick=()=>{selected=row.id;render();};$('task-list').append(b);}
   const detail=$('task-detail');detail.replaceChildren();if(!rows.length){detail.append(el('h3','暂时没有这一类任务'),el('p','可以切换分类，或继续自由探索。'));return;}
   const controls=el('div',null,'quest-detail-actions'),add=(text,fn,primary=false)=>{const b=el('button',text,primary?'primary':'');b.onclick=fn;controls.append(b);return b;};
-  function rewardTiles(items,heading='任务奖励'){detail.append(el('h4',heading));const grid=el('div',null,'quest-rewards');for(const item of items)grid.append(el('span',item,'quest-reward-tile'));detail.append(grid);}
+  function rewardTiles(items,heading='任务奖励'){detail.append(el('h4',heading));const grid=el('div',null,'quest-rewards');for(const item of items){const tile=el('span',null,'quest-reward-tile');tile.append(itemImage(item.key),el('span',item.text));grid.append(tile);}detail.append(grid);}
   if(selected==='journey'){
    detail.append(el('small',j.unlocked?'主线旅程 / 初到上海':'新手引导 / 前两章'),el('h3',j.complete?'这一次，记住上海':j.chapter.title),el('p',placeLabel(j.goal,'旅程纪念册'),'quest-place'),el('p',j.complete?'十章旅程完成，纪念卡已在 O 背包。':j.goal?.instruction??j.chapter.hint,'quest-objective'),el('p',j.phase==='new'?'收下一张明信片，跟随外滩志愿者开始认识上海。已有建造与其他任务照常保留。':j.unlocked?'你已经可以自由安排旅程。逛南京路、去陆家嘴登高，再到豫园赏景品茶；主线不会因绕路而丢失。':'先和林阿姨打招呼，再到南京路买一份喜欢的商品。完成这两章后，可自由探索或继续主线。','quest-description'));
-   rewardTiles([j.reward+' × 1','江风 / 灯火 / 茶香 · 自选纪念'],'完成十章旅程后获得');
+   rewardTiles([{key:'souvenir',text:j.reward+' × 1'},{key:'gift',text:'江风 / 灯火 / 茶香 · 自选纪念'}],'完成十章旅程后获得');
    const chapters=el('details'),summary=el('summary','查看十章旅程 · '+j.index+' / '+j.chapters.length);chapters.append(summary);for(const [i,c]of j.chapters.entries())chapters.append(el('p',(i<j.index?'✓ ':i===j.index?'◆ ':'○ ')+(i+1)+'. '+c.title));detail.append(chapters);
    const act=action=>{close();onJourneyAction(action);};if(j.phase==='new')add('开启新手旅程',()=>act('start'),true);else if(j.complete){add('查看纪念卡与结算',()=>act('recap'),true);add('重看终章',()=>act('film'));}else{add(j.unlocked?'继续主线':'继续新手引导',()=>act('track'),true);if(j.tracked)add('暂时收起追踪',()=>act('stop'));add('地图查看',()=>{onJourneyAction('track');close();openMap();});}
+   add('上海旅行手账 · N',()=>act('book'));if(j.replaying)add('结束本次重游',()=>act('stop-replay'));
   }else{
-   const q=CITY_QUESTS.find(q=>q.id===selected),goal=questTarget(q.id,getContext()??{}),finished=state.done(q.id),claimed=state.claimed.has(q.id);detail.append(el('small',q.id.startsWith('survival-')?'生存探索':'城市委托'),el('h3',q.title),el('p',placeLabel(goal,'完成后可在此领取'),'quest-place'),el('p',finished?'任务已完成':goal?.instruction??q.description,'quest-objective'),el('p',q.description,'quest-description'));rewardTiles(rewards(q.reward).split(' · '));if(finished){const b=add(claimed?'奖励已领取':'领取奖励',()=>{const r=state.claim(q.id);if(!r)return;grant(r);render();onProgress();notify('已领取「'+q.title+'」奖励：'+rewards(r));},true);b.disabled=claimed;}else{add(state.tracked===q.id?'停止追踪':'追踪目标',()=>{track(state.tracked===q.id?null:q.id);close();},true);add('地图查看',()=>{track(q.id);close();openMap();});}
+   const q=CITY_QUESTS.find(q=>q.id===selected),goal=questTarget(q.id,getContext()??{}),finished=state.done(q.id),claimed=state.claimed.has(q.id);detail.append(el('small',q.id.startsWith('survival-')?'生存探索':'城市委托'),el('h3',q.title),el('p',placeLabel(goal,'完成后可在此领取'),'quest-place'),el('p',finished?'任务已完成':goal?.instruction??q.description,'quest-objective'),el('p',q.description,'quest-description'));rewardTiles([...Object.entries(q.reward.blocks??{}).map(([id,n])=>({key:'block:'+id,text:BLOCKS[id].name+' × '+n})),...['food','wool','pearls'].filter(k=>q.reward[k]).map(key=>({key,text:({food:'食物',wool:'羊毛',pearls:'海珍珠'})[key]+' × '+q.reward[key]}))]);if(finished){const b=add(claimed?'奖励已领取':'领取奖励',()=>{const r=state.claim(q.id);if(!r)return;grant(r);render();onProgress();notify('已领取「'+q.title+'」奖励：'+rewards(r));},true);b.disabled=claimed;}else{add(state.tracked===q.id?'停止追踪':'追踪目标',()=>{track(state.tracked===q.id?null:q.id);close();},true);add('地图查看',()=>{track(q.id);close();openMap();});}
   }detail.append(controls);
  }
 

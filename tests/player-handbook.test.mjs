@@ -7,12 +7,12 @@ import {createLife} from '../game/life.js';
 const state=new SurvivalState(),snapshot=state.serialize();state.fishingRod=true;
 const groups=inventoryGroups(state,{campfire:2});assert.equal(groups[0].items.length,12);assert(groups[2].items.some(i=>i.name==='鱼竿'));assert.equal(groups[3].items[0].count,2);assert.deepEqual(state.bag,snapshot.bag,'Viewing categories does not reorder or consume inventory');
 const previous=globalThis.document,nodes=new Map();
-const node=()=>({children:[],style:{},events:{},append(...items){this.children.push(...items);},appendChild(c){this.children.push(c);},replaceChildren(){this.children=[];},addEventListener(n,fn){this.events[n]=fn;},showModal(){this.open=true;},close(){this.open=false;},classList:{toggle(){}},getContext:()=>({fillRect(){},fillText(){}})});
+const node=()=>({children:[],style:{},events:{},append(...items){this.children.push(...items);},appendChild(c){this.children.push(c);},replaceChildren(){this.children=[];},addEventListener(n,fn){this.events[n]=fn;},showModal(){this.open=true;},close(){this.open=false;},focus(){},classList:{toggle(){}},getContext:()=>({fillRect(){},fillText(){}})});
 globalThis.document={createElement:node,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);}};
 try{
  let playing=true,pauses=0,resumes=0,selected=null,crafted=false,allowed=true;
  const ui=createPlayerHandbook({getState:()=>state,getPacked:()=>({campfire:2}),selectBlock:id=>selected=id,craft:()=>crafted=true,pause:()=>{pauses++;playing=false;},resume:()=>{resumes++;playing=true;},isPlaying:()=>playing,canOpen:()=>allowed});
- ui.openBackpack();assert(ui.isPanelOpen()&&!playing);assert.equal(pauses,1);const card=nodes.get('backpack-items').children[0].children[1].children[0];card.onclick();assert.equal(selected,1);assert(playing&&!ui.isPanelOpen());
+ ui.openBackpack();assert(ui.isPanelOpen()&&!playing);assert.equal(pauses,1);const card=nodes.get('backpack-items').children[0].children[1].children[0];card.onclick();assert.equal(selected,null);assert(!nodes.get('backpack-detail').hidden);nodes.get('backpack-detail').children.at(-1).onclick();assert.equal(selected,1);assert(playing&&!ui.isPanelOpen());
  ui.openGuide();nodes.get('handbook-dialog').events.cancel({preventDefault(){}});assert(playing&&!ui.isPanelOpen());
  playing=false;const before=resumes;ui.openGuide();ui.close();assert(!playing&&resumes===before,'Reading from the main menu must not start the game');
  playing=true;ui.openBackpack();nodes.get('backpack-craft').onclick();assert(crafted&&!ui.isPanelOpen()&&!playing,'Hand off to crafting without briefly resuming movement');

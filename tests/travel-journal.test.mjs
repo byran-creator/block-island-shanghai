@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import {TravelJournalState} from '../game/travel-journal-state.js';
+import {ShanghaiJourneyState,JOURNEY_SOUVENIR} from '../game/shanghai-journey-state.js';
+import {shanghaiJourneyTarget} from '../game/shanghai-journey-targets.js';
+import {photoPlace} from '../game/travel-journal.js';
+
+const journal=new TravelJournalState();assert(journal.stamp('bund'));assert(!journal.stamp('bund'));assert(!journal.stamp('__proto__'));
+for(let i=0;i<100;i++)journal.message('person:'+i,'路人'+i,'一段旅行留言');assert.equal(journal.messages.length,32);
+for(let i=0;i<100;i++)journal.addPhoto({id:'photo-test-'+i,title:'江风',at:'2026-10-20T08:00:00Z',blob:'never persist full images'});assert.equal(journal.photos.length,12);
+const encoded=JSON.stringify(journal.serialize());assert(encoded.length<8000);assert(!encoded.includes('blob'));const restored=new TravelJournalState();restored.restore(JSON.parse(encoded));assert.deepEqual(restored.serialize(),journal.serialize());
+restored.restore({stamps:['bad'],messages:[{id:'id',name:{},text:{}}],photos:[{id:'https://evil.invalid/photo',title:'no'}]});assert.equal(restored.messages.length,0);assert.equal(restored.photos.length,0);assert.equal(restored.stamps.length,0);
+assert(photoPlace({x:180,y:136,z:106}).includes('云端'));assert(photoPlace({x:-40,y:26,z:260}).includes('豫园'));
+const old=new ShanghaiJourneyState();old.restore({version:1,phase:'journey',index:3});assert.equal(old.edition,1);assert(old.record({type:'sky'}),'Old saves continue without retroactive encounter requirements');assert(old.journal.stamps.includes('nanjing'));
+const fresh=new ShanghaiJourneyState();fresh.phase='journey';fresh.index=3;assert(!fresh.record({type:'sky'}));assert(fresh.record({type:'city-conversation',district:'lujiazui',kind:'office-walk',name:'沈先生'}));assert(!fresh.record({type:'city-conversation',district:'lujiazui',kind:'office-walk',name:'陈女士'}));assert(!fresh.record({type:'city-conversation',district:'lujiazui',kind:'tower-visitor',name:'沈先生'}));assert(fresh.record({type:'city-conversation',district:'lujiazui',kind:'tower-visitor',name:'小夏'}));assert(fresh.record({type:'sky'}));
+const partial=new ShanghaiJourneyState();partial.restore(fresh.serialize());assert.equal(partial.encounters.length,2);assert.equal(partial.index,4);
+fresh.index=7;assert(!fresh.record({type:'journey-gallery'}));assert(!fresh.record({type:'journey-view',seconds:2,visible:false}));assert(fresh.record({type:'journey-view',seconds:2,visible:true}));assert.equal(fresh.index,7);assert(fresh.record({type:'journey-gallery'}));assert.equal(fresh.index,8);assert(!fresh.record({type:'yuyuan-tea'}));assert(fresh.record({type:'yuyuan-shop-visit'}));assert(!fresh.record({type:'yuyuan-shop-visit'}));assert(fresh.record({type:'yuyuan-tea'}));assert(fresh.record({type:'journey-claim',memory:'江风'}));assert.deepEqual(fresh.inventory,{[JOURNEY_SOUVENIR]:1});assert(!fresh.record({type:'journey-claim'}));
+const worker={district:'lujiazui',kind:'office-walk',npcRole:'沈先生',guide:{},root:{position:{x:170,y:26,z:42},visible:true}},visitor={district:'lujiazui',kind:'tower-visitor',npcRole:'小夏',guide:{},root:{position:{x:201,y:26,z:100},visible:false}},targetState=new ShanghaiJourneyState();targetState.phase='journey';targetState.index=3;
+const ctx={pos:{x:180,y:26,z:40},people:[worker,visitor]};assert(shanghaiJourneyTarget(targetState,ctx).label.includes('沈先生'));targetState.encounters=[{name:'沈先生',kind:'office-walk'}];assert(shanghaiJourneyTarget(targetState,ctx).instruction.includes('楼里出来'));ctx.pos.y=136;assert(shanghaiJourneyTarget(targetState,ctx).instruction.includes('回到地面'));
+console.log('PASS: bounded photo references and messages, stamp deduplication, old-save continuation, role-specific encounters, sequential gallery/shop/tea actions and single reward.');

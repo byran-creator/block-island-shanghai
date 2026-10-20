@@ -1,22 +1,27 @@
 import {BLOCKS} from './world.js';
 import {RECIPES} from './survival-state.js';
+import {itemDetails,itemImage,collectibleKey} from './item-catalog.js';
 export function inventoryGroups(state,packed={},collectibles={}){
  const blocks=Array.from({length:12},(_,i)=>({id:i+1,name:BLOCKS[i+1].name,count:state.bag[i+1]??0,color:BLOCKS[i+1].color}));
- const supplies=[['food','熟食 / 浆果'],['raw','生肉 / 生鱼'],['wool','羊毛'],['pearls','海珍珠']].map(([id,name])=>({name,count:state[id]??0}));
+ const supplies=[['food','熟食 / 浆果'],['raw','生肉 / 生鱼'],['wool','羊毛'],['pearls','海珍珠']].map(([key,name])=>({key,name,count:state[key]??0}));
  const gear=[state.pickaxe&&{name:state.pickaxe===2?'石镐':'木镐',note:'剩余 '+state.durability+' 次采集'},state.fishingRod&&{name:'鱼竿',note:'水边 G 抛线 / 收竿'},state.sword&&{name:'石剑',note:'看向夜影 Q 反击'},state.dive&&{name:'潜水套装',note:state.equipped?'已穿戴 · L 脱下':'L 穿戴'},state.glider&&{name:'滑翔伞',note:'P 展开 / 收起'}].filter(Boolean);
- const furnishings=Object.entries(RECIPES).filter(([id,r])=>r.item===id).map(([id,r])=>({name:r.name,count:(packed[id]??0)+(state.held===id?1:0),note:state.held===id?'手持一件 · E 放置':'C 中取出后 E 放置'})).filter(r=>r.count>0);
- return [{title:'方块材料',items:blocks},{title:'食材与资源',items:supplies},{title:'装备',items:gear},{title:'随身家具',items:furnishings},...Object.keys(collectibles).length?[{title:'旅行纪念与商品收藏',items:Object.entries(collectibles).map(([name,count])=>({name,count}))}]:[]];
+ const gearKeys=[state.pickaxe&&(state.pickaxe===2?'stonepick':'woodpick'),state.fishingRod&&'fishingrod',state.sword&&'sword',state.dive&&'dive',state.glider&&'glider'].filter(Boolean);gear.forEach((item,i)=>item.key=gearKeys[i]);
+ const furnishings=Object.entries(RECIPES).filter(([id,r])=>r.item===id).map(([id,r])=>({key:id,name:r.name,count:(packed[id]??0)+(state.held===id?1:0),note:state.held===id?'手持一件 · E 放置':'C 中取出后 E 放置'})).filter(r=>r.count>0);
+ return [{title:'方块材料',items:blocks},{title:'食材与资源',items:supplies},{title:'装备',items:gear},{title:'随身家具',items:furnishings},...Object.values(collectibles).some(n=>n>0)?[{title:'旅行纪念与商品收藏',items:Object.entries(collectibles).filter(([,n])=>n>0).map(([name,count])=>({key:collectibleKey(name),name,count}))}]:[]];
 }
 export function createPlayerHandbook({getState,getPacked,getCollectibles=()=>({}),openCollectible=()=>false,selectBlock,craft,pause,resume,isPlaying,canOpen=()=>true,notify=()=>{}}){
  const $=id=>document.getElementById(id);let panel=null,wasPlaying=false;
  function close(restorePlay=true){if(!panel)return;$(panel).close();panel=null;const restore=wasPlaying;wasPlaying=false;if(restorePlay&&restore)resume();}
- function render(){const state=getState();$('backpack-mode').textContent=state.survival?'生存背包 · 显示实际数量':'创造模式 · 方块可无限使用，仍显示已收集数量';$('backpack-items').replaceChildren();
+ function render(){const state=getState();$('backpack-mode').textContent=state.survival?'生存背包 · 显示实际数量':'创造模式 · 方块可无限使用，仍显示已收集数量';$('backpack-items').replaceChildren();const info=$('backpack-detail');info.replaceChildren();info.hidden=true;
   for(const group of inventoryGroups(state,getPacked(),getCollectibles())){
    const section=document.createElement('section'),title=document.createElement('h3'),grid=document.createElement('div');title.textContent=group.title;grid.className='backpack-grid';section.append(title,grid);
    if(!group.items.length){const empty=document.createElement('p');empty.textContent='暂时没有，按 C 查看制作配方。';grid.append(empty);}
-   for(const item of group.items){const card=document.createElement(item.id?'button':'div');card.className='backpack-item';const name=document.createElement('strong'),amount=document.createElement('span');name.textContent=item.name;amount.textContent=item.count===undefined?item.note:'× '+item.count+(item.note?' · '+item.note:'');card.append(name,amount);
-    if(item.id){card.style.borderLeft='5px solid '+item.color;card.disabled=state.survival&&item.count<=0;card.title='选择这个方块';card.onclick=()=>{selectBlock(item.id);close();};}
-    if(item.name==='沪上初游 · 旅行纪念卡'){card.setAttribute('role','button');card.tabIndex=0;card.title='打开旅行纪念卡与结算';const open=()=>{close(false);openCollectible(item.name);};card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}};card.append(document.createTextNode(' · 点击查看旅程'));}
+   for(const item of group.items){const card=document.createElement('button'),details=itemDetails(item);card.className='backpack-item';const name=document.createElement('strong'),amount=document.createElement('span');name.textContent=details.name;amount.textContent=item.count===undefined?item.note:'× '+item.count+(item.note?' · '+item.note:'');card.append(itemImage(details.key),name,amount);card.title='查看'+details.name+'的用途与获取方式';
+    card.onclick=()=>{info.replaceChildren();info.hidden=false;const heading=document.createElement('h3');heading.textContent=details.name;info.append(itemImage(details.key),heading);for(const text of [details.description,'获得方式：'+details.source,'操作：'+details.controls]){const p=document.createElement('p');p.textContent=text;info.append(p);}const dismiss=document.createElement('button');dismiss.textContent='收起说明';dismiss.onclick=()=>{info.hidden=true;card.focus();};info.append(dismiss);
+     if(item.id){const use=document.createElement('button');use.textContent=state.survival&&item.count<=0?'尚未拥有这个材料':'选择为手持方块';use.disabled=state.survival&&item.count<=0;use.onclick=()=>{selectBlock(item.id);close();};info.append(use);}
+     else if(details.key==='souvenir'){const open=document.createElement('button');open.textContent='查看旅程纪念卡';open.onclick=()=>{close(false);openCollectible(item.name);};info.append(open);}
+     else if(['装备','随身家具'].includes(group.title)){const make=document.createElement('button');make.textContent='打开制作 / 取出家具';make.onclick=()=>{close(false);craft();};info.append(make);}heading.tabIndex=-1;heading.focus();
+    };
     grid.append(card);
    }$('backpack-items').append(section);
   }

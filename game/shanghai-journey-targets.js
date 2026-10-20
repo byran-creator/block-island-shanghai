@@ -5,6 +5,8 @@ import {JIUQU_BRIDGE,INNER_GARDEN_PATH} from './yuyuan-layout.js';
 import {JOURNEY_ACTORS} from './shanghai-journey-content.js';
 import {LANDMARKS} from './world.js';
 const goal=(p,label,instruction)=>({...p,label,instruction});
+export const GALLERY_JOURNEY_ROUTE=[[-46,256.5],[-54,257.5],[-54,264],[-57.5,279.5],[-68,288.5],[-68,295],[-66,295],[-66,296],[-61.5,297.4],[-56.5,298.4],[-51,297.8]];
+export const GALLERY_EXIT_ROUTE=[...GALLERY_JOURNEY_ROUTE.slice(2).reverse(),[-60,264],[-68,265],[-77,265]];
 function followRoute(p,route,label,instruction){let best=Infinity,index=1;for(let i=1;i<route.length;i++){const a=route[i-1],b=route[i],dx=b[0]-a[0],dz=b[1]-a[1],u=Math.max(0,Math.min(1,((p.x-a[0])*dx+(p.z-a[1])*dz)/(dx*dx+dz*dz||1))),d=Math.hypot(p.x-a[0]-dx*u,p.z-a[1]-dz*u);if(d<best){best=d;index=i;}}if(Math.hypot(p.x-route[index][0],p.z-route[index][1])<.8)index=Math.min(index+1,route.length-1);return goal({x:route[index][0],y:26,z:route[index][1]},label,instruction);}
 function leaveMetro(ctx){
  const p=ctx.pos,l=line10ToLocal(p),s=LINE10_STATIONS[1],flags=ctx.stations?.find(x=>x.id==='yuyuan')??{},r=line10RampAt(l.x,l.z);
@@ -41,11 +43,24 @@ export function shanghaiJourneyTarget(state,ctx){
   if(ctx.pos.y>40)return goal({...LANDMARKS.skyDeck},'上海中心 · 返回观光电梯','按 V 打开观光电梯，选择回到地面，再前往陆家嘴站。');
   return questTarget('metro',ctx);
  }
- if(c.id==='lujiazui-view')return leaveLujiazui(ctx)??questTarget('sky',ctx);
+ if(c.id==='lujiazui-view'){
+  const exit=leaveLujiazui(ctx);if(exit)return exit;
+  if(state.edition!==1){const seen=state.encounters??[],kind=!seen.some(p=>p.kind==='office-walk')?'office-walk':!seen.some(p=>p.kind==='tower-visitor')?'tower-visitor':null,p=kind&&(ctx.people??[]).find(p=>p.district==='lujiazui'&&p.kind===kind&&p.guide);
+   if(p){if(ctx.pos.y>40)return goal({...LANDMARKS.skyDeck},'上海中心 · 先回街面聊聊','在观光电梯旁按 V 回到地面，先听一位职员和一位游客的故事。');return goal(p.root.position,`${p.npcRole} · ${kind==='office-walk'?'楼下的上海故事':'第一次来上海'}`,p.root.visible===false?'人物正在从楼里出来。到门旁稍候，靠近按 V，聊完一个话题。':`已交流 ${seen.length} / 2 · 靠近按 V，选一个话题，读完后继续，留言会收入 N 手账。`);}
+  }return questTarget('sky',ctx);
+ }
  if(c.id==='metro')return questTarget('yuyuan-metro',ctx);
  if(ctx.pos.y<25.5&&ctx.pos.x<-60)return leaveMetro(ctx);
  if(c.id==='garden')return state.gardenTalk?goal({x:-73.5,y:26,z:265},'内园西门 · 领票检票','V 打开月洞门旁检票界面，领体验票，再检票开闸走入内园。'):goal(JOURNEY_ACTORS.gu,'顾先生 · 园门向导','走近顾先生按 V，听听这座园子的故事。');
- if(c.id==='view'){if(Math.hypot(ctx.pos.x+46,ctx.pos.z-256.5)>2.5)return followRoute(ctx.pos,[...INNER_GARDEN_PATH.slice(3).reverse().map(([x,z])=>[x,z+60]),[-46,256.5]],'内园 · 沿曲径去圆窗','沿现有园林曲径转弯，不穿过堂屋。到了北侧月洞窗，面对窗外停留两秒。');return goal({x:-46,y:26,z:256.5},'内园北侧 · 月洞窗内侧','站到窗内侧，面向北侧圆窗中的风景，停留两秒；也可答完三道灯谜。');}
- if(c.id==='tea')return teaTarget(ctx);
+ if(c.id==='view'){
+  if(state.edition!==1&&state.windowSeen){if(Math.hypot(ctx.pos.x+51,ctx.pos.z-297.8)<2.6)return goal({x:-51,y:26,z:297.8},'水上长廊 · 看锦鲤与倒影','停在廊中按 V，看完这段发现，盖下“水廊听鱼”印章。');return followRoute(ctx.pos,GALLERY_JOURNEY_ROUTE,'内园 · 水上长廊寻景','沿园路到西侧水廊入口，再沿弯廊走；不横穿池水。廊中 V 记下这一眼。');}
+  if(Math.hypot(ctx.pos.x+46,ctx.pos.z-256.5)>2.5)return followRoute(ctx.pos,[...INNER_GARDEN_PATH.slice(3).reverse().map(([x,z])=>[x,z+60]),[-46,256.5]],'内园 · 沿曲径去圆窗','沿现有园林曲径转弯，不穿过堂屋。到了北侧月洞窗，面对窗外停留两秒。');return goal({x:-46,y:26,z:256.5},'内园北侧 · 月洞窗内侧','站到窗内侧，面向北侧圆窗中的风景，停留两秒；也可答完三道灯谜。');
+ }
+ if(c.id==='tea'){
+  if(state.edition!==1&&!state.bazaarSeen){if(ctx.pos.x>-75&&ctx.pos.x<3&&ctx.pos.z>254&&ctx.pos.z<318)return followRoute(ctx.pos,GALLERY_EXIT_ROUTE,'内园 · 沿廊回西门','沿原长廊回西岸，从西门按 V 开闸离园，去商街看看柜台。');
+   const shops=(ctx.gardenShops??[]).filter(s=>s.x<-78),shop=shops.reduce((a,b)=>!a||Math.hypot(b.x-ctx.pos.x,b.z+60-ctx.pos.z)<Math.hypot(a.x-ctx.pos.x,a.z+60-ctx.pos.z)?b:a,null);
+   return shop?goal({x:shop.x,y:26,z:shop.z+60},shop.title+' · 看看柜台','走到店门或柜台按 V，看看特色名品即可，不要求消费。随后去湖心亭品茶。'):goal({x:-100,y:26,z:264},'西侧商街 · 逛一间店','走近任一店门柜台按 V 看看，不要求购买；然后前往湖心亭。');
+  }return teaTarget(ctx);
+ }
  return goal(JOURNEY_ACTORS.shen,'沈伯 · 旅程纪念','走近沈伯按 V，选一个想带走的词，领取纪念卡。');
 }
