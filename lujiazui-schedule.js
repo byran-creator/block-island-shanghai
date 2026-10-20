@@ -77,7 +77,9 @@ export function createLujiazuiSchedule(people,{world,others=()=>people,getPos=()
   const near=neighbours();let planned=false;
   for(let n=0;n<people.length;n++){
    const p=people[(n+first)%people.length],d=p.daily;d.justArrived=false;d.retry=Math.max(0,d.retry-dt);
-   const wanted=lujiazuiDayPlan(d.index,phase),target=wanted==='outside'||room(p,wanted)?wanted:'outside';
+   if(p.journeyMeeting&&!d.meeting){const r=room(p,d.state),building=r&&byId(r.id),q=building&&{...buildingEntrance(building,3.2),y:26};d.meeting=q&&clear(q)?q:{...p.root.position};d.path=null;d.retry=0;}
+   if(!p.journeyMeeting&&d.meeting){d.meeting=null;d.path=null;d.retry=0;if(d.state==='outside')d.state='walking';}
+   const wanted=p.journeyMeeting?'outside':lujiazuiDayPlan(d.index,phase),target=wanted==='outside'||room(p,wanted)?wanted:'outside';
    if(d.initial){d.initial=false;d.target=target;if(target!=='outside'){const r=room(p,target);p.root.position.set(r.x,26,r.z);arrive(p);}note(p);}
    if(target!==d.target){d.target=target;d.path=null;d.detour=null;d.retry=0;d.blocked=0;note(p);}
    if(d.state===d.target)continue;
@@ -85,7 +87,7 @@ export function createLujiazuiSchedule(people,{world,others=()=>people,getPos=()
     if(!available(p,p.root.position,near,vehicles))continue;
     p.root.visible=true;d.state='walking';
    }
-   const destination=d.target==='outside'?d.outside:room(p,d.target);
+   const destination=d.target==='outside'?(d.meeting??d.outside):room(p,d.target);
    if(!d.path&&!d.retry&&!planned){planned=true;d.path=schedulePath(world,p.root.position,destination);d.next=1;if(!d.path){d.retry=2+d.index*.13;continue;}d.state='walking';d.anchor={...p.root.position};d.progress=0;}
    if(!d.path||dt<=0)continue;
    let remaining=Math.min(dt,.25);
