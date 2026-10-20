@@ -1,28 +1,48 @@
-// Original stereo rainfall: continuous patter plus irregular short drop tails.
-// One looping buffer is reused for the whole session, independent of frame rate.
-export function rainSamples(rate,seconds=7){
- const channels=[new Float32Array(Math.floor(rate*seconds)),new Float32Array(Math.floor(rate*seconds))];
- let seed=31075;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
- const decay=Math.exp(-1/(rate*.006));
- for(const data of channels){let low=0,drop=0,slow=0;
-  for(let i=0;i<data.length;i++){
-   const white=random()*2-1;low+=(white-low)*.12;slow+=(random()-.5-slow)*.0003;
-   if(random()<220/rate)drop+=.12+random()*.38;
-   drop*=decay;
-   data[i]=Math.max(-.95,Math.min(.95,(white-low)*(.28+slow*.12)+white*drop));
+const RAIN_URL=new URL('./assets/audio/rain-gentle-qk.wav',import.meta.url).href;
+
+// Keep the shipped PCM rate instead of expanding to a 48/96kHz decoded buffer.
+export function rainRecordingBuffer(ctx,bytes){
+ if(bytes.byteLength<44||bytes.byteLength>1300000)throw Error('Rain recording exceeds budget');
+ const data=new DataView(bytes),text=(at,n)=>String.fromCharCode(...new Uint8Array(bytes,at,n));
+ if(text(0,4)!=='RIFF'||text(8,4)!=='WAVE')throw Error('Invalid rain recording');
+ let channels=0,rate=0,pcm=null;
+ for(let at=12;at+8<=bytes.byteLength;){
+  const size=data.getUint32(at+4,true),start=at+8;
+  if(start+size>bytes.byteLength)throw Error('Truncated rain recording');
+  if(text(at,4)==='fmt '){
+   if(size<16||data.getUint16(start,true)!==1||data.getUint16(start+14,true)!==16)throw Error('Unsupported rain PCM');
+   channels=data.getUint16(start+2,true);rate=data.getUint32(start+4,true);
+   if(data.getUint16(start+12,true)!==channels*2)throw Error('Invalid rain alignment');
   }
+  if(text(at,4)==='data')pcm={at:start,size};
+  at=start+size+(size%2);
  }
- return channels;
+ if(!pcm||channels<1||channels>2||rate<8000||rate>24000||pcm.size%(channels*2))throw Error('Invalid rain format');
+ const frames=pcm.size/(channels*2);
+ if(frames/rate<8||frames/rate>22)throw Error('Invalid rain duration');
+ const buffer=ctx.createBuffer(channels,frames,rate);
+ for(let c=0;c<channels;c++){const out=buffer.getChannelData(c);for(let i=0;i<frames;i++)out[i]=data.getInt16(pcm.at+(i*channels+c)*2,true)/32768;}
+ return buffer;
 }
 
-export function createRainAmbience(ctx,output){
- const rate=Math.min(ctx.sampleRate,24000),channels=rainSamples(rate),buffer=ctx.createBuffer(2,channels[0].length,rate);
- channels.forEach((data,i)=>buffer.getChannelData(i).set(data));
- const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
- source.buffer=buffer;source.loop=true;filter.type='lowpass';filter.frequency.value=6500;gain.gain.value=0;
- source.connect(filter);filter.connect(gain);gain.connect(output);source.start();
- return {update(rain,exposure=1){const level=Math.max(0,Math.min(1,rain));
-  gain.gain.setTargetAtTime(level*.48*Math.max(0,Math.min(1,exposure)),ctx.currentTime,.45);
-  filter.frequency.setTargetAtTime(exposure<.5?1400:6500,ctx.currentTime,.4);
- },dispose(){source.stop();source.disconnect();filter.disconnect();gain.disconnect();}};
+// Q.K.'s CC0 field recording, softened and crossfaded offline. Fetch only on
+// actual rain and cache one bounded buffer. No synthetic drop-click layer.
+export function createRainAmbience(ctx,output,{fetchAudio=globalThis.fetch,url=RAIN_URL}={}){
+ const filter=ctx.createBiquadFilter(),gain=ctx.createGain();let buffer,source,loading,disposed=false,retryAt=0,desired=0,lastGain=-1,lastFilter=-1;
+ filter.type='lowpass';filter.frequency.value=4400;gain.gain.value=0;filter.connect(gain);gain.connect(output);
+ function start(){if(disposed||source||!buffer||desired<=0)return;source=ctx.createBufferSource();source.buffer=buffer;source.loop=true;source.connect(filter);source.start();}
+ function prepare(){
+  if(disposed||buffer||loading||ctx.currentTime<retryAt||typeof fetchAudio!=='function')return;
+  loading=(async()=>{const response=await fetchAudio(url);if(!response.ok)throw Error('Rain recording unavailable');
+   const bytes=await response.arrayBuffer();if(disposed)return;buffer=rainRecordingBuffer(ctx,bytes);start();
+  })().catch(()=>{retryAt=ctx.currentTime+15;}).finally(()=>{loading=null;});
+ }
+ return {update(rain,exposure=1){
+  if(disposed)return;
+  const level=Number.isFinite(rain)&&rain>.04?Math.min(1,rain):0,cover=Number.isFinite(exposure)?Math.max(0,Math.min(1,exposure)):0;
+  desired=level*.32*cover;
+  if(desired>0){prepare();start();}
+  if(Math.abs(desired-lastGain)>.0001){gain.gain.setTargetAtTime(desired,ctx.currentTime,desired ? .45 : .1);lastGain=desired;}
+  const frequency=cover<.5?1200:4400;if(frequency!==lastFilter){filter.frequency.setTargetAtTime(frequency,ctx.currentTime,.4);lastFilter=frequency;}
+ },dispose(){disposed=true;desired=0;if(source){source.stop();source.disconnect();}filter.disconnect();gain.disconnect();buffer=null;},get pending(){return loading;},get level(){return desired;},get ready(){return !!buffer;}};
 }
