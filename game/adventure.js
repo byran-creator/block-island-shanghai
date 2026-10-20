@@ -45,6 +45,7 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
   for(const c of CRYSTALS){const row=$('gem-'+c.id);row.textContent=`${state.collected.has(c.id)?'✓':'◇'} ${c.name}`;row.classList.toggle('done',state.collected.has(c.id));}
   $('race-status').classList.toggle('visible',!!state.race);const rc=courseById(state.race?.course);$('race-status').textContent=state.race?`${rc.name} ${state.race.time.toFixed(1)} s · 检查点 ${state.race.checkpoint+1} / ${rc.platforms.length} · V 退出`:'';
   $('show-status').textContent=show.active?'无人机 + 聚光灯 · '+show.drones.phase:'K 烟花 + 无人机 + 陆家嘴灯光秀';$('best-time').textContent=state.best===null?'尚未完成':`${state.best.toFixed(2)} 秒`;
+  const mapGoal=getQuestTarget(),mapGuide=$('map-current-quest');if(mapGuide){mapGuide.hidden=!mapGoal;mapGuide.textContent=mapGoal?'◆ '+mapGoal.label+' · 距你 '+Math.round(Math.hypot(mapGoal.x-currentPos.x,mapGoal.z-currentPos.z))+' 格\n'+mapGoal.instruction:'';}
   drawMap(minimap,mc,currentPos);if(panel==='map-dialog')drawMap($('large-map'),$('large-map').getContext('2d'),currentPos);
  }
  function near(p,r=3){return Math.hypot(currentPos.x-p.x,currentPos.z-p.z)<r&&Math.abs(currentPos.y-p.y)<3}

@@ -1,3 +1,4 @@
+import {cityMeetingGoal} from './journey-city-events.js';
 import {questTarget} from './quest-guidance.js';
 import {LINE10_STATIONS,line10ToLocal,line10ToWorld,line10RampAt} from './metro-line10-layout.js';
 import {METRO_HALL,METRO_STATIONS,metro2RampAt} from './metro-layout.js';
@@ -45,9 +46,8 @@ export function shanghaiJourneyTarget(state,ctx){
  }
  if(c.id==='lujiazui-view'){
   const exit=leaveLujiazui(ctx);if(exit)return exit;
-  if(state.edition!==1){const seen=state.encounters??[],kind=!seen.some(p=>p.kind==='office-walk')?'office-walk':!seen.some(p=>p.kind==='tower-visitor')?'tower-visitor':null,p=kind&&(ctx.people??[]).find(p=>p.district==='lujiazui'&&p.kind===kind&&p.guide);
-   if(p){if(ctx.pos.y>40)return goal({...LANDMARKS.skyDeck},'上海中心 · 先回街面聊聊','在观光电梯旁按 V 回到地面，先听一位职员和一位游客的故事。');return {...goal(p.root.position,`${p.npcRole} · ${kind==='office-walk'?'楼下的上海故事':'第一次来上海'}`,p.root.visible===false?'人物正在从楼里出来。到门旁稍候，靠近按 V，聊完一个话题。':`已交流 ${seen.length} / 2 · 靠近按 V，选一个话题，读完后继续，留言会收入 N 手账。`),npcTarget:true};}
-  }return questTarget('sky',ctx);
+  if(state.edition!==1){const meeting=cityMeetingGoal(state,ctx);if(meeting){if(ctx.pos.y>40)return goal({...LANDMARKS.skyDeck},'上海中心 · 先回街面帮忙','在观光电梯旁按 V 回到地面，跟随黄色目标认识职员和游客。');return meeting;}}
+  return questTarget('sky',ctx);
  }
  if(c.id==='metro')return questTarget('yuyuan-metro',ctx);
  if(ctx.pos.y<25.5&&ctx.pos.x<-60)return leaveMetro(ctx);

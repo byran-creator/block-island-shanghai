@@ -7,7 +7,7 @@ export function createJourneyMeetings(){
   if(!materials.has(kind)){
    const canvas=document.createElement('canvas');canvas.width=256;canvas.height=112;const c=canvas.getContext('2d');
    c.lineJoin='round';c.lineWidth=5;c.strokeStyle='#b18a37';c.fillStyle='#ffe499';c.beginPath();c.moveTo(128,6);c.lineTo(148,26);c.lineTo(128,46);c.lineTo(108,26);c.closePath();c.fill();c.stroke();
-   c.font='600 24px "Microsoft YaHei",sans-serif';c.textAlign='center';c.textBaseline='middle';c.shadowColor='#132129';c.shadowBlur=5;c.fillStyle='#ffe7a0';c.fillText(kind==='office-walk'?'交谈 · 职员':'交谈 · 游客',128,82);
+   c.font='600 24px "Microsoft YaHei",sans-serif';c.textAlign='center';c.textBaseline='middle';c.shadowColor='#132129';c.shadowBlur=5;c.fillStyle='#ffe7a0';c.fillText(kind==='office-walk'?'委托 · 职员':'留影 · 游客',128,82);
    const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;materials.set(kind,new THREE.SpriteMaterial({map,depthWrite:false,fog:false}));
   }return materials.get(kind);
  }
