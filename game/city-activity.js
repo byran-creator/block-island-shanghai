@@ -275,16 +275,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   }
   const steleLight=new THREE.PointLight('#ffe18c',3.2,7.5,1.5);
   steleLight.position.set(sx,27.2,sz);parent.add(steleLight);shopLights.push(steleLight);
-  // Zhongshan East 1st Road Pedestrian Zebra Crossing (中山东一路外滩路口斑马线)
-  for(let x=13.5;x<=22.5;x+=1.1){
-   const stripe=cube(parent,'#f6f0e4',x,26.085,66,.8,.02,5.2);
-   stripe.userData.range=240;
-  }
-  // Stop lines before zebra crossing for North-South vehicle traffic
-  for(const z of [62.8,69.2]){
-   const stopLine=cube(parent,'#fffaed',18,26.09,z,9.8,.02,.22);
-   stopLine.userData.range=240;
-  }
+
  }
  createNanjingStele(root);
  function close(){if(!panel)return;panel=false;$('city-dialog').close();resume();}

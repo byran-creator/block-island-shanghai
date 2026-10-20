@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import * as THREE from '../game/three.module.js';
 import {createBund} from '../game/bund.js';
 import {VoxelWorld} from '../game/world.js';
+import {BUND_CROSSWALKS} from '../game/crosswalk-layout.js';
 
 // 1. CSS & Layout verification
 const styleCss = await readFile('game/style.css', 'utf8');
@@ -72,6 +73,28 @@ try {
   assert.equal(playerPos.x, bench.seatX, 'Player position should snap to bench seat');
   assert.equal(playerPos.y, bench.seatY, 'Player elevation should be seat height');
   assert.equal(playerYaw, bench.facingYaw, 'Player yaw should face east toward Huangpu River / Lujiazui');
+  assert(-Math.sin(playerYaw)>.99,'The actual camera forward axis must face the river to the east');
+  scene.updateMatrixWorld(true);
+  let lampVertices=0,crossingVertices=0;
+  const point=new THREE.Vector3();
+  scene.traverse(m=>{
+   if(!m.isMesh)return;
+   const color=m.material.color?.getHex(),positions=m.geometry.attributes.position;
+   if(color===0xffe2a1||color===0xc5bda5)for(let i=0;i<positions.count;i++){
+    point.fromBufferAttribute(positions,i).applyMatrix4(m.matrixWorld);lampVertices++;
+    assert(civil.benches.every(b=>Math.abs(b.z-point.z)>6.7),'Every actual lamp stays between seats, outside their forward view');
+   }
+   if(color===0xfaf4df)for(let i=0;i<positions.count;i+=4){
+    const corners=Array.from({length:4},(_,j)=>new THREE.Vector3().fromBufferAttribute(positions,i+j).applyMatrix4(m.matrixWorld));
+    const minX=Math.min(...corners.map(p=>p.x)),maxX=Math.max(...corners.map(p=>p.x)),minZ=Math.min(...corners.map(p=>p.z)),maxZ=Math.max(...corners.map(p=>p.z));
+    assert(Math.abs(maxX-minX-.65)<1e-4&&Math.abs(maxZ-minZ-5.2)<1e-4,'Each bar follows the roadway rather than spanning the whole crossing');
+    const x=(minX+maxX)/2,z=(minZ+maxZ)/2;
+    assert.equal(BUND_CROSSWALKS.filter(c=>Math.abs(c.z-z)<1e-4&&c.stripes.some(s=>Math.abs(s-x)<1e-4)).length,1,'Each rendered stripe has exactly one crossing owner');
+    crossingVertices+=4;
+   }
+  });
+  assert(lampVertices>0);
+  assert.equal(crossingVertices,BUND_CROSSWALKS.reduce((n,c)=>n+c.stripes.length*4,0));
   assert(civil.getPrompt().includes('起身'), 'getPrompt should indicate how to stand up');
 
   // Verify standing up via civil.use()
