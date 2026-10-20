@@ -1,8 +1,8 @@
 import * as THREE from './three.module.js';
 import {LUJIAZUI_CONVERSATIONS} from './lujiazui-conversations.js';
 import {createStreetCrowd} from './street-crowd.js';
-import {overlaps} from './world.js';
 import {CITY} from './shanghai-map.js';
+import {createLujiazuiSchedule,schedulePavement} from './lujiazui-schedule.js';
 
 // Four existing, connected forecourts; no new paving or routes across roads.
 export const LUJIAZUI_FORECOURTS=[
@@ -16,7 +16,7 @@ export function createLujiazuiPeople({person,cube}){
  for(const [index,area]of LUJIAZUI_FORECOURTS.entries())for(let i=0;i<area.count;i++){
   const p={...person(320+index*8+i,undefined,area.role),district:'lujiazui',forecourt:area.id,kind:area.role==='office'?'office-walk':'tower-visitor',phase:i*1.7+index};
   const dialogueIndex=area.role==='office'?index*4+i:8+(index-2)*2+(i-1)/2;
-  if(area.role==='office'||i%2===1){const profile=LUJIAZUI_CONVERSATIONS[dialogueIndex];p.npcRole=profile.name;p.guide=profile;}
+  if(area.role==='office'||i%2===1){const profile=LUJIAZUI_CONVERSATIONS[dialogueIndex];p.npcRole=profile.name;p.guide={...profile,choices:profile.choices.map(c=>[...c])};}
   if(area.role==='office'){
    cube(p.root,i%2?'#283645':'#69523e',.39,.57,.04,.22,.34,.38);
    cube(p.root,'#b8b2a0',.39,.77,.04,.13,.06,.17);
@@ -32,13 +32,16 @@ export function createLujiazuiPeople({person,cube}){
  }
  return people;
 }
-export function createLujiazuiFlow(people,{world,others}){
- const clear=q=>[6,7,9].includes(world.get(Math.floor(q.x),25,Math.floor(q.z)))&&!overlaps(world,q.x,q.y,q.z)&&overlaps(world,q.x,q.y-.1,q.z);
- const flows=LUJIAZUI_FORECOURTS.map((area,i)=>createStreetCrowd(people.filter(p=>p.forecourt===area.id),{area,clear,others,seedOffset:500+i*41}));
- return {tick(dt,vehicles=[]){
+export function createLujiazuiFlow(people,{world,others,getPos}){
+ const clear=q=>schedulePavement(world,q);
+ const flows=LUJIAZUI_FORECOURTS.map((area,i)=>createStreetCrowd(people.filter(p=>p.forecourt===area.id),{area,clear,others,seedOffset:500+i*41,active:p=>!p.daily||p.daily.state==='outside'&&p.daily.target==='outside'&&!p.daily.justArrived}));
+ for(const flow of flows)flow.tick(0);
+ const schedule=createLujiazuiSchedule(people,{world,others,getPos,areas:LUJIAZUI_FORECOURTS});
+ return {tick(dt,vehicles=[],dayClock){
+  schedule.tick(dt,dayClock,vehicles);
   for(const flow of flows)flow.tick(dt,vehicles);
   for(const p of people)if(p.camera&&p.ready){
-   const area=LUJIAZUI_FORECOURTS.find(a=>a.id===p.forecourt),taking=p.crowd.state==='browse';
+   const area=LUJIAZUI_FORECOURTS.find(a=>a.id===p.forecourt),taking=p.root.visible&&(!p.daily||p.daily.state==='outside')&&p.crowd.state==='browse';
    p.photoLift=(p.photoLift??0)+((taking?1:0)-(p.photoLift??0))*(1-Math.exp(-dt*5));
    const lift=p.photoLift;p.camera.position.set(.08*(1-lift),1+lift*.49,-.24-lift*.17);
    if(taking){p.crowd.targetYaw=Math.atan2(area.target.x-p.root.position.x,area.target.z-p.root.position.z)+Math.PI;for(let i=0;i<2;i++)p.arms[i].rotation.set(.15+lift*1.85,0,(i?-.4:.4)*lift);}

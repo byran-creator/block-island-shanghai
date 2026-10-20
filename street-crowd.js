@@ -24,7 +24,7 @@ export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
  }
  at.set(q.x,q.y,q.z);return true;
 }
-export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0}={}){
+export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0,active=()=>true}={}){
  const walkers=people.filter(p=>!p.stationary);let first=0;
  let neighbours=people.concat(typeof others==='function'?others():others);
  const othersClear=(p,q)=>{
@@ -46,6 +46,7 @@ export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,p
   if(typeof others==='function')neighbours=people.concat(others());
   for(let i=0;i<walkers.length;i++){
    const p=walkers[(i+first)%walkers.length],state=p.crowd;let moving=false,turning=false,distanceMoved=0;
+   if(!active(p))continue;
    if(!p.ready){for(let attempt=0;attempt<120;attempt++){const q=spawnPoint?spawnPoint(p):{x:area.x1+state.random()*(area.x2-area.x1),y:26,z:area.z1+state.random()*(area.z2-area.z1)};if(clear(q)&&othersClear(p,q)&&!pedestrianBlocked(q,vehicles)){p.root.position.set(q.x,q.y,q.z);p.ready=true;goal(p);break;}}p.root.visible=p.ready;if(!p.ready)continue;}
    state.breakIn-=dt;state.wait=Math.max(0,state.wait-dt);state.steerTime=Math.max(0,(state.steerTime??0)-dt);
    if(state.breakIn<=0){state.wait=(p.kind==='delivery-walk'?.5:1.5)+state.random()*3.5;state.breakIn=18+state.random()*38;state.targetYaw=state.random()<.5?0:Math.PI;}
