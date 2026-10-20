@@ -231,7 +231,7 @@ const sceneAudio=createSceneAudio(getAudio);
 let trafficHitUntil=0;
 const trafficFlash=document.createElement('div');trafficFlash.className='traffic-hit';document.body.appendChild(trafficFlash);
 let residents,privateSuites,vesselSurfaces=[];
-function refreshMusic(){for(const id of ['music-toggle','music-quick']){$(id).setAttribute('aria-pressed',String(music.enabled));$(id).title=music.enabled?'关闭背景音乐':'开启背景音乐'}$('music-toggle').textContent='音乐：'+(music.enabled?'开':'关');$('music-quick').textContent=music.enabled?'♫':'♩';$('music-volume').value=Math.round(music.volume*100);$('music-percent').textContent=Math.round(music.volume*100)+'%';$('music-choice').value=music.track.id;$('music-quick').title='下一首：当前 '+music.track.name;}
+function refreshMusic(){for(const id of ['music-toggle']){$(id).setAttribute('aria-pressed',String(music.enabled));$(id).title=music.enabled?'关闭背景音乐':'开启背景音乐'}$('music-toggle').textContent='音乐：'+(music.enabled?'开':'关');$('music-quick').textContent='下一首配乐';$('music-volume').value=Math.round(music.volume*100);$('music-percent').textContent=Math.round(music.volume*100)+'%';$('music-choice').value=music.track.id;$('music-quick').title='下一首：当前 '+music.track.name;}
 $('music-toggle').onclick=()=>{music.setEnabled(!music.enabled);refreshMusic()};$('music-quick').onclick=()=>{music.nextTrack();refreshMusic();notify('BGM：'+music.track.name)};$('music-choice').value=music.track.id;$('music-choice').addEventListener('change',e=>{music.setTrack(e.target.value);refreshMusic()});$('music-volume').addEventListener('input',e=>{music.setVolume(Number(e.target.value)/100);refreshMusic()});refreshMusic();
 function refreshSceneAudio(){$('music-auto').textContent='区域配乐：'+(music.automatic?'开':'关');$('music-auto').setAttribute('aria-pressed',String(music.automatic));$('ambient-toggle').textContent='环境音：'+(sceneAudio.enabled?'开':'关');$('ambient-toggle').setAttribute('aria-pressed',String(sceneAudio.enabled));}
 $('music-auto').onclick=()=>{music.setAutomatic(!music.automatic);refreshSceneAudio();};$('ambient-toggle').onclick=()=>{sceneAudio.setEnabled(!sceneAudio.enabled);refreshSceneAudio();};$('music-choice').addEventListener('change',refreshSceneAudio);$('music-quick').addEventListener('click',refreshSceneAudio);refreshSceneAudio();
@@ -563,7 +563,7 @@ if(hudSlider){
  document.querySelector('.hud-sun-icon')?.addEventListener('click',()=>{applyTime(720);notify('已切换到白天 ☀️');});
  document.querySelector('.hud-moon-icon')?.addEventListener('click',()=>{applyTime(1260);notify('已切换到夜晚 🌙');});
 }
-handbook=createPlayerHandbook({getState:()=>life.state,getPacked:()=>life.serialize().packed,getCollectibles:()=>({...activity.goods,...yuyuan.inventory,...story.inventory}),openCollectible:()=>story.openSettlement(),selectBlock:select,craft:()=>life.craft(),pause:pauseForPanel,resume:enter,isPlaying:()=>active,canOpen:()=>!document.querySelector('dialog[open]'),notify});
+handbook=createPlayerHandbook({getState:()=>life.state,getPacked:()=>life.serialize().packed,getCollectibles:()=>({...activity.goods,...yuyuan.inventory,...story.inventory}),openCollectible:()=>story.openSettlement(),openTravelJournal:()=>story.openBook(),selectBlock:select,craft:()=>life.craft(),pause:pauseForPanel,resume:enter,isPlaying:()=>active,canOpen:()=>!document.querySelector('dialog[open]'),notify});
 settingsPanel=createSettingsPanel({dialog:$('settings-dialog'),isPlaying:()=>active,pause:pauseForPanel,resume:enter,onOpen:()=>{if(cursorFree)setFreeCursor(false);refreshTimeControls();}});
 $('settings-quick')?.addEventListener('click',settingsPanel.open);
 $('day-length').onchange=e=>{timeOptions=clockOptions({...timeOptions,cycleSeconds:Number(e.target.value)});saves?.save('auto');};
@@ -681,7 +681,7 @@ saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>start
 await loadingStage('正在整理画面，即将进入…');
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
 streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);streetBounce.setNight(dayClock>=120);
-photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,onCapture:meta=>story?.record({type:'travel-photo',...meta}),onKeepPhoto:photo=>story.keepPhoto(photo),beforeRender:()=>{outline.visible=false;}});
+photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,onCapture:meta=>{const pending=story?.state.chapter?.id==='lujiazui-view'&&story.state.edition>=3&&story.state.touristPhoto==='ready';story?.record({type:'travel-photo',...meta});if(pending)return story.state.touristPhoto==='done'?'任务完成 · 已为游客拍照，感谢留言已收入手账。退出相机跟随下一个目标即可。':'还没拍到目标游客 · 切换拍景，把游客放入画面后再拍即可。';},onKeepPhoto:photo=>story.keepPhoto(photo),beforeRender:()=>{outline.visible=false;}});
 $('photo-open').onclick=()=>photo.open();
 rainCrowd=createRainCrowd(npcGuides.actors.filter(p=>p.person&&!p.resident&&!p.metroRole),{world});
 const sceneInstances=createSceneInstances(scene);
