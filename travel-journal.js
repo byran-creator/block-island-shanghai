@@ -34,8 +34,8 @@ export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onRe
    }
   }else{
    const items=Object.entries(info.collectibles??{}).filter(([,n])=>n>0);content.append(el('h4','带走的纪念'));for(const [name,count]of items){const row=el('p',null,'travel-keepsake');row.append(itemImage(collectibleKey(name)),el('span',`${SHOP_PRODUCTS[name]?.name??name} × ${count}`));content.append(row);}if(!items.length)content.append(el('p','逛店挑一份纪念，或完成旅程领取专属纪念卡。'));
-   content.append(el('h4','回看这一程'),el('p',info.complete?'重游只改变当前引导，不清空建造和通关记录，也不重复发奖。':'完成旅程后，可在这里重看开场、终章，或挑一章重新体验。'));
-   if(info.complete){button(content,'重看开场短片',()=>{close(false);onFilm('opening');});button(content,'重看终章短片',()=>{close(false);onFilm('ending');});const chapters=el('div',null,'travel-replays');for(const [i,c]of info.chapters.entries())button(chapters,`${i+1} · ${c.title}`,()=>{close(false);onReplay(i);});content.append(chapters);}
+   content.append(el('h4','回看这一程'),el('p','重游已走到的章节，只改变临时引导；原主线、建造与奖励记录保留。选第4章可体验陆家嘴的新相遇。原地开始，M 地图可前往陆家嘴。'));
+   if(info.complete){button(content,'重看开场短片',()=>{close(false);onFilm('opening');});button(content,'重看终章短片',()=>{close(false);onFilm('ending');});}if(info.replayCount>0||info.complete){const chapters=el('div',null,'travel-replays');for(const [i,c]of info.chapters.slice(0,info.replayCount??info.chapters.length).entries())button(chapters,`${i+1} · ${c.title}`,()=>{close(false);onReplay(i);});content.append(chapters);}
   }
  }
  function open(){pause();document.body.classList.add('in-dialogue');if(!panel.open)panel.showModal();render();exit.focus();}

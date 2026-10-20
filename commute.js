@@ -1,3 +1,4 @@
+import {createBicyclePedaling} from './bicycle-pedaling.js';
 import * as THREE from './three.module.js';
 import {LANDMARKS,WORLD_MIN,WORLD_MAX,HEIGHT,overlaps,trace} from './world.js';
 import {promenadeX,roadContains} from './city-layout.js';
@@ -12,8 +13,8 @@ export function createCommute({scene,world,civil,activity,getPos,blocked,exitBlo
   function wheel(x,z){const pivot=new THREE.Group();pivot.position.set(x,bicycle?.34:.28,z);group.add(pivot);const spin=new THREE.Group();pivot.add(spin);const tire=new THREE.Mesh(bicycle?new THREE.TorusGeometry(.32,.055,5,12):new THREE.CylinderGeometry(.28,.28,.2,10),new THREE.MeshLambertMaterial({color:'#263540'}));if(bicycle)tire.rotation.y=Math.PI/2;else tire.rotation.z=Math.PI/2;spin.add(tire);cube(spin,'#adbac0',0,0,0,bicycle?.055:.22,.05,bicycle?.54:.42);wheels.push(spin);if(z<0)steerRigs.push(pivot);return pivot;}
   if(bicycle){wheel(0,.65);const front=wheel(0,-.65);cube(group,color,0,.62,0,.1,.1,1.3);cube(group,color,0,.8,.2,.1,.5,.1);cube(group,'#243848',0,1.05,.2,.3,.08,.35);cube(front,color,0,.66,.07,.07,.75,.07);cube(front,'#435962',0,1.03,.05,.6,.07,.07);
   }else{cube(group,color,0,.5,0,1.6,.8,3.2);cube(group,'#769eaf',0,1.08,0,1.38,.65,1.65);cube(group,color,0,1.43,0,1.45,.12,1.8);for(const x of [-.83,.83])for(const z of [-1,1])wheel(x,z);for(const x of [-.5,.5])cube(group,'#fff0b4',x,.65,-1.63,.28,.2,.06);}
-  let pilot;if(bicycle){pilot=new THREE.Group();cube(pilot,'#f2dc97',0,1.48,.12,.42,.52,.28);cube(pilot,'#dfb28d',0,1.9,.06,.31,.31,.3);cube(pilot,'#eef1ed',0,2.08,.06,.38,.16,.36);for(const side of [-1,1]){cube(pilot,'#40586b',side*.15,.96,.12,.16,.55,.2);const arm=cube(pilot,'#f2dc97',side*.22,1.47,-.2,.13,.47,.15);arm.rotation.x=-.8;}group.add(pilot);pilot.visible=false;}
-  const v={kind,root:group,pilot,wheels,steerRigs,speed:0,throttle:0,steering:0,steerAngle:0,gear:2,yaw:0,halfWidth:bicycle?.42:.88,halfLength:bicycle?.8:1.65,maxSpeed:bicycle?11:19};vehicles.push(v);return v;
+  let pilot,pedaling;if(bicycle){pilot=new THREE.Group();cube(pilot,'#f2dc97',0,1.48,.12,.42,.52,.28);cube(pilot,'#dfb28d',0,1.9,.06,.31,.31,.3);cube(pilot,'#eef1ed',0,2.08,.06,.38,.16,.36);const legs=[];for(const side of [-1,1]){legs.push(cube(pilot,'#40586b',side*.15,.96,.12,.16,.55,.2));const arm=cube(pilot,'#f2dc97',side*.22,1.47,-.2,.13,.47,.15);arm.rotation.x=-.8;}pedaling=createBicyclePedaling({legs,makePart:(...args)=>cube(pilot,...args)});group.add(pilot);pilot.visible=false;}
+  const v={kind,root:group,pilot,pedaling,wheels,steerRigs,speed:0,throttle:0,steering:0,steerAngle:0,gear:2,yaw:0,halfWidth:bicycle?.42:.88,halfLength:bicycle?.8:1.65,maxSpeed:bicycle?11:19};vehicles.push(v);return v;
  }
  function parking(kind,x,z){const width=kind==='car'?.88:.42,length=kind==='car'?1.65:.8;return safeLanding(world,{x,y:26,z},(x,y,z)=>{
   for(const dx of [-width,0,width])for(const dz of [-length,0,length])if(roadContains(x+dx,z+dz)||blocked(x+dx,y,z+dz)||!world.get(Math.floor(x+dx),25,Math.floor(z+dz)))return true;
@@ -42,7 +43,7 @@ export function createCommute({scene,world,civil,activity,getPos,blocked,exitBlo
    const x=p.x-Math.sin(v.yaw)*distance,z=p.z-Math.cos(v.yaw)*distance;
    const bridge=nanpuFloor(world,x,z),y=[...(bridge!==null&&Math.abs(p.y-bridge)<1.5?[bridge]:[]),p.y,p.y+1,p.y-1,p.y-2].find(y=>bodyClear(v,x,y,z,v.yaw)&&[-v.halfWidth,v.halfWidth].every(side=>{const xx=x+Math.cos(v.yaw)*side,zz=z-Math.sin(v.yaw)*side,h=nanpuFloor(world,xx,zz);return h!==null&&Math.abs(h-y)<1.5||world.get(Math.floor(xx),Math.round(y)-1,Math.floor(zz));}));
    if(y===undefined){if(Math.abs(distance)>.00001)hit(v,x,p.y,z,v.yaw);}else p.set(x,y,z);
-   const travel=p.distanceTo(before)*Math.sign(distance);for(const wheel of v.wheels)wheel.rotation.x-=travel/(v.kind==='bicycle'?.32:.28);
+   const travel=p.distanceTo(before)*Math.sign(distance);v.pedaling?.advance(travel);for(const wheel of v.wheels)wheel.rotation.x-=travel/(v.kind==='bicycle'?.32:.28);
   }
   for(const rig of v.steerRigs)rig.rotation.y=v.steerAngle;v.shock=THREE.MathUtils.damp(v.shock??0,0,7,dt);const p=v.root.position,front=nanpuFloor(world,p.x-Math.sin(v.yaw),p.z-Math.cos(v.yaw)),back=nanpuFloor(world,p.x+Math.sin(v.yaw),p.z+Math.cos(v.yaw)),slope=front!==null&&back!==null?Math.atan2(front-back,2):0;v.root.rotation.x=slope+(v.brake?-.045:v.throttle*.025)+Math.sin((v.shock??0)*30)*(v.shock??0)*.05;v.root.rotation.z=v.kind==='bicycle'?-v.steering*Math.min(.12,Math.abs(v.speed)*.018):0;
  }
