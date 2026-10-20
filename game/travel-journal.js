@@ -19,7 +19,7 @@ export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onRe
   content.append(el('small',info.complete?'这一程已完成，城市依旧等你探索':'每一步发现，都随当前存档记下'),el('h3',{stamps:'把地名走成记忆',people:'这座城，有人对你说过',photos:'留住自己眼中的上海',memories:'下一次，不必照着地图走'}[category]));
   if(info.replaying)button(content,'结束重游，保留通关进度',()=>{close(false);onStopReplay();});
   if(category==='stamps'){
-   const grid=el('div',null,'travel-stamps');for(const stamp of TRAVEL_STAMPS){const earned=journal.stamps.includes(stamp.id),card=el('article',null,'travel-stamp'+(earned?' earned':''));card.append(el('span',stamp.mark,'travel-seal'),el('strong',stamp.name),el('p',earned?stamp.note:'未发现 · '+stamp.note));grid.append(card);}content.append(grid);
+   const grid=el('div',null,'travel-stamps');for(const stamp of TRAVEL_STAMPS){const earned=journal.stamps.includes(stamp.id),card=el('article',null,'travel-stamp'+(earned?' earned':''));const art=el('img',null,'travel-stamp-art');art.src='./assets/journey/stamps/'+stamp.id+'.svg';art.alt=({bund:'外滩钟楼、和平饭店与江上游船',nanjing:'南京路街面店招与漫步的人',lujiazui:'东方明珠和陆家嘴三件套',sky:'上海中心与云端城市',garden:'豫园亭阁、飞檐和拱桥',window:'月洞窗里的亭台竹石',gallery:'水上长廊与锦鲤',tea:'湖心亭与临水热茶'})[stamp.id];art.width=art.height=240;art.loading='lazy';card.append(art,el('small',earned?'已收集':'尚未发现','travel-stamp-status'),el('strong',stamp.name),el('p',stamp.note));grid.append(card);}content.append(grid);
    content.append(el('p','附近的发现：'+(info.nearby??'继续走走，I 看当前目标；靠近人物或柜台按 V。'),'travel-journal-tip'));
   }else if(category==='people'){
    content.append(el('small',`已收录 ${journal.messages.length} / 32 段不同留言`));
