@@ -21,3 +21,5 @@ body.in-journey-film .hud *{visibility:hidden!important}
 
 /* Original Shanghai landmark illustrations; static menu images only. */
 .travel-stamp{padding:8px 6px 14px;opacity:1}.travel-stamp-art{display:block;width:min(100%,164px);height:auto;aspect-ratio:1;margin:0 auto 8px;filter:grayscale(.9);opacity:.4;transform:rotate(-3deg)}.travel-stamp:nth-child(2n) .travel-stamp-art{transform:rotate(3deg)}.travel-stamp.earned .travel-stamp-art{filter:none;opacity:1}.travel-stamp-status{display:block;font-size:10px;color:#a5b5ac;letter-spacing:.12em;margin:0 0 5px}.travel-stamp.earned .travel-stamp-status{color:#e3c68c}.travel-stamp strong{display:block}.travel-stamp p{margin:7px 0 0;font-size:12px;line-height:1.65}@media(max-width:650px){.travel-stamp-art{width:min(100%,138px)}.travel-stamp p{font-size:11px}}
+/* Mode changes remain reachable on touchscreens and in the in-game settings. */
+#survival-toggle,#settings-mode-toggle{min-height:44px;padding:10px 15px;border:1px solid #d4c08a88;border-radius:8px;background:#cfbe8c20;color:#f5e5b5;font-weight:600}.settings-group #settings-play-mode{align-self:center;font-size:14px}

@@ -26,6 +26,7 @@ try{
  }
  assert(wood>=10&&stone>=12,'The actual life island must supply wood and shallow mineable stone');
  for(const [type,x,z]of [['campfire',126,315],['bed',130,315],['planter',134,315]]){assert(!overlaps(world,x+.5,26,z+.5)&&world.get(x,25,z));life.state.held=type;life.place({x,y:26,z});assert.equal(life.state.furniture.at(-1)?.type,type,'The real camp must accept '+type);}
+ const inventory=JSON.stringify(life.state.bag),furniture=life.state.furniture.length;nodes.get('settings-mode-toggle').onclick();assert(life.state.survival);assert.equal(nodes.get('survival-toggle').textContent,'切换创造模式');nodes.get('survival-toggle').onclick();assert(!life.state.survival);assert.equal(nodes.get('settings-mode-toggle').textContent,'切换生存模式');assert.equal(JSON.stringify(life.state.bag),inventory);assert.equal(life.state.furniture.length,furniture);
  const near=scene.children.filter(r=>Math.hypot(r.position.x-camp.x,r.position.z-camp.z)<35);
  assert(near.some(r=>r.children.some(m=>m.material?.color?.getHex()===0xeae6d3)),'Sheep must exist near the camp');
  assert(near.some(r=>r.children.some(m=>m.material?.color?.getHex()===0x4d874c)),'Berry bushes must exist near the camp');
