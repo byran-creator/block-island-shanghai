@@ -21,5 +21,19 @@ assert.equal(planTutorialRoute({get:()=>0},{x:-160,y:26,z:66},{x:-172,y:26,z:66}
 const rampStart={x:-134,y:25.4444444444,z:61.35},rampGoal={x:-116,y:16,z:61.35},ramp=planTutorialRoute(world,rampStart,rampGoal);assert(ramp?.length>10);assert(ramp.some(p=>p.y<24&&p.y>17));for(let i=1;i<ramp.length;i++)assert(tutorialSegment(world,ramp[i-1],ramp[i]));
 const rampArrows=tutorialRoutePrefix(world,rampStart,ramp);assert(rampArrows.points.some(p=>p.pitch<-.1),'Sloping arrows tilt with the down escalator');
 const obstructed=tutorialRoutePrefix(world,start,route,{blocked:(x,y,z)=>x<33,canCross:()=>true});assert(obstructed.invalid);assert(obstructed.points.every(p=>p.x>=33),'A new player-built obstruction is checked before showing the next arrow');
+// Chapters 4/5 reuse the existing forecourts, tower lift and both station levels.
+const cityLegs=[
+ ['3号口到职员',{x:206,y:26,z:24},{x:194,y:26,z:51}],
+ ['职员到工牌',{x:194,y:26,z:51},{x:194.5,y:26,z:54.5}],
+ ['工牌到游客',{x:194.5,y:26,z:54.5},{x:203,y:26,z:100}],
+ ['游客到观光电梯',{x:203,y:26,z:100},{x:189.5,y:26,z:103.5}],
+ ['观景台返回电梯',{x:190,y:136,z:110},{x:189.5,y:136,z:106.5}],
+ ['地面电梯返回站口',{x:189.5,y:26,z:103.5},{x:205,y:26,z:24}],
+ ['陆家嘴下行入口扶梯',{x:204,y:25.444444444,z:24},{x:187,y:16,z:24}],
+ ['陆家嘴站台上行扶梯',{x:180,y:6,z:34},{x:161,y:16,z:34}],
+ ['南京东路站台返回站厅',{x:-70,y:6,z:69},{x:-107,y:16,z:69}],
+];
+for(const [name,a,b]of cityLegs){const path=planTutorialRoute(world,a,b);assert(path?.length>1,name+' has a supported walking route');for(let i=1;i<path.length;i++)assert(tutorialSegment(world,path[i-1],path[i]),name+' has no wall, void or unsupported level jump');assert(tutorialRoutePrefix(world,a,path,{canCross:()=>true}).points.length>0,name+' shows nearby arrows');}
+assert.equal(planTutorialRoute(world,{x:189.5,y:136,z:106.5},{x:189.5,y:26,z:103.5}),null,'The lift is an interaction, not a route through the floors');
 const html=readFileSync('game/index.html','utf8');assert(/id="start-survival"[^>]*hidden[^>]*display:none/.test(html));assert(html.includes('id="survival-toggle"'));assert(/id="tracked-arrow"[^>]*><svg/.test(html));assert(!html.includes('id="tracked-arrow">▲'));
 console.log(JSON.stringify({passed:true,routePoints:route.length,searchSlices:turns,maxSliceMilliseconds:maxSlice,escalatorPoints:ramp.length,groundArrows:6,desktopDuplicateEntryHidden:true}));
