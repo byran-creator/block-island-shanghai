@@ -1,10 +1,11 @@
 import {TRAVEL_STAMPS} from './travel-journal-state.js';
+import {TRAVEL_DISCOVERIES} from './travel-discoveries.js';
 import {travelPhoto,travelThumbnail,removeTravelPhoto} from './travel-photo-store.js';
 import {itemImage,collectibleKey} from './item-catalog.js';
 import {SHOP_PRODUCTS} from './city-products.js';
 
 export function photoPlace(p){return p.x>125&&p.z<210?'陆家嘴 · '+(p.y>50?'云端一眼':'楼下的风'):p.x<40&&p.z>205&&p.z<340?'豫园 · 曲径与灯火':p.x<-10&&Math.abs(p.z-66)<12?'南京路 · 街头一刻':'外滩 · 江的两岸';}
-export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onReplay=()=>{},onFilm=()=>{},onStopReplay=()=>{},notify=()=>{}}){
+export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onReplay=()=>{},onFilm=()=>{},onStopReplay=()=>{},onFollow=()=>{},notify=()=>{}}){
  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
  const panel=el('dialog',null,'game-dialog travel-journal');panel.id='travel-journal';panel.setAttribute('aria-labelledby','travel-journal-title');
  const header=el('header'),heading=el('div'),title=el('h2','上海旅行手账');title.id='travel-journal-title';heading.append(el('small','SHANGHAI / 把这一程收好'),title);const exit=el('button','返回游戏');header.append(heading,exit);
@@ -15,12 +16,17 @@ export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onRe
  function button(parent,text,action){const b=el('button',text);b.onclick=action;parent.append(b);return b;}
  async function render(){
   release();const token=generation,info=getInfo(),journal=info.journal;content.replaceChildren();nav.replaceChildren();
-  for(const [id,label]of [['stamps','旅途印章'],['people','人物留言'],['photos','我的相片'],['memories','纪念与重游']]){const b=button(nav,label,()=>{category=id;render();});b.setAttribute('aria-current',String(id===category));}
-  content.append(el('small',info.complete?'这一程已完成，城市依旧等你探索':'每一步发现，都随当前存档记下'),el('h3',{stamps:'把地名走成记忆',people:'这座城，有人对你说过',photos:'留住自己眼中的上海',memories:'下一次，不必照着地图走'}[category]));
+  for(const [id,label]of [['stamps','旅途印章'],['discoveries','城市余韵'],['people','人物留言'],['photos','我的相片'],['memories','纪念与重游']]){const b=button(nav,label,()=>{category=id;render();});b.setAttribute('aria-current',String(id===category));}
+  content.append(el('small',info.complete?'这一程已完成，城市依旧等你探索':'每一步发现，都随当前存档记下'),el('h3',{stamps:'把地名走成记忆',discoveries:'留三页空白，等下一次相遇',people:'这座城，有人对你说过',photos:'留住自己眼中的上海',memories:'下一次，不必照着地图走'}[category]));
   if(info.replaying)button(content,'结束重游，保留通关进度',()=>{close(false);onStopReplay();});
   if(category==='stamps'){
+   const found=journal.discoveries.length;content.append(el('p',`城市余韵 ${found} / ${TRAVEL_DISCOVERIES.length} · 雨天的园林、夜晚的浦江、一位陌生人的上海故事。没有时限，也不影响通关。`,'travel-journal-tip'));button(content,'翻开尚未发现的城市余韵',()=>{category='discoveries';render();});
    const grid=el('div',null,'travel-stamps');for(const stamp of TRAVEL_STAMPS){const earned=journal.stamps.includes(stamp.id),card=el('article',null,'travel-stamp'+(earned?' earned':''));const art=el('img',null,'travel-stamp-art');art.src='./assets/journey/stamps/'+stamp.id+'.svg';art.alt=({bund:'外滩钟楼、和平饭店与江上游船',nanjing:'南京路街面店招与漫步的人',lujiazui:'东方明珠和陆家嘴三件套',sky:'上海中心与云端城市',garden:'豫园亭阁、飞檐和拱桥',window:'月洞窗里的亭台竹石',gallery:'水上长廊与锦鲤',tea:'湖心亭与临水热茶'})[stamp.id];art.width=art.height=240;art.loading='lazy';card.append(art,el('small',earned?'已收集':'尚未发现','travel-stamp-status'),el('strong',stamp.name),el('p',stamp.note));grid.append(card);}content.append(grid);
    content.append(el('p','附近的发现：'+(info.nearby??'继续走走，I 看当前目标；靠近人物或柜台按 V。'),'travel-journal-tip'));
+  }else if(category==='discoveries'){
+   content.append(el('p','换一个天气、一个时刻，或再听一个人的故事。它们不要求全部收集；想回来时，再续这一页。设置可调整天气和时间，不必原地等待。'));
+   for(const d of TRAVEL_DISCOVERIES){const earned=journal.discoveries.includes(d.id),card=el('article',null,'travel-discovery'+(earned?' earned':'')),art=el('img');art.src='./assets/journey/stamps/'+d.art+'.svg';art.alt=d.name+' · 原创上海旅途图章';art.width=art.height=120;art.loading='lazy';const copy=el('div');copy.append(el('small',earned?'已留下这一页':'尚未发现 · 可选探索'),el('h4',d.name),el('p',d.place,'travel-discovery-place'),el('p',earned?d.note:d.hint));if(!earned){if(d.id==='stranger-story'){if(info.replayCount>=4)button(copy,'重游第4章 · 听他的故事',()=>{close(false);onReplay(3);});else copy.append(el('small','先沿主线到陆家嘴，第4章会介绍这位职员。'));}else if(info.unlocked||info.complete)button(copy,info.following===d.id?'正在追踪 · 返回游戏':('追踪这页发现'),()=>{onFollow(d.id);close();});else copy.append(el('small','完成前两章后，可自由追踪这页发现。'));}card.append(art,copy);content.append(card);}
+   if(info.following)button(content,'收起探索目标 · 自由漫步',()=>{onFollow(null);render();});
   }else if(category==='people'){
    content.append(el('small',`已收录 ${journal.messages.length} / 32 段不同留言`));
    if(!journal.messages.length)content.append(el('p','与人物聊完一段话，这里就会留下他的声音。靠近按 V，选一个话题，读完后再继续。'));

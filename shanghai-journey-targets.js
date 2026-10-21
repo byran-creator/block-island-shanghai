@@ -5,7 +5,7 @@ import {METRO_HALL,METRO_STATIONS,metro2RampAt} from './metro-layout.js';
 import {JIUQU_BRIDGE,INNER_GARDEN_PATH} from './yuyuan-layout.js';
 import {JOURNEY_ACTORS} from './shanghai-journey-content.js';
 import {LANDMARKS} from './world.js';
-const goal=(p,label,instruction)=>({...p,label,instruction});
+const goal=(p,label,instruction,extra={})=>({...p,label,instruction,...extra});
 export const GALLERY_JOURNEY_ROUTE=[[-46,256.5],[-54,257.5],[-54,264],[-57.5,279.5],[-68,288.5],[-68,295],[-66,295],[-66,296],[-61.5,297.4],[-56.5,298.4],[-51,297.8]];
 export const GALLERY_EXIT_ROUTE=[...GALLERY_JOURNEY_ROUTE.slice(2).reverse(),[-60,264],[-68,265],[-77,265]];
 function followRoute(p,route,label,instruction){let best=Infinity,index=1;for(let i=1;i<route.length;i++){const a=route[i-1],b=route[i],dx=b[0]-a[0],dz=b[1]-a[1],u=Math.max(0,Math.min(1,((p.x-a[0])*dx+(p.z-a[1])*dz)/(dx*dx+dz*dz||1))),d=Math.hypot(p.x-a[0]-dx*u,p.z-a[1]-dz*u);if(d<best){best=d;index=i;}}if(Math.hypot(p.x-route[index][0],p.z-route[index][1])<.8)index=Math.min(index+1,route.length-1);return goal({x:route[index][0],y:26,z:route[index][1]},label,instruction);}
@@ -38,7 +38,7 @@ function leaveLujiazui(ctx){
 export function shanghaiJourneyTarget(state,ctx){
  if(state.phase!=='journey'||!state.tracked||!ctx?.pos)return null;
  const c=state.chapter;
- if(c.id==='letter')return goal(JOURNEY_ACTORS.lin,'林阿姨 · 外滩志愿者','WASD 走近林阿姨，鼠标环顾；距离三米内按 V。');
+ if(c.id==='letter')return goal(JOURNEY_ACTORS.lin,'林阿姨 · 外滩志愿者',ctx.touch?'轻推左下角摇杆，跟着黄色方向走近林阿姨；右侧滑动环顾，近旁点「互动 V」。':'WASD 跟随黄色方向走近林阿姨，鼠标环顾；近旁按 V。',{arriveRadius:2.8,arrivalAction:'talk'});
  if(c.id==='taste')return questTarget('shop',ctx);
  if(c.id==='lujiazui-metro'||c.id==='return-nanjing'){
   if(ctx.pos.y>40)return goal({...LANDMARKS.skyDeck},'上海中心 · 返回观光电梯','按 V 打开观光电梯，选择回到地面，再前往陆家嘴站。');

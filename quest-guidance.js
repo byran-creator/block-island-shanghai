@@ -62,8 +62,8 @@ export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,tra
  return null;
 }
 
-export function drawQuestTarget(ctx,goal,size,min,worldSize){
- if(!goal)return;const x=(goal.x-min)/worldSize*size,y=(goal.z-min)/worldSize*size,r=size>=400?11:6;
+export function drawQuestTarget(ctx,goal,size,min,worldSize,pos=null){
+ if(!goal)return;const rawX=(goal.x-min)/worldSize*size,rawY=(goal.z-min)/worldSize*size,x=size>=400?rawX:Math.max(12,Math.min(size-12,rawX)),y=size>=400?rawY:Math.max(12,Math.min(size-12,rawY)),r=size>=400?11:6;if(size<400){if(pos){ctx.strokeStyle='#ffd45e88';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo((pos.x-min)/worldSize*size,(pos.z-min)/worldSize*size);ctx.lineTo(x,y);ctx.stroke();}ctx.strokeStyle='#ffe69b';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.stroke();}
  ctx.fillStyle='#ffd45e';ctx.strokeStyle='#1c333b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-r);ctx.lineTo(x+r,y);ctx.lineTo(x,y+r);ctx.lineTo(x-r,y);ctx.closePath();ctx.fill();ctx.stroke();
  if(size>=400){ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeText('追踪：'+goal.label,x,y-14);ctx.fillStyle='#ffe99c';ctx.fillText('追踪：'+goal.label,x,y-14);}
 }
