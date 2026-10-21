@@ -1,3 +1,6 @@
+import {createMobileLayout} from './mobile-layout.js';
+import {createTouchMovement,movementAxes} from './touch-movement.js';
+import {renderProfile,createFramePacer,needsChunkPlan,mobileChunkDistances} from './mobile-performance.js';
 import {createTowerInteriors} from './tower-interiors.js';
 import {createPhotoMode} from './photo-mode.js';
 import {createNanjingBakedLight} from './nanjing-baked-light.js';
@@ -52,7 +55,7 @@ import {swimVelocity,isSwimming,movementSpeed} from './survival-state.js';
 import {VoxelWorld,SIZE,WORLD_MIN,WORLD_MAX,HEIGHT,CHUNK,BLOCKS,overlaps,trace,LANDMARKS,COURSE,courseById,WORLD_SHIFT,WATER_LEVEL} from './world.js';
 const $=id=>document.getElementById(id),canvas=$('world');canvas.tabIndex=0;
 const hudText=(id,text)=>{const node=$(id);if(node&&node.textContent!==text)node.textContent=text;};
-let bootReady=false;
+let bootReady=false,mobileLayout,touchMovement;
 async function loadingStage(message){
  hudText('play',message);
  // Let the loading message paint between the existing construction stages.
@@ -62,44 +65,29 @@ async function loadingStage(message){
 document.body.classList.add('in-menu');
 let touch=('ontouchstart' in window)||(navigator.maxTouchPoints>0)||matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 function updateOrientationUI(){
- const isForced=document.body.classList.contains('force-landscape');
+ const isForced=document.body.classList.contains('force-landscape'),landscapePreferred=mobileLayout?.landscape??isForced;
  const portrait=!isForced&&(window.innerHeight>window.innerWidth);
  const tip=$('orientation-tip');
  if(tip)tip.hidden=!touch||!portrait||tip.dataset.dismissed==='true';
  const fsBtn=$('mobile-fullscreen');
  if(fsBtn){
   fsBtn.hidden=!touch;
-  fsBtn.textContent=isForced?'📱 竖屏':'📱 横屏';
-  fsBtn.title=isForced?'切回竖屏模式':'切换横屏模式';
+  fsBtn.textContent=landscapePreferred?'📱 竖屏':'📱 横屏';
+  fsBtn.title=landscapePreferred?'切回竖屏模式':'切换横屏模式';
  }
  const menuFs=$('mobile-menu-fullscreen');
- if(menuFs)menuFs.textContent=isForced?'📱 切回竖屏模式':'📱 切换横屏模式';
+ if(menuFs)menuFs.textContent=landscapePreferred?'📱 切回竖屏模式':'📱 切换横屏模式';
 }
 function setForceLandscape(enable){
- document.body.classList.toggle('force-landscape',Boolean(enable));
+ if(mobileLayout)mobileLayout.setLandscape(enable);else document.body.classList.toggle('force-landscape',Boolean(enable));
  onResize();
 }
 function toggleForceLandscape(){
- setForceLandscape(!document.body.classList.contains('force-landscape'));
+ setForceLandscape(!(mobileLayout?.landscape??document.body.classList.contains('force-landscape')));
 }
 async function toggleLandscapeFullscreen(){
- try{
-  const docEl=document.documentElement;
-  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
-   if(docEl.requestFullscreen)await docEl.requestFullscreen().catch(()=>{});
-   else if(docEl.webkitRequestFullscreen)await docEl.webkitRequestFullscreen().catch(()=>{});
-  }
-  if(screen.orientation?.lock){
-   await screen.orientation.lock('landscape').catch(()=>{});
-  }
- }catch(err){
-  console.warn('Fullscreen/landscape lock failed or not supported:',err);
- }
- if(window.innerHeight>window.innerWidth){
-  toggleForceLandscape();
- }else{
-  document.body.classList.remove('force-landscape');
- }
+ toggleForceLandscape();
+ if(mobileLayout?.landscape)await mobileLayout.requestNative();
  onResize();
 }
 $('tip-fullscreen-btn')?.addEventListener('click',()=>{
@@ -117,18 +105,22 @@ function enableTouch(){
  touch=true;
  document.body.classList.add('touch');
  if($('run-status'))$('run-status').hidden=true;
- if($('device-note'))$('device-note').textContent='左侧 WASD 方向移动 · 右侧滑动环顾视角';
+ if($('device-note'))$('device-note').textContent='左下角移动 · 右侧滑动环顾视角';
  updateOrientationUI();
 }
 if(touch)enableTouch();
 window.addEventListener('touchstart',enableTouch,{once:true,passive:true});
 const isWeChat=typeof navigator!=='undefined'&&/MicroMessenger/i.test(navigator.userAgent);
 const isMobile=Boolean(touch||(typeof navigator!=='undefined'&&/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)));
+let deviceStorage;try{deviceStorage=localStorage;}catch{}
+if(isMobile){mobileLayout=createMobileLayout({body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage:deviceStorage});updateOrientationUI();}
+let mobileQuality='smooth';try{if(localStorage.getItem('block-island-mobile-quality-v1')==='clear')mobileQuality='clear';}catch{}
+const mobilePacer=createFramePacer();
 let renderer;
 try{
  renderer=new THREE.WebGLRenderer({
   canvas,
-  antialias:true,
+  antialias:!isMobile,
   powerPreference:'high-performance',
   logarithmicDepthBuffer:true,
   precision:'highp'
@@ -137,13 +129,14 @@ try{
  renderer=new CanvasRenderer({canvas});
  $('render-mode').textContent='兼容画质 · 无需显卡加速';
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
-renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}).pixelRatio);
+const initialForced=document.body.classList.contains('force-landscape');
+renderer.setSize(initialForced?innerHeight:innerWidth,initialForced?innerWidth:innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 if(isMobile&&$('render-mode'))$('render-mode').textContent=isWeChat?'微信触控模式':'移动端触控模式';
 let streetBounce=null,photo=null,rainCrowd=null;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a0d6ed');scene.fog=new THREE.Fog('#a0d6ed',isMobile?36:48,isMobile?150:190);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.35,270);camera.rotation.order='YXZ';
+const camera=new THREE.PerspectiveCamera(72,initialForced?innerHeight/innerWidth:innerWidth/innerHeight,0.35,270);camera.rotation.order='YXZ';
 const ambient=new THREE.HemisphereLight('#fff9dd','#6d9277',1.6);scene.add(ambient);
 const sun=new THREE.DirectionalLight('#fff0c7',1.5);sun.position.set(-20,65,30);scene.add(sun);
 const world=await loadWorld(message=>{$('play').textContent=message;}),initialWorld=createWorldBaseline(world.data),savedEdits=new Map();let adventure,saves,life,skyline,civil,weather,restaurant,activity,commute,npcGuides,metro,quests,handbook,yuyuan,story;let runLocked=false,isScrubbingTime=false;
@@ -177,8 +170,9 @@ function installChunk(key,{p,norm,uv,col,indices}){
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(p,3));geo.setAttribute('normal',new THREE.BufferAttribute(norm,3));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(indices,1));geo.computeBoundingSphere();
  const mesh=new THREE.Mesh(geo,terrainMaterial);streetBounce?.bakeMesh(mesh);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;if(old){scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);
 }
-function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',').map(Number);const maxRetain=isMobile?4:6;if(Math.abs(x-cx)<=maxRetain&&Math.abs(z-cz)<=maxRetain)return true;if(!isMobile&&x>=7&&x<=18&&z>=1&&z<=14)return true;const chunkX=(x+.5)*CHUNK,chunkZ=(z+.5)*CHUNK;const buildings=nearbyBuildings||ALL_BUILDINGS;if(buildings.some(b=>Math.abs(chunkX-b.x)<24&&Math.abs(chunkZ-b.z)<24&&(!nearbyBuildings||Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?220:315))))return true;if(Object.values(CITY).some(p=>Math.abs(chunkX-p.x)<28&&Math.abs(chunkZ-p.z)<28&&Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?260:380)))return true;return false;}
-function ensureChunks(point,force=false,immediate=false){const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();const lookRadius=isMobile?4:5,maxDist=isMobile?240:360;for(let x=cx-lookRadius;x<=cx+lookRadius;x++)for(let z=cz-lookRadius;z<=cz+lookRadius;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<maxDist)for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<(isMobile?240:340))for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<maxDist)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<maxDist){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?260:380));for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}chunkWork.setDesired(needed,point,CHUNK,force);const isSkylineChunk=(x,z)=>(x>=7&&x<=18&&z>=1&&z<=14)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate)for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);const maxImmediate=isMobile?1:3;if(!force&&(Math.abs(x-cx)>maxImmediate||Math.abs(z-cz)>maxImmediate)&&(isMobile||!isSkylineChunk(x,z)))continue;rebuild(x,z);}}
+function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',').map(Number);const maxRetain=isMobile?4:6;if(Math.abs(x-cx)<=maxRetain&&Math.abs(z-cz)<=maxRetain)return true;if(isMobile)return false;if(!isMobile&&x>=7&&x<=18&&z>=1&&z<=14)return true;const chunkX=(x+.5)*CHUNK,chunkZ=(z+.5)*CHUNK;const buildings=nearbyBuildings||ALL_BUILDINGS;if(buildings.some(b=>Math.abs(chunkX-b.x)<24&&Math.abs(chunkZ-b.z)<24&&(!nearbyBuildings||Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?220:315))))return true;if(Object.values(CITY).some(p=>Math.abs(chunkX-p.x)<28&&Math.abs(chunkZ-p.z)<28&&Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?260:380)))return true;return false;}
+let lastChunkPlan=null;
+function ensureChunks(point,force=false,immediate=false){if(isMobile&&!needsChunkPlan(lastChunkPlan,point,force,immediate))return;lastChunkPlan={x:point.x,z:point.z};const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();const lookRadius=isMobile?mobileChunkDistances.nearRadius:5,maxDist=isMobile?mobileChunkDistances.buildingRange:360;for(let x=cx-lookRadius;x<=cx+lookRadius;x++)for(let z=cz-lookRadius;z<=cz+lookRadius;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?mobileChunkDistances.landmarkRange:maxDist))for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<(isMobile?240:340))for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<maxDist)for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<maxDist){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?260:380));for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);}chunkWork.setDesired(needed,point,CHUNK,force);const isSkylineChunk=(x,z)=>(x>=7&&x<=18&&z>=1&&z<=14)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate)for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);const maxImmediate=isMobile?1:3;if(!force&&(Math.abs(x-cx)>maxImmediate||Math.abs(z-cz)>maxImmediate)&&(isMobile||!isSkylineChunk(x,z)))continue;rebuild(x,z);}}
 
 await Promise.race([new Promise(requestAnimationFrame),new Promise(r=>setTimeout(r,60))]);
 if($('play'))$('play').textContent='正在加载地貌与建筑…';
@@ -192,6 +186,7 @@ let pendingMine=null,gliding=false;
 let selected=1,active=false,started=false,flying=false,grounded=false,vy=0,yaw=0,pitch=0,sound=true,audioCtx=null,target=null,mined=0,placed=0;
 let dragMode=false,fallback=false,dragging=false,lookPointer=null,lastLook=null,mouseHeld=-1,lastAction=0,toastTimer;
 const pos={...LANDMARKS.bund},keys=new Set(),direction=new THREE.Vector3(),pressedAt=new Map(),releaseAt=new Map();
+const inputKeys={has:key=>keys.has(key)||!!touchMovement?.has(key),axes:()=>movementAxes(keys,touchMovement?.vector)};
 await loadingStage('正在准备外滩街景与交通…');
 civil=createBund({scene,world,getPos:()=>pos,getObstacles:()=>[...(commute?.vehicles??[]),...(npcGuides?.actors.filter(a=>a.person)??[]),...(activity?.bundWalkers?.map(b=>({root:b.root,person:true}))??[])],notify,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;}});weather=createWeather({scene,camera,world,sunBlock,clouds,cloudMat,bellyMat,water,terrainMaterial});
 let timeOptions=clockOptions(),lastClockLabel='';
@@ -246,10 +241,10 @@ for(let id=1;id<BLOCKS.length;id++){
 function select(id,clearHeld=true){uiClick();if(clearHeld)life?.clearHeld();selected=id;$('selected-name').textContent=BLOCKS[id].name;[...$('hotbar').children].forEach((e,i)=>{e.classList.toggle('active',i===id-1);e.setAttribute('aria-pressed',i===id-1?'true':'false')});}
 function respawn(){adventure?.cancelRace();const home=life?.home();if(home&&!collides(home.x,home.y,home.z))teleport(home);else teleport(LANDMARKS.village);vy=0;yaw=0;pitch=-.08;notify(home?'已回到床旁':'已回到出生点');}
 function toggleFly(){if(metro?.seat())return;if(commute?.isRiding()){notify('先按 V 离开载具，再切换飞行。');return;}if(life?.state.survival){notify('生存模式无法飞行；可以在暂停菜单切回创造模式。');return;}if(adventure?.state.race){notify('跑酷中暂时不能飞行，按 V 退出挑战。');return;}setFlight(!flying);notify(flying?'飞行模式开启 · 可点击“上升”与“下降”按键升降':'飞行模式已关闭');}
-function openMenu(){story?.suspend();refreshTimeControls();sceneAudio.suspend();metro?.suspend();if(active)saves?.save('auto');pendingMine=null;active=false;keys.clear();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;$('menu').classList.remove('hidden');document.body.classList.add('in-menu');$('menu-title').innerHTML=started?'歇一会儿。<br><em>世界在等你。</em>':'你的世界。<br><em>由你搭建。</em>';$('menu-description').innerHTML=started?`已挖掘 ${mined} 块 · 已放置 ${placed} 块<br>你的下一座建筑，会是什么？`:'初到上海，从一张明信片开始。<br>逛南京路，过江看陆家嘴，再到豫园喝一杯茶。';$('play').innerHTML=(started?'继续探索':'开启上海之旅')+'';$('play').focus();}
+function openMenu(){story?.suspend();refreshTimeControls();sceneAudio.suspend();metro?.suspend();if(active)saves?.save('auto');pendingMine=null;active=false;keys.clear();touchMovement?.reset();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;$('menu').classList.remove('hidden');document.body.classList.add('in-menu');$('menu-title').innerHTML=started?'歇一会儿。<br><em>世界在等你。</em>':'你的世界。<br><em>由你搭建。</em>';$('menu-description').innerHTML=started?`已挖掘 ${mined} 块 · 已放置 ${placed} 块<br>你的下一座建筑，会是什么？`:'初到上海，从一张明信片开始。<br>逛南京路，过江看陆家嘴，再到豫园喝一杯茶。';$('play').innerHTML=(started?'继续探索':'开启上海之旅')+'';$('play').focus();}
 function recordCityEvent(e){quests?.record(e);story?.record(e);}
-function enter(){if(!bootReady)return;active=true;if(!started){teleport(LANDMARKS.bund);lookTowards({x:201,y:76,z:88});started=true;}document.body.classList.remove('in-menu');$('menu').classList.add('hidden');beep(1);music.start();sceneAudio.start();if(story?.maybeStart())return;canvas.focus();if(!touch&&!dragMode){try{const result=canvas.requestPointerLock?.();if(result?.catch)result.catch(()=>{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');});if(!canvas.requestPointerLock){fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}catch{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}}
-$('play').onclick=async()=>{if(!bootReady)return;try{const ctx=getAudio();if(ctx&&ctx.state==='suspended')ctx.resume()?.catch(()=>{});music.start();sceneAudio.start();}catch(_){}if(started){enter();return;}$('play').disabled=true;$('play').textContent='正在找回你的小岛…';try{let restored=false;try{restored=await (saves?.continueLatest?.()??Promise.resolve(false));}catch(error){notify(error.message||'存档读取失败，请稍后重试。');return;}if(!restored&&!started)enter();}finally{$('play').disabled=false;$('play').textContent=started?'继续探索':'重试读取存档';}};$('pause').onclick=()=>{document.exitPointerLock?.();openMenu()};$('respawn').onclick=()=>{respawn();enter()};$('sound').onclick=()=>{sound=!sound;music.setSound(sound);if(!sound){story?.suspend();sceneAudio.suspend();metro?.suspend();}$('sound').textContent='声音：'+(sound?'开':'关');$('sound').setAttribute('aria-pressed',String(sound))};
+function enter(){if(!bootReady)return;mobilePacer.reset();active=true;if(!started){teleport(LANDMARKS.bund);lookTowards({x:201,y:76,z:88});started=true;}document.body.classList.remove('in-menu');$('menu').classList.add('hidden');beep(1);music.start();sceneAudio.start();if(story?.maybeStart())return;canvas.focus();if(!touch&&!dragMode){try{const result=canvas.requestPointerLock?.();if(result?.catch)result.catch(()=>{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');});if(!canvas.requestPointerLock){fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}catch{fallback=true;notify('按住鼠标拖动环顾 · Q 挖掘，E 放置');}}}
+$('play').onclick=async()=>{if(!bootReady)return;if(isMobile)void mobileLayout?.requestNative().then(onResize);try{const ctx=getAudio();if(ctx&&ctx.state==='suspended')ctx.resume()?.catch(()=>{});music.start();sceneAudio.start();}catch(_){}if(started){enter();return;}$('play').disabled=true;$('play').textContent='正在找回你的小岛…';try{let restored=false;try{restored=await (saves?.continueLatest?.()??Promise.resolve(false));}catch(error){notify(error.message||'存档读取失败，请稍后重试。');return;}if(!restored&&!started)enter();}finally{$('play').disabled=false;$('play').textContent=started?'继续探索':'重试读取存档';}};$('pause').onclick=()=>{document.exitPointerLock?.();openMenu()};$('respawn').onclick=()=>{respawn();enter()};$('sound').onclick=()=>{sound=!sound;music.setSound(sound);if(!sound){story?.suspend();sceneAudio.suspend();metro?.suspend();}$('sound').textContent='声音：'+(sound?'开':'关');$('sound').setAttribute('aria-pressed',String(sound))};
 let cursorFree=false,settingsPanel;
 function isAnyDialogOpen(){return Boolean($('settings-dialog')?.open||$('tasks-dialog')?.open||quests?.isPanelOpen?.()||npcGuides?.isPanelOpen?.()||activity?.isPanelOpen?.()||restaurant?.isPanelOpen?.()||skyline?.isPanelOpen?.()||life?.isPanelOpen?.()||adventure?.isPanelOpen?.()||document.querySelector?.('dialog[open]'));}
 function setFreeCursor(free){
@@ -312,12 +307,17 @@ document.addEventListener('keydown',e=>{
  if(!e.repeat){if(/^Digit[1-3]$/.test(e.code)&&['bicycle','car'].includes(commute?.ride?.kind))return;if(/^Digit[1-9]$/.test(e.code))select(Number(e.code.at(-1)));if(e.code==='Digit0')select(10);if(e.code==='Minus')select(11);if(e.code==='Equal')select(12);if(e.code==='KeyV')useScene();if(e.code==='KeyP')toggleGlider();if(e.code==='KeyC')life.craft();if(e.code==='KeyZ')life.eat();if(e.code==='KeyL')life.dive();if(e.code==='KeyB')adventure.paint();if(e.code==='KeyM')adventure.map();if(e.code==='KeyK')adventure.launch();if(e.code==='KeyJ'){if(Math.hypot(pos.x-LANDMARKS.tower.x,pos.z-53)<6)adventure.launch();else companions.recall(pos);}if(e.code==='KeyF')toggleFly();if(e.code==='CapsLock'){runLocked=!runLocked;notify(runLocked?'持续跑步已开启；CapsLock 切回步行。':'已切回步行；按住 Shift 跑步。');}if(e.code==='KeyR')respawn();if(e.code==='KeyQ')edit(false);if(e.code==='KeyE')edit(true);if(e.code==='KeyG')interact();if(e.code==='KeyH')interact(true);if(e.code==='KeyT'&&!life.state.survival){dayClock=(Math.floor(dayClock/60)*60+60)%240+15;notify('已切换小岛时间');}}
 });document.addEventListener('keyup',e=>{const remaining=100-(performance.now()-(pressedAt.get(e.code)??0));if(remaining>0)releaseAt.set(e.code,performance.now()+remaining);else keys.delete(e.code)});
 canvas.addEventListener('wheel',e=>{if(active){e.preventDefault();select(((selected-1+(e.deltaY>0?1:11))%12)+1)}},{passive:false});
-window.addEventListener('blur',()=>{keys.clear();mouseHeld=-1;if(active){document.exitPointerLock?.();openMenu()}});
+window.addEventListener('blur',()=>{keys.clear();touchMovement?.reset();mouseHeld=-1;if(active){document.exitPointerLock?.();openMenu()}});
 document.addEventListener('visibilitychange',()=>{music.update({playing:active||story?.filming,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden});if(document.hidden)sceneAudio.suspend();if(document.hidden&&active){document.exitPointerLock?.();openMenu()}});
 for(const btn of document.querySelectorAll('[data-key]')){
  btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.dataset.active='true';btn.setPointerCapture(e.pointerId);keys.add(btn.dataset.key)});
  for(const event of ['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(event,()=>{delete btn.dataset.active;keys.delete(btn.dataset.key)});
 }
+
+const touchStorage=deviceStorage;
+touchMovement=createTouchMovement({pad:$('touch-joystick'),thumb:$('joystick-thumb'),select:$('touch-movement-choice'),body:document.body,storage:touchStorage,enabled:()=>active&&!story?.filming,rotated:()=>document.body.classList.contains('force-landscape'),onMode:mode=>{document.querySelector('.dpad-label').textContent=mode==='joystick'?'滑动移动':'方向键移动';if(touch)$('device-note').textContent=mode==='joystick'?'左下角摇杆移动 · 推远快走、轻推慢走 · 右侧滑动环顾':'左下角方向键移动 · 右侧滑动环顾视角';}});
+$('mobile-quality-choice').value=mobileQuality;
+$('mobile-quality-choice').addEventListener('change',e=>{mobileQuality=e.target.value==='clear'?'clear':'smooth';try{touchStorage?.setItem('block-island-mobile-quality-v1',mobileQuality);}catch{}mobilePacer.reset();onResize();});
 
 for(const id of ['firework-quick','touch-firework','touch-firework-more']){$(id)?.addEventListener('click',()=>adventure?.launch?.());}
 $('touch-fly-more')?.addEventListener('click',toggleFly);
@@ -331,24 +331,24 @@ function collides(x,y,z){return staticCollides(x,y,z)||!!civil?.collides(x,y,z);
 function nearWaterExit(){return [[1.1,0],[-1.1,0],[0,1.1],[0,-1.1]].some(([dx,dz])=>{const x=Math.floor(pos.x+dx),z=Math.floor(pos.z+dz),y=world.get(x,23,z)?24:23;return !!world.get(x,y-1,z)&&!world.get(x,y,z)&&!world.get(x,y+1,z);});}
 function physics(dt){
  if(metro?.isRiding()||metro?.tryBoard()||yuyuan?.isRiding())return;
- const indoorSeat=privateSuites?.isSeated()?privateSuites:towerInteriors?.isSeated()?towerInteriors:null;if(indoorSeat){if(['KeyW','KeyA','KeyS','KeyD','Space'].some(k=>keys.has(k)))indoorSeat.standUp();return;}
+ const indoorSeat=privateSuites?.isSeated()?privateSuites:towerInteriors?.isSeated()?towerInteriors:null;if(indoorSeat){if(['KeyW','KeyA','KeyS','KeyD','Space'].some(k=>inputKeys.has(k)))indoorSeat.standUp();return;}
  if(civil?.isSeated?.()){
-  if(keys.has('KeyW')||keys.has('KeyA')||keys.has('KeyS')||keys.has('KeyD')||keys.has('Space'))civil.standUp();
+  if(inputKeys.has('KeyW')||inputKeys.has('KeyA')||inputKeys.has('KeyS')||inputKeys.has('KeyD')||inputKeys.has('Space'))civil.standUp();
   return;
  }
  const alignedFloor=snapMetroFloor(world,pos,vy,{flying,gliding},(x,z)=>metro?.floorAt(x,z)??yuyuan?.floorAt?.(x,z)??civil?.cruises?.floorAt(x,z,pos.y));if(alignedFloor!==null&&!collides(pos.x,alignedFloor,pos.z)){pos.y=alignedFloor;vy=0;grounded=true;}
  if(adventure?.state.race)gliding=false;
  for(const [key,until] of releaseAt)if(performance.now()>=until){keys.delete(key);releaseAt.delete(key);}
- yaw+=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight')))*dt*1.65;pitch=Math.max(-1.52,Math.min(1.52,pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt*1.2));
- let fw=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),side=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));const length=Math.hypot(fw,side);if(length){fw/=length;side/=length;}
- const shift=keys.has('ShiftLeft')||keys.has('ShiftRight'),swimming=isSwimming({feet:pos.y,dry:metroInterior(pos)});const speed=movementSpeed({flying,gliding,grounded,swimming,equipped:life?.state.equipped,sprint:shift||runLocked,racing:!!adventure?.state.race});
+ yaw+=(Number(inputKeys.has('ArrowLeft'))-Number(inputKeys.has('ArrowRight')))*dt*1.65;pitch=Math.max(-1.52,Math.min(1.52,pitch+(Number(inputKeys.has('ArrowUp'))-Number(inputKeys.has('ArrowDown')))*dt*1.2));
+ const {forward:fw,side}=inputKeys.axes();
+ const shift=inputKeys.has('ShiftLeft')||inputKeys.has('ShiftRight'),swimming=isSwimming({feet:pos.y,dry:metroInterior(pos)});const speed=movementSpeed({flying,gliding,grounded,swimming,equipped:life?.state.equipped,sprint:shift||runLocked,racing:!!adventure?.state.race});
  const dx=(-Math.sin(yaw)*fw+Math.cos(yaw)*side)*speed*dt,dz=(-Math.cos(yaw)*fw-Math.sin(yaw)*side)*speed*dt;
  const rampY=(x,z)=>{const h=metroRampFloor(x,z)??metro?.floorAt(x,z)??nanpuFloor(world,x,z)??yuyuan?.floorAt?.(x,z)??civil?.cruises?.floorAt(x,z,pos.y);return !flying&&!gliding&&h!==null&&Math.abs(pos.y-h)<.55&&vy<=0?h:(snapMetroFloor(world,{x,y:pos.y,z},vy,{flying,gliding},(xx,zz)=>metro?.floorAt(xx,zz)??yuyuan?.floorAt?.(xx,zz)??civil?.cruises?.floorAt(xx,zz,pos.y))??pos.y);};
  let moveY=rampY(pos.x+dx,pos.z);if(!collides(pos.x+dx,moveY,pos.z)){pos.x+=dx;pos.y=moveY;}
  moveY=rampY(pos.x,pos.z+dz);if(!collides(pos.x,moveY,pos.z+dz)){pos.z+=dz;pos.y=moveY;}
- if(flying){vy=(Number(keys.has('Space'))-Number(shift))*6;}
+ if(flying){vy=(Number(inputKeys.has('Space'))-Number(shift))*6;}
  else if(gliding&&!swimming&&!grounded){vy=shift?-5:-2.2;}
- else{vy=swimVelocity({feet:pos.y,velocity:vy,space:keys.has('Space'),down:shift,grounded,dt,dry:metroInterior(pos),shore:swimming&&keys.has('Space')&&nearWaterExit()});if(keys.has('Space'))grounded=false;}
+ else{vy=swimVelocity({feet:pos.y,velocity:vy,space:inputKeys.has('Space'),down:shift,grounded,dt,dry:metroInterior(pos),shore:swimming&&inputKeys.has('Space')&&nearWaterExit()});if(inputKeys.has('Space'))grounded=false;}
  if(metro?.tryBoard())return;
  const entryFloor=metro?.floorAt(pos.x,pos.z)??yuyuan?.floorAt?.(pos.x,pos.z)??civil?.cruises?.floorAt(pos.x,pos.z,pos.y);if(!flying&&!gliding&&vy<=0&&entryFloor!==null&&entryFloor!==undefined&&pos.y>=entryFloor-.55&&pos.y+vy*dt<=entryFloor){pos.y=entryFloor;vy=0;grounded=true;return;}
  const dy=vy*dt,deck=!flying&&!gliding&&vy<=0?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null;if(deck&&pos.y+dy<=deck.y){pos.y=deck.y;vy=0;grounded=true;}else if(!collides(pos.x,pos.y+dy,pos.z)){pos.y+=dy;grounded=false;}else{if(dy<0){grounded=true;if(!flying&&!gliding&&!swimming&&!adventure?.state.race&&vy<-13)life.state.hurt(Math.ceil((-vy-13)*.65));}vy=0;}
@@ -359,14 +359,15 @@ function physics(dt){
 let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0,lastIdleFrame=-Infinity;
 function frame(now){
  if(document.hidden||!active&&!story?.filming&&now-lastIdleFrame<(photo?.opened?1000/30:1000/15)){prev=now;requestAnimationFrame(frame);return;}
+ if(isMobile&&(active||story?.filming)&&mobilePacer.skip(now,mobileQuality==='clear'?60:30)){requestAnimationFrame(frame);return;}
  lastIdleFrame=now;
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
- requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?keys:new Set()});
+ requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?inputKeys:new Set()});
  if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?2:3);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
   camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);outline.visible=!!target;if(target)outline.position.set(target.x+.5,target.y+.5,target.z+.5);
-  if((mouseHeld!==-1||keys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
+  if((mouseHeld!==-1||inputKeys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
   hudTime+=dt;if(hudTime>.15){$('coordinates').textContent=`X ${(pos.x-40).toFixed(1)} · Y ${pos.y.toFixed(1)} · Z ${(pos.z-40).toFixed(1)}`;$('target').textContent=target?BLOCKS[target.id].name:'';const nearby=life?.hasUseTarget()?null:companions.nearest(pos,camera);$('npc-prompt').classList.toggle('visible',!!nearby);$('npc-prompt').textContent=nearby?`奶龙 · G 打招呼 / 跳舞 · H ${nearby.follow?'停止跟随':'一起散步'}`:'';hudTime=0;}
-  $('glide-status').hidden=!gliding;hudText('glide-status',grounded?'滑翔伞准备好了 · 走向边缘起飞':'滑翔中 · WASD 转向 · Shift 下降 · P 收伞');life.tick(dt,{night:dayClock>=120,moving:keys.has('KeyW')||keys.has('KeyA')||keys.has('KeyS')||keys.has('KeyD'),racing:!!adventure.state.race});companions.update(dt,pos,camera,elapsed);const effect=adventure.tick(dt,pos,elapsed,dayClock>=120);if(effect?.bounce&&!flying){vy=effect.bounce;grounded=false;beep(1);}
+  $('glide-status').hidden=!gliding;hudText('glide-status',grounded?'滑翔伞准备好了 · 走向边缘起飞':'滑翔中 · WASD 转向 · Shift 下降 · P 收伞');life.tick(dt,{night:dayClock>=120,moving:inputKeys.has('KeyW')||inputKeys.has('KeyA')||inputKeys.has('KeyS')||inputKeys.has('KeyD'),racing:!!adventure.state.race});companions.update(dt,pos,camera,elapsed);const effect=adventure.tick(dt,pos,elapsed,dayClock>=120);if(effect?.bounce&&!flying){vy=effect.bounce;grounded=false;beep(1);}
  }else if(!started){chunkWork.process(isMobile?2:3);camera.position.set(32+Math.sin(elapsed*.03)*1.5,29.8,68+Math.cos(elapsed*.025)*1.0);camera.lookAt(126,52,42);outline.visible=false;}
  const area=soundScene(pos,dayClock>=120);
  music.update({playing:active,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden,sceneTrack:area.track,dt});
@@ -377,9 +378,10 @@ function frame(now){
  if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
  trafficFlash.style.opacity=active?String(Math.max(0,(trafficHitUntil-elapsed-.6)*.6)):'0';
  sceneAudio.update(active?dt:0,{playing:active,hidden:document.hidden,sound,volume:music.volume,pos,yaw,agents:civil.traffic.agents,vendors:()=>[...(activity?.vendors??[]),...(yuyuan?.vendors??[])],riding:commute?.isRiding()||activity?.isRiding()||yuyuan?.isRiding(),dialogue:npcGuides?.isPanelOpen(),night:dayClock>=120,rain:climate.rain,weatherType:climate.type,rainExposure:climate.rain>.01?rainExposure(world,pos):0});
- yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?keys:new Set()});privateSuites?.tick(active,active?dt:0);towerInteriors?.tick(active);restaurant?.tick(active?dt:0);if(towerInteriors?.getPrompt())$('skyline-prompt').hidden=true;if(privateSuites?.getPrompt())$('peace-prompt').hidden=true;cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);rainCrowd?.tick(active?dt:0,climate.rain);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?keys:new Set());$('commute-status').hidden=!active||!commuteText;hudText('commute-label',commuteText||'');const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;hudText('drive-power',drive?.brake?'刹车':power+'%');const civilPrompt=civil?.getPrompt?.();if(civilPrompt&&active&&!commute?.isRiding()&&!yuyuan?.isRiding()){$('guide-prompt').hidden=false;$('guide-prompt').textContent=civilPrompt;}else if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;if(!isMobile&&!touch)hudText('run-status',isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步');const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch)??privateSuites?.cameraPose(yaw,pitch)??towerInteriors?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}photo?.update();renderer.render(scene,camera);
+ yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?inputKeys:new Set()});privateSuites?.tick(active,active?dt:0);towerInteriors?.tick(active);restaurant?.tick(active?dt:0);if(towerInteriors?.getPrompt())$('skyline-prompt').hidden=true;if(privateSuites?.getPrompt())$('peace-prompt').hidden=true;cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);npcGuides?.tick(active?dt:0);rainCrowd?.tick(active?dt:0,climate.rain);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?inputKeys:new Set());$('commute-status').hidden=!active||!commuteText;hudText('commute-label',commuteText||'');const drive=commute?.ride?.vehicle;$('drive-meter').hidden=!drive||!['bicycle','car'].includes(drive.kind);const power=Math.round(Math.abs(drive?.throttle??0)*100);$('drive-throttle').value=power;hudText('drive-power',drive?.brake?'刹车':power+'%');const civilPrompt=civil?.getPrompt?.();if(civilPrompt&&active&&!commute?.isRiding()&&!yuyuan?.isRiding()){$('guide-prompt').hidden=false;$('guide-prompt').textContent=civilPrompt;}else if(!active||commute?.isRiding()||yuyuan?.isRiding())$('guide-prompt').hidden=true;$('run-status').hidden=!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding;if(!isMobile&&!touch)hudText('run-status',isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步');const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch)??privateSuites?.cameraPose(yaw,pitch)??towerInteriors?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}for(const label of wayfindingLabels)label.visible=!document.body.classList.contains('in-conversation')&&label.position.distanceToSquared(camera.position)>16;story?.tick(active?dt:0,active&&!document.hidden);if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}photo?.update();renderer.render(scene,camera);
 }
 function onResize(){
+ mobileLayout?.apply();touchMovement?.reset();mobilePacer.reset();
  if(window.innerWidth>window.innerHeight){
   document.body.classList.remove('force-landscape');
  }
@@ -388,7 +390,7 @@ function onResize(){
  const h=isForced?innerWidth:innerHeight;
  camera.aspect=w/h;
  camera.updateProjectionMatrix();
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
+ renderer.setPixelRatio(renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}).pixelRatio);
  renderer.setSize(w,h);
  updateOrientationUI();
 }
@@ -413,7 +415,7 @@ function setFlight(value){
   const flyMoreChip=$('touch-fly-more');if(flyMoreChip){flyMoreChip.textContent=flying?'🕊 关闭飞行 F':'🕊 飞行模式 F';flyMoreChip.classList.toggle('flying',flying);}
 }
 function placePlayer(point){ensureChunks(point);pos.x=point.x;pos.y=point.y;pos.z=point.z;vy=0;grounded=false;yaw=point.z>=270&&point.x<=170?0:point.z>=68?-Math.PI/2:point.x>=80?Math.PI/2:0;pitch=-.12;}
-function teleport(point){privateSuites?.leaveSeat();towerInteriors?.leaveSeat();civil?.leaveSeat();metro?.end(true);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.dismount?.('传送');placePlayer(point);}
+function teleport(point){touchMovement?.reset();privateSuites?.leaveSeat();towerInteriors?.leaveSeat();civil?.leaveSeat();metro?.end(true);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.dismount?.('传送');placePlayer(point);}
 if(['localhost','127.0.0.1'].includes(location.hostname))window.__game={
   camera,pos,teleport,lookTowards,setFlight,
   setPos:(x,y,z)=>{teleport({x,y,z});pos.x=x;pos.y=y;pos.z=z;ensureChunks({x,y,z},true,true);camera.position.set(x,y+1.62,z);},
@@ -424,7 +426,7 @@ if(['localhost','127.0.0.1'].includes(location.hostname))window.__game={
   render:()=>{camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();renderer.render(scene,camera);},
   scene,renderer,enter:()=>enter()
 };
-function pauseForPanel(){story?.suspend();sceneAudio.suspend();metro?.suspend();pendingMine=null;active=false;keys.clear();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;document.exitPointerLock?.();}
+function pauseForPanel(){story?.suspend();sceneAudio.suspend();metro?.suspend();pendingMine=null;active=false;keys.clear();touchMovement?.reset();pressedAt.clear();releaseAt.clear();mouseHeld=-1;dragging=false;document.exitPointerLock?.();}
 adventure=createAdventure({getYaw:()=>yaw,scene,world,notify,beep,teleport,setFlying:setFlight,getFlying:()=>flying,pause:pauseForPanel,resume:enter,burst:companions.burst,lookAt:lookTowards,setNight:()=>{dayClock=165;updateSky(0)},onProgress:()=>{saves?.save('auto')},getQuestTarget:()=>story?.target()??quests?.target(),fastTravel:p=>{const safe=safeLanding(world,p,collides);if(!safe){notify('落点被占用，请稍后再试。');return false;}setFlight(false);gliding=false;teleport(safe);if(p.viewTarget)lookTowards(p.viewTarget);return true;}});
 life=createLife({onEvent:recordCityEvent,scene,world,interactionBlocked:(x,y,z,ignore)=>staticCollides(x,y,z,ignore),blocked:(x,y,z)=>staticCollides(x,y,z),isDry:()=>metroInterior(pos),notify,pause:pauseForPanel,resume:enter,getPos:()=>pos,getYaw:()=>yaw,getDirection:()=>{camera.getWorldDirection(direction);return direction},onMode:survival=>{if(survival)setFlight(false);else setFlight(flying)},onHeld:type=>{$('selected-name').textContent=type?({bed:'床',chair:'木椅',table:'餐桌',lamp:'晶石灯',chest:'储物箱',campfire:'篝火',bookshelf:'书架',planter:'菜圃'}[type]):BLOCKS[selected].name},onDeath:point=>{if(point&&!collides(point.x,point.y,point.z))teleport(point);else teleport(LANDMARKS.village);vy=0},setDay:()=>{dayClock=36;updateSky(0)},onProgress:()=>saves?.save('auto')});
 quests=createQuestJournal({getJourney:()=>story?.journalInfo(),onJourneyAction:action=>story?.runJournalAction(action),getStory:()=>story?.tracking?{title:story.title,goal:story.target()}:null,onTrack:id=>{if(story){story.state.tracked=false;}},scene,getYaw:()=>yaw,getContext:()=>({pos,life:life.state,npcs:companions.npcs,vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],landings:activity?.landings??[],ferryRiding:activity?.isRiding(),metroNetwork:metro}),openMap:()=>adventure.map(),pause:pauseForPanel,resume:enter,notify,onProgress:()=>saves?.save('auto'),canOpen:()=>started&&!yuyuan?.isPanelOpen()&&!npcGuides?.isPanelOpen()&&!activity?.isPanelOpen()&&!restaurant?.isPanelOpen()&&!skyline?.isPanelOpen()&&!life?.isPanelOpen()&&!adventure?.isPanelOpen(),grant:r=>{for(const [id,n]of Object.entries(r.blocks??{}))life.state.add(Number(id),n);for(const key of ['food','wool','pearls'])life.state[key]=Math.min(99999,life.state[key]+(r[key]??0));life.refresh();}});
@@ -440,7 +442,7 @@ residents=createBuildingResidents({scene,world,getPos:()=>pos,getVehicles:()=>[.
 story=createShanghaiJourney({scene,camera,world,getAudio,getSound:()=>sound,getVolume:()=>music.volume,getContext:()=>({pos,life:life.state,people:activity?.tourists??[],gardenShops:yuyuan?.streetArt.extraShops??[],photoGuest:civil.pedestrians.find(p=>p.kind==='photo'&&p.point?.z===72),collectibles:{...yuyuan?.inventory,...activity?.goods},vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],metroNetwork:metro}),pause:pauseForPanel,resume:enter,notify,prefetch:p=>ensureChunks(p),placeStart:a=>{teleport({x:a.x-1.5,y:a.y,z:a.z-2});setFlight(false);lookTowards({...a,y:a.y+1.5});},celebrate:()=>{if(adventure?.launch){adventure.launch(true);notify('外滩的灯光已经为你亮起，过去看看吧 · 随时按 K 放烟花');}},onProgress:()=>{quests?.refresh();saves?.save('auto');}});
 towerInteriors=createTowerInteriors({scene,world,people:activity.tourists,getPos:()=>pos,place:p=>{placePlayer(p);setFlight(false);gliding=false;},lookAt:lookTowards,pause:pauseForPanel,resume:enter,notify,onRead:({title,text})=>story?.record({type:'city-conversation',district:'duoyun',kind:'reading',name:'朵云书院',topic:title,text})});
 npcGuides=createNpcGuides({onConversation:recordCityEvent,extraPeople:[...story.actors,...metro.staff,...residents.people,...yuyuan.actors,...civil.cruisePeople],scene,world,civil,activity,getPos:()=>pos,getVehicles:()=>commute?.vehicles??[],pause:pauseForPanel,resume:enter,notify,lookAt:p=>{camera.position.set(pos.x,pos.y+1.62,pos.z);lookTowards(p);}});
-commute=createCommute({scene,world,civil,activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!activity?.collides(x,y,z),exitBlocked:collides,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},onExit:()=>{keys.clear();pressedAt.clear();releaseAt.clear();grounded=true;},turnView:a=>{yaw+=a;},notify,allowed:()=>!adventure.state.race&&!activity.isRiding()&&!metroInterior(pos),getActors:()=>npcGuides.actors,onImpact:(actor,vx,vz,strength)=>npcGuides.impact(actor,vx,vz,strength)});
+commute=createCommute({scene,world,civil,activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||!!life?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!activity?.collides(x,y,z),exitBlocked:collides,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},onExit:()=>{keys.clear();touchMovement?.reset();pressedAt.clear();releaseAt.clear();grounded=true;},turnView:a=>{yaw+=a;},notify,allowed:()=>!adventure.state.race&&!activity.isRiding()&&!metroInterior(pos),getActors:()=>npcGuides.actors,onImpact:(actor,vx,vz,strength)=>npcGuides.impact(actor,vx,vz,strength)});
 const lujiazuiShow=createLujiazuiShow(scene);
 skyline=createSkyline({lookAt:lookTowards,onEvent:recordCityEvent,scene,getPos:()=>pos,notify,pause:pauseForPanel,resume:enter,teleport,grantGlider:()=>life.grantGlider(),onProgress:()=>saves?.save('auto')});
 function captureSave(){return {version:6,mapRevision:MAP_REVISION,edits:[...savedEdits],metro:metro.serialize(),quests:quests.serialize(),journey:story?.serialize(),pos:privateSuites?.safeSavePoint()||towerInteriors?.safeSavePoint()||civil.cruises.safeSavePoint()||metro.safeSavePoint()||commute.safeSavePoint()||activity.safeSavePoint()||yuyuan.rickshaws.safeSavePoint()||{...pos},yaw,pitch,flying,gliding,selected,dayClock,timeOptions:{...timeOptions},mined,placed,talkDone,followDone,celebrated,life:life.serialize(),yuyuan:yuyuan.serialize(),restaurant:restaurant.serialize(),suites:privateSuites.serialize(),activity:activity.serialize(),skyline:skyline.serialize(),weather:weather.serialize(),adventure:adventure.serialize(),savedAt:new Date().toISOString()};}
