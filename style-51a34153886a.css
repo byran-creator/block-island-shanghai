@@ -298,5 +298,5 @@ body.in-menu .metro-status,body.in-menu .metro-caption{display:none}
 body.has-tracker:not(.touch):not(.force-landscape) .coordinates{top:var(--quest-coordinate-top,260px)}
 
 /* Keep the live bearing readable without enlarging the whole tracker. */
-.quest-tracker #tracked-arrow{font-size:22px!important;line-height:1!important;filter:drop-shadow(0 0 3px #76551a)}
-body.touch .quest-tracker #tracked-arrow,body.force-landscape .quest-tracker #tracked-arrow{font-size:24px!important}
+.quest-tracker #tracked-arrow{display:inline-flex!important;align-items:center;justify-content:center;width:34px;height:34px;line-height:1!important;transform-origin:50% 50%;filter:drop-shadow(0 1px 2px #142b35)}.quest-tracker #tracked-arrow svg{display:block;width:24px;height:32px;overflow:visible}
+body.touch .quest-tracker #tracked-arrow,body.force-landscape .quest-tracker #tracked-arrow{width:36px;height:36px}body.touch .quest-tracker #tracked-arrow svg,body.force-landscape .quest-tracker #tracked-arrow svg{width:26px;height:34px}
