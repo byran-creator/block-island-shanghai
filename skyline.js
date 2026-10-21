@@ -5,7 +5,7 @@ import {CITY,BRIDGES} from './shanghai-map.js';
 import {showCue} from './show-cues.js';
 import {nanpuSurfaceAt} from './bridge-road.js';
 const $=id=>document.getElementById(id);
-export function createSkyline({scene,getPos,notify,pause,resume,teleport,grantGlider,onProgress,onEvent=()=>{}}){
+export function createSkyline({scene,getPos,notify,pause,resume,teleport,grantGlider,onProgress,onEvent=()=>{},lookAt=()=>{}}){
  let panel=false,visited=false;const lines=[];const material=new THREE.MeshBasicMaterial({color:'#a6e8ff',fog:true});
  function sign(text,p){const root=createWorldCaption(text,{color:'#c2f1ff',width:5.7});root.position.set(p.x,p.y+3,p.z);scene.add(root);}
  sign('上海中心大厦 · V 乘电梯',LANDMARKS.shanghai);sign('空中花园 · V 换楼层',LANDMARKS.skyGarden);sign('巅峰观景台 · P 展开滑翔伞',LANDMARKS.skyDeck);
@@ -25,11 +25,11 @@ export function createSkyline({scene,getPos,notify,pause,resume,teleport,grantGl
  for(let y=30;y<94;y+=9){const r=8-Math.floor((y-26)/73*8)*.75+.3;for(let i=0;i<8;i++){const a=i*Math.PI/4,b=(i+1)*Math.PI/4;cityLights.push(rod([CITY.jinmao.x+Math.cos(a)*r,y,CITY.jinmao.z+Math.sin(a)*r],[CITY.jinmao.x+Math.cos(b)*r,y,CITY.jinmao.z+Math.sin(b)*r],.13,warm));}}
  for(let y=28;y<112;y+=4){const rx=9-Math.floor((y-26)/85*4)+.1,rz=7-Math.floor((y-26)/85*4)+.1;for(const side of [-1,1])cityLights.push(rod([CITY.swfc.x-rz,y,CITY.swfc.z+side*rx],[CITY.swfc.x-rz,y+2.5,CITY.swfc.z+side*rx],.13,cool));}
  function near(p){const me=getPos();return Math.hypot(me.x-p.x,me.z-p.z)<4.2&&Math.abs(me.y-p.y)<3;}
- const elevators=[{name:'白玉兰广场',stops:['magnolia','helipad'],labels:['北外滩大厅','楼顶直升机平台'],description:'白玉兰塔冠与 H 停机坪。平台停有直升机，沿中央步道看两岸天际线。'}, {name:'上海中心',stops:['shanghai','skyGarden','skyDeck'],labels:['地面大厅','空中花园','巅峰观景台'],description:'螺旋玻璃塔身与空中花园。登顶免费领取滑翔伞，P 开伞，WASD 控制方向；Shift 加快下降。'}, {name:'金茂大厦',stops:['jinmao','jinmaoDeck'],labels:['地面大厅','金茂观景台'],description:'层层收台的塔冠，登上金茂观景台欣赏陆家嘴与黄浦江湾。'}, {name:'环球金融中心',stops:['swfc','swfcDeck'],labels:['地面大厅','云端天桥'],description:'穿过顶部的开瓶器形天门，在云端天桥俯瞰黄浦江。靠近平台中心按 V 返回地面。'}];
+ const elevators=[{name:'白玉兰广场',stops:['magnolia','helipad'],labels:['北外滩大厅','楼顶直升机平台'],description:'白玉兰塔冠与 H 停机坪。平台停有直升机，沿中央步道看两岸天际线。'}, {name:'上海中心',stops:['shanghai','towerOffice','duoyun','skyGarden','skyDeck'],labels:['1F · 电梯大厅','办公体验层','52F · 朵云书院','空中花园','巅峰观景台'],description:'在大厅、办公层、52F朵云书院与观景楼层间选层；朵云书院可翻阅原创短读、临窗看江景。登顶免费领取滑翔伞，P 开伞，WASD 控制方向；Shift 加快下降。'}, {name:'金茂大厦',stops:['jinmao','jinmaoDeck'],labels:['地面大厅','金茂观景台'],description:'层层收台的塔冠，登上金茂观景台欣赏陆家嘴与黄浦江湾。'}, {name:'环球金融中心',stops:['swfc','swfcDeck'],labels:['地面大厅','云端天桥'],description:'穿过顶部的开瓶器形天门，在云端天桥俯瞰黄浦江。靠近平台中心按 V 返回地面。'}];
  const currentElevator=()=>elevators.find(e=>e.stops.some(id=>near(LANDMARKS[id])));
  function canUse(){return !!currentElevator()}
  function close(){if(!panel)return;$('elevator-dialog').close();panel=false;resume();}
- function renderStops(e){$('elevator-title').textContent=e.name+' · 观光电梯';$('elevator-description').textContent=e.description;$('elevator-options').replaceChildren();e.stops.forEach((id,i)=>{const b=document.createElement('button');b.className='recipe-card';b.textContent=e.labels[i]+' · 高度 '+LANDMARKS[id].y;b.onclick=()=>{close();teleport(LANDMARKS[id]);if(id==='skyDeck'){grantGlider();const firstVisit=!visited;visited=true;onEvent({type:'sky'});if(firstVisit)onProgress();notify('欢迎登顶上海中心！已领取滑翔伞。走向平台边缘，按 P 开伞，WASD 控制方向。')}else notify('电梯已到达：'+e.labels[i])};$('elevator-options').appendChild(b);});}
+ function renderStops(e){$('elevator-title').textContent=e.name+' · 观光电梯';$('elevator-description').textContent=e.description;$('elevator-options').replaceChildren();e.stops.forEach((id,i)=>{const b=document.createElement('button');b.className='recipe-card';b.textContent=e.name==='上海中心'?e.labels[i]:e.labels[i]+' · 高度 '+LANDMARKS[id].y;b.onclick=()=>{close();teleport(LANDMARKS[id]);if(['shanghai','towerOffice','duoyun'].includes(id))lookAt({x:CITY.shanghai.x,y:LANDMARKS[id].y+1.5,z:CITY.shanghai.z+2});if(id==='skyDeck'){grantGlider();const firstVisit=!visited;visited=true;onEvent({type:'sky'});if(firstVisit)onProgress();notify('欢迎登顶上海中心！已领取滑翔伞。走向平台边缘，按 P 开伞，WASD 控制方向。')}else notify('电梯已到达：'+e.labels[i])};$('elevator-options').appendChild(b);});}
  function use(){const e=currentElevator();if(!e)return false;pause();panel=true;renderStops(e);$('elevator-dialog').showModal();return true;}
  renderStops(elevators[0]);
  $('elevator-close').onclick=close;$('elevator-dialog').addEventListener('cancel',e=>{e.preventDefault();close()});

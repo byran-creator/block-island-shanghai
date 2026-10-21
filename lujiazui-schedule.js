@@ -62,7 +62,7 @@ export function createLujiazuiSchedule(people,{world,others=()=>people,getPos=()
    // Assign existing open entrances without a batch of startup path searches.
    // Routes are searched one person per frame, then checked live at every step.
    const choose=list=>nearest(list)[0];
-   p.daily={index:i,state:'outside',target:'outside',rooms:i<8?{work:choose(offices),home:choose(homes)}:{hotel:choose(hotels)},outside:{...p.root.position},path:null,retry:0,blocked:0,initial:true};
+   p.daily={index:i,state:'outside',target:'outside',rooms:i<8?{work:p.workplace&&clear(p.workplace)?{...p.workplace}:choose(offices),home:choose(homes)}:{hotel:choose(hotels)},outside:{...p.root.position},path:null,retry:0,blocked:0,initial:true};
    const area=areas.find(a=>a.id===p.forecourt),work=p.daily.rooms.work;
    if(area&&work){const q=point(Math.max(area.x1+.8,Math.min(area.x2-.8,work.x)),Math.max(area.z1+.8,Math.min(area.z2-.8,work.z+(i%4)*1.2)));
     if(clear(q))p.daily.outside=q;
@@ -77,7 +77,7 @@ export function createLujiazuiSchedule(people,{world,others=()=>people,getPos=()
   const near=neighbours();let planned=false;
   for(let n=0;n<people.length;n++){
    const p=people[(n+first)%people.length],d=p.daily;d.justArrived=false;d.retry=Math.max(0,d.retry-dt);
-   if(p.journeyMeeting&&!d.meeting){const r=room(p,d.state),building=r&&byId(r.id),q=building&&{...buildingEntrance(building,3.2),y:26};d.meeting=q&&clear(q)?q:{...p.root.position};d.path=null;d.retry=0;}
+   if(p.journeyMeeting&&!d.meeting){const r=room(p,d.state),building=r&&byId(r.id),q=r?.id==='shanghai-tower-office'?{...r}:building&&{...buildingEntrance(building,3.2),y:26};d.meeting=q&&clear(q)?q:{...p.root.position};d.path=null;d.retry=0;}
    if(!p.journeyMeeting&&d.meeting){d.meeting=null;d.path=null;d.retry=0;if(d.state==='outside')d.state='walking';}
    const wanted=p.journeyMeeting?'outside':lujiazuiDayPlan(d.index,phase),target=wanted==='outside'||room(p,wanted)?wanted:'outside';
    if(d.initial){d.initial=false;d.target=target;if(target!=='outside'){const r=room(p,target);p.root.position.set(r.x,26,r.z);arrive(p);}note(p);}
