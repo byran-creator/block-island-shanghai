@@ -88,7 +88,7 @@ export function createLujiazuiSchedule(people,{world,others=()=>people,getPos=()
     p.root.visible=true;d.state='walking';
    }
    const destination=d.target==='outside'?(d.meeting??d.outside):room(p,d.target);
-   if(!d.path&&!d.retry&&!planned){planned=true;d.path=schedulePath(world,p.root.position,destination);d.next=1;if(!d.path){d.retry=2+d.index*.13;continue;}d.state='walking';d.anchor={...p.root.position};d.progress=0;}
+   if(!d.path&&!d.retry&&!planned){planned=true;d.path=schedulePath(world,p.root.position,destination);d.next=1;if(!d.path){d.retry=2+d.index*.13;continue;}d.state='walking';d.progressWaypoint=-1;d.progress=0;}
    if(!d.path||dt<=0)continue;
    let remaining=Math.min(dt,.25);
    while(remaining>1e-8){
@@ -109,7 +109,9 @@ export function createLujiazuiSchedule(people,{world,others=()=>people,getPos=()
     if(d.detour&&Math.hypot(at.x-goal.x,at.z-goal.z)<.08)d.detour=null;
     d.blocked=moved?0:d.blocked+step;
     d.progress=(d.progress??0)+step;
-    if(Math.hypot(at.x-d.anchor.x,at.z-d.anchor.z)>.5){d.anchor={...at};d.progress=0;}
+    // Circling around a corner is movement, but is not progress toward the route.
+    const left=Math.hypot(at.x-waypoint.x,at.z-waypoint.z);
+    if(d.progressWaypoint!==d.next||left<d.bestDistance-.25){d.progressWaypoint=d.next;d.bestDistance=left;d.progress=0;}
     if(d.blocked>.7&&!d.detour){
      const dx=waypoint.x-at.x,dz=waypoint.z-at.z,len=Math.hypot(dx,dz)||1;
      for(const angle of [Math.PI/2,-Math.PI/2,Math.PI]){const q=point(at.x+(dx*Math.cos(angle)-dz*Math.sin(angle))/len*1.05,at.z+(dx*Math.sin(angle)+dz*Math.cos(angle))/len*1.05);if(segment(clear,at,q)&&available(p,q,near,vehicles)){d.detour=q;break;}}

@@ -12,7 +12,8 @@ export const CROWD_SEPARATION=.9;
 export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
  if(dt<=0)return false;
  const at=p.root.position,dx=target.x-at.x,dz=target.z-at.z,d=Math.hypot(dx,dz),step=Math.min(d,speed*dt);
- const yaw=d>.02?Math.atan2(dx,dz)+Math.PI:(p.side>0?0:Math.PI);
+ // Short frame steps still have a direction; never replace it with a fixed heading.
+ const yaw=d>1e-6?Math.atan2(dx,dz)+Math.PI:p.root.rotation.y;
  const turn=Math.atan2(Math.sin(yaw-p.root.rotation.y),Math.cos(yaw-p.root.rotation.y));
  p.root.rotation.y+=Math.sign(turn)*Math.min(Math.abs(turn),dt*3.5);
  if(d<1e-6||Math.abs(turn)>Math.PI/3)return false;
