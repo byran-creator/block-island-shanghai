@@ -1,8 +1,10 @@
 // Presentation-only budgets. Simulation dt is accumulated between drawn frames.
 export function renderProfile({mobile=false,mode='smooth',dpr=1,width=844,height=390}){
  if(!mobile)return {pixelRatio:Math.min(dpr,1.25),fps:0,antialias:true};
- const clear=mode==='clear',limit=clear?1400:1000;
- return {pixelRatio:Math.min(dpr,clear?1.25:.9,limit/Math.max(1,width,height)),fps:clear?60:30,antialias:false};
+ // Keep normal phones at least as sharp as the original 1.25x renderer.
+ // Frame pacing and chunk budgets save work without upscaling a sub-CSS buffer.
+ const clear=mode==='clear',limit=clear?1920:1600;
+ return {pixelRatio:Math.min(dpr,clear?1.5:1.25,limit/Math.max(1,width,height)),fps:clear?60:30,antialias:true};
 }
 export function createFramePacer(){
  let deadline=null;

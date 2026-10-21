@@ -116,11 +116,12 @@ let deviceStorage;try{deviceStorage=localStorage;}catch{}
 if(isMobile){mobileLayout=createMobileLayout({body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage:deviceStorage});updateOrientationUI();}
 let mobileQuality='smooth';try{if(localStorage.getItem('block-island-mobile-quality-v1')==='clear')mobileQuality='clear';}catch{}
 const mobilePacer=createFramePacer();
+const initialRenderProfile=renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight});
 let renderer;
 try{
  renderer=new THREE.WebGLRenderer({
   canvas,
-  antialias:!isMobile,
+  antialias:initialRenderProfile.antialias,
   powerPreference:'high-performance',
   logarithmicDepthBuffer:true,
   precision:'highp'
@@ -129,7 +130,7 @@ try{
  renderer=new CanvasRenderer({canvas});
  $('render-mode').textContent='兼容画质 · 无需显卡加速';
 }
-renderer.setPixelRatio(renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}).pixelRatio);
+renderer.setPixelRatio(initialRenderProfile.pixelRatio);
 const initialForced=document.body.classList.contains('force-landscape');
 renderer.setSize(initialForced?innerHeight:innerWidth,initialForced?innerWidth:innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
