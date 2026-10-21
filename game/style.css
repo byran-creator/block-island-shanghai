@@ -8,6 +8,12 @@
 .tip-btn:active{transform:scale(.95)}
 .tip-close{background:transparent;border:none;color:#adc2bb;font-size:14px;cursor:pointer;padding:0 2px}
 #touch-controls{display:none}body.touch:not(.in-menu) #touch-controls{display:block;position:fixed;inset:0;z-index:30!important;pointer-events:none!important}
+.touch-joystick{display:none;position:relative;width:140px;height:140px;border-radius:50%;border:1px solid #edf7e973;background:radial-gradient(circle,#c9e4d511 0 36%,#17343947 37% 68%,#e3efdf18 69%);touch-action:none;user-select:none;-webkit-user-select:none;pointer-events:auto;box-shadow:inset 0 0 0 5px #122c3326}
+body[data-touch-movement="joystick"] .touch-joystick{display:block}body[data-touch-movement="joystick"] .dpad{display:none}
+.joystick-ring{position:absolute;inset:20%;border-radius:50%;border:1px solid #e8f4df42;pointer-events:none}.joystick-north{position:absolute;left:50%;top:2px;transform:translateX(-50%);font:23px/1.2 sans-serif;color:#ebf3dc8c;pointer-events:none}
+#joystick-thumb{position:absolute;left:50%;top:50%;width:54px;height:54px;transform:translate(-50%,-50%);border:1px solid #f5ffe5b3;border-radius:50%;background:radial-gradient(circle at 35% 30%,#dfefdcaa,#6c988e9e);box-shadow:0 3px 10px #071d2940;pointer-events:none;will-change:transform}.touch-joystick[data-active="true"]{border-color:#eaffc4c4}.touch-joystick[data-active="true"] #joystick-thumb{background:radial-gradient(circle at 35% 30%,#e9f8dcd9,#9bba8fbf)}
+body:not(.touch) .touch-preferences{display:none}body.touch :is(.top-actions .pill,.top-actions .icon-btn,#hotbar,.dpad-btn,.touch-chip,.action-btn){backdrop-filter:none;-webkit-backdrop-filter:none}
+@media(max-height:450px){.touch-joystick{width:128px;height:128px}}
 .dpad-box{position:absolute;bottom:20px;left:20px;pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:6px}
 .dpad-label{font-size:11px;font-weight:800;color:#e8ffba;letter-spacing:1px;text-shadow:0 1px 3px #000;background:rgba(18,40,46,0.72);padding:2px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);user-select:none}
 .dpad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:6px}
@@ -40,6 +46,7 @@
 /* Force Landscape rotation for mobile WebViews / WeChat / Safari when system lock is on */
 body.force-landscape{width:100vh!important;height:100vw!important;max-width:100vh!important;max-height:100vw!important;transform:rotate(90deg)!important;transform-origin:top left!important;position:fixed!important;top:0!important;left:100vw!important;overflow:hidden!important}
 body.force-landscape .orientation-tip{display:none!important}
+body.force-landscape{width:var(--touch-height,100dvh)!important;height:var(--touch-width,100dvw)!important;max-width:var(--touch-height,100dvh)!important;max-height:var(--touch-width,100dvw)!important;left:var(--touch-width,100dvw)!important}
 body.force-landscape .dpad-box{bottom:10px!important;left:14px!important;z-index:35!important}body.force-landscape .dpad-label{display:none!important}
 body.force-landscape .touch-actions{bottom:10px!important;right:14px!important;z-index:35!important}
 body.force-landscape #hotbar{bottom:10px!important;max-width:calc(100vh - 360px)!important}

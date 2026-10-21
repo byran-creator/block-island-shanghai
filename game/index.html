@@ -8,7 +8,7 @@
 <meta name="x5-orientation" content="landscape"><meta name="x5-fullscreen" content="true"><meta name="x5-page-mode" content="app">
 <meta name="screen-orientation" content="landscape"><meta name="full-screen" content="yes"><meta name="browsermode" content="application">
 <meta name="theme-color" content="#182c32"><meta name="description" content="文强的方块小岛。探索、挖掘、搭建，一个轻量的第一人称方块沙盒。">
-<title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style.css?v=20261018L">
+<title>方块小岛 · 上海天际线</title><link rel="stylesheet" href="./style.css?v=20261021mobile85">
 <link rel="stylesheet" href="./journey.css?v=20261020backpack83">
 <link rel="stylesheet" href="./dialogue.css?v=20261018f">
 <link rel="stylesheet" href="./world-hints.css?v=20261020interiors84">
@@ -46,6 +46,9 @@
 <div id="touch-controls" aria-label="移动与操作按键">
  <div class="dpad-box">
   <div class="dpad-label">WASD 移动</div>
+  <div id="touch-joystick" class="touch-joystick" role="group" aria-label="虚拟摇杆：向任意方向滑动移动，松手停止">
+   <span class="joystick-ring" aria-hidden="true"></span><span class="joystick-north" aria-hidden="true">⌃</span><span id="joystick-thumb" aria-hidden="true"></span>
+  </div>
   <div class="dpad">
    <button data-key="KeyW" class="dpad-btn dpad-w" aria-label="前进 (W)"><b>W</b><small>▲</small></button>
    <button data-key="KeyA" class="dpad-btn dpad-a" aria-label="左移 (A)"><b>A</b><small>◀</small></button>
@@ -130,6 +133,10 @@
   <button id="settings-close" aria-label="关闭设置面板">保存并返回</button>
  </header>
  <div class="settings-content">
+  <section class="settings-group touch-preferences"><h3>触控与手机画质</h3><div class="time-controls">
+   <label>移动方式 <select id="touch-movement-choice" aria-label="触控移动方式"><option value="joystick">圆形摇杆（默认）</option><option value="dpad">十字方向键</option></select></label>
+   <label>手机画质 <select id="mobile-quality-choice" aria-label="手机画质"><option value="smooth">流畅（默认）</option><option value="clear">清晰</option></select></label>
+  </div><p>摇杆支持任意方向，轻推慢走、推远快走，松手停下；右侧滑动环顾。流畅模式降低渲染分辨率，以稳定30帧为目标；清晰模式提高分辨率并尝试60帧。偏好保存在当前设备。</p></section>
   <section class="settings-group"><h3>游玩模式</h3><div class="life-tools"><strong id="settings-play-mode">当前：创造模式</strong><button id="settings-mode-toggle">切换生存模式</button></div><p>可随时切回创造模式，保留背包、建造与主线进度。切换后关闭设置继续。</p></section>
   <section class="settings-group">
    <h3>🎵 音乐与环境音效</h3>
@@ -233,6 +240,7 @@
   <p class="update-intro">2026年10月21日 · 走进上海中心，在白色拱形书架间翻一段短读，到窗边看看黄浦江；回到和平饭店，走出套房的临江门，坐在长椅上看陆家嘴。原有建造、背包、旅程与纪念记录保留。</p>
   <article class="update-section"><div class="update-badge-row"><span class="update-tag">云上空间</span><h3>上海中心，从路过到走进去</h3></div><ul class="update-list"><li>新增可步行进入的底层电梯大厅，可前往办公体验层、52F朵云书院、原空中花园与巅峰观景台，各层均能乘电梯返回。</li><li>办公层有工位、电脑与小会议区，白天能看到职员在工位上忙碌，到了下班时间，他们也会踏上回家的路。</li><li>朵云书院参考真实52层的连续白色书架与窗景，按游戏比例重构。书架旁 V 翻阅三本原创旅行短读，读完的感想收入旅行手账；临窗座位可坐下看江景，V 或移动键起身。</li></ul></article>
   <article class="update-section"><div class="update-badge-row"><span class="update-tag">江畔小住</span><h3>套房外，是可以走出去的阳台</h3></div><ul class="update-list"><li>和平饭店套房临江中央门洞与阳台地面连通，配有护栏、花箱与观景长椅；正常步行往返，不需要飞行。</li><li>一层新增可见的客用电梯，同一面板选择大堂、八楼龙凤厅与江景套房，套房和餐厅也可乘梯返回。</li><li>在城市里找一处能停下来的地方：白天读书、看江，晚上回套房休息。原南京路、豫园和游轮体验继续保留。</li></ul></article>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">手机操作</span><h3>轻推摇杆，慢慢逛上海</h3></div><ul class="update-list"><li>手机默认圆形摇杆，360度移动、轻推慢走、松手停下；设置里可切回十字方向键。</li><li>默认自动横屏布局，也能主动切回竖屏。微信中不依赖系统横屏锁定；手机默认流畅画质，设置可选清晰模式。</li></ul></article>
   <details class="update-history"><summary>📔 上海旅行手账 · 把相遇收进这一程（2026.10.20）</summary>
   <p class="update-intro">2026年10月20日 · 从外滩的合影、陆家嘴的两段相遇，到豫园水廊寻景，把照片、印章、留言与纪念收进一本旅行手账。已有建造、存档和通关记录继续保留。</p>
   <article class="update-section"><div class="update-badge-row"><span class="update-tag">旅途发现</span><h3>认识上海，也认识城里的人</h3></div><ul class="update-list"><li>新旅程在陆家嘴帮职员找回工牌、为游客拍照，再去上海中心登高；在豫园看圆窗借景、沿水上长廊寻锦鲤、逛店后去湖心亭品茶。已在进行的旧旅程沿原路线继续。</li><li>外滩的小岚想要一张江景合影，切到拍景帮她留下这一刻。附近发现会提示目标、按键和完成后的收获。</li><li>陆家嘴职员白天去写字楼、晚间回家，游客夜间回酒店；主线需要见面的人会暂时出来，聊完再继续日常。</li></ul></article>
@@ -354,7 +362,8 @@
  <details><summary>生活岛：资源与家园</summary><p>M 地图可前往奶龙村生活岛、生存营地和潜水补给码头。营地周围有平整草地；生活岛树木可采集，挖开草地和泥土可找石头。靠近浆果 G 采摘（60秒再生），小羊 G 收羊毛；不要拆村里的房屋来获取材料。</p><p>C 制作木镐/石镐可加快采集，有耐久；菜圃60秒成熟后 G 收获。床、箱子、篝火都是玩家自己制作和摆放；公共地标在生存模式受保护。家具 Q 回收后进随身家具，C 重新取出，不重复花材料。</p></details>
  <details><summary>背包、整理和制作</summary><p>手机或电脑均可在开始菜单直接切换创造/生存模式，也可在 ⚙ 设置的“游玩模式”切换，背包和建造会保留。O 或画面上的“背包”打开分类库存：方块、食材、装备、家具。同种材料自动堆叠为数量，无需逐个拖动整理。点击任意物品先看图案、用途、获取方式与操作按键；方块在说明中选为手持，生存模式零库存不能选择使用。C 打开配方，Z 食用熟食，L 穿脱潜水装备，P 展开滑翔伞。</p><p>手持家具 E 放置，Q 回收；箱子 G 打开，存入/取回方块。食材和装备留在随身背包。创造模式可无限使用方块，但仍保留真实收集数量，切回生存时使用这些库存。</p></details>
 <details><summary>上海中心 · 云上阅读与办公层</summary><p>进入上海中心一层大厅，靠近实际电梯门按 V，选择办公体验层、52F朵云书院或原观景楼层；各层电梯旁 V 返回一层。书架旁 V 翻阅原创旅行短读，“下一页”读至末页后直接合上，感想收入背包内上海旅行手账。窗边座位 V 坐下，V 或移动键起身。真实朵云书院位于52层，游戏楼体与高度按比例压缩。和平饭店一层客用电梯 V 选择大堂、八楼龙凤厅或江景套房；套房中央临江门通向带护栏的阳台，长椅旁 V 看陆家嘴。</p></details>
- <details><summary>城市游览与地铁</summary><p>I 可选任务追踪，M 看黄色目标；也可以不追踪自由探索。V 用于商店、地铁、载具和建筑服务，G 用于生活岛采食、家具和奶龙互动。</p><p>地铁：从入口扶梯下到 B1 → V 放背包安检，等检查结束 → 到旁边闸机 V 刷票并走过 → 下扶梯到站台 → 看清方向，门开后走入列车（V 为辅助上车）。车内 WASD 走动，靠近空座位 F 坐下/起身。到站下车，返回 B1 刷出站闸机再上地面。</p><p>去豫园：2号线在南京东路下车，上扶梯到B1付费区，跟紫色10号线导向走换乘通道，无需出闸和重复安检。再下扶梯乘「虹桥火车站 / 航中路方向」，下一站豫园；返回乘「基隆路方向」到南京东路；上扶梯到B1后沿绿色「2号线 / 地面出口」牌回原2号线站厅，再按黄色出口路线到原闸机 V 刷出站，上原入口扶梯回地面。共享站厅没有独立出站闸机，10号线站台保持紫色。站名旁的小字标出下一站；灰色延伸站暂未开放。I 可追踪这趟旅程。</p></details>
+ <details><summary>手机操作与流畅模式</summary><p>手机默认自动显示横屏布局，浏览器允许时点击开始也会尝试原生横屏；右上角可主动切回竖屏。默认使用左下角圆形虚拟摇杆，支持360度移动：轻推慢走、推远快走，松手停下；右侧滑动环顾。设置 → 触控与手机画质可切换十字方向键。默认流畅模式降低渲染分辨率、以稳定30帧为目标；清晰模式提高分辨率并尝试60帧。偏好只保存在当前设备，不更改玩家存档。跳跃、互动、飞行上升下降仍使用右侧按钮。</p></details>
+<details><summary>城市游览与地铁</summary><p>I 可选任务追踪，M 看黄色目标；也可以不追踪自由探索。V 用于商店、地铁、载具和建筑服务，G 用于生活岛采食、家具和奶龙互动。</p><p>地铁：从入口扶梯下到 B1 → V 放背包安检，等检查结束 → 到旁边闸机 V 刷票并走过 → 下扶梯到站台 → 看清方向，门开后走入列车（V 为辅助上车）。车内 WASD 走动，靠近空座位 F 坐下/起身。到站下车，返回 B1 刷出站闸机再上地面。</p><p>去豫园：2号线在南京东路下车，上扶梯到B1付费区，跟紫色10号线导向走换乘通道，无需出闸和重复安检。再下扶梯乘「虹桥火车站 / 航中路方向」，下一站豫园；返回乘「基隆路方向」到南京东路；上扶梯到B1后沿绿色「2号线 / 地面出口」牌回原2号线站厅，再按黄色出口路线到原闸机 V 刷出站，上原入口扶梯回地面。共享站厅没有独立出站闸机，10号线站台保持紫色。站名旁的小字标出下一站；灰色延伸站暂未开放。I 可追踪这趟旅程。</p></details>
  <details><summary>豫园 · 喝茶、逛店和赏灯</summary><p>从南京路石碑附近沿现有道路与巷道向南走（M 可看步行路线），石碑旁有停站的滨江环线公交，或坐10号线到豫园站，出闸上地面后从园门旁的两处入口进入西北门/西门。M 也可直接传送到豫园，传送不计乘车任务。</p><p>走九曲桥进湖心亭，靠近茶席 V 品茶。南侧南翔小笼和江南手作、北侧湖畔茶坊都是可进入的店铺；靠近店内柜台 V 购买，买一份就少一份展示商品，20秒后可再买。食物 Z 食用，纪念品与茶具 O 背包查看，库存随存档保存。</p><p>内园由粉墙灰瓦围合，月洞门旁 V 领取免费游戏体验票，再 V 检票，走过闸机入园；离园也要开闸，再次入园需重新领票。九曲桥、湖心亭和商街可自由逛。池水清绿，锦鲤在水下巡游；沿曲径看假山、错落花木和圆窗框景，西门前有“海上名园”题石。灯谜向导处 V 答三道题，I 领取任务奖励。夜晚檐线、窗灯与红灯笼自动亮起；池中有实心桥面的水廊、柳竹花草、湖石、粉墙花窗、水榭、花岛和喷泉。点右上角时钟可调整时间来看夜景。</p></details>
  <details><summary>上海旅行手账 · N</summary><p>从右上角背包打开“上海旅行手账”，或按 N / I，收集景点印章、人物留言和纪念品。与 NPC 选一个话题，读完并结束后会留下留言。新版陆家嘴先帮职员找回工牌、为游客拍照，再去上海中心；他们在任务期间会从楼里出来见面。豫园先看圆窗，再沿水上长廊寻景，V 记入手账；离园到任一家店铺 V 看看柜台即可，再去湖心亭。任务栏会提示地点、按键和下一步。</p><p>通关后在手账“纪念与重游”重看开场、终章或任选一章重游。重游不清空原通关、建造和背包记录，不重复发奖；随时可在手账结束重游。旧版已有进度沿原步骤继续，新内容也可通关后重游体验。</p></details>
 <details><summary>相机、自拍与照片导出</summary><p>进入游戏后点击右上角 📷。相机里可切换自拍或拍景，拖动画面调整构图，点击“拍摄”后再点击“导出照片”保存 PNG。照片不包含操作界面；打开相机会暂时暂停世界，Esc 或“退出相机”回到游玩。拍摄后可选“收入旅行手账”，在背包内“上海旅行手账”或 N / I 中翻阅。每趟旅程最多保留12张本机缩略图，原图可导出 PNG；照片记录随存档保存，图片留在拍摄的浏览器。帮江边小岚拍一张包含人物和江景的拍景照片，还会留下一条特别留言。</p></details>
