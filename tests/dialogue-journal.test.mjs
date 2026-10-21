@@ -4,7 +4,7 @@ import {createNpcGuides} from '../game/npc-guides.js';
 import {createQuestJournal} from '../game/quest-journal.js';
 import {JOURNEY_CHAPTERS} from '../game/shanghai-journey-state.js';
 const previous=globalThis.document,nodes=new Map(),classes=new Set();
-const node=()=>({children:[],style:{},attrs:{},events:{},classList:{add(...x){x.forEach(v=>classes.add(v));},remove(...x){x.forEach(v=>classes.delete(v));}},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(...x){this.children=x;},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,v){this.events[k]=v;},getContext:()=>({fillRect(){},fillText(){}}),showModal(){this.open=true;},close(){this.open=false;},focus(){this.focused=true;},querySelector(){return this.children[0];}});
+const node=()=>({children:[],style:{},attrs:{},events:{},classList:{contains:x=>classes.has(x),add(...x){x.forEach(v=>classes.add(v));},remove(...x){x.forEach(v=>classes.delete(v));}},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(...x){this.children=x;},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,v){this.events[k]=v;},getContext:()=>({fillRect(){},fillText(){}}),showModal(){this.open=true;},close(){this.open=false;},focus(){this.focused=true;},querySelector(){return this.children[0];}});
 globalThis.document={body:node(),createElement:node,querySelector:()=>null,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);}};
 try{
  const root=new THREE.Group();root.position.set(1,26,0);let paused=0,resumed=0,conversations=[];
