@@ -3,7 +3,18 @@ import * as T from '../game/three.module.js';
 import {VoxelWorld,overlaps} from '../game/world.js';
 import {createLujiazuiPeople,createLujiazuiFlow} from '../game/lujiazui-life.js';
 import {lujiazuiDayPlan,schedulePavement} from '../game/lujiazui-schedule.js';
+import {moveShopper} from '../game/street-crowd.js';
 import {phaseFromMinutes} from '../game/day-time.js';
+
+// Slow walkers take sub-centimetre steps at high frame rates. They must face
+// that step, rather than repeatedly turning toward a fallback compass heading.
+for(const hz of [30,60,120,240])for(const [dx,dz]of [[1,0],[-1,0],[0,-1],[0,1]]){
+ const p={root:new T.Group()},dt=1/hz,speed=.58;let distance=0;
+ for(let t=0;t<2;t+=dt){const at=p.root.position.clone(),q={x:at.x+dx*speed*dt,y:26,z:at.z+dz*speed*dt};
+  moveShopper(p,q,dt,{clear:()=>true,people:[],speed});const step=Math.hypot(p.root.position.x-at.x,p.root.position.z-at.z);
+  assert(step<=speed*dt+1e-8);distance+=step;
+ }assert(distance>.35,'Small steps keep their intended heading at '+hz+' Hz');
+}
 
 const world=new VoxelWorld(),cube=()=>{},person=()=>({root:new T.Group(),arms:[new T.Group(),new T.Group()],legs:[new T.Group(),new T.Group()]});
 let viewer=null;
