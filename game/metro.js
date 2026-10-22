@@ -1,4 +1,5 @@
 import {createMetroSounds} from './metro-sounds.js';
+import {createMetroVisuals} from './metro-visuals.js';
 import {makeMetroSeats,METRO_SEATS as BASE_SEATS,cabinBlocked as baseCabinBlocked,nearbyCabinSeat} from './metro-cabin.js';
 import {createMetroEntrance,metroEntranceLayout} from './metro-entrance.js';
 import {metroPlatformDirection as basePlatformDirection,metroBackOptions} from './metro-directions.js';
@@ -16,7 +17,7 @@ import {metroExitSign,METRO_SECURITY_GUIDANCE} from './metro-sign-layout.js';
 import {METRO_HALL,metroFarePartitions,metroPaidHall} from './metro-layout.js';
 import {METRO_CARS as BASE_CARS,createSlidingDoor,createMetroTrain} from './metro-train.js';
 
-export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound=()=>true,getYaw=()=>0,turnView=()=>{},canCarry=()=>true,canBoard=canCarry,onEvent=()=>{},config=null}){
+export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound=()=>true,getYaw=()=>0,turnView=()=>{},canCarry=()=>true,canBoard=canCarry,canCullInteriors=()=>true,onEvent=()=>{},config=null}){
  const METRO_STATIONS=config?.stations??BASE_STATIONS,METRO_RAMPS=config?.ramps??BASE_RAMPS,metroStationAt=config?.stationAt??baseStationAt,metroInterior=config?.interior??baseInterior,metroRampFloor=config?.rampFloor??baseRampFloor,metroRampAt=config?.rampAt??baseRampAt,metroPlatformDirection=config?.direction??basePlatformDirection,trainPose=config?.trainPose??baseTrainPose;
  const lineNumber=config?.lineNumber??2,signOptions=config?.signOptions??{},trainOptions=config?.trainOptions??{},METRO_CARS=trainOptions.cars??BASE_CARS,METRO_SEATS=config?makeMetroSeats(METRO_CARS):BASE_SEATS,METRO_DOOR_CENTERS=METRO_CARS.flatMap(x=>[x-2,x+2]),nearestMetroDoor=x=>METRO_DOOR_CENTERS.reduce((a,b)=>Math.abs(b-x)<Math.abs(a-x)?b:a),halfTrain=METRO_CARS.at(-1)+3,cabinBlocked=(x,z,p)=>baseCabinBlocked(x,z,p,METRO_CARS);
 
@@ -113,6 +114,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function stationIndex(s){return METRO_STATIONS.findIndex(a=>a.id===s.id);}
  const dynamic=new Set([...trains.flatMap(t=>[t.root,...t.exchanges]),...staff.map(s=>s.root),...stations.flatMap(s=>[s.gateMesh,s.bag,...s.people.map(p=>p.root),...s.doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...s.routes])]);
  batchMeshes(root,staticMeshes(root,dynamic),'station-interior');
+ const visuals=createMetroVisuals(root,{getPos,exits:METRO_STATIONS.flatMap(s=>s.exits),canCull:canCullInteriors});
  function beginScan(s){if(scan){notify('背包正在安检，请稍等。');return;}if(s.checked||s.paid){notify('你已通过安检并在付费区内，请直接前往站台乘车或换乘，无需重复安检。');return;}scan={s,time:0};s.bag.visible=true;notify('背包已放上传送带 · 正在安检（3秒）');announce('请把背包放上传送带，稍等一下。','Please place your bag on the belt.',{cue:'scan',speaker:'安检员'});}
  function gate(s){if(s.gatePass){notify('闸机已打开，请沿绿色箭头走过通道。');return;}const entering=!s.paid&&!metroPaidHall(s,getPos().x,getPos().z);if(entering&&!s.checked){notify('这里是检票闸机。本次尚未通过安检。先到青色背包安检机器按 V，检查结束后再来刷票。');return;}s.gate=4;s.gatePass={entering,previousPaid:s.paid};notify(entering?'已刷免费体验票 · 请走过绿色箭头通道，再沿地面线去 B2 扶梯。':'已刷出站票 · 请走过闸机，再沿出口导向上楼。');}
  function tickGate(s,dt){const pass=s.gatePass;if(!pass)return;const p=getPos(),gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
@@ -170,6 +172,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   }
  }
  function tick(dt,{playing=false,sound=true,keys=new Set()}={}){
+  visuals.update();
   if(playing&&!ride&&!(config?.networkInterior??networkInterior)(getPos())){for(const station of stations){station.checked=false;station.paid=false;station.gate=0;station.gatePass=null;}if(scan){scan.s.bag.visible=false;scan=null;notify('已离开站内，背包已取回；再次进站请重新安检。');}}
   audioAllowed=playing&&sound&&!document.hidden;if(audioAllowed&&metroInterior(getPos()))sounds.prepare();if(!audioAllowed)suspend();clock+=dt;
   if(scan){scan.time+=dt;scan.s.bag.position.x=scan.s.x-24+scan.time*1.35;if(scan.time>=3){scan.s.checked=true;scan.s.bag.visible=false;onEvent({type:'security',station:scan.s.id});scan=null;notify('安检通过，背包已取回，全部物品保留。到绿色箭头闸机按 V。');announce('检查好了，请取回背包，往旁边闸机走。','Check complete. Collect your bag and proceed to the gates.',{cue:'pass',speaker:'安检员'});}}

@@ -1,3 +1,4 @@
+import {VoxelWorld,SIZE,HEIGHT,WORLD_MIN,WORLD_MAX} from './world.js';
 const faces=[
  {d:[1,0,0],v:[[1,0,1],[1,0,0],[1,1,0],[1,1,1]],light:.83},
  {d:[-1,0,0],v:[[0,0,0],[0,0,1],[0,1,1],[0,1,0]],light:.73},
@@ -10,20 +11,21 @@ const faces=[
 // Count exposed faces with a compact mask, then write final GPU arrays directly.
 // Both passes yield by column; no temporary JS vertex arrays or world copy.
 export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false}){
+ const dense=world instanceof VoxelWorld&&world.get===VoxelWorld.prototype.get&&cx*chunk>=WORLD_MIN&&cz*chunk>=WORLD_MIN&&(cx+1)*chunk<=WORLD_MAX&&(cz+1)*chunk<=WORLD_MAX,bytes=world.data,plane=SIZE*SIZE;
  const data={p:null,norm:null,uv:null,col:null,indices:null};
  const columns=chunk*chunk;let masks=new Uint8Array(columns*height),column=0,faceCount=0,writing=false,vertex=0,index=0,done=false;
  function step(count=8){
   if(done)return true;
   const end=Math.min(columns,column+count);
   for(;column<end;column++){
-   const x=cx*chunk+Math.floor(column/chunk),z=cz*chunk+column%chunk;
+   const x=cx*chunk+Math.floor(column/chunk),z=cz*chunk+column%chunk,base=(z-WORLD_MIN)*SIZE+x-WORLD_MIN;
    for(let y=0;y<height;y++){
     const at=column*height+y;
     if(writing&&!masks[at])continue;
-    const id=world.get(x,y,z);if(!id||(!writing&&skip(x,y,z,id)))continue;
+    const offset=base+y*plane,id=dense?bytes[offset]:world.get(x,y,z);if(!id||(!writing&&skip(x,y,z,id)))continue;
     for(let face=0;face<faces.length;face++){
      const f=faces[face];
-     if(!writing){if(!world.get(x+f.d[0],y+f.d[1],z+f.d[2])){masks[at]|=1<<face;faceCount++;}continue;}
+     if(!writing){const occupied=dense?(face===0?x+1<WORLD_MAX&&bytes[offset+1]:face===1?x>WORLD_MIN&&bytes[offset-1]:face===2?y+1<HEIGHT&&bytes[offset+plane]:face===3?y>0&&bytes[offset-plane]:face===4?z+1<WORLD_MAX&&bytes[offset+SIZE]:z>WORLD_MIN&&bytes[offset-SIZE]):world.get(x+f.d[0],y+f.d[1],z+f.d[2]);if(!occupied){masks[at]|=1<<face;faceCount++;}continue;}
      if(!(masks[at]&(1<<face)))continue;
      let tile=id-1;if(id===1)tile=f.d[1]===1?0:f.d[1]===-1?1:8;if(id===4&&f.d[1]!==0)tile=9;if(id>=9)tile=id+1;
      const start=vertex,nx=f.d[0],ny=f.d[1],nz=f.d[2],lt=f.light;

@@ -1,5 +1,6 @@
 import {readFile,readdir} from 'node:fs/promises';
 import path from 'node:path';
+import {bundleWorldWorker,worldWorkerReference} from './world-worker-build.mjs';
 const binaryTypes={'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.gif':'image/gif','.avif':'image/avif','.mp3':'audio/mpeg','.ogg':'audio/ogg','.wav':'audio/wav','.woff2':'font/woff2'};
 const textTypes={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.txt':'text/plain; charset=utf-8','.svg':'image/svg+xml'};
 export async function collectSiteAssets(directory='game'){
@@ -14,5 +15,7 @@ export async function collectSiteAssets(directory='game'){
    assets['/'+name]={body:bytes.toString(binaryTypes[ext]?'base64':'utf8'),type,...(binaryTypes[ext]?{encoding:'base64'}:{})};
   }
  }
- await collect();return assets;
+ await collect();
+ const worker=await bundleWorldWorker(directory);assets['/world-generation.js'].body=worldWorkerReference(assets['/world-generation.js'].body,worker.name);
+ delete assets['/world-worker.js'];assets['/'+worker.name]={body:worker.code,type:textTypes['.js']};return assets;
 }

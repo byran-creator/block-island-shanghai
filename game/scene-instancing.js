@@ -10,6 +10,8 @@ function supportedTransform(m){
 // intact for walking, doors, dialogue, seats, collision and save logic.
 export function createSceneInstances(scene){
  const candidates=new Map(),batches=[],sphere=new THREE.Sphere(),frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),inverse=new THREE.Matrix4(),matrix=new THREE.Matrix4();
+ const hierarchyCache=new WeakMap();let frame=0;
+ function hierarchy(o){if(!o)return 0;if(o===scene)return scene.visible?3:1;let state=hierarchyCache.get(o);if(state?.frame===frame)return state.flags;const parent=hierarchy(o.parent),flags=(parent&1)|((parent&2)&&o.visible?2:0);if(!state){state={};hierarchyCache.set(o,state);}state.frame=frame;state.flags=flags;return flags;}
  scene.updateMatrixWorld(true);
  scene.traverse(o=>{
   if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||o.morphTargetInfluences||o.castShadow||Array.isArray(o.material)||!o.geometry?.attributes.position||o.geometry.isInstancedBufferGeometry||o.material.isShaderMaterial||o.material.transparent||o.material.opacity!==1||o.layers.mask!==1||o.onBeforeRender!==THREE.Object3D.prototype.onBeforeRender||o.matrixWorld.determinant()<=0)return;
@@ -24,10 +26,12 @@ export function createSceneInstances(scene){
   batches.push({mesh,entries});
  }
  function update(camera){
+  frame++;
   projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(projection);inverse.copy(scene.matrixWorld).invert();
   for(const {mesh,entries}of batches){let count=0;
    for(const {source,mask}of entries){
-    let visible=true,attached=false;for(let p=source;p;p=p.parent){if(p===scene)attached=true;if(!p.visible)visible=false;}
+    const flags=hierarchy(source),attached=!!(flags&1),visible=!!(flags&2);
+    if(attached&&!visible&&source.geometry===mesh.geometry&&source.material===mesh.material){source.layers.mask=mask&~1;continue;}
     // Fall back to its original draw path if another system replaces a part.
     if(!attached||source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1||!supportedTransform(source.matrixWorld)){source.layers.mask=mask;continue;}
     source.layers.mask=mask&~1;

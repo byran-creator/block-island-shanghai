@@ -7,6 +7,7 @@ import {createSettingsPanel} from '../game/settings-panel.js';
 const assets=await collectSiteAssets();globalThis.SITE_ASSETS=assets;
 assert(Object.keys(assets).every(path=>!path.split('/').at(-1).startsWith('__')),'Private preview pages and bundles cannot be published');
 const html=assets['/index.html'].body;
+const workerURL=assets['/world-generation.js'].body.match(/world-worker-[a-f0-9]+\.js/)?.[0];assert(workerURL&&assets['/'+workerURL],'Generation URL must resolve to the exact bundled worker asset');assert(!assets['/world-worker.js']);assert(!/from ['"]\.\//.test(assets['/'+workerURL].body),'No cold-start module waterfall inside the worker');const workerResponse=await worker.fetch(new Request('https://island.test/'+workerURL),{});assert.equal(workerResponse.status,200);assert(workerResponse.headers.get('Content-Type').includes('javascript'));
 for(const match of html.matchAll(/<img\b[^>]*src="\.\/([^"?]+)"/g)){
  const name=match[1],response=await worker.fetch(new Request('https://island.test/'+name),{});
  assert.equal(response.status,200,'Built update image is served');assert.equal(response.headers.get('Content-Type'),name.endsWith('.png')?'image/png':'image/jpeg');
