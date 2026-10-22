@@ -5,6 +5,7 @@ import {createBicyclePedaling} from './bicycle-pedaling.js';
 import * as THREE from './three.module.js';
 import {BUND_STREETS,roadX,westSpine,CAR_ROUTES,roadContains} from './city-layout.js';
 import {vehicleContact} from './vehicle-dynamics.js';
+import {createTrafficContacts} from './traffic-contacts.js';
 import {nanpuFloor} from './bridge-road.js';
 import {createTrafficDetour} from './traffic-detour.js';
 import {createJunctionControl} from './traffic-junctions.js';
@@ -177,14 +178,16 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   for(const q of c.detour.path){const length=Math.hypot(q.x-p.x,q.z-p.z),yaw=length>.001?Math.atan2(q.x-p.x,q.z-p.z)+Math.PI:p.yaw;if(d<=length)return {x:p.x+(q.x-p.x)*d/length,y:p.y,z:p.z+(q.z-p.z)*d/length,yaw};d-=length;p={...q,yaw};}return p;
  }
  function worldClear(c,p){const cos=Math.cos(p.yaw),sin=Math.sin(p.yaw);for(const dx of [-c.halfWidth,0,c.halfWidth])for(const dz of [-c.halfLength,0,c.halfLength]){const x=p.x+dx*cos+dz*sin,z=p.z-dx*sin+dz*cos,h=nanpuFloor(world,x,z),y=h!==null&&Math.abs(h-p.y)<1.5?Math.ceil(h):p.y;if(world.get(Math.floor(x),Math.floor(y),Math.floor(z))||world.get(Math.floor(x),Math.floor(y)+1,Math.floor(z)))return false;}return true;}
- function setPose(c,p){c.root.position.set(p.x,p.y,p.z);c.root.rotation.order='YXZ';c.root.rotation.y=p.yaw;c.x=p.x-.5;c.z=p.z-.5;}
+ let contactGrid=null,gridObstacles=null,gridAllObstacles=null;
+ function contact(c,p,obstacles){if(contactGrid&&(obstacles===gridObstacles||obstacles===gridAllObstacles))return contactGrid.test(c,p,obstacles===gridAllObstacles);return agents.some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o))||obstacles.some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o));}
+ function setPose(c,p){c.root.position.set(p.x,p.y,p.z);c.root.rotation.order='YXZ';c.root.rotation.y=p.yaw;c.x=p.x-.5;c.z=p.z-.5;contactGrid?.update(c);}
  // Complete-body checks verify lane 4 around both loops. Cars and buses use +/-2.2.
  // Do not silently move bicycles back to the centre of the carriageway.
  const spawnObstacles=[...getObstacles(),...officers.map(o=>({root:o.root,person:true}))];
  const placed=[];for(const [i,c]of agents.entries()){c.halfWidth??=.72;c.halfLength??=1.32;c.height??=1.3;c.phase??=trafficSeed(i,19)*Math.PI*2;c.currentSpeed=c.speed;c.waitTime=0;let at=pose(c,c.t);for(let attempt=0;attempt<Math.ceil(c.route.lengthMeters/3);attempt++){if(worldClear(c,at)&&junctions.spawnClear(at,c)&&![...placed,...spawnObstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o)))break;c.t=(c.t+3.3)%c.route.lengthMeters;at=pose(c,c.t);}setPose(c,at);placed.push(c);}
- function shiftLane(c,target,step,obstacles){const before=c.lane;c.lane+=THREE.MathUtils.clamp(target-before,-step*.85,step*.85);const at=pose(c,c.t);if(!worldClear(c,at)||[...agents,...obstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o))){c.lane=before;return false;}setPose(c,at);return true;}
+ function shiftLane(c,target,step,obstacles){const before=c.lane;c.lane+=THREE.MathUtils.clamp(target-before,-step*.85,step*.85);const at=pose(c,c.t);if(!worldClear(c,at)||contact(c,at,obstacles)){c.lane=before;return false;}setPose(c,at);return true;}
  for(const c of agents){c.baseLane=c.lane;if(c.kind==='delivery'){for(let i=0;i<100&&!junctions.spawnClear(pose(c,c.deliveryD));i++)c.deliveryD=(c.deliveryD+4)%c.route.lengthMeters;}}
- function detourClear(c,p,obstacles){return junctions.permits(c,p)&&(c.route===outer?p.x>120:p.x<100&&Math.abs(p.z-66)>5)&&!!world.get(Math.floor(p.x),25,Math.floor(p.z))&&worldClear(c,p)&&![...agents,...obstacles].some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o));}
+ function detourClear(c,p,obstacles){return junctions.permits(c,p)&&(c.route===outer?p.x>120:p.x<100&&Math.abs(p.z-66)>5)&&!!world.get(Math.floor(p.x),25,Math.floor(p.z))&&worldClear(c,p)&&!contact(c,p,obstacles);}
  const detourJobs=new Map();let detourObstacles=[];
  function requestDetour(c){if(!detourJobs.has(c))detourJobs.set(c,{start:{x:c.root.position.x,y:c.root.position.y,z:c.root.position.z},index:0,search:null});}
  function processDetours(){
@@ -210,7 +213,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   let p,distance=0;const at=c.root.position;
   if(state.returning){const dx=state.anchor.x-at.x,dz=state.anchor.z-at.z,length=Math.hypot(dx,dz);if(length<.01){setPose(c,state.anchor);delete c.yielding;c.waitTime=0;c.progressSinceWait=0;c.waitReason='';return;}distance=Math.min(length,step*1.5);p={x:at.x+dx/length*distance,y:at.y,z:at.z+dz/length*distance,yaw:state.anchor.yaw};}
   else if(state.remaining>0){distance=Math.min(state.remaining,step*1.1);p={x:at.x+Math.sin(state.anchor.yaw)*distance,y:at.y,z:at.z+Math.cos(state.anchor.yaw)*distance,yaw:state.anchor.yaw};}
-  if(p){const floor=nanpuFloor(world,p.x,p.z);if(floor!==null&&Math.abs(floor-p.y)<1.5)p.y=floor;if(worldClear(c,p)&&![...agents,...obstacles].some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o))){setPose(c,p);if(!state.returning)state.remaining-=distance;c.travelSpeed=distance/step*(state.returning?1:-1);for(const wheel of c.wheels??[])wheel.rotation.z-=c.travelSpeed*step/.32;}}
+  if(p){const floor=nanpuFloor(world,p.x,p.z);if(floor!==null&&Math.abs(floor-p.y)<1.5)p.y=floor;if(worldClear(c,p)&&!contact(c,p,obstacles)){setPose(c,p);if(!state.returning)state.remaining-=distance;c.travelSpeed=distance/step*(state.returning?1:-1);for(const wheel of c.wheels??[])wheel.rotation.z-=c.travelSpeed*step/.32;}}
   const other=state.other,clear=Math.hypot(other.root.position.x-state.start.x,other.root.position.z-state.start.z)>6;
   if(clear||state.age>12)state.returning=true;c.waitTime+=step;
  }
@@ -222,6 +225,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
    for(const id of ['bund-66','stele-66'])if(!playerRiding&&pedestrianCrossingOccupied(playerPos,id)||obstacles.some(o=>o.person&&o.root.visible!==false&&pedestrianCrossingOccupied(o.root.position,id)))occupied.add(id);
    const crosswalkOccupied=signal=>occupied.has(signal.id);
   const allObstacles=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28?[...obstacles,{root:{position:playerPos},person:true,height:1.85}]:obstacles;
+  gridObstacles=obstacles;gridAllObstacles=allObstacles;contactGrid=createTrafficContacts(agents,obstacles,allObstacles===obstacles?null:allObstacles.at(-1));
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(c.yielding){reverseYield(c,step,obstacles);continue;}
    // If two different turns have already met, one driver backs up physically
@@ -239,7 +243,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
     if(stopAhead||c.deliveryDwell>0)shiftLane(c,c.baseLane+.7,step,obstacles);
     else if(c.avoidLane!==undefined&&forwardDistance(c.avoidStart,c.t,c.route.lengthMeters,c.dir)<8){const shifted=shiftLane(c,c.avoidLane,step,obstacles);if(shifted&&!(c.waitTime>3&&Math.abs(c.lane-c.avoidLane)<.02))c.avoidBlocked=0;else{c.avoidBlocked=(c.avoidBlocked??0)+step;if(c.avoidBlocked>2){c.avoidLane=c.baseLane-(c.avoidLane-c.baseLane);c.avoidBlocked=0;}}}
     else if(c.waitTime>3&&['obstacle','traffic'].includes(c.waitReason)&&!(c.crossings??[]).some(cross=>signalPhase(clock,cross.signal.offset)[cross.axis]!=='green'&&forwardDistance(c.t,cross.d,c.route.lengthMeters,c.dir)>=6+c.halfLength-.1&&forwardDistance(c.t,cross.d,c.route.lengthMeters,c.dir)<7+c.halfLength)){
-     for(const delta of [1.3,-1.3]){const old=c.lane;c.lane=c.baseLane+delta;const ahead=pose(c,c.t+c.dir*3);c.lane=old;if(worldClear(c,ahead)&&![...agents,...obstacles].some(o=>vehicleContact(c,ahead.x,ahead.y,ahead.z,ahead.yaw,o))){c.avoidLane=c.baseLane+delta;c.avoidStart=c.t;shiftLane(c,c.avoidLane,step,obstacles);break;}}
+     for(const delta of [1.3,-1.3]){const old=c.lane;c.lane=c.baseLane+delta;const ahead=pose(c,c.t+c.dir*3);c.lane=old;if(worldClear(c,ahead)&&!contact(c,ahead,obstacles)){c.avoidLane=c.baseLane+delta;c.avoidStart=c.t;shiftLane(c,c.avoidLane,step,obstacles);break;}}
     }else if(c.waitTime<.1&&Math.abs(c.lane-c.baseLane)>.02)shiftLane(c,c.baseLane,step,obstacles);
    }
    const ahead=pose(c,c.t+c.dir*3),bend=Math.abs(Math.atan2(Math.sin(ahead.yaw-c.root.rotation.y),Math.cos(ahead.yaw-c.root.rotation.y))),target=c.speed*(.91+.09*Math.sin(clock*.19+c.phase))*(bend>.35?.65:1);c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,target,2,step);c.following=null;let travel=trafficTravel(c,step,clock,agents,pose,o=>{c.following=o;},crosswalkOccupied);if(travel<1e-6){travel=0;c.waitReason='traffic';}
@@ -253,8 +257,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
    // A lane offset travels a longer arc than the centreline on tight bends.
    // Limit the rider's actual displacement instead of jumping around that arc.
    if(['delivery','bicycle'].includes(c.kind)&&travel>0){const p=c.root.position,budget=c.currentSpeed*step*1.15;if(Math.hypot(at.x-p.x,at.z-p.z)>budget){let low=0,high=travel;for(let k=0;k<10;k++){const mid=(low+high)/2,q=pose(c,c.t+c.dir*mid);if(Math.hypot(q.x-p.x,q.z-p.z)<=budget)low=mid;else high=mid;}travel=low;t=(c.t+c.dir*travel+c.route.lengthMeters)%c.route.lengthMeters;at=pose(c,t);}}
-   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||[...agents,...allObstacles].some(o=>vehicleContact(c,at.x,at.y,at.z,at.yaw,o)))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;c.pedaling?.advance(travel);for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
-  }first=(first+1)%agents.length;
+   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,allObstacles))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;c.pedaling?.advance(travel);for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
+  }first=(first+1)%agents.length;contactGrid=null;gridObstacles=null;gridAllObstacles=null;
  }
  function tick(dt,{night=false,rain=0}={}){if(dt>0)processDetours();let remaining=dt;const travelled=new Map(agents.map(c=>[c,0]));while(remaining>1e-8){const step=Math.min(remaining,1/30);remaining-=step;advance(step);for(const c of agents)travelled.set(c,travelled.get(c)+c.travelSpeed*step);}if(dt>0)for(const c of agents)c.travelSpeed=travelled.get(c)/dt;for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
   for(const c of agents)for(const light of c.lights??[])light.visible=night||rain>.2;
