@@ -28,13 +28,33 @@ export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
 export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0,active=()=>true}={}){
  const walkers=people.filter(p=>!p.stationary);let first=0;
  let neighbours=people.concat(typeof others==='function'?others():others);
+ const cells=new Map(),locations=new Map(),cellSize=4,queryRadius=CROWD_SEPARATION+1e-9;let indexed=false;
+ const cellKey=(x,z)=>x+','+z;
+ function indexNeighbours(){
+  // Short scans cost less than building an index for small or mostly idle groups.
+  if(walkers.length<64||neighbours.length<128){cells.clear();locations.clear();indexed=false;return;}
+  cells.clear();locations.clear();indexed=true;
+  for(const o of neighbours){const root=o.root,p=root.position;if(!Number.isFinite(p.x)||!Number.isFinite(p.z)){indexed=false;continue;}const previous=locations.get(root);if(previous){(previous.aliases??=[]).push(o);continue;}const x=Math.floor(p.x/cellSize),z=Math.floor(p.z/cellSize),key=cellKey(x,z),row={person:o,x,z,key};let cell=cells.get(key);if(!cell){cell=new Set();cells.set(key,cell);}cell.add(row);locations.set(root,row);}
+ }
+ function moved(p){
+  const row=locations.get(p.root);if(!row)return;const at=p.root.position,x=Math.floor(at.x/cellSize),z=Math.floor(at.z/cellSize);if(x===row.x&&z===row.z)return;cells.get(row.key).delete(row);row.x=x;row.z=z;row.key=cellKey(x,z);let cell=cells.get(row.key);if(!cell){cell=new Set();cells.set(row.key,cell);}cell.add(row);
+ }
+ function blocks(o,p,at,q){
+  if(o.root===p.root||!o.stationary&&o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)return false;
+  const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
+  return !(d>=CROWD_SEPARATION**2||(old<CROWD_SEPARATION**2&&d>old+1e-8));
+ }
  const othersClear=(p,q)=>{
   const at=p.root.position;
-  return neighbours.every(o=>{
+  if(!indexed||!Number.isFinite(q.x)||!Number.isFinite(q.z))return neighbours.every(o=>{
    if(o.root===p.root||!o.stationary&&o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)return true;
    const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
    return d>=CROWD_SEPARATION**2||(old<CROWD_SEPARATION**2&&d>old+1e-8);
   });
+  // Only neighbours within the unchanged separation radius can reject a step.
+  // Every accepted move updates the grid before the next walker is considered.
+  for(let x=Math.floor((q.x-queryRadius)/cellSize);x<=Math.floor((q.x+queryRadius)/cellSize);x++)for(let z=Math.floor((q.z-queryRadius)/cellSize);z<=Math.floor((q.z+queryRadius)/cellSize);z++)for(const row of cells.get(cellKey(x,z))??[]){if(blocks(row.person,p,at,q)||row.aliases?.some(o=>blocks(o,p,at,q)))return false;}
+  return true;
  };
  const inside=q=>q.x>=area.x1&&q.x<=area.x2&&q.z>=area.z1&&q.z<=area.z2;
  function goal(p){const r=p.crowd.random;for(let i=0;i<40;i++){const q=pickGoal?pickGoal(p):{x:area.x1+r()*(area.x2-area.x1),y:26,z:area.z1+r()*(area.z2-area.z1)};if(clear(q)&&othersClear(p,q)){p.crowd.goal=q;return;}}p.crowd.goal={...p.root.position};}
@@ -45,10 +65,11 @@ export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,p
  for(const [i,p]of walkers.entries()){p.crowd=crowdProfile(i+seedOffset);p.speed=p.crowd.speed;p.phase=p.crowd.phase;p.crowd.blocked=0;p.ready=false;goal(p);}
  function advance(dt,vehicles){
   if(typeof others==='function')neighbours=people.concat(others());
+  indexNeighbours();
   for(let i=0;i<walkers.length;i++){
    const p=walkers[(i+first)%walkers.length],state=p.crowd;let moving=false,turning=false,distanceMoved=0;
    if(!active(p))continue;
-   if(!p.ready){for(let attempt=0;attempt<120;attempt++){const q=spawnPoint?spawnPoint(p):{x:area.x1+state.random()*(area.x2-area.x1),y:26,z:area.z1+state.random()*(area.z2-area.z1)};if(clear(q)&&othersClear(p,q)&&!pedestrianBlocked(q,vehicles)){p.root.position.set(q.x,q.y,q.z);p.ready=true;goal(p);break;}}p.root.visible=p.ready;if(!p.ready)continue;}
+   if(!p.ready){for(let attempt=0;attempt<120;attempt++){const q=spawnPoint?spawnPoint(p):{x:area.x1+state.random()*(area.x2-area.x1),y:26,z:area.z1+state.random()*(area.z2-area.z1)};if(clear(q)&&othersClear(p,q)&&!pedestrianBlocked(q,vehicles)){p.root.position.set(q.x,q.y,q.z);if(indexed)moved(p);p.ready=true;goal(p);break;}}p.root.visible=p.ready;if(!p.ready)continue;}
    state.breakIn-=dt;state.wait=Math.max(0,state.wait-dt);state.steerTime=Math.max(0,(state.steerTime??0)-dt);
    if(state.breakIn<=0){state.wait=(p.kind==='delivery-walk'?.5:1.5)+state.random()*3.5;state.breakIn=18+state.random()*38;state.targetYaw=state.random()<.5?0:Math.PI;}
    if(!state.wait){
@@ -67,7 +88,7 @@ export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,p
        const headingGap=Math.atan2(Math.sin(state.targetYaw-p.root.rotation.y),Math.cos(state.targetYaw-p.root.rotation.y));
        if(angle!==state.steerAngle||state.steerTime<=0){state.steerAngle=angle;state.steerTime=angle===0?0:1.0;}
        if(Math.abs(headingGap)>Math.PI/3){turning=true;break;}
-       distanceMoved=Math.hypot(q.x-at.x,q.z-at.z);at.set(q.x,q.y,q.z);moving=true;break;
+       distanceMoved=Math.hypot(q.x-at.x,q.z-at.z);at.set(q.x,q.y,q.z);if(indexed)moved(p);moving=true;break;
       }
      }
      state.blocked=moving?0:state.blocked+dt;
