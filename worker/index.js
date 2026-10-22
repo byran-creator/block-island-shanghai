@@ -8,7 +8,7 @@ export function validSave(s){return s&&(s.version===3||s.version===4||s.version=
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
-  if(!url.pathname.startsWith('/api/')){const path=url.pathname==='/'?'/index.html':url.pathname;const asset=typeof SITE_ASSETS!=='undefined'?SITE_ASSETS[path]:null;if(asset){const body=asset.encoding==='base64'?Uint8Array.from(atob(asset.body),c=>c.charCodeAt(0)):asset.body;return new Response(body,{headers:{'Content-Type':asset.type,'Cache-Control':'no-cache'}});}return new Response('Not found',{status:404});}
+  if(!url.pathname.startsWith('/api/')){const path=url.pathname==='/'?'/index.html':url.pathname;const asset=typeof SITE_ASSETS!=='undefined'?SITE_ASSETS[path]:null;if(asset){const body=asset.encoding==='base64'?Uint8Array.from(atob(asset.body),c=>c.charCodeAt(0)):asset.body,immutable=/^\/(?:game|world-worker)-[a-f0-9]{12}\.js$|^\/world-snapshot-[a-f0-9]{12}\.bin\.gz$/.test(path);return new Response(body,{headers:{'Content-Type':asset.type,'Cache-Control':immutable?'public, max-age=31536000, immutable':'no-cache'}});}return new Response('Not found',{status:404});}
   const user=request.headers.get('oai-authenticated-user-id');if(!user)return json({error:'请登录后读取或保存云端进度。'},401);
   if(request.method==='POST'&&request.headers.get('Origin')!==url.origin)return json({error:'请求来源不正确。'},403);
   try{
