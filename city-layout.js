@@ -53,7 +53,12 @@ export const CAR_ROUTES=[{id:'bund',samples:BUND_LOOP},{id:'lujiazui',samples:AV
 export const CROSS_ROADS=BUND_STREETS.filter(s=>s.kind==='road').map(s=>({...s,samples:routeSamples([[legacySpine(s.z),s.z],[legacyRoadX(s.z),s.z]])}));
 const BASE_ROADS=[{id:'bund',samples:BUND_LOOP,width:3},{id:'financial',samples:AVENUE,width:3},{id:'pudong',samples:CITY_LOOP,width:3},{id:'century',samples:CENTURY,width:3},{id:'bridge-approach',samples:routeSamples([[275,206],[282,206]]),width:3},...CROSS_ROADS];
 function distanceToRoad(x,z,roads=BASE_ROADS){let best=Infinity;for(const r of roads)for(let i=0;i<r.samples.length;i+=4){const p=r.samples[i];best=Math.min(best,Math.hypot(x-p.x,z-p.z)-r.width);}return best;}
-export const roadContains=(x,z)=>distanceToRoad(x,z,ROADS)<1.2;
+export function roadContains(x,z){
+ // The same sampled-road predicate, with an exact conservative broad phase.
+ // Crowd clearance must not compute a distance to every far-away road point.
+ for(const r of ROADS){const reach=r.width+1.2;for(let i=0;i<r.samples.length;i+=4){const p=r.samples[i],dx=x-p.x,dz=z-p.z;if(Math.abs(dx)>reach||Math.abs(dz)>reach)continue;if(Math.hypot(dx,dz)-r.width<1.2)return true;}}
+ return false;
+}
 export const PUDONG_BUILDINGS=[
  {id:'convention',name:'上海国际会议中心',x:130,z:64,rx:6,rz:5,h:9,kind:'convention'},
  {id:'superbrand',name:'正大广场',x:145,z:7,rx:9,rz:5,h:10,kind:'mall'},
