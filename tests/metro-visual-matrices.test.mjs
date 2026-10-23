@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import * as T from '../game/three.module.js';
+import {createMetroVisuals} from '../game/metro-visuals.js';
+const scene=new T.Scene(),root=new T.Group(),room=new T.Group(),door=new T.Mesh(new T.BoxGeometry(2,2,2)),entrance=new T.Mesh(new T.BoxGeometry(2,2,2));room.position.y=16;room.add(door);entrance.position.y=27;root.add(room,entrance);scene.add(root);
+const pos={x:100,y:26,z:100};let edited=false;const v=createMetroVisuals(root,{getPos:()=>pos,exits:[{x:0,z:0}],canCull:()=>!edited});let calls=0;const original=door.updateMatrixWorld;door.updateMatrixWorld=function(force){calls++;return original.call(this,force);};
+scene.updateMatrixWorld(true);assert.equal(calls,0,'A hidden underground branch skips render-only recursion');assert.equal(entrance.matrixWorld.elements[13],27,'Street entrances remain current');
+root.position.x=7;door.position.z=5;scene.updateMatrixWorld(true);assert.equal(calls,0);const queried=door.getWorldPosition(new T.Vector3());assert.deepEqual(queried.toArray(),[7,16,5],'Explicit world-coordinate queries on hidden actors still update normally');
+room.position.y=17;door.position.x=3;pos.y=20;v.update();scene.updateMatrixWorld(false);assert(calls>0);assert.deepEqual(new T.Vector3().setFromMatrixPosition(door.matrixWorld).toArray(),[10,17,5],'The first visible render catches up hidden parent and child movement');
+pos.y=26;pos.x=100;pos.z=100;v.update();calls=0;door.position.x=9;scene.updateMatrixWorld(true);assert.equal(calls,0);pos.x=1;pos.z=1;v.update();scene.updateMatrixWorld(false);assert.deepEqual(new T.Vector3().setFromMatrixPosition(door.matrixWorld).toArray(),[16,17,5],'Approaching an entrance resumes matrices immediately');
+pos.x=100;pos.z=100;v.update();edited=true;v.update();assert(v.interior.visible);scene.updateMatrixWorld();assert.equal(door.matrixWorld.elements[12],16,'Player-edit occlusion opt-out is retained');
+console.log('PASS: hidden render recursion skipped, simulation transforms retained, explicit queries work, parent/child motion catches up on approach/underground and edit opt-out.');

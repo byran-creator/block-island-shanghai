@@ -4,7 +4,8 @@ import {makeMetroSeats,METRO_SEATS as BASE_SEATS,cabinBlocked as baseCabinBlocke
 import {createMetroEntrance,metroEntranceLayout} from './metro-entrance.js';
 import {metroPlatformDirection as basePlatformDirection,metroBackOptions} from './metro-directions.js';
 import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
-import {paintMetroSign,metroSignCanvasSize} from './metro-sign-paint.js';
+import {metroSignCanvasSize} from './metro-sign-paint.js';
+import {createMetroSignArt} from './metro-sign-art.js';
 import {METRO_POSTER_SRC,METRO_POSTER_ASPECT} from './metro-poster-art.js';
 import {styleNpc} from './npc-appearance.js';
 import {announcementLines,speakVoiceLines} from './voice-settings.js';
@@ -22,6 +23,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  const lineNumber=config?.lineNumber??2,signOptions=config?.signOptions??{},trainOptions=config?.trainOptions??{},METRO_CARS=trainOptions.cars??BASE_CARS,METRO_SEATS=config?makeMetroSeats(METRO_CARS):BASE_SEATS,METRO_DOOR_CENTERS=METRO_CARS.flatMap(x=>[x-2,x+2]),nearestMetroDoor=x=>METRO_DOOR_CENTERS.reduce((a,b)=>Math.abs(b-x)<Math.abs(a-x)?b:a),halfTrain=METRO_CARS.at(-1)+3,cabinBlocked=(x,z,p)=>baseCabinBlocked(x,z,p,METRO_CARS);
 
  const root=new THREE.Group();root.name='shanghai-line-'+lineNumber;scene.add(root);
+ const signArt=createMetroSignArt();
  const tileTexture=terrazzoTexture(),box=new THREE.BoxGeometry(1,1,1),mats=new Map(),stations=[],staff=[],trains=[];let clock=0,treadTimer=0,ride=null,scan=null,audioAllowed=false,ownSpeech=false,subtitleTime=0;
  const hud=document.createElement('aside');hud.id=lineNumber===2?'metro-status':'metro-status-'+lineNumber;hud.className='metro-status';hud.hidden=true;document.body.append(hud);
  const caption=document.createElement('div');caption.id=lineNumber===2?'metro-caption':'metro-caption-'+lineNumber;caption.className='metro-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');document.body.append(caption);
@@ -36,14 +38,14 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  }
  function board(parent,lines,x,y,z,w,h,color='#c4ef67',bg='#18212a',options=null){
   if(options)options={...signOptions,...options};
-  const c=document.createElement('canvas');const size=options?metroSignCanvasSize(w,h):{width:768,height:256};c.width=size.width;c.height=size.height;const ctx=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+  const size=options?metroSignCanvasSize(w,h):{width:768,height:256};
   const different=!!options?.backLines||options?.layout==='route'||['←','→'].includes(options?.arrow)||options?.sections?.some(s=>['←','→'].includes(s.arrow));
-  const backOptions=options?{...metroBackOptions(options),...options.backOptions}:null,bc=different?document.createElement('canvas'):c;bc.width=c.width;bc.height=c.height;
-  const bctx=different?bc.getContext('2d'):ctx,btex=different?new THREE.CanvasTexture(bc):tex;btex.colorSpace=THREE.SRGBColorSpace;btex.anisotropy=4;
-  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),front=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:tex})),back=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:btex}));
+  const backOptions=options?{...metroBackOptions(options),...options.backOptions}:null,shared=!['arrival','route'].includes(options?.layout);
+  let frontArt=signArt.acquire(lines,options,size.width,size.height,color,bg,shared),backArt=different?signArt.acquire(options?.backLines??lines,backOptions,size.width,size.height,color,bg,shared):frontArt;
+  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),front=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:frontArt.texture})),back=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:backArt.texture}));
   front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.04:.012;back.position.z=options?.transit?-.04:-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);m.userData.signFaces={front:options,back:backOptions};parent.add(m);
-  const draw=(context,text,settings)=>{if(settings){paintMetroSign(context,text,{...settings,width:c.width,height:c.height,color,bg});return;}context.fillStyle=bg;context.fillRect(0,0,768,256);context.fillStyle=color;context.textAlign='center';text.forEach((line,i)=>{context.font=(i===0?'bold ':'')+(text.length>2?48:64)+'px sans-serif';context.fillText(line,384,55+i*(text.length>2?68:110),746);});};
-  const paint=text=>{m.userData.signText={front:[...text],back:[...(options?.backLines??text)]};draw(ctx,text,options);tex.needsUpdate=true;if(different){draw(bctx,options?.backLines??text,backOptions);btex.needsUpdate=true;}};paint(lines);return {mesh:m,paint,texture:tex,textures:[...new Set([tex,btex])]};
+  const paint=text=>{m.userData.signText={front:[...text],back:[...(options?.backLines??text)]};frontArt=signArt.repaint(frontArt,text);backArt=different?signArt.repaint(backArt,options?.backLines??text):frontArt;front.material.map=frontArt.texture;back.material.map=backArt.texture;};paint(lines);
+  return {mesh:m,paint,get texture(){return frontArt.texture;},get textures(){return [...new Set([frontArt.texture,backArt.texture])];}};
  }
  function person(parent,index,x,y,z,uniform){const r=new THREE.Group();r.position.set(x,y,z);parent.add(r);const shirt=uniform??['#a98ad3','#dde8eb','#dd9d72','#799cc4','#789f91'][index%5];cube(r,shirt,0,1.04,0,.42,.65,.29);cube(r,'#dcb08d',0,1.55,0,.34,.35,.33);cube(r,'#302b30',0,1.76,0,.35,.08,.34);for(const side of [-1,1]){cube(r,shirt,side*.29,1.04,0,.14,.56,.19);cube(r,'#344053',side*.12,.39,0,.17,.74,.22);}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms:[r.children[3],r.children[5]],legs:[r.children[4],r.children[6]]},index,uniform?'staff':'visitor');return r;}
  const sounds=createMetroSounds({getAudio,allowed:()=>audioAllowed&&getSound()&&!document.hidden});
