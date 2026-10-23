@@ -1,3 +1,4 @@
+import {bundStaticGeometry} from './bund-static-batch.js';
 import {posePhotographer} from './photographer-pose.js';
 import {cityCarAppearance,createCitySpecialCar} from './city-car-appearance.js';
 import {createHuangpuCruises} from './huangpu-cruises.js';
@@ -331,13 +332,13 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   for(const boat of boats){if(boat.kind==='luxury-cruise'){continue;}tickWorkboat(boat,clock);}
  }
  // Merge static streets, windows and facade details by material. Moving people/cars stay animated.
- const animated=new Set([...cars,...boats,...pedestrians].map(o=>o.root).concat(customsClock.root)),nightSet=new Map([...windows.map(m=>[m,'window']),...facadeLights.map(m=>[m,'facade']),...goldSurfaces.map(m=>[m,'wash']),...skylineLEDs.map(m=>[m,'skyline-led'])]),batches=new Map(),v=new THREE.Vector3(),n=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
+ const animated=new Set([...cars,...boats,...pedestrians].map(o=>o.root).concat(customsClock.root)),nightSet=new Map([...windows.map(m=>[m,'window']),...facadeLights.map(m=>[m,'facade']),...goldSurfaces.map(m=>[m,'wash']),...skylineLEDs.map(m=>[m,'skyline-led'])]),batches=new Map();
  scene.updateMatrixWorld(true);
  for(const root of [...scene.children]){if(existingObjects.has(root)||animated.has(root)||root.isSprite)continue;
-  root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),group=o.userData.lightGroup;const key=o.material.uuid+':'+kind+':'+(group??'');let b=batches.get(key);if(!b){b={material:o.material,kind,group,position:[],normal:[],uv:[],index:[]};batches.set(key,b);}const g=o.geometry,p=g.attributes.position,no=g.attributes.normal,uv=g.attributes.uv,base=b.position.length/3;normalMatrix.getNormalMatrix(o.matrixWorld);for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);b.position.push(v.x,v.y,v.z);n.fromBufferAttribute(no,i).applyMatrix3(normalMatrix).normalize();b.normal.push(n.x,n.y,n.z);b.uv.push(uv?.getX(i)??0,uv?.getY(i)??0);}if(g.index){for(let i=0;i<g.index.count;i++)b.index.push(base+g.index.getX(i));}else for(let i=0;i<p.count;i++)b.index.push(base+i);});scene.remove(root);
+  root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),group=o.userData.lightGroup,key=o.material.uuid+':'+kind+':'+(group??'');let batch=batches.get(key);if(!batch){batch={material:o.material,kind,group,sources:[]};batches.set(key,batch);}batch.sources.push(o);});scene.remove(root);
  }
  windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;
- for(const b of batches.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(b.position,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(b.normal,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(b.uv,2));g.setIndex(b.index);g.computeBoundingSphere();const m=new THREE.Mesh(g,b.material);m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
+ for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
  for(const p of pedestrians){const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
  const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
  const promenadePeople=pedestrians.filter(p=>p.kind==='walk');
