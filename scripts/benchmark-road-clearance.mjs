@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {ROADS,roadContains} from '../game/city-layout.js';
+const original=(x,z)=>{for(const r of ROADS){const reach=r.width+1.2;for(let i=0;i<r.samples.length;i+=4){const p=r.samples[i],dx=x-p.x,dz=z-p.z;if(Math.abs(dx)>reach||Math.abs(dz)>reach)continue;if(Math.hypot(dx,dz)-r.width<1.2)return true;}}return false;};
+let seed=93;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+const points=Array.from({length:4000},()=>[random()*750-350,random()*500-100]);
+for(const [x,z]of points)assert.equal(roadContains(x,z),original(x,z));
+const run=fn=>{const start=performance.now();let hits=0;for(let j=0;j<5;j++)for(const [x,z]of points)hits+=fn(x,z);return {milliseconds:(performance.now()-start)/5,hits};};
+run(original);run(roadContains);const rows=[];
+for(let round=0;round<3;round++)for(const name of round%2?['indexed','published92']:['published92','indexed'])rows.push({round,name,...run(name==='indexed'?roadContains:original)});
+console.log(JSON.stringify({note:'Local CPU workload only; not whole-game FPS. No hardware-dependent CI pass threshold.',node:process.version,queries:points.length,rows},null,2));
