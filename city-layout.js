@@ -1,3 +1,4 @@
+import {nearSampledRoad,createRoadClearance} from './road-clearance.js';
 import {riverCenter,inRiver,CITY,PEARL,MAGNOLIA,MAP_BOUNDS,BUND_SHIFT,BRIDGES} from './shanghai-map.js';
 import {buildingStyle,buildArchitecture} from './city-architecture.js';
 import {yuyuanReserved} from './yuyuan-layout.js';
@@ -52,13 +53,9 @@ export const CAR_ROUTES=[{id:'bund',samples:BUND_LOOP},{id:'lujiazui',samples:AV
 // Cross streets join the two north-south roads; each has a return route.
 export const CROSS_ROADS=BUND_STREETS.filter(s=>s.kind==='road').map(s=>({...s,samples:routeSamples([[legacySpine(s.z),s.z],[legacyRoadX(s.z),s.z]])}));
 const BASE_ROADS=[{id:'bund',samples:BUND_LOOP,width:3},{id:'financial',samples:AVENUE,width:3},{id:'pudong',samples:CITY_LOOP,width:3},{id:'century',samples:CENTURY,width:3},{id:'bridge-approach',samples:routeSamples([[275,206],[282,206]]),width:3},...CROSS_ROADS];
-function distanceToRoad(x,z,roads=BASE_ROADS){let best=Infinity;for(const r of roads)for(let i=0;i<r.samples.length;i+=4){const p=r.samples[i];best=Math.min(best,Math.hypot(x-p.x,z-p.z)-r.width);}return best;}
-export function roadContains(x,z){
- // The same sampled-road predicate, with an exact conservative broad phase.
- // Crowd clearance must not compute a distance to every far-away road point.
- for(const r of ROADS){const reach=r.width+1.2;for(let i=0;i<r.samples.length;i+=4){const p=r.samples[i],dx=x-p.x,dz=z-p.z;if(Math.abs(dx)>reach||Math.abs(dz)>reach)continue;if(Math.hypot(dx,dz)-r.width<1.2)return true;}}
- return false;
-}
+const nearRoad=(x,z,roads=BASE_ROADS)=>nearSampledRoad(roads,x,z,1);
+export function roadContains(x,z){return roadClearance.contains(x,z);}
+
 export const PUDONG_BUILDINGS=[
  {id:'convention',name:'上海国际会议中心',x:130,z:64,rx:6,rz:5,h:9,kind:'convention'},
  {id:'superbrand',name:'正大广场',x:145,z:7,rx:9,rz:5,h:10,kind:'mall'},
@@ -80,7 +77,7 @@ export const PUDONG_BUILDINGS=[
 const plots=[...PUDONG_BUILDINGS,...BUND_BUILDINGS];
 const establishedTowerPlots={jinmao:{x:159.5,z:62.5},swfc:{x:181.5,z:56.5},shanghai:{x:152.5,z:85.5}};
 export const BACK_BUILDINGS=[];
-function available(b){if(b.x-b.rx<3||b.x+b.rx>315||b.z-b.rz<0||b.z+b.rz>233)return false;if(b.bank==='west'&&b.z>199&&b.x-b.rx<103)return false;for(let x=b.x-b.rx-2;x<=b.x+b.rx+2;x++)for(let z=b.z-b.rz-2;z<=b.z+b.rz+2;z++){const east=x>riverCenter(z)+10,west=x<riverCenter(z)-46;if(b.bank==='east'?!east:!west)return false;if(distanceToRoad(x,z)<1)return false;if(BUND_STREETS.some(s=>Math.abs(z-s.z)<=s.width+1)&&b.bank==='west')return false;}return !plots.some(p=>Math.abs(p.x-b.x)<=p.rx+b.rx+3&&Math.abs(p.z-b.z)<=p.rz+b.rz+3)&&!Object.values(establishedTowerPlots).some(p=>Math.abs(p.x-b.x)<b.rx+15&&Math.abs(p.z-b.z)<b.rz+15)&&Math.hypot(b.x-PEARL.x,b.z-PEARL.z)>b.rx+15;}
+function available(b){if(b.x-b.rx<3||b.x+b.rx>315||b.z-b.rz<0||b.z+b.rz>233)return false;if(b.bank==='west'&&b.z>199&&b.x-b.rx<103)return false;for(let x=b.x-b.rx-2;x<=b.x+b.rx+2;x++)for(let z=b.z-b.rz-2;z<=b.z+b.rz+2;z++){const east=x>riverCenter(z)+10,west=x<riverCenter(z)-46;if(b.bank==='east'?!east:!west)return false;if(nearRoad(x,z))return false;if(BUND_STREETS.some(s=>Math.abs(z-s.z)<=s.width+1)&&b.bank==='west')return false;}return !plots.some(p=>Math.abs(p.x-b.x)<=p.rx+b.rx+3&&Math.abs(p.z-b.z)<=p.rz+b.rz+3)&&!Object.values(establishedTowerPlots).some(p=>Math.abs(p.x-b.x)<b.rx+15&&Math.abs(p.z-b.z)<b.rz+15)&&Math.hypot(b.x-PEARL.x,b.z-PEARL.z)>b.rx+15;}
 for(const offset of [106,132,158])for(let z=27;z<=223;z+=17){const b={id:`bund-back-${offset}-${z}`,name:'外滩后方街区',x:Math.round(riverCenter(z)-offset),z,rx:5,rz:5,h:8+(z*7+offset)%14,kind:z%3?'brick':'baroque',bank:'west',entranceSide:1};if(available(b)){b.front=b.x+b.rx;BACK_BUILDINGS.push(b);plots.push(b);}}
 for(let x=200;x<=308;x+=18)for(let z=20;z<=200;z+=24){const b={id:`pudong-back-${x}-${z}`,name:'陆家嘴商务街区',x,z,rx:4,rz:5,h:15+(x+z*3)%25,kind:'glass',bank:'east',entranceSide:-1};if(available(b)){b.front=b.x-b.rx;BACK_BUILDINGS.push(b);plots.push(b);}}
 for(const offset of [73,100,120,141,162,183])for(let z=6;z<=230;z+=11){const b={id:`bund-infill-${offset}-${z}`,name:'外滩里街',x:Math.round(riverCenter(z)-offset),z,rx:3,rz:3,h:7+(z+offset)%13,kind:z%2?'brick':'baroque',bank:'west',entranceSide:1};if(available(b)){b.front=b.x+b.rx;BACK_BUILDINGS.push(b);plots.push(b);}}
@@ -99,7 +96,7 @@ function addWing(b){
  if(b.x-b.rx<MAP_BOUNDS.min+4||b.x+b.rx>MAP_BOUNDS.max-4||b.z-b.rz<MAP_BOUNDS.min+4)return;
  for(let x=b.x-b.rx-3;x<=b.x+b.rx+3;x++)for(let z=b.z-b.rz-3;z<=b.z+b.rz+3;z++){
   if(b.bank==='east'?x<riverCenter(z)+11:x>riverCenter(z)-46)return;
-  if(distanceToRoad(x,z,ROADS)<1)return;
+  if(nearRoad(x,z,ROADS))return;
  }
  if(plots.some(p=>Math.abs(p.x-b.x)<=p.rx+b.rx+4&&Math.abs(p.z-b.z)<=p.rz+b.rz+4))return;
  WING_BUILDINGS.push(b);plots.push(b);
@@ -137,7 +134,7 @@ for(let x=207;x<=297;x+=13)for(let z=74;z<=179;z+=15){
  if(plots.some(p=>Math.abs(p.x-x)<=p.rx+b.rx+2&&Math.abs(p.z-z)<=p.rz+b.rz+2))continue;
  if(Object.values(CITY).some(p=>Math.abs(p.x-x)<b.rx+15&&Math.abs(p.z-z)<b.rz+15))continue;
  if(x-b.rx<=riverCenter(z)+13||x-b.rx<=214&&z-b.rz<=58)continue;
- let clear=true;for(let xx=x-b.rx-1;xx<=x+b.rx+1;xx++)for(let zz=z-b.rz-1;zz<=z+b.rz+1;zz++)if(distanceToRoad(xx,zz,ROADS)<1)clear=false;
+ let clear=true;for(let xx=x-b.rx-1;xx<=x+b.rx+1;xx++)for(let zz=z-b.rz-1;zz<=z+b.rz+1;zz++)if(nearRoad(xx,zz,ROADS))clear=false;
  if(clear){BACK_BUILDINGS.push(b);plots.push(b);}
 }
 // Retire the duplicate loop beside the Pearl. Traffic uses a single east business loop.
@@ -156,7 +153,7 @@ const magnolia={id:'magnolia',name:'白玉兰广场 · 北外滩',x:MAGNOLIA.x,z
 DENSE_BUILDINGS.push(magnolia);plots.push(magnolia);
 const parkContains=(x,z)=>x>=176&&x<=216&&z>=38&&z<=60;
 const roadDistances=new Map();
-function finalRoadDistance(x,z){const key=x+','+z;if(!roadDistances.has(key))roadDistances.set(key,distanceToRoad(x,z,ROADS));return roadDistances.get(key);}
+function nearFinalRoad(x,z){const key=x+','+z;if(!roadDistances.has(key))roadDistances.set(key,nearRoad(x,z,ROADS));return roadDistances.get(key);}
 function addParcel(b){
  b.front=b.x+(b.entranceSide??1)*b.rx;
  if(b.x-b.rx<MAP_BOUNDS.min+3||b.x+b.rx>=317)return false;
@@ -168,7 +165,7 @@ function addParcel(b){
  if(b.bank==='east'&&Math.hypot(b.x-PEARL.x,b.z-PEARL.z)<Math.max(b.rx,b.rz)+15)return false;
  for(let x=b.x-b.rx-1;x<=b.x+b.rx+1;x++)for(let z=b.z-b.rz-1;z<=b.z+b.rz+1;z++){
   if(b.bank==='west'?(x>=riverCenter(z)-101||z>=202&&x<102-BUND_SHIFT):(x<=riverCenter(z)+11||parkContains(x,z)))return false;
-  if(finalRoadDistance(x,z)<1)return false;
+  if(nearFinalRoad(x,z))return false;
   if(b.bank==='west'&&BUND_STREETS.some(s=>Math.abs(z-s.z)<=s.width))return false;
  }
  DENSE_BUILDINGS.push(b);plots.push(b);return true;
@@ -288,3 +285,6 @@ export function buildCity(w){
  w.fill(MAGNOLIA.x-7,82,MAGNOLIA.z-6,MAGNOLIA.x+7,82,MAGNOLIA.z+6,9);
  w.fill(MAGNOLIA.x-7,83,MAGNOLIA.z-6,MAGNOLIA.x+7,89,MAGNOLIA.z+6,0);
 }
+
+// Layout mutation above is complete; runtime road geometry is static.
+const roadClearance=createRoadClearance(ROADS);
