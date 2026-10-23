@@ -18,7 +18,7 @@
 
 规划中的区域生命周期、性能预算和自动门禁尚待实施；目前已完成的优化及证据见[92轮记录](docs/startup-smoothness92.md)。功能回归通过不等于真机性能已达标。
 
-后续记录：[道路净空与加载](docs/road-clearance93.md)、[外滩构造内存及搜索缓冲](docs/scene-construction94.md)、[实例上传与完整帧诊断](docs/instance-upload95.md)。局部CPU、构造内存、完整加载和真机FPS分别计量，不互相替代。
+后续记录：[道路净空与加载](docs/road-clearance93.md)、[外滩构造内存及搜索缓冲](docs/scene-construction94.md)、[实例上传与完整帧诊断](docs/instance-upload95.md)、[实例裁剪与变换检查](docs/instance-cull96.md)。局部CPU、构造内存、完整加载和真机FPS分别计量，不互相替代。
 
 ## 本地启动
 
