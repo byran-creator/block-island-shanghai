@@ -33,10 +33,13 @@ export function createSceneInstances(scene){
     const flags=hierarchy(source),attached=!!(flags&1),visible=!!(flags&2);
     if(attached&&!visible&&source.geometry===mesh.geometry&&source.material===mesh.material){source.layers.mask=mask&~1;continue;}
     // Fall back to its original draw path if another system replaces a part.
-    if(!attached||source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1||!supportedTransform(source.matrixWorld)){source.layers.mask=mask;continue;}
+    if(!attached||source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1){source.layers.mask=mask;continue;}
     source.layers.mask=mask&~1;
     if(!visible||!(mask&camera.layers.mask))continue;
     if(source.frustumCulled&&!frustum.intersectsSphere(sphere.copy(source.geometry.boundingSphere).applyMatrix4(source.matrixWorld)))continue;
+    // A culled source contributes no vertices on either draw path. Defer the
+    // determinant/normal-transform check until it can actually be drawn.
+    if(!supportedTransform(source.matrixWorld)){source.layers.mask=mask;continue;}
     mesh.setMatrixAt(count++,matrix.multiplyMatrices(inverse,source.matrixWorld));
    }
    mesh.count=count;mesh.visible=count>0;
