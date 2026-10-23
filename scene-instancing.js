@@ -39,7 +39,11 @@ export function createSceneInstances(scene){
     if(source.frustumCulled&&!frustum.intersectsSphere(sphere.copy(source.geometry.boundingSphere).applyMatrix4(source.matrixWorld)))continue;
     mesh.setMatrixAt(count++,matrix.multiplyMatrices(inverse,source.matrixWorld));
    }
-   mesh.count=count;mesh.visible=count>0;if(count)mesh.instanceMatrix.needsUpdate=true;
+   mesh.count=count;mesh.visible=count>0;
+   // Only the compact visible prefix is drawn. Keep the full allocation for
+   // later views, but do not upload the unused tail every rendered frame.
+   mesh.instanceMatrix.clearUpdateRanges();
+   if(count){mesh.instanceMatrix.addUpdateRange(0,count*16);mesh.instanceMatrix.needsUpdate=true;}
   }
  }
  const before=scene.onBeforeRender,hook=function(renderer,renderScene,camera,...rest){before?.call(this,renderer,renderScene,camera,...rest);update(camera);};scene.onBeforeRender=hook;
