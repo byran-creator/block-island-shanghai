@@ -1,3 +1,4 @@
+import {createGardenPathfinder} from './garden-path.js';
 import * as THREE from './three.module.js';
 import {styleNpc} from './npc-appearance.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
@@ -11,10 +12,8 @@ export function createYuyuanCrowd({scene,world,blocked}){
  const clear=(x,z)=>{const key=x+','+z;if(!cache.has(key))cache.set(key,!!world.get(Math.floor(x),25,Math.floor(z))&&!blocked(x,26,z));return cache.get(key);};
  const step=.5,key=p=>p[0]+','+p[1];
  function nearest(p,actor=null){for(let r=0;r<=4;r+=step)for(let dx=-r;dx<=r;dx+=step)for(let dz=-r;dz<=r;dz+=step){const q=[Math.round((p[0]+dx)*2)/2,Math.round((p[1]+dz)*2)/2];if(clear(...q)&&(!actor||!occupied(actor,...q)))return q;}throw Error('No supported garden visitor start');}
- function path(start,end,actor=null){const queue=[start],seen=new Set([key(start)]),parents=new Map();let finish;
-  for(let i=0;i<queue.length;i++){const p=queue[i];if(key(p)===key(end)){finish=p;break;}for(const [dx,dz]of [[step,0],[-step,0],[0,step],[0,-step]]){const q=[p[0]+dx,p[1]+dz],k=key(q);if(seen.has(k)||q[0]<-120||q[0]>32||q[1]<206||q[1]>336||!clear(...q)||!clear(p[0]+dx/2,p[1]+dz/2)||actor&&occupied(actor,...q))continue;seen.add(k);parents.set(k,p);queue.push(q);}}
-  if(!finish)throw Error('Garden visitor circuit is blocked');const result=[];while(finish){result.push(finish);finish=parents.get(key(finish));}return result.reverse();
- }
+ const findPath=createGardenPathfinder(clear);
+ function path(start,end,actor=null){return findPath(start,end,actor?(x,z)=>occupied(actor,x,z):null);}
  function circuit(local,count,firstId){const waypoints=local.map(([x,z])=>nearest([x,z+YUYUAN_SHIFT])),points=[];for(let i=1;i<waypoints.length;i++)points.push(...path(waypoints[i-1],waypoints[i]).slice(i===1?0:1));
   // Remove detours that retrace an already visited grid point. These spikes
   // otherwise send walkers head-on along the same branch of a street circuit.
