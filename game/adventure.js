@@ -3,6 +3,7 @@ import {LINE10_WORLD_STATIONS} from './metro-line10-layout.js';
 import {yuyuanWalkRoute} from './yuyuan-access.js';
 import {drawQuestTarget} from './quest-guidance.js';
 import {drawMapPlayer} from './map-heading.js';
+import {mapBackgroundPixels} from './map-background.js';
 import * as THREE from './three.module.js';
 import {SIZE,WORLD_MIN,WORLD_MAX,BLOCKS,LANDMARKS,COURSE,COURSES,courseById,WORLD_SHIFT,WATER_LEVEL,CRYSTALS,CITY,overlaps} from './world.js';
 import {AdventureState} from './adventure-state.js';
@@ -27,12 +28,7 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
  for(const c of CRYSTALS){const group=new THREE.Group();group.position.set(c.x,c.y,c.z);const gem=new THREE.Mesh(gemGeo,new THREE.MeshBasicMaterial({color:c.id==='deck'?'#ff98cb':'#bdff75'}));group.add(gem);const ring=new THREE.Mesh(new THREE.TorusGeometry(.68,.035,5,24),new THREE.MeshBasicMaterial({color:'#ffffdc',transparent:true,opacity:.7}));ring.rotation.x=Math.PI/2;group.add(ring);scene.add(group);crystals.push({data:c,group,gem});}
  const minimap=$('minimap'),mc=minimap.getContext('2d'),mapBg=document.createElement('canvas');mapBg.width=SIZE;mapBg.height=SIZE;const bg=mapBg.getContext('2d');
  if(bg?.createImageData){
-  const imgData=bg.createImageData(SIZE,SIZE),px=imgData.data;let p=0;
-  for(let z=WORLD_MIN;z<WORLD_MAX;z++)for(let x=WORLD_MIN;x<WORLD_MAX;x++){
-   const y=world.ground(x,z),id=world.get(x,y-1,z);
-   const hex=y<WATER_LEVEL?'#236179':id===5?'#315b40':BLOCKS[id]?.color??'#46874e';
-   px[p++]=parseInt(hex.slice(1,3),16);px[p++]=parseInt(hex.slice(3,5),16);px[p++]=parseInt(hex.slice(5,7),16);px[p++]=255;
-  }
+  const imgData=bg.createImageData(SIZE,SIZE);mapBackgroundPixels(world,imgData.data);
   bg.putImageData(imgData,0,0);
  }else{
   for(let x=WORLD_MIN;x<WORLD_MAX;x++)for(let z=WORLD_MIN;z<WORLD_MAX;z++){const y=world.ground(x,z),id=world.get(x,y-1,z);bg.fillStyle=y<WATER_LEVEL?'#236179':id===5?'#315b40':BLOCKS[id]?.color??'#46874e';bg.fillRect(x-WORLD_MIN,z-WORLD_MIN,1,1)}
@@ -57,7 +53,7 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
  function paint(){if(near(LANDMARKS.gallery,6))open('paint-dialog');else notify('先到涂鸦街的白墙旁，再按 B。地图上的粉色墙标记就是它。');}
  function map(){open('map-dialog');$('map-dialog').scrollTop=0;}
  function travel(p){if(state.race){notify('跑酷中不能传送；按 V 退出挑战后再使用。');return;}if(fastTravel(p)!==false){close();hud();notify('已传送到'+p.name);}}
- for(const p of TRAVEL_POINTS){const button=document.createElement('button');button.textContent=p.name;button.onclick=()=>travel(p);$('map-destinations').appendChild(button);}
+ for(const p of TRAVEL_POINTS){const button=document.createElement('button');button.textContent=p.name;button.dataset.destination=p.id;button.onclick=()=>travel(p);$('map-destinations').appendChild(button);}
  $('large-map').addEventListener('click',e=>{const canvas=$('large-map'),rect=canvas.getBoundingClientRect(),isForced=document.body.classList.contains('force-landscape');const mx=isForced?((e.clientY-rect.top)/rect.height*canvas.width):((e.clientX-rect.left)/rect.width*canvas.width);const mz=isForced?((rect.right-e.clientX)/rect.width*canvas.height):((e.clientY-rect.top)/rect.height*canvas.height);const goal=getQuestTarget();if(goal&&Math.hypot(mx-(goal.x-WORLD_MIN)/SIZE*canvas.width,mz-(goal.z-WORLD_MIN)/SIZE*canvas.height)<28){notify(goal.label+'：'+goal.instruction);return;}const p=mapHit(mx,mz,canvas.width,28);if(p)travel(p);});
  for(const c of COURSES){const b=document.createElement('button');b.className='recipe-card';b.textContent=c.name+' · '+c.platforms.length+' 关 · '+c.description;b.onclick=()=>{close();state.startRace(getFlying(),c.id);setFlying(false);teleport(c.start);hud();notify(c.name+'开始！'+(c.sprint?'Shift 冲刺，':'')+'空格跳跃；落下回检查点。')};$('race-options').appendChild(b);}
  const paintCanvas=$('paint-canvas'),dc=paintCanvas.getContext('2d');let drawing=false,ink='#c4ff78',prev=null;dc.lineCap='round';dc.lineJoin='round';
