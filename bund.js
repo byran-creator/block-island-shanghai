@@ -338,7 +338,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),group=o.userData.lightGroup,key=o.material.uuid+':'+kind+':'+(group??'');let batch=batches.get(key);if(!batch){batch={material:o.material,kind,group,sources:[]};batches.set(key,batch);}batch.sources.push(o);});scene.remove(root);
  }
  windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;
- for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
+ for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
  for(const p of pedestrians){const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
  const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
  const promenadePeople=pedestrians.filter(p=>p.kind==='walk');

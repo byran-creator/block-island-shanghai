@@ -21,6 +21,9 @@ export function createSceneInstances(scene){
  for(const sources of candidates.values()){
   if(sources.length<3)continue;
   const first=sources[0],mesh=new THREE.InstancedMesh(first.geometry,first.material,sources.length);mesh.name='scene-shared-parts';mesh.frustumCulled=false;mesh.renderOrder=first.renderOrder;mesh.castShadow=first.castShadow;mesh.receiveShadow=first.receiveShadow;mesh.layers.mask=first.layers.mask;mesh.userData.range=first.userData.range??65;mesh.userData.panel=!!first.userData.panel;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.count=0;scene.add(mesh);
+  // Generated carrier transforms stay identity; all motion is in instance
+  // matrices. Keep world updates enabled for a transformed scene parent.
+  mesh.matrixAutoUpdate=false;
   if(!first.geometry.boundingSphere)first.geometry.computeBoundingSphere();
   const entries=sources.map(source=>({source,mask:source.layers.mask}));for(const e of entries)e.source.layers.mask=e.mask&~1;
   batches.push({mesh,entries});
