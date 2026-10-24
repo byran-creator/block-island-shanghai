@@ -5,7 +5,8 @@ import {Box3,Group} from './three.module.js';
 export function createMetroVisuals(root,{getPos,exits,radius=45,canCull=()=>true}){
  const interior=new Group();interior.name='occluded-metro-interior';const box=new Box3();
  root.updateWorldMatrix(true,true);
- for(const child of [...root.children]){box.setFromObject(child);if(!box.isEmpty()&&box.max.y<24)interior.add(child);}
+ function register(child){if(child.parent!==root)return false;root.updateWorldMatrix(true,false);box.setFromObject(child);if(box.isEmpty()||box.max.y>=24)return false;interior.add(child);return true;}
+ for(const child of [...root.children])register(child);
  root.add(interior);
  // Rendering cannot use hidden descendants. Keep simulation running and let
  // explicit getWorldPosition/updateWorldMatrix queries work as usual; rebuild
@@ -15,5 +16,5 @@ export function createMetroVisuals(root,{getPos,exits,radius=45,canCull=()=>true
  // Street feet are y=26; the actual eye is above ground. Below y=25 the
  // player is on an entrance slope or underground and must see all interiors.
  function update(){const p=getPos();interior.visible=!canCull()||p.y<25||exits.some(e=>(p.x-e.x)**2+(p.z-e.z)**2<radius*radius);}
- update();return {interior,update};
+ update();return {interior,update,register};
 }

@@ -1,15 +1,16 @@
 import * as THREE from './three.module.js';
+import {createNpcNameArt} from './npc-name-art.js';
 import {overlaps} from './world.js';
 
 const hud=p=>`X ${Math.round(p.x-40)} · Z ${Math.round(p.z-40)}`;
 export function createNpcGuides({scene,world,civil,activity,getPos,getVehicles,pause,resume,notify,lookAt=()=>{},extraPeople=[],onConversation=()=>{}}){
- const $=id=>document.getElementById(id),roles=[],reactions=new Map();let panel=false,replyComplete=false,conversation=null;
+ const $=id=>document.getElementById(id),roles=[],reactions=new Map(),nameArt=createNpcNameArt();let panel=false,replyComplete=false,conversation=null;
  const people=[...extraPeople,...civil.pedestrians.map(p=>({...p,person:true})),...activity.tourists.map(p=>({...p,person:true})),...activity.vendors.map(p=>({...p,person:true})),...civil.traffic.officers.map(p=>({...p,person:true}))];
  const actors=[...people,...civil.traffic.agents];
  const next=document.createElement('button');next.type='button';next.id='npc-continue';next.className='dialogue-continue';next.textContent='继续对话';next.setAttribute?.('aria-label','继续对话，查看话题');next.title='继续对话 · Enter / 空格';$('npc-dialog').appendChild(next);$('npc-dialog').className='game-dialog conversation-dialog';next.onclick=()=>{if(!replyComplete&&$('npc-actions').children.length){$('npc-actions').hidden=false;next.hidden=true;$('npc-actions').querySelector?.('button')?.focus?.();}else close();};
  function role(actor,title,color){
-  const canvas=document.createElement('canvas'),c=canvas.getContext('2d'),font='600 36px "Microsoft YaHei",sans-serif';c.font=font;canvas.width=Math.ceil((c.measureText?.(title)?.width??title.length*36)+28);canvas.height=64;c.font=font;c.textAlign='center';c.textBaseline='middle';c.shadowColor='#0a1728';c.shadowBlur=5;c.fillStyle='#fff7dd';c.fillText(title,canvas.width/2,32);
-  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),depthWrite:false}));const height=.25;tag.scale.set(height*canvas.width/canvas.height,height,1);tag.position.y=2.2;tag.userData.npcName=true;actor.root.add(tag);roles.push({actor,title,tag});
+  const texture=nameArt.get(title),canvas=texture.image;
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthWrite:false}));const height=.25;tag.scale.set(height*canvas.width/canvas.height,height,1);tag.position.y=2.2;tag.userData.npcName=true;actor.root.add(tag);roles.push({actor,title,tag});
  }
  for(const p of people){if(p.npcRole||p.metroRole)role(p,p.npcRole||p.metroRole,'#9ed6ef');else if(p.signal)role(p,'交警','#a5d9ff');else if(p.name)role(p,p.food?'美食商贩':'纪念品商贩','#ffd58a');else if(p.kind==='delivery-walk')role(p,'外卖小哥','#a9ebc0');}
  for(const p of civil.traffic.riders)if(p.kind==='delivery')role(p,'外卖小哥','#a9ebc0');
