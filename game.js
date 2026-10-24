@@ -365,7 +365,7 @@ let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0,lastIdleFrame=-Infin
 function frame(now){
  if(document.hidden||!active&&!story?.filming&&now-lastIdleFrame<(photo?.opened?1000/30:1000/15)){prev=now;requestAnimationFrame(frame);return;}
  if(isMobile&&(active||story?.filming)&&mobilePacer.skip(now,mobileQuality==='clear'?60:30)){requestAnimationFrame(frame);return;}
- lastIdleFrame=now;const probeStart=performanceProbe?performance.now():0;
+ lastIdleFrame=now;const probeStart=performanceProbe?performance.now():0;performanceProbe?.beginFrame(active||story?.filming);
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?inputKeys:new Set()});
  if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?2:3);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
@@ -708,7 +708,7 @@ if(isMobile){
  }
  renderer.render(scene,camera);
 }
-performanceProbe=createPerformanceProbe({renderer,profile:()=>renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}),bootMs:performance.now()});
+performanceProbe=createPerformanceProbe({renderer,profile:()=>renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}),bootMs:performance.now(),subjects:[[civil,'tick','bund'],[civil.traffic,'tick','traffic'],[activity,'tick','nanjing'],[metro,'tick','metro'],[yuyuan,'tick','garden'],[residents,'tick','residents'],[npcGuides,'tick','npc-ui'],[weather,'tick','weather'],[life,'tick','life'],[privateSuites,'tick','suites'],[towerInteriors,'tick','tower-interiors'],[chunkWork,'process','chunks'],[scene,'updateMatrixWorld','matrices'],[scene,'onBeforeRender','instances']]});
 bootReady=true;
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 requestAnimationFrame(frame);
