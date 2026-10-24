@@ -16,6 +16,9 @@ export function batchMeshes(parent,meshes,name='static-detail'){
    for(let i=0;i<(g.index?.count??a.count);i++)indices[index++]=offset+(g.index?g.index.getX(i):i);offset+=a.count;range=Math.max(range,mesh.userData.range??180);
   }
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(position,3));g.setAttribute('normal',new THREE.BufferAttribute(normal,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setAttribute('color',new THREE.BufferAttribute(color,3));g.setIndex(new THREE.BufferAttribute(indices,1));g.computeBoundingSphere();const mesh=new THREE.Mesh(g,group.material);mesh.name=name;mesh.visible=group.visible;mesh.userData.range=range;mesh.userData.panel=!!group.material.map;parent.add(mesh);for(const source of group.sources)source.removeFromParent();result.push(mesh);
+  // The generated batch owns an identity local transform; source transforms
+  // are already baked into its vertices. Its parent can still move normally.
+  mesh.matrixAutoUpdate=false;
  }return result;
 }
 export function staticMeshes(root,excluded=new Set()){
