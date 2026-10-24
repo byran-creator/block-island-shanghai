@@ -1,5 +1,6 @@
 import * as THREE from './three.module.js';
 import {createMetro} from './metro.js';
+import {createMetroVisuals} from './metro-visuals.js';
 import {LINE10_TRAIN_BOUNDS,line10TrainPose,boundLine10TrainMeshes} from './metro-line10-service.js';
 import {metroInterior,metro2Interior} from './metro-layout.js';
 import {LINE10_COLOR,LINE10_ORIGIN,LINE10_ROTATION,LINE10_STATIONS,LINE10_RAMPS,line10StationAt,line10InteriorLocal,line10Interior,line10RampAt,line10RampFloor,line10Direction,line10ToLocal,line10ToWorld,TRANSFER_POINTS,transferInterior} from './metro-line10-layout.js';
@@ -37,10 +38,12 @@ export function createMetroNetwork(options){
  two.addSign(['出站检票','Exit gates'],{x:-106,y:20.2,z:77.6},3.6,.7,{lineNumber:2,lineColor:'#92c83e',arrow:'↑'});
  const exitPath=[[-100,79],[-106,79],[-106,66]];for(let i=1;i<exitPath.length;i++){const a=exitPath[i-1],b=exitPath[i];cube('#eed368',(a[0]+b[0])/2,16.04,(a[1]+b[1])/2,Math.abs(a[0]-b[0])||.14,.02,Math.abs(a[1]-b[1])||.14);}
  const stationViews=ten.stations.map(s=>({...s,...line10ToWorld({...s,y:16}),line:10,get paid(){return s.paid;},get checked(){return s.checked;},exits:s.exits.map(e=>({...e,...line10ToWorld({...e,y:26}),axis:'z'}))}));
+ const transferVisuals=createMetroVisuals(root,{getPos,exits:[...two.stations,...stationViews].flatMap(s=>s.exits),canCull:options.canCullInteriors});
  const allStates=[...two.stations,...ten.stations];let fare=false;
  const activeLine=()=>ten.isRiding()?ten:two.isRiding()?two:line10Interior(getPos())?ten:two;
  function clearFare(){fare=false;for(const s of allStates){s.checked=false;s.paid=false;s.gate=0;s.gatePass=null;}}
  function tick(dt,flags={}){
+  transferVisuals.update();
   const exits=allStates.filter(s=>s.gatePass?.entering===false);two.tick(dt,flags);ten.tick(dt,flags);
   const exited=exits.some(s=>!s.gatePass&&!s.paid&&!s.checked);
   const p=getPos(),outOfStation=flags.playing&&p.y>=24&&!metroInterior(p)&&!two.isRiding()&&!ten.isRiding();

@@ -1,4 +1,5 @@
 import {createBundWalkers} from './bund-walkers.js';
+import {createStreetSignArt} from './street-sign-art.js';
 import {createLujiazuiPeople,createLujiazuiFlow} from './lujiazui-life.js';
 import {createBusPassengers} from './bus-passengers.js';
 import {createStreetCrowd,moveShopper} from './street-crowd.js';
@@ -12,7 +13,7 @@ import {riverWestEdge,riverEastEdge,MAGNOLIA} from './shanghai-map.js';
 import {overlaps} from './world.js';
 import {boatWorld} from './boat-support.js';
 import {shopSignAnchor} from './shop-sign-layout.js';
-import {drawHeritageSign,getStripedAwningTexture,getShowcaseDisplayTexture,getLuxuryStorefrontTexture,getMetroPortalTexture,getNanjingSteleTexture,getNanjingSteleBackTexture,HERITAGE_BRANDS} from './shanghai-textures.js';
+import {getStripedAwningTexture,getShowcaseDisplayTexture,getLuxuryStorefrontTexture,getMetroPortalTexture,getNanjingSteleTexture,getNanjingSteleBackTexture,HERITAGE_BRANDS} from './shanghai-textures.js';
 
 export const SHOP_NAMES=['永安百货','先施公司','沈大成','老凤祥','泰康食品','亨达利钟表','朵云轩','和平饭店','第一食品','培丽丝绸'];
 export const NEON_COLORS=['#ff4f9c','#42eaff','#ab71ff','#ffe176','#49efbb'];
@@ -22,29 +23,12 @@ export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestE
 
 export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null}){
  const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
- const box=new THREE.BoxGeometry(1,1,1),mats=new Map();let clock=0,ride=null,panel=false,cooldown=0,purchases=0;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
+ const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),signArt=createStreetSignArt();let clock=0,ride=null,panel=false,cooldown=0,purchases=0,lastSignNight=null;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,material(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=240;parent.add(m);return m;}
  function board(text,color,x,y,z,w,h,angle=0,graffiti=false,brandIndex=-1,style='horizontal'){
-  let cw=512,ch=144;
-  if(style==='vertical-blade'){cw=192;ch=512;}
-  else if(style==='medallion'||graffiti){cw=256;ch=256;}
-  else if(style==='arch'){cw=512;ch=192;}
-  const compact=graffiti&&[...text].length===1;
-  const cDay=document.createElement('canvas');cDay.width=compact?128:cw;cDay.height=compact?128:ch;
-  const cNight=document.createElement('canvas');cNight.width=cDay.width;cNight.height=cDay.height;
-  if(text==='H'){
-   const drawH=(c,col)=>{const ctx=c.getContext('2d');ctx.fillStyle='#232c33';ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle=col;ctx.lineWidth=14;ctx.strokeRect(10,10,c.width-20,c.height-20);ctx.font='bold 80px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',c.width/2,c.height/2);};
-   drawH(cDay,'#f9f2c6');drawH(cNight,'#ffe66d');
-  }else{
-   const bIdx=brandIndex>=0?brandIndex:(typeof color==='number'?color:0);
-   drawHeritageSign(cDay,text,bIdx,false,false,color,style);
-   drawHeritageSign(cNight,text,bIdx,false,true,color,style);
-  }
-  const mapDay=new THREE.CanvasTexture(cDay);mapDay.colorSpace=THREE.SRGBColorSpace;mapDay.generateMipmaps=true;mapDay.minFilter=THREE.LinearMipmapLinearFilter;mapDay.anisotropy=8;
-  const mapNight=new THREE.CanvasTexture(cNight);mapNight.colorSpace=THREE.SRGBColorSpace;mapNight.generateMipmaps=true;mapNight.minFilter=THREE.LinearMipmapLinearFilter;mapNight.anisotropy=8;
-  const day=new THREE.MeshLambertMaterial({map:mapDay,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),night=new THREE.MeshBasicMaterial({map:mapNight,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;root.add(m);signs.push({mesh:m,day,night});return m;
+  const {geometry,day,night}=signArt.get(text,color,w,h,graffiti,brandIndex,style);
+  const m=new THREE.Mesh(geometry,lastSignNight?night:day);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;root.add(m);signs.push({mesh:m,day,night});return m;
  }
  const fronts=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-'));
  for(const [index,b]of fronts.entries()){
@@ -295,7 +279,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear});
  const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos});
  const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
- function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);for(const s of signs)s.mesh.material=night?s.night:s.day;for(const m of neons)m.visible=night;
+ function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);if(night!==lastSignNight){lastSignNight=night;for(const s of signs)s.mesh.material=night?s.night:s.day;}for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
 
   if(getPos){const p=getPos();for(const l of shopLights)l.userData.distSq=(l.position.x-p.x)**2+(l.position.z-p.z)**2;shopLights.sort((a,b)=>a.userData.distSq-b.userData.distSq);for(let idx=0;idx<shopLights.length;idx++)shopLights[idx].visible=night&&idx<4&&shopLights[idx].userData.distSq<1600;}else{for(const m of shopLights)m.visible=night;}
