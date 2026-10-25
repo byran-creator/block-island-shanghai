@@ -701,13 +701,13 @@ rainCrowd=createRainCrowd(npcGuides.actors.filter(p=>p.person&&!p.resident&&!p.m
 const sceneInstances=createSceneInstances(scene);
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming});
 camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
-const previewCamera=camera.clone();previewCamera.aspect=Math.max(camera.aspect,3);previewCamera.updateProjectionMatrix();previewCamera.updateMatrixWorld(true);
+const previewCamera=camera.clone();previewCamera.aspect=Math.max(camera.aspect,3);previewCamera.far=isMobile?150:160;previewCamera.updateProjectionMatrix();previewCamera.updateMatrixWorld(true);
 const visible=menuVisibleChunks(chunkWork.desired,previewCamera,CHUNK,HEIGHT);
 chunkWork.prioritize(visible);
 await loadingStage('正在补齐登录背景建筑…');
-const yieldSlice=()=>globalThis.scheduler?.yield?globalThis.scheduler.yield():new Promise(resolve=>setTimeout(resolve,0));
+const yieldSlice=()=>globalThis.scheduler?.yield?globalThis.scheduler.yield():(typeof MessageChannel!=='undefined'?new Promise(resolve=>{const ch=new MessageChannel();ch.port1.onmessage=()=>{ch.port1.close();resolve();};ch.port2.postMessage(null);}):new Promise(resolve=>setTimeout(resolve,0)));
 while([...visible].some(key=>!chunks.has(key))){
- chunkWork.process(12,Infinity);
+ chunkWork.process(20,Infinity,32);
  await yieldSlice();
 }
 renderer.render(scene,camera);

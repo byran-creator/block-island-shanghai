@@ -112,4 +112,4 @@ export function overlaps(world,x,y,z){
  if(x<WORLD_MIN+.3||z<WORLD_MIN+.3||x>WORLD_MAX-.3||z>WORLD_MAX-.3||y<1)return true;
  for(let ix=Math.floor(x-.29);ix<=Math.floor(x+.29);ix++)for(let iy=Math.floor(y+.001);iy<=Math.floor(y+1.75);iy++)for(let iz=Math.floor(z-.29);iz<=Math.floor(z+.29);iz++)if(world.get(ix,iy,iz))return true;return false;
 }
-export function trace(world,origin,dir,reach=7){let last=null;for(let t=0;t<=reach;t+=.025){const x=Math.floor(origin.x+dir.x*t),y=Math.floor(origin.y+dir.y*t),z=Math.floor(origin.z+dir.z*t);if(world.get(x,y,z))return {x,y,z,id:world.get(x,y,z),place:last};last={x,y,z}}return null;}
+export function trace(world,origin,dir,reach=7){let last=null,lx=999999,ly=999999,lz=999999;for(let t=0;t<=reach;t+=.025){const x=Math.floor(origin.x+dir.x*t),y=Math.floor(origin.y+dir.y*t),z=Math.floor(origin.z+dir.z*t);if(x===lx&&y===ly&&z===lz)continue;lx=x;ly=y;lz=z;const id=world.get(x,y,z);if(id)return {x,y,z,id,place:last};last={x,y,z}}return null;}
