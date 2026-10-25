@@ -126,28 +126,28 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   cube(root,'#5e121b',b.x-1.8,27.36,b.z,1.2,.03,.7);
   const shopInterior=new THREE.Group();shopInterior.name='shop-interior-'+b.id;root.add(shopInterior);
   const updateMatrices=shopInterior.updateMatrixWorld;let skipped=false;
-  shopInterior.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}updateMatrices.call(this,force||skipped);skipped=false;};
+  shopInterior.matrixAutoUpdate=false;shopInterior.updateMatrix();shopInterior.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}updateMatrices.call(this,force||skipped);skipped=false;};
   shopInteriors.push({group:shopInterior,x:b.x,z:b.z});
-  const featureUnit=createProduct(featBp.product);featureUnit.scale.setScalar(.52);featureUnit.position.set(b.x-1.8,27.4,b.z);shopInterior.add(featureUnit);
+  const featureUnit=createProduct(featBp.product);featureUnit.scale.setScalar(.52);featureUnit.position.set(b.x-1.8,27.4,b.z);featureUnit.matrixAutoUpdate=false;featureUnit.updateMatrix();shopInterior.add(featureUnit);
   // Surrounding signature goods on lower island tier
   for(const [idx,dx]of [[-0.65,-0.3],[0.65,-0.3],[-0.65,0.3],[0.65,0.3]].entries()){
    const itemKind=idx===0?featBp.product:idx===1?'casket':idx===2?featBp.product:'vase';
-   const u=createProduct(itemKind);u.scale.setScalar(.44);u.position.set(b.x-1.8+dx[0],27.02,b.z+dx[1]);shopInterior.add(u);
+   const u=createProduct(itemKind);u.scale.setScalar(.44);u.position.set(b.x-1.8+dx[0],27.02,b.z+dx[1]);u.matrixAutoUpdate=false;u.updateMatrix();shopInterior.add(u);
   }
   // Back-wall multi-tier grand vitrine display (背墙通顶多宝格展品)
   for(let col=-1.8;col<=1.8;col+=1.2){
-   const bUnit=createProduct(featBp.product);bUnit.scale.setScalar(.42);bUnit.position.set(b.x-.6+col,27.66,backZ+side*.38);shopInterior.add(bUnit);
-   const tUnit=createProduct(Math.abs(col)<.5?'casket':'vase');tUnit.scale.setScalar(.4);tUnit.position.set(b.x-.6+col,28.36,backZ+side*.38);shopInterior.add(tUnit);
-   const lUnit=createProduct('gift');lUnit.scale.setScalar(.4);lUnit.position.set(b.x-.6+col,26.96,backZ+side*.38);shopInterior.add(lUnit);
+   const bUnit=createProduct(featBp.product);bUnit.scale.setScalar(.42);bUnit.position.set(b.x-.6+col,27.66,backZ+side*.38);bUnit.matrixAutoUpdate=false;bUnit.updateMatrix();shopInterior.add(bUnit);
+   const tUnit=createProduct(Math.abs(col)<.5?'casket':'vase');tUnit.scale.setScalar(.4);tUnit.position.set(b.x-.6+col,28.36,backZ+side*.38);tUnit.matrixAutoUpdate=false;tUnit.updateMatrix();shopInterior.add(tUnit);
+   const lUnit=createProduct('gift');lUnit.scale.setScalar(.4);lUnit.position.set(b.x-.6+col,26.96,backZ+side*.38);lUnit.matrixAutoUpdate=false;lUnit.updateMatrix();shopInterior.add(lUnit);
   }
   // Side vitrine products (侧墙展柜陈列)
   for(const sz of [-1.2,-.4,.4,1.2]){
-   const sUnit=createProduct(featBp.product);sUnit.scale.setScalar(.42);sUnit.position.set(b.x-3.2,27.65,b.z+sz);shopInterior.add(sUnit);
+   const sUnit=createProduct(featBp.product);sUnit.scale.setScalar(.42);sUnit.position.set(b.x-3.2,27.65,b.z+sz);sUnit.matrixAutoUpdate=false;sUnit.updateMatrix();shopInterior.add(sUnit);
   }
   // Window showcase feature items (临街橱窗陈列)
   for(const sideCase of [-1,1]){
    const cx=front.x+sideCase*(1.4+sideW/2);
-   const winUnit=createProduct(featBp.product);winUnit.scale.setScalar(.46);winUnit.position.set(cx,26.95,front.z+side*.06);shopInterior.add(winUnit);
+   const winUnit=createProduct(featBp.product);winUnit.scale.setScalar(.46);winUnit.position.set(cx,26.95,front.z+side*.06);winUnit.matrixAutoUpdate=false;winUnit.updateMatrix();shopInterior.add(winUnit);
   }
   // Interior brand lacquer plaque on back wall
   board(name+' · '+(featBp.craft||'老字号品牌'),brand.border,b.x-.6,28.62,backZ+side*.22,3.2,.72,side>0?0:Math.PI,false,i,'horizontal');

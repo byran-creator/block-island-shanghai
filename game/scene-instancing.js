@@ -10,12 +10,19 @@ function supportedTransform(m){
 // intact for walking, doors, dialogue, seats, collision and save logic.
 export function createSceneInstances(scene){
  const candidates=new Map(),batches=[],sphere=new THREE.Sphere(),frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),inverse=new THREE.Matrix4(),matrix=new THREE.Matrix4();
- const hierarchyCache=new WeakMap();let frame=0;
- function hierarchy(o){if(!o)return 0;if(o===scene)return scene.visible?3:1;let state=hierarchyCache.get(o);if(state?.frame===frame)return state.flags;const parent=hierarchy(o.parent),flags=(parent&1)|((parent&2)&&o.visible?2:0);if(!state){state={};hierarchyCache.set(o,state);}state.frame=frame;state.flags=flags;return flags;}
+ let frame=0;
+ function hierarchy(o){
+  if(!o)return 0;
+  if(o===scene)return scene.visible?3:1;
+  if(o._hFrame===frame)return o._hFlags;
+  const parent=hierarchy(o.parent),flags=(parent&1)|((parent&2)&&o.visible?2:0);
+  o._hFrame=frame;o._hFlags=flags;
+  return flags;
+ }
  scene.updateMatrixWorld(true);
  scene.traverse(o=>{
   if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||o.morphTargetInfluences||o.castShadow||Array.isArray(o.material)||!o.geometry?.attributes.position||o.geometry.isInstancedBufferGeometry||o.material.isShaderMaterial||o.material.transparent||o.material.opacity!==1||o.layers.mask!==1||o.onBeforeRender!==THREE.Object3D.prototype.onBeforeRender||o.matrixWorld.determinant()<=0)return;
-  const key=[o.geometry.uuid,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,o.userData.range??65,!!o.userData.panel].join(':');
+  let isDyn=false;for(let p=o;p&&p!==scene;p=p.parent){if(p.userData?.appearance||p.userData?.actor){isDyn=true;break;}const name=p.name||'';if(name.startsWith('city-car-')||name.startsWith('cruise-passenger-')||name.startsWith('nanjing-yuyuan-visitor-')){isDyn=true;break;}}const key=[o.geometry.uuid,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,o.userData.range??65,!!o.userData.panel,isDyn?1:0].join(':');
   if(!candidates.has(key))candidates.set(key,[]);candidates.get(key).push(o);
  });
  for(const sources of candidates.values()){

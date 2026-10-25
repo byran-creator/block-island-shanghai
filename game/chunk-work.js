@@ -55,7 +55,7 @@ export function createChunkQueue({has,create,commit,now=()=>performance.now()}){
   const distance=key=>{const [x,z]=key.split(',').map(Number);return ((x+.5)*chunk-point.x)**2+((z+.5)*chunk-point.z)**2;};
   const ordered=[...pending].sort((a,b)=>distance(a[0])-distance(b[0]));pending.clear();for(const entry of ordered)pending.set(...entry);
  }
- function process(budget=3,maxChunks=1){
+ function process(budget=3,maxChunks=1,stepCount=8){
   if(!pending.size)return;const start=now();let committed=0;
   do{
    if(!current){
@@ -63,7 +63,7 @@ export function createChunkQueue({has,create,commit,now=()=>performance.now()}){
     if(!nextKey)break;
     current={key:nextKey,task:create(nextKey)};
    }
-   if(current.task.step(8)){
+   if(current.task.step(stepCount)){
     const {key,task}=current;pending.delete(key);current=null;
     if(desired.has(key))commit(key,task.data);
     committed++;
