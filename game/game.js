@@ -706,9 +706,10 @@ if(isMobile){
  const visible=menuVisibleChunks(chunkWork.desired,previewCamera,CHUNK,HEIGHT);
  chunkWork.prioritize(visible);
  await loadingStage('正在补齐登录背景建筑…');
+ const yieldSlice=()=>globalThis.scheduler?.yield?globalThis.scheduler.yield():new Promise(resolve=>setTimeout(resolve,0));
  while([...visible].some(key=>!chunks.has(key))){
-  chunkWork.process(6);
-  await new Promise(resolve=>setTimeout(resolve,0));
+  chunkWork.process(12,Infinity);
+  await yieldSlice();
  }
  renderer.render(scene,camera);
 }

@@ -25,13 +25,37 @@ export function createSceneInstances(scene){
   // matrices. Keep world updates enabled for a transformed scene parent.
   mesh.matrixAutoUpdate=false;
   if(!first.geometry.boundingSphere)first.geometry.computeBoundingSphere();
-  const entries=sources.map(source=>({source,mask:source.layers.mask}));for(const e of entries)e.source.layers.mask=e.mask&~1;
-  batches.push({mesh,entries});
+  const box=new THREE.Box3(),tempSphere=new THREE.Sphere();let canCull=true;
+  const entries=sources.map(source=>{
+   tempSphere.copy(source.geometry.boundingSphere).applyMatrix4(source.matrixWorld);
+   const r=tempSphere.radius;
+   box.expandByPoint(new THREE.Vector3(tempSphere.center.x-r,tempSphere.center.y-r,tempSphere.center.z-r));
+   box.expandByPoint(new THREE.Vector3(tempSphere.center.x+r,tempSphere.center.y+r,tempSphere.center.z+r));
+   if(!source.frustumCulled)canCull=false;
+   for(let p=source;p&&p!==scene;p=p.parent){
+    if(p.userData?.appearance||p.userData?.actor){canCull=false;break;}
+    const name=p.name||'';
+    if(name.startsWith('city-car-')||name.startsWith('cruise-passenger-')||name.startsWith('nanjing-yuyuan-visitor-')){canCull=false;break;}
+   }
+   return {source,mask:source.layers.mask};
+  });
+  for(const e of entries)e.source.layers.mask=e.mask&~1;
+  batches.push({mesh,entries,box,canCull});
  }
  function update(camera){
   frame++;
   projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(projection);inverse.copy(scene.matrixWorld).invert();
-  for(const {mesh,entries}of batches){let count=0;
+  for(const {mesh,entries,box,canCull}of batches){
+   if(canCull&&!frustum.intersectsBox(box)){
+    if(mesh.visible){mesh.visible=false;mesh.count=0;}
+    for(const {source,mask}of entries){
+     if(source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1){
+      source.layers.mask=mask;
+     }
+    }
+    continue;
+   }
+   let count=0;
    for(const {source,mask}of entries){
     const flags=hierarchy(source),attached=!!(flags&1),visible=!!(flags&2);
     if(attached&&!visible&&source.geometry===mesh.geometry&&source.material===mesh.material){source.layers.mask=mask&~1;continue;}
