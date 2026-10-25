@@ -13,7 +13,7 @@ for(let i=0;i<12;i++)steps.play({surface:i%2?7:3});
 assert.equal(buffers.length,allocated,'Every player and crowd step reuses the small PCM buffer');
 let active=nodes.filter(n=>n.buffer&&n.started&&!n.stopped);assert.equal(active.length,4,'Overlapping shoe impacts are bounded');
 assert.notEqual(active[0].playbackRate.value,active[1].playbackRate.value,'Wood and paving have distinct shoe tone');
-assert(active[0].edges[0].gain.value>=.2,'Player step is audible rather than the old .016-level oscillator');
+assert(active[0].edges[0].gain.value>=.08&&active[0].edges[0].gain.value<=.12,'Player shoe impacts stay subordinate to the scene mix');
 steps.stop();assert(active.every(n=>n.stopped&&n.disconnected));steps.dispose();const count=nodes.length;steps.play();assert.equal(nodes.length,count);
 
 const sounds=[],crowd=createNearbyFootsteps(s=>sounds.push(s)),root={visible:true,position:{x:1,y:26,z:0}},actor={root,person:true},p={x:0,y:26,z:0};

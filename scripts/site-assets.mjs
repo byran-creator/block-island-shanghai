@@ -25,6 +25,8 @@ export async function collectSiteAssets(directory='game'){
  // original Site's authenticated saves and its existing asset routes.
  const entry=await build({entryPoints:[path.resolve(directory,'game.js')],bundle:true,minify:true,format:'esm',target:'es2022',write:false,legalComments:'inline',plugins:[{name:'site-world-worker-url',setup(builder){builder.onLoad({filter:/[\\/]world-generation\.js$/},async args=>({contents:worldWorkerReference(await readFile(args.path,'utf8'),worker.name,worker.buildId,worker.snapshot.manifest),loader:'js',resolveDir:path.dirname(args.path)}));}}]}),code=entry.outputFiles[0].text,name='game-'+createHash('sha256').update(code).digest('hex').slice(0,12)+'.js';
  assets['/'+name]={body:code,type:textTypes['.js']};
+ const loading=await build({entryPoints:[path.resolve(directory,'loading-music.js')],bundle:true,minify:true,format:'esm',target:'es2022',write:false,legalComments:'inline'}),loadingCode=loading.outputFiles[0].text,loadingName='loading-music-'+createHash('sha256').update(loadingCode).digest('hex').slice(0,12)+'.js';
+ assets['/'+loadingName]={body:loadingCode,type:textTypes['.js']};assets['/index.html'].body=assets['/index.html'].body.replace('src="./loading-music.js"','src="./'+loadingName+'"');
  const index=assets['/index.html'].body;if(!/src="\.\/game\.js(?:\?[^\"]*)?"/.test(index))throw Error('Site browser entry anchor missing');assets['/index.html'].body=index.replace(/src="\.\/game\.js(?:\?[^\"]*)?"/,'src="./'+name+'"');
  delete assets['/world-worker.js'];assets['/'+worker.name]={body:worker.code,type:textTypes['.js']};return assets;
 }

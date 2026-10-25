@@ -714,6 +714,7 @@ if(isMobile){
 }
 performanceProbe=createPerformanceProbe({renderer,profile:()=>renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}),bootMs:performance.now(),subjects:[[civil,'tick','bund'],[civil.traffic,'tick','traffic'],[activity,'tick','nanjing'],[metro,'tick','metro'],[yuyuan,'tick','garden'],[residents,'tick','residents'],[npcGuides,'tick','npc-ui'],[weather,'tick','weather'],[life,'tick','life'],[privateSuites,'tick','suites'],[towerInteriors,'tick','tower-interiors'],[chunkWork,'process','chunks'],[scene,'updateMatrixWorld','matrices'],[scene,'onBeforeRender','instances']]});
 bootReady=true;
+document.documentElement.dataset.gameReady='true';document.dispatchEvent(new Event('block-island-ready'));$('loading-music-credit')?.setAttribute('hidden','');
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
 requestAnimationFrame(frame);
 

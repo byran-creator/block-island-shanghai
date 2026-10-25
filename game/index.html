@@ -96,6 +96,7 @@
   <h1 id="menu-title">初到上海，故事从这里开始。</h1>
   <p id="menu-description">收下一张明信片，逛南京路，乘地铁去陆家嘴登高，再到豫园慢慢喝一杯茶。</p>
   <button id="play" class="play hero-cta" disabled>正在加载城市与建筑… <span>→</span></button>
+  <p id="loading-music-credit" class="menu-journey-note">加载配乐 · <a style="color:inherit" href="https://music.163.com/song?id=5284592" target="_blank" rel="noopener noreferrer">《上海滩》· 叶丽仪 / 网易云音乐</a></p>
   <p class="menu-journey-note">首次进入会自动开始两章新手引导 · 游戏内按 I 查看进度</p>
   <div class="mode-entry">
    <button id="mobile-menu-fullscreen" class="mode-pill mobile-only">📱 切换横屏全屏</button>
@@ -375,5 +376,6 @@
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>
+<script type="module" src="./loading-music.js"></script>
 <script type="module" src="./game.js?v=20261018L"></script>
 </body></html>

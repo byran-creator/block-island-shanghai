@@ -2,7 +2,7 @@ import {transform} from 'esbuild';
 import {readFile,readdir,mkdir,writeFile,cp,rm} from 'node:fs/promises';
 import {collectSiteAssets} from './site-assets.mjs';
 const assets=await collectSiteAssets();
-for(const [name,asset]of Object.entries(assets))if(asset.type.startsWith('text/javascript')&&!/^\/(game|world-worker)-[a-f0-9]{12}\.js$/.test(name))asset.body=(await transform(asset.body,{minify:true,format:'esm',target:'es2022',legalComments:'inline'})).code;
+for(const [name,asset]of Object.entries(assets))if(asset.type.startsWith('text/javascript')&&!/^\/(game|world-worker|loading-music)-[a-f0-9]{12}\.js$/.test(name))asset.body=(await transform(asset.body,{minify:true,format:'esm',target:'es2022',legalComments:'inline'})).code;
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist/server',{recursive:true});await mkdir('dist/.openai',{recursive:true});
 await writeFile('dist/server/index.js','const SITE_ASSETS='+JSON.stringify(assets)+';\n'+await readFile('worker/index.js','utf8'));

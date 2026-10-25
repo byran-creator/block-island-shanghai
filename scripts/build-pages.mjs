@@ -9,7 +9,10 @@ await cp('game',output,{recursive:true,filter:p=>!path.basename(p).startsWith('_
 const worker=await bundleWorldWorker();await writeFile(path.join(output,worker.name),worker.code);await writeFile(path.join(output,worker.snapshot.name),worker.snapshot.code);await rm(path.join(output,'world-worker.js'));
 const result=await build({entryPoints:['game/game.js'],bundle:true,minify:true,format:'esm',target:'es2022',outdir:output,entryNames:'game-[hash]',metafile:true,legalComments:'inline',plugins:[{name:'world-worker-url',setup(build){build.onLoad({filter:/[\\/]world-generation\.js$/},async args=>({contents:worldWorkerReference(await readFile(args.path,'utf8'),worker.name,worker.buildId,worker.snapshot.manifest),loader:'js',resolveDir:path.dirname(args.path)}));}}]});
 const entry=Object.keys(result.metafile.outputs).find(p=>result.metafile.outputs[p].entryPoint==='game/game.js');assert(entry,'Missing bundled entry');
+const loading=await build({entryPoints:['game/loading-music.js'],bundle:true,minify:true,format:'esm',target:'es2022',outdir:output,entryNames:'loading-music-[hash]',metafile:true,legalComments:'inline'});
+const loadingEntry=Object.keys(loading.metafile.outputs).find(p=>loading.metafile.outputs[p].entryPoint==='game/loading-music.js');assert(loadingEntry,'Missing loading music entry');
 let html=await readFile('game/index.html','utf8');
+html=html.replace('src="./loading-music.js"','src="./'+path.basename(loadingEntry)+'"');
 assert(/src="\.\/game\.js(?:\?[^\"]*)?"/.test(html));html=html.replace(/src="\.\/game\.js(?:\?[^\"]*)?"/,'src="./'+path.basename(entry)+'"');
 const styles=[...html.matchAll(/href="\.\/([^"?]+\.css)(?:\?[^\"]*)?"/g)];
 for(const match of styles){const data=await readFile(path.join('game',match[1])),hash=createHash('sha256').update(data).digest('hex').slice(0,12),name=match[1].replace(/\.css$/,`-${hash}.css`);await writeFile(path.join(output,name),data);html=html.replace(match[0],`href="./${name}"`);}
