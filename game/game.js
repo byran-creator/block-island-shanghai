@@ -446,7 +446,7 @@ metro=createMetro({renderer,canCullInteriors:()=>savedEdits.size===0&&!story?.fi
 vesselSurfaces=boatSurfaces(activity.ferry,[...civil.boats,...civil.cruisePorts]);
 privateSuites=createPrivateSuites({scene,world,pause:pauseForPanel,resume:enter,place:p=>{placePlayer(p);setFlight(false);gliding=false;},getPos:()=>pos,getState:()=>life.state,teleport,lookAt:lookTowards,notify,setDay:()=>{dayClock=36;updateSky(0);},onProgress:()=>{life.refresh();saves?.save('auto');}});
 await loadingStage('正在构建豫园与老城商圈…');
-yuyuan=createYuyuan({scene,world,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
+yuyuan=createYuyuan({scene,world,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume,canCull:()=>savedEdits.size===0&&!story?.filming&&!photo?.opened});
 residents=createBuildingResidents({scene,world,getPos:()=>pos,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])]});
 story=createShanghaiJourney({scene,camera,world,routeBlocked:(x,y,z)=>!!metro?.collides(x,y,z)||!!life?.collides(x,y,z)||!!story?.collides(x,y,z)||!!activity?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!privateSuites?.collides(x,y,z)||!!towerInteriors?.collides(x,y,z),getAudio,getSound:()=>sound,getVolume:()=>music.volume,getContext:()=>({pos,touch:isMobile||touch,traffic:civil.traffic,rain:weather.state.rain,dayClock,life:life.state,people:activity?.tourists??[],gardenShops:yuyuan?.streetArt.extraShops??[],photoGuest:civil.pedestrians.find(p=>p.kind==='photo'&&p.point?.z===72),collectibles:{...yuyuan?.inventory,...activity?.goods},vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],metroNetwork:metro}),pause:pauseForPanel,resume:enter,notify,prefetch:p=>ensureChunks(p),placeStart:a=>{teleport({x:a.x-1.5,y:a.y,z:a.z-2});setFlight(false);lookTowards({...a,y:a.y+1.5});},celebrate:()=>{if(adventure?.launch){adventure.launch(true);notify('外滩的灯光已经为你亮起，过去看看吧 · 随时按 K 放烟花');}},onProgress:()=>{quests?.refresh();saves?.save('auto');}});
 towerInteriors=createTowerInteriors({scene,world,people:activity.tourists,getPos:()=>pos,place:p=>{placePlayer(p);setFlight(false);gliding=false;},lookAt:lookTowards,pause:pauseForPanel,resume:enter,notify,onRead:({title,text})=>story?.record({type:'city-conversation',district:'duoyun',kind:'reading',name:'朵云书院',topic:title,text})});
@@ -700,19 +700,17 @@ $('photo-open').onclick=()=>photo.open();
 rainCrowd=createRainCrowd(npcGuides.actors.filter(p=>p.person&&!p.resident&&!p.metroRole),{world});
 const sceneInstances=createSceneInstances(scene);
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming});
-if(isMobile){
- camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
- const previewCamera=camera.clone();previewCamera.aspect=Math.max(camera.aspect,3);previewCamera.updateProjectionMatrix();previewCamera.updateMatrixWorld(true);
- const visible=menuVisibleChunks(chunkWork.desired,previewCamera,CHUNK,HEIGHT);
- chunkWork.prioritize(visible);
- await loadingStage('正在补齐登录背景建筑…');
- const yieldSlice=()=>globalThis.scheduler?.yield?globalThis.scheduler.yield():new Promise(resolve=>setTimeout(resolve,0));
- while([...visible].some(key=>!chunks.has(key))){
-  chunkWork.process(12,Infinity);
-  await yieldSlice();
- }
- renderer.render(scene,camera);
+camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
+const previewCamera=camera.clone();previewCamera.aspect=Math.max(camera.aspect,3);previewCamera.updateProjectionMatrix();previewCamera.updateMatrixWorld(true);
+const visible=menuVisibleChunks(chunkWork.desired,previewCamera,CHUNK,HEIGHT);
+chunkWork.prioritize(visible);
+await loadingStage('正在补齐登录背景建筑…');
+const yieldSlice=()=>globalThis.scheduler?.yield?globalThis.scheduler.yield():new Promise(resolve=>setTimeout(resolve,0));
+while([...visible].some(key=>!chunks.has(key))){
+ chunkWork.process(12,Infinity);
+ await yieldSlice();
 }
+renderer.render(scene,camera);
 performanceProbe=createPerformanceProbe({renderer,profile:()=>renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}),bootMs:performance.now(),subjects:[[civil,'tick','bund'],[civil.traffic,'tick','traffic'],[activity,'tick','nanjing'],[metro,'tick','metro'],[yuyuan,'tick','garden'],[residents,'tick','residents'],[npcGuides,'tick','npc-ui'],[weather,'tick','weather'],[life,'tick','life'],[privateSuites,'tick','suites'],[towerInteriors,'tick','tower-interiors'],[chunkWork,'process','chunks'],[scene,'updateMatrixWorld','matrices'],[scene,'onBeforeRender','instances']]});
 bootReady=true;
 document.documentElement.dataset.gameReady='true';document.dispatchEvent(new Event('block-island-ready'));

@@ -101,7 +101,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
  for(let rz=-6;rz<=6;rz+=4)for(let rx=-6;rx<=6;rx+=4){
   const dist=Math.hypot(rx,rz),scale=Math.max(.8,3.2-dist*.28);
   lakeRock(-72+rx,222+rz,scale,22+(3-dist*.3)*1.2);
-  if(random()>.3)block('#2d4c2b',-72+rx+(random()-.5)*1.5,26+scale*2,-72+rx+(random()-.5)*1.5,.6,.12,.6);
+  if(random()>.3)block('#2d4c2b',-72+rx+(random()-.5)*1.5,26+scale*2,222+rz+(random()-.5)*1.5,.6,.12,.6);
  }
  // Mountain stone stair trail climbing to the peak
  for(let s=0;s<9;s++)block('#a2a092',-65.5-s*.65,26+s*.72,221+(s%3-.5)*.5,.9,.22,1.1);
