@@ -22,7 +22,7 @@ export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:
 export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestEdge(185)+7,z:185},b={x:riverEastEdge(136)-13,z:136};return {...phase,x:a.x+(b.x-a.x)*phase.u,z:a.z+(b.z-a.z)*phase.u,y:22.3,yaw:Math.atan2(b.x-a.x,b.z-a.z)+(time%94<59?Math.PI:0)};}
 
 export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null}){
- const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
+ const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[],shopInteriors=[];root.name='nanjing-street-life';scene.add(root);
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),signArt=createStreetSignArt();let clock=0,ride=null,panel=false,cooldown=0,purchases=0,lastSignNight=null;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,material(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=240;parent.add(m);return m;}
@@ -124,26 +124,30 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   cube(root,'#7a1d26',b.x-1.8,26.96,b.z,2.1,.04,1.3);
   cube(root,'#caa54f',b.x-1.8,27.16,b.z,1.25,.36,.75);
   cube(root,'#5e121b',b.x-1.8,27.36,b.z,1.2,.03,.7);
-  const featureUnit=createProduct(featBp.product);featureUnit.scale.setScalar(.52);featureUnit.position.set(b.x-1.8,27.4,b.z);root.add(featureUnit);
+  const shopInterior=new THREE.Group();shopInterior.name='shop-interior-'+b.id;root.add(shopInterior);
+  const updateMatrices=shopInterior.updateMatrixWorld;let skipped=false;
+  shopInterior.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}updateMatrices.call(this,force||skipped);skipped=false;};
+  shopInteriors.push({group:shopInterior,x:b.x,z:b.z});
+  const featureUnit=createProduct(featBp.product);featureUnit.scale.setScalar(.52);featureUnit.position.set(b.x-1.8,27.4,b.z);shopInterior.add(featureUnit);
   // Surrounding signature goods on lower island tier
   for(const [idx,dx]of [[-0.65,-0.3],[0.65,-0.3],[-0.65,0.3],[0.65,0.3]].entries()){
    const itemKind=idx===0?featBp.product:idx===1?'casket':idx===2?featBp.product:'vase';
-   const u=createProduct(itemKind);u.scale.setScalar(.44);u.position.set(b.x-1.8+dx[0],27.02,b.z+dx[1]);root.add(u);
+   const u=createProduct(itemKind);u.scale.setScalar(.44);u.position.set(b.x-1.8+dx[0],27.02,b.z+dx[1]);shopInterior.add(u);
   }
   // Back-wall multi-tier grand vitrine display (背墙通顶多宝格展品)
   for(let col=-1.8;col<=1.8;col+=1.2){
-   const bUnit=createProduct(featBp.product);bUnit.scale.setScalar(.42);bUnit.position.set(b.x-.6+col,27.66,backZ+side*.38);root.add(bUnit);
-   const tUnit=createProduct(Math.abs(col)<.5?'casket':'vase');tUnit.scale.setScalar(.4);tUnit.position.set(b.x-.6+col,28.36,backZ+side*.38);root.add(tUnit);
-   const lUnit=createProduct('gift');lUnit.scale.setScalar(.4);lUnit.position.set(b.x-.6+col,26.96,backZ+side*.38);root.add(lUnit);
+   const bUnit=createProduct(featBp.product);bUnit.scale.setScalar(.42);bUnit.position.set(b.x-.6+col,27.66,backZ+side*.38);shopInterior.add(bUnit);
+   const tUnit=createProduct(Math.abs(col)<.5?'casket':'vase');tUnit.scale.setScalar(.4);tUnit.position.set(b.x-.6+col,28.36,backZ+side*.38);shopInterior.add(tUnit);
+   const lUnit=createProduct('gift');lUnit.scale.setScalar(.4);lUnit.position.set(b.x-.6+col,26.96,backZ+side*.38);shopInterior.add(lUnit);
   }
   // Side vitrine products (侧墙展柜陈列)
   for(const sz of [-1.2,-.4,.4,1.2]){
-   const sUnit=createProduct(featBp.product);sUnit.scale.setScalar(.42);sUnit.position.set(b.x-3.2,27.65,b.z+sz);root.add(sUnit);
+   const sUnit=createProduct(featBp.product);sUnit.scale.setScalar(.42);sUnit.position.set(b.x-3.2,27.65,b.z+sz);shopInterior.add(sUnit);
   }
   // Window showcase feature items (临街橱窗陈列)
   for(const sideCase of [-1,1]){
    const cx=front.x+sideCase*(1.4+sideW/2);
-   const winUnit=createProduct(featBp.product);winUnit.scale.setScalar(.46);winUnit.position.set(cx,26.95,front.z+side*.06);root.add(winUnit);
+   const winUnit=createProduct(featBp.product);winUnit.scale.setScalar(.46);winUnit.position.set(cx,26.95,front.z+side*.06);shopInterior.add(winUnit);
   }
   // Interior brand lacquer plaque on back wall
   board(name+' · '+(featBp.craft||'老字号品牌'),brand.border,b.x-.6,28.62,backZ+side*.22,3.2,.72,side>0?0:Math.PI,false,i,'horizontal');
@@ -282,7 +286,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);if(night!==lastSignNight){lastSignNight=night;for(const s of signs)s.mesh.material=night?s.night:s.day;}for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
 
-  if(getPos){const p=getPos();for(const l of shopLights)l.userData.distSq=(l.position.x-p.x)**2+(l.position.z-p.z)**2;shopLights.sort((a,b)=>a.userData.distSq-b.userData.distSq);for(let idx=0;idx<shopLights.length;idx++)shopLights[idx].visible=night&&idx<4&&shopLights[idx].userData.distSq<1600;}else{for(const m of shopLights)m.visible=night;}
+  if(getPos){const p=getPos();for(const s of shopInteriors){const d=(p.x-s.x)**2+(p.z-s.z)**2;s.group.visible=d<48*48;}for(const l of shopLights)l.userData.distSq=(l.position.x-p.x)**2+(l.position.z-p.z)**2;shopLights.sort((a,b)=>a.userData.distSq-b.userData.distSq);for(let idx=0;idx<shopLights.length;idx++)shopLights[idx].visible=night&&idx<4&&shopLights[idx].userData.distSq<1600;}else{for(const m of shopLights)m.visible=night;}
   for(const m of ferryLamps)m.visible=night;const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
@@ -293,6 +297,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   bundFlow.tick(dt,clock,vehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
   for(const p of tourists){
    if(p.stationary&&p.kind!=='bus-guest'){
+    if(getPos){const pl=getPos();if((p.root.position.x-pl.x)**2+(p.root.position.z-pl.z)**2>85*85)continue;}
     if(p.browse){
      p.arms[0].rotation.x=-.4+Math.sin(clock*1.2+p.phase)*.15;p.arms[1].rotation.x=-.2;
      p.root.rotation.y=(p.side>0?0:Math.PI)+Math.sin(clock*0.8+p.phase)*0.25;
@@ -317,7 +322,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   }
   const v=nearestVendor(),port=landings.find(s=>Math.hypot(getPos().x-s.x,getPos().z-s.z)<3&&Math.abs(getPos().y-26)<2);$('city-prompt').hidden=!(v||port||ride);$('city-prompt').textContent=ride?'轮渡过江中 · 抵达自动下船':port?'V 搭乘轮渡 · '+port.name:v?'V '+(v.indoor?'店内购物':'逛摊位')+' · '+v.name:'';
  }
- const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons,shopLights));
+ const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons,shopLights,shopInteriors.map(s=>s.group)));
  batchMeshes(root,staticMeshes(root,moving),'street-furniture');neons.splice(0,neons.length,...batchMeshes(root,neons,'street-neon'));
  tick(0);return {tick,use,close,signs,neons,vendors,tourists,bundWalkers,stalls,ferry,heli,landings,goods,isPanelOpen:()=>panel,isRiding:()=>!!ride,cancelRide:()=>{if(ride){teleport(landings[ride.from]);ride=null;}},safeSavePoint:()=>ride?{...landings[ride.from]}:null,serialize:()=>({cooldown,purchases,goods:{...goods},stock:Object.fromEntries(vendors.map(v=>[v.id,v.remaining]))}),restore:d=>{ride=null;for(const id of Object.keys(SHOP_PRODUCTS))goods[id]=Math.max(0,Math.min(99999,Math.floor(Number(d?.goods?.[id])||0)));for(const v of vendors){const count=d?.stock?.[v.id];v.remaining=Number.isFinite(count)?Math.max(0,Math.min(6,Math.floor(count))):6;showStock(v);}cooldown=Math.max(0,Math.min(30,Number(d?.cooldown)||0));purchases=Math.max(0,Math.floor(Number(d?.purchases)||0));},collides:(x,y,z)=>y<28.5&&y+1.75>26&&(stalls.some(s=>Math.abs(x-s.x)<s.rx&&Math.abs(z-s.z)<s.rz)||(Math.abs(x-(-35))<.65&&Math.abs(z-66)<1.85))||!heli.userData.piloted&&y<heli.position.y+2.5&&y+1.75>heli.position.y&&Math.abs(x-heli.position.x)<1.6&&Math.abs(z-heli.position.z)<2.1};
 }

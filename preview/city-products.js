@@ -43,7 +43,7 @@ export const BRAND_PRODUCTS={
 // Individually removable servings. Merge inside each item, never across stock units.
 export function createProduct(kind,{meal=false}={}){
  const root=new THREE.Group();root.name='product-'+kind;root.userData.product=kind;
- const part=(geometry,c,x,y,z,w,h,d)=>{const m=new THREE.Mesh(geometry,material(c));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;};
+ const part=(geometry,c,x,y,z,w,h,d)=>{const m=new THREE.Mesh(geometry,material(c));m.position.set(x,y,z);m.scale.set(w,h,d);m.matrixAutoUpdate=false;m.updateMatrix();root.add(m);return m;};
  const cube=(...a)=>part(box,...a),round=(...a)=>part(disc,...a),sphere=(...a)=>part(ball,...a);
  const plate=(x=0,z=0,r=.42)=>{round('#f6f0de',x,.035,z,r,.05,r);round('#d8bd81',x,.068,z,r*.91,.015,r*.91);round('#fff9e9',x,.081,z,r*.86,.018,r*.86);};
  if(kind==='gift'){

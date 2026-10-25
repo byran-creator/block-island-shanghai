@@ -32,12 +32,16 @@ export function createSceneInstances(scene){
    box.expandByPoint(new THREE.Vector3(tempSphere.center.x-r,tempSphere.center.y-r,tempSphere.center.z-r));
    box.expandByPoint(new THREE.Vector3(tempSphere.center.x+r,tempSphere.center.y+r,tempSphere.center.z+r));
    if(!source.frustumCulled)canCull=false;
+   let isDynamic=false;
    for(let p=source;p&&p!==scene;p=p.parent){
-    if(p.userData?.appearance||p.userData?.actor){canCull=false;break;}
+    if(p.userData?.appearance||p.userData?.actor){isDynamic=true;break;}
     const name=p.name||'';
-    if(name.startsWith('city-car-')||name.startsWith('cruise-passenger-')||name.startsWith('nanjing-yuyuan-visitor-')){canCull=false;break;}
+    if(name.startsWith('city-car-')||name.startsWith('cruise-passenger-')||name.startsWith('nanjing-yuyuan-visitor-')){isDynamic=true;break;}
    }
-   return {source,mask:source.layers.mask};
+   if(isDynamic)canCull=false;
+   const isStatic=!isDynamic&&source.matrixAutoUpdate===false&&(!source.parent||source.parent===scene||source.parent.matrixAutoUpdate===false);
+   const sphere=isStatic?tempSphere.clone():null;
+   return {source,mask:source.layers.mask,sphere};
   });
   for(const e of entries)e.source.layers.mask=e.mask&~1;
   batches.push({mesh,entries,box,canCull});
@@ -56,14 +60,14 @@ export function createSceneInstances(scene){
     continue;
    }
    let count=0;
-   for(const {source,mask}of entries){
+   for(const {source,mask,sphere:cachedSphere}of entries){
     const flags=hierarchy(source),attached=!!(flags&1),visible=!!(flags&2);
     if(attached&&!visible&&source.geometry===mesh.geometry&&source.material===mesh.material){source.layers.mask=mask&~1;continue;}
     // Fall back to its original draw path if another system replaces a part.
     if(!attached||source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1){source.layers.mask=mask;continue;}
     source.layers.mask=mask&~1;
     if(!visible||!(mask&camera.layers.mask))continue;
-    if(source.frustumCulled&&!frustum.intersectsSphere(sphere.copy(source.geometry.boundingSphere).applyMatrix4(source.matrixWorld)))continue;
+    if(source.frustumCulled&&!frustum.intersectsSphere(cachedSphere??sphere.copy(source.geometry.boundingSphere).applyMatrix4(source.matrixWorld)))continue;
     // A culled source contributes no vertices on either draw path. Defer the
     // determinant/normal-transform check until it can actually be drawn.
     if(!supportedTransform(source.matrixWorld)){source.layers.mask=mask;continue;}
