@@ -43,9 +43,9 @@ Runtime: game-local asset, fetched only on the first audible inner-garden visit;
 Player/NPC footsteps remain original synthesized shoe impacts; no Minecraft or other commercial-game sound samples are used.
 
 
-临时加载配乐 / Temporary loading stream (2026-10-25)
+临时加载配乐 / Temporary loading excerpt (2026-10-25)
 Title: 上海滩 · Artist: 叶丽仪
 Official platform page: https://music.163.com/song?id=5284592
 Official external-play endpoint: https://music.163.com/song/media/outer/url?id=5284592.mp3
-Runtime: a short 0–22 second excerpt loops through the platform stream while the city loads. No recording is downloaded into this repository, packaged, proxied or claimed as original/free game music. Playback availability is controlled by the original platform; unavailable/blocked audio never blocks game initialization.
+Current asset: loading-shanghai-4297cd84acac.mp3, a temporary 0–22 second excerpt fetched from the official publicly available external-play endpoint above, downmixed/resampled to 22.05 kHz mono MP3 with 0.22-second edge fades. 176,795 bytes. Hosted with this game to avoid third-party redirects and startup network failure; loops through loading and the initial menu, stops on actual game entry. Not original/free game music or a claim of publisher/artist endorsement. Replace before a broader release.
 Requested as a temporary classmates-playtest cue, to replace before a wider release. The existing URLs/access configuration are unchanged.
