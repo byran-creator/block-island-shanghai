@@ -1,0 +1,112 @@
+import {pedestrianBlocked,pedestrianStepClear} from './pedestrian-traffic.js';
+
+export function crowdProfile(index){
+ let seed=Math.imul(index+71,2654435761)>>>0;seed=Math.imul(seed^(seed>>>16),2246822507)>>>0;seed^=seed>>>13;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+ return {random,speed:.58+random()*.74,phase:random()*Math.PI*2,wait:random()<.27?1+random()*4:0,breakIn:15+random()*35};
+}
+const bounds={x1:-179,x2:-38,z1:64.4,z2:68.45};
+// Shopping bags extend about .5m from the centre; include neighbouring arms.
+export const CROWD_SEPARATION=.9;
+// Counter customers also move physically: their shopping animation must not
+// overwrite a walker that has already yielded or passed in front of the shop.
+export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
+ if(dt<=0)return false;
+ const at=p.root.position,dx=target.x-at.x,dz=target.z-at.z,d=Math.hypot(dx,dz),step=Math.min(d,speed*dt);
+ // Short frame steps still have a direction; never replace it with a fixed heading.
+ const yaw=d>1e-6?Math.atan2(dx,dz)+Math.PI:p.root.rotation.y;
+ const turn=Math.atan2(Math.sin(yaw-p.root.rotation.y),Math.cos(yaw-p.root.rotation.y));
+ p.root.rotation.y+=Math.sign(turn)*Math.min(Math.abs(turn),dt*3.5);
+ if(d<1e-6||Math.abs(turn)>Math.PI/3)return false;
+ const q={x:at.x+dx/d*step,y:26,z:at.z+dz/d*step};
+ if(!clear(q)||!pedestrianStepClear(at,q,vehicles))return false;
+ for(const o of people){if(o===p||o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)continue;
+  const b=o.root.position,next=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
+  if(next<CROWD_SEPARATION**2&&!(old<CROWD_SEPARATION**2&&next>old+1e-8))return false;
+ }
+ at.set(q.x,q.y,q.z);return true;
+}
+export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0,active=()=>true}={}){
+ const walkers=people.filter(p=>!p.stationary);let first=0;
+ let neighbours=people.concat(typeof others==='function'?others():others);
+ const cells=new Map(),locations=new Map(),cellSize=4,queryRadius=CROWD_SEPARATION+1e-9;let indexed=false;
+ const cellKey=(x,z)=>x+','+z;
+ function indexNeighbours(){
+  // Short scans cost less than building an index for small or mostly idle groups.
+  if(walkers.length<64||neighbours.length<128){cells.clear();locations.clear();indexed=false;return;}
+  cells.clear();locations.clear();indexed=true;
+  for(const o of neighbours){const root=o.root,p=root.position;if(!Number.isFinite(p.x)||!Number.isFinite(p.z)){indexed=false;continue;}const previous=locations.get(root);if(previous){(previous.aliases??=[]).push(o);continue;}const x=Math.floor(p.x/cellSize),z=Math.floor(p.z/cellSize),key=cellKey(x,z),row={person:o,x,z,key};let cell=cells.get(key);if(!cell){cell=new Set();cells.set(key,cell);}cell.add(row);locations.set(root,row);}
+ }
+ function moved(p){
+  const row=locations.get(p.root);if(!row)return;const at=p.root.position,x=Math.floor(at.x/cellSize),z=Math.floor(at.z/cellSize);if(x===row.x&&z===row.z)return;cells.get(row.key).delete(row);row.x=x;row.z=z;row.key=cellKey(x,z);let cell=cells.get(row.key);if(!cell){cell=new Set();cells.set(row.key,cell);}cell.add(row);
+ }
+ function blocks(o,p,at,q){
+  if(o.root===p.root||!o.stationary&&o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)return false;
+  const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
+  return !(d>=CROWD_SEPARATION**2||(old<CROWD_SEPARATION**2&&d>old+1e-8));
+ }
+ const othersClear=(p,q)=>{
+  const at=p.root.position;
+  if(!indexed||!Number.isFinite(q.x)||!Number.isFinite(q.z))return neighbours.every(o=>{
+   if(o.root===p.root||!o.stationary&&o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)return true;
+   const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
+   return d>=CROWD_SEPARATION**2||(old<CROWD_SEPARATION**2&&d>old+1e-8);
+  });
+  // Only neighbours within the unchanged separation radius can reject a step.
+  // Every accepted move updates the grid before the next walker is considered.
+  for(let x=Math.floor((q.x-queryRadius)/cellSize);x<=Math.floor((q.x+queryRadius)/cellSize);x++)for(let z=Math.floor((q.z-queryRadius)/cellSize);z<=Math.floor((q.z+queryRadius)/cellSize);z++)for(const row of cells.get(cellKey(x,z))??[]){if(blocks(row.person,p,at,q)||row.aliases?.some(o=>blocks(o,p,at,q)))return false;}
+  return true;
+ };
+ const inside=q=>q.x>=area.x1&&q.x<=area.x2&&q.z>=area.z1&&q.z<=area.z2;
+ function goal(p){const r=p.crowd.random;for(let i=0;i<40;i++){const q=pickGoal?pickGoal(p):{x:area.x1+r()*(area.x2-area.x1),y:26,z:area.z1+r()*(area.z2-area.z1)};if(clear(q)&&othersClear(p,q)){p.crowd.goal=q;return;}}p.crowd.goal={...p.root.position};}
+ function retreat(p){const at=p.root.position,state=p.crowd,dx=state.goal.x-at.x,dz=state.goal.z-at.z,n=Math.hypot(dx,dz)||1;
+  for(const angle of [Math.PI,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75]){const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(dx*c-dz*s)/n*1.5,y:26,z:at.z+(dx*s+dz*c)/n*1.5};if(inside(q)&&clear(q)&&othersClear(p,q)){state.goal=q;return;}}
+  goal(p);
+ }
+ for(const [i,p]of walkers.entries()){p.crowd=crowdProfile(i+seedOffset);p.speed=p.crowd.speed;p.phase=p.crowd.phase;p.crowd.blocked=0;p.ready=false;goal(p);}
+ function advance(dt,vehicles){
+  if(typeof others==='function')neighbours=people.concat(others());
+  indexNeighbours();
+  for(let i=0;i<walkers.length;i++){
+   const p=walkers[(i+first)%walkers.length],state=p.crowd;let moving=false,turning=false,distanceMoved=0;
+   if(!active(p))continue;
+   if(!p.ready){for(let attempt=0;attempt<120;attempt++){const q=spawnPoint?spawnPoint(p):{x:area.x1+state.random()*(area.x2-area.x1),y:26,z:area.z1+state.random()*(area.z2-area.z1)};if(clear(q)&&othersClear(p,q)&&!pedestrianBlocked(q,vehicles)){p.root.position.set(q.x,q.y,q.z);if(indexed)moved(p);p.ready=true;goal(p);break;}}p.root.visible=p.ready;if(!p.ready)continue;}
+   state.breakIn-=dt;state.wait=Math.max(0,state.wait-dt);state.steerTime=Math.max(0,(state.steerTime??0)-dt);
+   if(state.breakIn<=0){state.wait=(p.kind==='delivery-walk'?.5:1.5)+state.random()*3.5;state.breakIn=18+state.random()*38;state.targetYaw=state.random()<.5?0:Math.PI;}
+   if(!state.wait){
+    const at=p.root.position,dx=state.goal.x-at.x,dz=state.goal.z-at.z,distance=Math.hypot(dx,dz);
+    if(distance<.35){state.wait=.8+state.random()*3;goal(p);}
+    else if(dt>0){
+     const length=Math.min(distance,state.speed*dt),nx=dx/distance,nz=dz/distance;
+     // Prefer a consistent passing side. Once blocked, allow a true sidestep or
+     // retreat rather than insisting on forward movement into a head-on queue.
+     const options=state.blocked>.2?[0,.65,-.65,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]:[0,.65,-.65];
+     const angles=state.steerTime>0?[state.steerAngle,...options.filter(a=>a!==state.steerAngle)]:options;
+     for(const angle of angles){
+      const c=Math.cos(angle),s=Math.sin(angle),q={x:at.x+(nx*c-nz*s)*length,y:26,z:at.z+(nx*s+nz*c)*length};
+      if(inside(q)&&clear(q)&&othersClear(p,q)&&pedestrianStepClear(at,q,vehicles)){
+       state.targetYaw=Math.atan2(q.x-at.x,q.z-at.z)+Math.PI;
+       const headingGap=Math.atan2(Math.sin(state.targetYaw-p.root.rotation.y),Math.cos(state.targetYaw-p.root.rotation.y));
+       if(angle!==state.steerAngle||state.steerTime<=0){state.steerAngle=angle;state.steerTime=angle===0?0:1.0;}
+       if(Math.abs(headingGap)>Math.PI/3){turning=true;break;}
+       distanceMoved=Math.hypot(q.x-at.x,q.z-at.z);at.set(q.x,q.y,q.z);if(indexed)moved(p);moving=true;break;
+      }
+     }
+     state.blocked=moving?0:state.blocked+dt;
+     if(state.blocked>2){retreat(p);state.blocked=0;}
+    }
+   }
+   // Tiny oscillations used to reset `blocked` forever. Measure real progress
+   // over time, excluding intentional browsing, and make room by backing out.
+   const at=p.root.position;state.anchor??={x:at.x,z:at.z};state.progressTime=(state.progressTime??0)+dt;
+   if(state.wait||Math.hypot(at.x-state.anchor.x,at.z-state.anchor.z)>.5){state.anchor={x:at.x,z:at.z};state.progressTime=0;}
+   else if(state.progressTime>2){retreat(p);state.anchor={x:at.x,z:at.z};state.progressTime=0;state.blocked=.2;}
+   state.state=moving?'walk':state.wait?'browse':'yield';state.phase+=distanceMoved*4.5;
+   const delta=Math.atan2(Math.sin((state.targetYaw??p.root.rotation.y)-p.root.rotation.y),Math.cos((state.targetYaw??p.root.rotation.y)-p.root.rotation.y));p.root.rotation.y+=Math.sign(delta)*Math.min(Math.abs(delta),dt*3.5);
+   const blend=1-Math.exp(-dt*7);state.gait=(state.gait??0)+((moving?1:0)-(state.gait??0))*blend;
+   for(let j=0;j<2;j++){p.legs[j].rotation.x=Math.sin(state.phase+p.phase)*(j?-.25:.25)*state.gait;p.arms[j].rotation.x=-p.legs[j].rotation.x+Math.sin(state.phase*.35+p.phase)*.04*(1-state.gait);}
+  }
+  first=(first+1)%Math.max(1,walkers.length);
+ }
+ function tick(dt,vehicles=[]){if(dt<=0){advance(0,vehicles);return;}let remaining=Math.min(dt,.25);while(remaining>1e-8){const step=Math.min(remaining,1/30);advance(step,vehicles);remaining-=step;}}
+ return {walkers,tick};
+}

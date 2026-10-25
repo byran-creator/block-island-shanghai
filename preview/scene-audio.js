@@ -1,0 +1,82 @@
+import {announcementLines,speakVoiceLines} from './voice-settings.js';
+import {createRainAmbience} from './rain-ambience.js';
+import {createGardenAmbience} from './garden-ambience.js';
+import {createFootsteps,createNearbyFootsteps,createStepCadence} from './footsteps.js';
+import {metroInterior} from './metro-layout.js';
+import {DENSE_BUILDINGS,NANJING_WEST,roadX} from './city-layout.js';
+import {PEACE,PEACE_DINING} from './peace-restaurant.js';
+import {riverWestEdge,riverEastEdge} from './shanghai-map.js';
+
+const shops=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-'));
+export function soundScene(p,night=false){
+ if(metroInterior(p))return {name:'地铁2号线',track:'metro',traffic:0,water:0};
+ if(p.y<22)return {name:'水下',track:'deep',water:.7,traffic:0};
+ if(Math.abs(p.x-PEACE.x)<PEACE.rx&&Math.abs(p.z-PEACE.z)<PEACE.rz&&Math.abs(p.y-PEACE_DINING.y)<2)return {name:'龙凤厅',track:'dining',dining:1,traffic:0};
+ if(p.y>=25&&p.y<30&&shops.some(b=>Math.abs(p.x-b.x)<b.rx&&Math.abs(p.z-b.z)<b.rz))return {name:'南京路店铺',track:'shop',shop:1,traffic:.05};
+ if(p.y>=24&&p.y<32&&p.x>=NANJING_WEST&&p.x<roadX(66)-4&&Math.abs(p.z-66)<6)return {name:'南京路步行街',track:'shop',market:1,traffic:.12};
+ if(p.x>=-125&&p.x<=40&&p.z>=205&&p.z<=338){
+  const isInner=p.x>=-75&&p.x<=3&&p.z>=254&&p.z<=318;
+  return {name:isInner?'豫园古典园林':'豫园商城商圈',track:'yuyuan',garden:isInner,bazaar:!isInner,yuyuan:true,water:isInner?.45:.28,traffic:0};
+ }
+ if(p.z>=270)return {name:'生活岛',track:'island',water:.15,traffic:0};
+ const distance=Math.min(Math.abs(p.x-riverWestEdge(p.z)),Math.abs(p.x-riverEastEdge(p.z)));
+ return {name:distance<18?'浦江岸边':'城市街区',track:night?'neon':'river',water:Math.max(0,1-distance/22)*.45,traffic:p.y<36?1:.12};
+}
+export function nearbyTraffic(agents,p,yaw=0){let best=null;for(const a of agents){const q=a.root.position,d=Math.hypot(q.x-p.x,q.z-p.z,(q.y-p.y)*2);if(d<24&&(!best||d<best.distance))best={actor:a,distance:d,level:(1-d/24)**2,pan:Math.max(-1,Math.min(1,((q.x-p.x)*Math.cos(yaw)-(q.z-p.z)*Math.sin(yaw))/12))};}return best;}
+
+// Field-recorded garden birds/rain; other ambience is originally synthesized.
+export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,Utterance=globalThis.SpeechSynthesisUtterance,rainOptions={},gardenOptions={},getPeople=()=>[],surfaceAt=()=>3}={}){
+ let ctx,master,playerBus,water,rainfall,garden,footsteps,crowd,cadence,engine,engineOsc,engineHarmonic,panner,noise,enabled=true,clock=0,lastDetail=0,lastCall=-25,lastHorn=-5,previous=null,previousScene='',ownSpeech=false,footstepsEnabled=true,resumePending=false,retryAt=0,disposed=false;
+ const effects=new Set(),KEY='block-island-ambient-preferences',STEP_KEY='block-island-player-footsteps-v1';try{enabled=localStorage.getItem(KEY)!=='off';footstepsEnabled=localStorage.getItem(STEP_KEY)!=='off';}catch{}
+ function cancelCall(){if(ownSpeech){speech?.cancel();ownSpeech=false;}}
+ function resumeContext(){if(disposed||resumePending||!ctx||ctx.state==='closed')return;resumePending=true;try{Promise.resolve(ctx.resume()).catch(()=>{}).finally(()=>{resumePending=false;});}catch{resumePending=false;}}
+ function start(){if(disposed)return false;try{ctx??=getContext();if(!ctx)return false;if(!master){master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);playerBus=ctx.createGain();playerBus.gain.value=0;playerBus.connect(ctx.destination);const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);let seed=1743;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed/2147483648-1;}noise=ctx.createBufferSource();noise.buffer=buffer;noise.loop=true;const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=470;water=ctx.createGain();water.gain.value=0;noise.connect(filter);filter.connect(water);water.connect(master);noise.start();rainfall=createRainAmbience(ctx,master,rainOptions);garden=createGardenAmbience(ctx,master,gardenOptions);footsteps=createFootsteps(ctx,master,{playerOutput:playerBus});cadence=createStepCadence(()=>footsteps.play({level:.085,surface:surfaceAt(previous),profile:'player'}));crowd=createNearbyFootsteps(options=>footsteps.play(options));engine=ctx.createGain();engine.gain.value=0;panner=ctx.createStereoPanner();engine.connect(panner);panner.connect(master);engineOsc=ctx.createOscillator();engineOsc.type='triangle';engineOsc.connect(engine);engineHarmonic=ctx.createOscillator();engineHarmonic.type='sine';engineHarmonic.connect(engine);engineOsc.start();engineHarmonic.start();}resumeContext();return true;}catch{return false;}}
+ function tone(frequency,duration,level,type='sine',pan=0){if(!ctx||!master||!enabled)return;const osc=ctx.createOscillator(),gain=ctx.createGain(),stereo=ctx.createStereoPanner(),t=ctx.currentTime;osc.type=type;osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,level),t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);stereo.pan.value=pan;osc.connect(gain);gain.connect(stereo);stereo.connect(master);effects.add(osc);osc.onended=()=>{effects.delete(osc);osc.disconnect();gain.disconnect();stereo.disconnect();};osc.start(t);osc.stop(t+duration+.02);}
+ function update(dt,{playing,hidden,sound=true,volume=.28,pos,yaw=0,agents=[],vendors=[],riding=false,walking=true,travel:walkTravel,dialogue=false,night=false,rain=0,rainExposure=1,weatherType=rain>.04?'rain':'clear'}){
+  if(disposed)return;
+  const audible=playing&&!hidden&&sound&&(enabled||footstepsEnabled),ambienceAudible=audible&&enabled;
+  if(master){master.gain.setTargetAtTime(ambienceAudible?volume:0,ctx.currentTime,.12);playerBus.gain.setTargetAtTime(audible&&footstepsEnabled?volume:0,ctx.currentTime,.04);}
+  if(!audible){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();cadence?.reset();previous=pos?{...pos}:null;return;}
+  const area=soundScene(pos,night);clock+=dt;
+  if(!master){previous={...pos};return;}
+  if(ctx.state&&ctx.state!=='running'){footsteps.stop();cadence.reset();crowd.reset();previous={...pos};if(ctx.state!=='closed'&&clock>=retryAt){retryAt=clock+1;resumeContext();}return;}
+  const travel=walkTravel??(previous?Math.hypot(pos.x-previous.x,pos.z-previous.z):0);previous={...pos};
+  cadence.update(dt,travel,footstepsEnabled&&walking&&!riding);
+  if(!ambienceAudible){cancelCall();garden.suspend();crowd.reset();return;}
+  const near=nearbyTraffic(agents,pos,yaw),speed=Math.abs(near?.actor.travelSpeed??0);
+  water.gain.setTargetAtTime((area.water??0)*.08,ctx.currentTime,.45);
+  garden.update(area.garden?(night?.11:.55)*(weatherType==='rain'?.35:1):0);
+  rainfall.update(weatherType==='rain'?rain:0,area.track==='metro'||area.track==='deep'?0:rainExposure);
+  engine.gain.setTargetAtTime((near?.level??0)*(area.traffic??0)*(speed>.05?.019:.004),ctx.currentTime,.16);
+  engineOsc.frequency.setTargetAtTime(42+speed*9,ctx.currentTime,.18);engineHarmonic.frequency.setTargetAtTime(84+speed*18,ctx.currentTime,.18);panner.pan.setTargetAtTime(near?.pan??0,ctx.currentTime,.12);
+  crowd.update(dt,getPeople,pos,yaw);
+  if(area.name!==previousScene){if(area.shop||area.bazaar)for(const hz of [1047,1319])tone(hz,.45,.018);previousScene=area.name;}
+  if(clock-lastDetail>3.5){
+   lastDetail=clock;
+   if(area.bazaar){tone(523,.18,.015,'triangle',Math.sin(clock));tone(659,.15,.012,'triangle',Math.sin(clock));}
+   else if(area.dining)tone(1500+Math.sin(clock)*250,.15,.012,'sine',Math.sin(clock));
+   else if(area.market||area.shop)tone(390,.07,.006,'triangle',Math.sin(clock));
+   else if(near?.actor.kind==='bus'&&near.actor.dwell>0){tone(880,.22,.02,'sine',near.pan);tone(1175,.3,.012,'sine',near.pan);}
+  }
+  if(dialogue){cancelCall();return;}
+  const callInterval=area.bazaar?12:24;
+  if(clock-lastCall>callInterval&&Utterance&&speech&&!speech.speaking&&!speech.pending){
+   const list=typeof vendors==='function'?vendors():vendors;
+   const vendor=list.find(v=>{const vp=v.root?.position??v.position??v;return Math.abs(pos.y-vp.y)<4&&Math.hypot(pos.x-vp.x,pos.z-vp.z)<12;});
+   if(vendor){
+    lastCall=clock;
+    const callZh=vendor.callZh||(area.bazaar?(vendor.food?'南翔小笼馒头，现包现蒸，皮薄汁多！':'老城厢手作特产，欢迎进店观赏！'):(vendor.food?'热乎的小笼生煎，来尝尝！':'海派纪念品，欢迎来看看！'));
+    const callEn=vendor.callEn||(vendor.food?'Fresh soup dumplings! Come and taste!':'Shanghai souvenirs! Welcome inside!');
+    const lines=announcementLines(speech,'market',callZh,callEn);
+    ownSpeech=speakVoiceLines(speech,Utterance,lines,{rate:.93,volume:Math.min(1,volume*.7),onEnd:()=>ownSpeech=false})>0;
+    if(area.bazaar)tone(587,.12,.014,'triangle');
+   }
+  }
+ }
+ function horn(){if(!master||!enabled||clock-lastHorn<3)return;lastHorn=clock;tone(320,.22,.018,'triangle');tone(400,.2,.012,'triangle');}
+ function setEnabled(value){enabled=!!value;try{localStorage.setItem(KEY,enabled?'on':'off');}catch{}if(!enabled){cancelCall();garden?.suspend();crowd?.reset();master?.gain.setTargetAtTime(0,ctx.currentTime,.08);}}
+ function setFootstepsEnabled(value){footstepsEnabled=!!value;try{localStorage.setItem(STEP_KEY,footstepsEnabled?'on':'off');}catch{}cadence?.reset();if(!footstepsEnabled&&playerBus)playerBus.gain.setValueAtTime(0,ctx.currentTime);}
+ function suspend(){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();cadence?.reset();previous=null;master?.gain.setTargetAtTime(0,ctx.currentTime,.08);playerBus?.gain.setTargetAtTime(0,ctx.currentTime,.04);}
+ function dispose(){disposed=true;cancelCall();rainfall?.dispose();garden?.dispose();footsteps?.dispose();crowd?.reset();for(const node of [noise,engineOsc,engineHarmonic,...effects]){try{node?.stop();}catch{}node?.disconnect();}master?.disconnect();playerBus?.disconnect();}
+ return {start,update,horn,setEnabled,setFootstepsEnabled,suspend,dispose,get enabled(){return enabled;},get footstepsEnabled(){return footstepsEnabled;}};
+}

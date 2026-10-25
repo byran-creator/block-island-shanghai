@@ -1,0 +1,51 @@
+地铁进站音频 / Metro arrival audio
+
+Title: London Underground 1996 Stock train arriving in a station
+Author: Philt3r
+Source: https://commons.wikimedia.org/wiki/File:London_Underground_1996_Stock_train_arriving_in_a_station.ogg
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License link: https://creativecommons.org/licenses/by/4.0/
+Changes: first 5.6 seconds used in playback; volume envelope and low-pass filter applied for the game's accelerated arrival schedule. The included source recording itself is unchanged.
+
+录音来自伦敦地铁，不是上海2号线官方录音；原作者没有为本游戏背书。
+安检提示铃、音频无法解码时的滚动声后备均由程序原创合成。
+离站音效由程序原创合成：加速的牵引电机声、滚动声和逐渐远去的音量包络；不是上海2号线实录，也没有把进站录音倒放充作离站。
+安检员与站内普通话/英文语音来自玩家浏览器的语音服务，不属于此录音。
+
+黄包车夫 / Rickshaw voice (V55)
+Text: original game dialogue; generic Mandarin male synthetic voice, zh-CN-YunjianNeural. Not a human field recording, celebrity imitation, or Shanghai Metro recording.
+Produced as three short MP3 assets on 2026-10-15 with edge-tts 7.3.1; rate +8%, pitch unchanged. No runtime TTS service or extra player network request to a speech provider. Files are served by this game.
+Voice information: https://learn.microsoft.com/zh-cn/azure/ai-services/speech-service/language-support
+Production tool: https://pypi.org/project/edge-tts/
+
+初到上海任务提示音：原创五声音阶正弦音合成，未使用《原神》或其他商业游戏音频。剧情对话为原创分段文字，不冒称真人配音。
+
+
+柔和雨声 / Gentle rain (V76)
+Title: Rain_01.wav
+Author: Q.K.
+Source: https://freesound.org/people/Q.K./sounds/56306/
+License: CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
+Public source recording: https://cdn.freesound.org/previews/56/56306_91374-hq.mp3
+Changes: 2–22 second excerpt; 70 Hz high-pass and 4.2 kHz low-pass; resampled to 16 kHz stereo PCM16; 2-second equal-power crossfade into an 18-second seamless loop; gentle level adjustment and soft peak limiting.
+Runtime: served locally by this game, loaded only on rain; no Freesound connection or synthetic drop-click layer during play. The author does not endorse this game.
+
+
+园林鸟鸣 / Garden birds (2026-10-25)
+Title: 20260703_11h46 Albi Echapee verte Pond - Bird DJI-Mic3
+Author: Sadiquecat
+Source: https://freesound.org/people/Sadiquecat/sounds/861303/
+License: CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
+Public preview: https://freesound.org/data/previews/861/861303_5287430-hq.mp3
+Changes: 0.4–19.4 second excerpt, 150 Hz high-pass / 7 kHz low-pass, 16 kHz mono PCM16, 1-second equal-power wrap crossfade into an 18-second loop, level adjustment and soft peak limiting.
+A park field recording from Albi, France, used as natural ambience; not a recording made in Yu Garden or an authenticated Shanghai bird-species survey. The author does not endorse this game.
+Runtime: game-local asset, fetched only on the first audible inner-garden visit; 576,044 bytes on disk, 1,152,000 bytes of mono PCM after loading; one reusable buffer, one active source. Night/rain soften playback.
+Player/NPC footsteps remain original synthesized shoe impacts; no Minecraft or other commercial-game sound samples are used.
+
+
+临时加载配乐 / Temporary loading excerpt (2026-10-25)
+Title: 上海滩 · Artist: 叶丽仪
+Official platform page: https://music.163.com/song?id=5284592
+Official external-play endpoint: https://music.163.com/song/media/outer/url?id=5284592.mp3
+Current asset: loading-shanghai-4297cd84acac.mp3, a temporary 0–22 second excerpt fetched from the official publicly available external-play endpoint above, downmixed/resampled to 22.05 kHz mono MP3 with 0.22-second edge fades. 176,795 bytes. Hosted with this game to avoid third-party redirects and startup network failure; loops through loading and the initial menu, stops on actual game entry. Not original/free game music or a claim of publisher/artist endorsement. Replace before a broader release.
+Requested as a temporary classmates-playtest cue, to replace before a wider release. The existing URLs/access configuration are unchanged.
