@@ -29,3 +29,15 @@ License: CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0
 Public source recording: https://cdn.freesound.org/previews/56/56306_91374-hq.mp3
 Changes: 2–22 second excerpt; 70 Hz high-pass and 4.2 kHz low-pass; resampled to 16 kHz stereo PCM16; 2-second equal-power crossfade into an 18-second seamless loop; gentle level adjustment and soft peak limiting.
 Runtime: served locally by this game, loaded only on rain; no Freesound connection or synthetic drop-click layer during play. The author does not endorse this game.
+
+
+园林鸟鸣 / Garden birds (2026-10-25)
+Title: 20260703_11h46 Albi Echapee verte Pond - Bird DJI-Mic3
+Author: Sadiquecat
+Source: https://freesound.org/people/Sadiquecat/sounds/861303/
+License: CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
+Public preview: https://freesound.org/data/previews/861/861303_5287430-hq.mp3
+Changes: 0.4–19.4 second excerpt, 150 Hz high-pass / 7 kHz low-pass, 16 kHz mono PCM16, 1-second equal-power wrap crossfade into an 18-second loop, level adjustment and soft peak limiting.
+A park field recording from Albi, France, used as natural ambience; not a recording made in Yu Garden or an authenticated Shanghai bird-species survey. The author does not endorse this game.
+Runtime: game-local asset, fetched only on the first audible inner-garden visit; 576,044 bytes on disk, 1,152,000 bytes of mono PCM after loading; one reusable buffer, one active source. Night/rain soften playback.
+Player/NPC footsteps remain original synthesized shoe impacts; no Minecraft or other commercial-game sound samples are used.

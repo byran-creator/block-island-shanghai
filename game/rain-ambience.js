@@ -1,29 +1,6 @@
+import {pcmRecordingBuffer as rainRecordingBuffer} from './pcm-recording.js';
+export {rainRecordingBuffer};
 const RAIN_URL=new URL('./assets/audio/rain-gentle-qk.wav',import.meta.url).href;
-
-// Keep the shipped PCM rate instead of expanding to a 48/96kHz decoded buffer.
-export function rainRecordingBuffer(ctx,bytes){
- if(bytes.byteLength<44||bytes.byteLength>1300000)throw Error('Rain recording exceeds budget');
- const data=new DataView(bytes),text=(at,n)=>String.fromCharCode(...new Uint8Array(bytes,at,n));
- if(text(0,4)!=='RIFF'||text(8,4)!=='WAVE')throw Error('Invalid rain recording');
- let channels=0,rate=0,pcm=null;
- for(let at=12;at+8<=bytes.byteLength;){
-  const size=data.getUint32(at+4,true),start=at+8;
-  if(start+size>bytes.byteLength)throw Error('Truncated rain recording');
-  if(text(at,4)==='fmt '){
-   if(size<16||data.getUint16(start,true)!==1||data.getUint16(start+14,true)!==16)throw Error('Unsupported rain PCM');
-   channels=data.getUint16(start+2,true);rate=data.getUint32(start+4,true);
-   if(data.getUint16(start+12,true)!==channels*2)throw Error('Invalid rain alignment');
-  }
-  if(text(at,4)==='data')pcm={at:start,size};
-  at=start+size+(size%2);
- }
- if(!pcm||channels<1||channels>2||rate<8000||rate>24000||pcm.size%(channels*2))throw Error('Invalid rain format');
- const frames=pcm.size/(channels*2);
- if(frames/rate<8||frames/rate>22)throw Error('Invalid rain duration');
- const buffer=ctx.createBuffer(channels,frames,rate);
- for(let c=0;c<channels;c++){const out=buffer.getChannelData(c);for(let i=0;i<frames;i++)out[i]=data.getInt16(pcm.at+(i*channels+c)*2,true)/32768;}
- return buffer;
-}
 
 // Q.K.'s CC0 field recording, softened and crossfaded offline. Fetch only on
 // actual rain and cache one bounded buffer. No synthetic drop-click layer.
