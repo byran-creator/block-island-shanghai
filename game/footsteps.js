@@ -1,5 +1,5 @@
 // One small reusable shoe-impact buffer. No per-person loops or audio downloads.
-export function createFootsteps(ctx,output){
+export function createFootsteps(ctx,output,{playerOutput=output}={}){
  const buffer=ctx.createBuffer(1,2400,16000),data=buffer.getChannelData(0),sources=new Set(),playerBuffers=new Map();let seed=103,low=0,step=0,disposed=false;
  for(let i=0;i<data.length;i++){
   seed=(Math.imul(seed,1664525)+1013904223)>>>0;const t=i/16000,noise=seed/2147483648-1;low+=.24*(noise-low);
@@ -22,7 +22,7 @@ export function createFootsteps(ctx,output){
   if(disposed||sources.size>=4||level<=0)return;
   const source=ctx.createBufferSource(),gain=ctx.createGain(),stereo=ctx.createStereoPanner();source.buffer=profile==='player'?shoeBuffer(surface):buffer;
   source.playbackRate.value=([4,7].includes(surface)?.82:[1,2,6].includes(surface)?.94:1.12)+(step++%2?.035:-.035);
-  gain.gain.value=level;stereo.pan.value=Math.max(-1,Math.min(1,pan));source.connect(gain);gain.connect(stereo);stereo.connect(output);
+  gain.gain.value=level;stereo.pan.value=Math.max(-1,Math.min(1,pan));source.connect(gain);gain.connect(stereo);stereo.connect(profile==='player'?playerOutput:output);
   const clear=()=>{sources.delete(source);source.disconnect();gain.disconnect();stereo.disconnect();};source.onended=clear;sources.add(source);source.start();
  }
  function stop(){for(const source of sources){source.stop();const clear=source.onended;source.onended=null;clear();}}

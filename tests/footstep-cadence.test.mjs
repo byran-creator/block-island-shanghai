@@ -11,7 +11,7 @@ const state={playing:true,pos:{x:305,y:26,z:140},walking:true};
 function tick(dt,travel,change={}){ctx.currentTime+=dt;mixer.update(dt,{...state,travel,...change});finish();}
 tick(1/60,.075);
 assert.equal(impacts().length,1,'The first real walking frame must make one footfall, without first accumulating a metre');
-const playerGain=impacts()[0].edges[0].gain.value;assert(playerGain>=.08&&playerGain<=.12,'Player footfalls must be substantially quieter than .22');
+const playerGain=impacts()[0].edges[0].gain.value;assert(playerGain>=.08&&playerGain<=.09,'Player footfalls are modestly quieter than the previous .10 level');
 mixer.suspend();const resumeCount=impacts().length;tick(1/60,.075);assert.equal(impacts().length,resumeCount+1,'Resuming after a pause must not wait for the old cooldown');
 for(let i=0;i<12;i++)tick(1/60,0);const count=impacts().length;
 tick(1/60,.075);assert.equal(impacts().length,count+1,'Another short directional tap after stopping must not be silent');
