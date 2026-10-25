@@ -319,3 +319,7 @@ body.force-landscape .map-destinations{grid-row:4!important;align-self:stretch!i
 body.force-landscape .map-destinations button{min-height:32px!important}
 
 body.touch #map-destinations button[data-destination="village"],body.force-landscape #map-destinations button[data-destination="village"]{order:-1}
+
+/* Held game controls must not invoke mobile text selection or link callouts. */
+body.touch :is(button,summary,[role="button"],#touch-controls,#hotbar,#world),body.touch :is(button,summary,[role="button"],#touch-controls,#hotbar) *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.touch :is(input,textarea,select,[contenteditable="true"]){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
