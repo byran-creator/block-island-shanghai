@@ -15,6 +15,17 @@ doc.emit('block-island-enter');assert(media.paused&&media.released);const stoppe
 let allow,attempts=0;const blocked=Object.assign(events(),{paused:true,currentTime:0,play(){attempts++;return allow?new Promise(r=>allow=r):Promise.reject(Object.assign(Error('gesture needed'),{name:'NotAllowedError'}));},pause(){this.paused=true;},removeAttribute(){},load(){}}),touch=events();
 const statuses=[];const retry=createLoadingMusic({audio:blocked,events:touch,onStatus:s=>statuses.push(s)});retry.start();await new Promise(r=>setTimeout(r,0));assert.equal(attempts,1);assert(statuses.includes('blocked'),'Browser rejection must be visible rather than silently swallowed');allow=true;touch.emit('pointerdown');assert.equal(attempts,2,'Any first gameplay interaction retries a blocked autoplay');retry.dispose();allow();await new Promise(r=>setTimeout(r,0));assert(blocked.paused,'A late play promise cannot resume loading music after completion');
 let mutedPlays=0;const muted=createLoadingMusic({audio:Object.assign(events(),{play(){mutedPlays++;},pause(){},removeAttribute(){},load(){}}),events:events(),enabled:()=>false});muted.start();assert.equal(mutedPlays,0,'Saved mute/background-music-off preferences must be respected');muted.dispose();
+
+// A pending initial attempt can set paused=false before actual playback starts.
+// A real mobile gesture must still call play() synchronously to unlock this element.
+const pendingDoc=events(),registrations=[],baseAdd=pendingDoc.addEventListener;pendingDoc.addEventListener=function(type,fn,options){registrations.push({type,options});baseAdd.call(this,type,fn,options);};
+let rejectAuto,finishGesture,mobileCalls=0;const pendingStates=[],pendingMedia=Object.assign(events(),{paused:true,currentTime:0,play(){mobileCalls++;this.paused=false;return mobileCalls===1?new Promise((resolve,reject)=>{rejectAuto=reject;}):new Promise(resolve=>{finishGesture=resolve;});},pause(){this.paused=true;},removeAttribute(){},load(){}});
+const pendingMusic=createLoadingMusic({audio:pendingMedia,events:pendingDoc,onStatus:s=>pendingStates.push(s)});pendingMusic.start();assert.equal(mobileCalls,1);
+pendingDoc.emit('touchend');assert.equal(mobileCalls,2,'First mobile gesture must retry an unsettled autoplay call even when paused is already false');
+for(let i=0;i<20;i++){pendingDoc.emit('pointerdown');pendingDoc.emit('click');}assert.equal(mobileCalls,2,'A pending gesture attempt cannot accumulate play promises');
+finishGesture();await new Promise(r=>setTimeout(r,0));assert.equal(pendingStates.at(-1),'playing');rejectAuto(Object.assign(Error('old autoplay denied'),{name:'NotAllowedError'}));await new Promise(r=>setTimeout(r,0));assert.equal(pendingStates.at(-1),'playing','A late rejection from the superseded autoplay attempt cannot replace current playback status');
+for(const type of ['pointerdown','touchend','keydown','click'])assert(registrations.some(r=>r.type===type&&r.options?.capture),'Activation listens before child controls can stop propagation');
+pendingMusic.dispose();assert([...pendingDoc.listeners.values()].every(a=>!a.length),'Capture listeners are also removed on entering the game');
 console.log('PASS: early default playback attempt, official source, excerpt loop, generic gesture recovery, hidden pause, saved mute and completed/late promise cleanup.');
 
 // Exercise the actual bootstrap: live settings exist before final city stages.
