@@ -1,7 +1,7 @@
 import {announcementLines,speakVoiceLines} from './voice-settings.js';
 import {createRainAmbience} from './rain-ambience.js';
 import {createGardenAmbience} from './garden-ambience.js';
-import {createFootsteps,createNearbyFootsteps} from './footsteps.js';
+import {createFootsteps,createNearbyFootsteps,createStepCadence} from './footsteps.js';
 import {metroInterior} from './metro-layout.js';
 import {DENSE_BUILDINGS,NANJING_WEST,roadX} from './city-layout.js';
 import {PEACE,PEACE_DINING} from './peace-restaurant.js';
@@ -26,15 +26,15 @@ export function nearbyTraffic(agents,p,yaw=0){let best=null;for(const a of agent
 
 // Field-recorded garden birds/rain; other ambience is originally synthesized.
 export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,Utterance=globalThis.SpeechSynthesisUtterance,rainOptions={},gardenOptions={},getPeople=()=>[],surfaceAt=()=>3}={}){
- let ctx,master,water,rainfall,garden,footsteps,crowd,engine,engineOsc,engineHarmonic,panner,noise,enabled=true,clock=0,lastStep=0,lastStepTime=-1,lastDetail=0,lastCall=-25,lastHorn=-5,previous=null,previousScene='',ownSpeech=false;
+ let ctx,master,water,rainfall,garden,footsteps,crowd,cadence,engine,engineOsc,engineHarmonic,panner,noise,enabled=true,clock=0,lastDetail=0,lastCall=-25,lastHorn=-5,previous=null,previousScene='',ownSpeech=false;
  const effects=new Set(),KEY='block-island-ambient-preferences';try{enabled=localStorage.getItem(KEY)!=='off';}catch{}
  function cancelCall(){if(ownSpeech){speech?.cancel();ownSpeech=false;}}
- function start(){try{ctx??=getContext();if(!ctx)return false;if(!master){master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);let seed=1743;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed/2147483648-1;}noise=ctx.createBufferSource();noise.buffer=buffer;noise.loop=true;const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=470;water=ctx.createGain();water.gain.value=0;noise.connect(filter);filter.connect(water);water.connect(master);noise.start();rainfall=createRainAmbience(ctx,master,rainOptions);garden=createGardenAmbience(ctx,master,gardenOptions);footsteps=createFootsteps(ctx,master);crowd=createNearbyFootsteps(options=>footsteps.play(options));engine=ctx.createGain();engine.gain.value=0;panner=ctx.createStereoPanner();engine.connect(panner);panner.connect(master);engineOsc=ctx.createOscillator();engineOsc.type='triangle';engineOsc.connect(engine);engineHarmonic=ctx.createOscillator();engineHarmonic.type='sine';engineHarmonic.connect(engine);engineOsc.start();engineHarmonic.start();}ctx.resume()?.catch?.(()=>{});return true;}catch{return false;}}
+ function start(){try{ctx??=getContext();if(!ctx)return false;if(!master){master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);let seed=1743;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed/2147483648-1;}noise=ctx.createBufferSource();noise.buffer=buffer;noise.loop=true;const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=470;water=ctx.createGain();water.gain.value=0;noise.connect(filter);filter.connect(water);water.connect(master);noise.start();rainfall=createRainAmbience(ctx,master,rainOptions);garden=createGardenAmbience(ctx,master,gardenOptions);footsteps=createFootsteps(ctx,master);cadence=createStepCadence(()=>footsteps.play({surface:surfaceAt(previous)}));crowd=createNearbyFootsteps(options=>footsteps.play(options));engine=ctx.createGain();engine.gain.value=0;panner=ctx.createStereoPanner();engine.connect(panner);panner.connect(master);engineOsc=ctx.createOscillator();engineOsc.type='triangle';engineOsc.connect(engine);engineHarmonic=ctx.createOscillator();engineHarmonic.type='sine';engineHarmonic.connect(engine);engineOsc.start();engineHarmonic.start();}ctx.resume()?.catch?.(()=>{});return true;}catch{return false;}}
  function tone(frequency,duration,level,type='sine',pan=0){if(!ctx||!master||!enabled)return;const osc=ctx.createOscillator(),gain=ctx.createGain(),stereo=ctx.createStereoPanner(),t=ctx.currentTime;osc.type=type;osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,level),t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);stereo.pan.value=pan;osc.connect(gain);gain.connect(stereo);stereo.connect(master);effects.add(osc);osc.onended=()=>{effects.delete(osc);osc.disconnect();gain.disconnect();stereo.disconnect();};osc.start(t);osc.stop(t+duration+.02);}
  function update(dt,{playing,hidden,sound=true,volume=.28,pos,yaw=0,agents=[],vendors=[],riding=false,walking=true,travel:walkTravel,dialogue=false,night=false,rain=0,rainExposure=1,weatherType=rain>.04?'rain':'clear'}){
   const audible=playing&&!hidden&&sound&&enabled;
   if(master)master.gain.setTargetAtTime(audible?volume:.0,ctx.currentTime,.12);
-  if(!audible){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();lastStep=0;previous=pos?{...pos}:null;return;}
+  if(!audible){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();cadence?.reset();previous=pos?{...pos}:null;return;}
   const area=soundScene(pos,night);clock+=dt;
   if(!master){previous={...pos};return;}
   const near=nearbyTraffic(agents,pos,yaw),speed=Math.abs(near?.actor.travelSpeed??0);
@@ -44,7 +44,7 @@ export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,U
   engine.gain.setTargetAtTime((near?.level??0)*(area.traffic??0)*(speed>.05?.019:.004),ctx.currentTime,.16);
   engineOsc.frequency.setTargetAtTime(42+speed*9,ctx.currentTime,.18);engineHarmonic.frequency.setTargetAtTime(84+speed*18,ctx.currentTime,.18);panner.pan.setTargetAtTime(near?.pan??0,ctx.currentTime,.12);
   const travel=walkTravel??(previous?Math.hypot(pos.x-previous.x,pos.z-previous.z):0);previous={...pos};
-  if(!riding&&walking&&travel>.002&&travel<3){lastStep+=travel;const stride=Math.max(.85,Math.min(1.5,travel/Math.max(dt,.001)*.24));if(lastStep>=stride&&clock-lastStepTime>=.19){lastStep%=stride;lastStepTime=clock;footsteps.play({surface:surfaceAt(pos)});}}else lastStep=0;
+  cadence.update(dt,travel,walking&&!riding);
   crowd.update(dt,getPeople,pos,yaw);
   if(area.name!==previousScene){if(area.shop||area.bazaar)for(const hz of [1047,1319])tone(hz,.45,.018);previousScene=area.name;}
   if(clock-lastDetail>3.5){
@@ -71,7 +71,7 @@ export function createSceneAudio(getContext,{speech=globalThis.speechSynthesis,U
  }
  function horn(){if(!master||!enabled||clock-lastHorn<3)return;lastHorn=clock;tone(320,.22,.018,'triangle');tone(400,.2,.012,'triangle');}
  function setEnabled(value){enabled=!!value;try{localStorage.setItem(KEY,enabled?'on':'off');}catch{}if(!enabled){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();master?.gain.setTargetAtTime(0,ctx.currentTime,.08);}}
- function suspend(){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();lastStep=0;previous=null;master?.gain.setTargetAtTime(0,ctx.currentTime,.08);}
+ function suspend(){cancelCall();garden?.suspend();footsteps?.stop();crowd?.reset();cadence?.reset();previous=null;master?.gain.setTargetAtTime(0,ctx.currentTime,.08);}
  function dispose(){cancelCall();rainfall?.dispose();garden?.dispose();footsteps?.dispose();crowd?.reset();for(const node of [noise,engineOsc,engineHarmonic,...effects]){try{node?.stop();}catch{}node?.disconnect();}master?.disconnect();}
  return {start,update,horn,setEnabled,suspend,dispose,get enabled(){return enabled;}};
 }

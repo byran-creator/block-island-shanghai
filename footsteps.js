@@ -6,7 +6,7 @@ export function createFootsteps(ctx,output){
   const attack=Math.min(1,t/.003),heel=Math.sin(2*Math.PI*(105*t-100*t*t))*Math.exp(-t*45),sole=low*Math.exp(-t*32);
   data[i]=attack*(heel*.55+sole*.8)*Math.min(1,(.15-t)/.018);
  }
- function play({level=.22,pan=0,surface=3}={}){
+ function play({level=.10,pan=0,surface=3}={}){
   if(disposed||sources.size>=4||level<=0)return;
   const source=ctx.createBufferSource(),gain=ctx.createGain(),stereo=ctx.createStereoPanner();source.buffer=buffer;
   source.playbackRate.value=([4,7].includes(surface)?.82:[1,2,6].includes(surface)?.94:1.12)+(step++%2?.035:-.035);
@@ -15,6 +15,22 @@ export function createFootsteps(ctx,output){
  }
  function stop(){for(const source of sources){source.stop();const clear=source.onended;source.onended=null;clear();}}
  return {play,stop,dispose(){disposed=true;stop();}};
+}
+
+// A footfall at movement onset, then one impact per stride. Brief contact gaps
+// pause the gait rather than losing all accumulated progress on a single frame.
+export function createStepCadence(play){
+ let clock=0,next=0,distance=0,idle=0,moving=false;
+ function reset(){distance=0;idle=0;moving=false;next=clock;}
+ function update(dt,travel,walking=true){
+  if(!(dt>0))return;clock+=dt;
+  if(!walking||!(travel>.002&&travel<3)){idle+=dt;if(idle>=.12)reset();return;}
+  idle=0;
+  const onset=!moving;moving=true;distance+=travel;
+  const stride=Math.max(.8,Math.min(1.45,travel/dt*.30));
+  if((onset||distance+1e-8>=stride)&&clock+1e-8>=next){distance=onset?0:Math.max(0,distance-stride);next=clock+.20;play();}
+ }
+ return {update,reset};
 }
 
 // Sample nearby walkers at 5 Hz; at most one quiet crowd step per sample.
@@ -28,15 +44,16 @@ export function createNearbyFootsteps(play){
    if(!actor.person||actor.metroRole||actor.root.visible===false)continue;
    const q=actor.root.position,dx=q.x-pos.x,dz=q.z-pos.z,d2=dx*dx+dz*dz;
    if(d2>=36||Math.abs(q.y-pos.y)>1.6)continue;
+   const leg=actor.legs?.[0]?.rotation.x,sign=Number.isFinite(leg)&&Math.abs(leg)>.025?Math.sign(leg):0;
    let entry=nearby.get(actor.root);
-   if(!entry){entry={x:q.x,y:q.y,z:q.z,distance:0,epoch};nearby.set(actor.root,entry);}
+   if(!entry){entry={x:q.x,y:q.y,z:q.z,distance:0,sign,epoch};nearby.set(actor.root,entry);}
    const travel=Math.hypot(q.x-entry.x,q.z-entry.z);
-   if(travel>.015&&travel<1.5&&Math.abs(q.y-entry.y)<.3){entry.distance+=travel;if(entry.distance>=.8&&d2<best){nearest={entry,dx,dz,d2};best=d2;}}
+   if(travel>.015&&travel<1.5&&Math.abs(q.y-entry.y)<.3){entry.distance+=travel;const contact=Number.isFinite(leg)?sign&&entry.sign&&sign!==entry.sign:entry.distance>=.65;if(contact&&d2<best){nearest={entry,dx,dz,d2};best=d2;}}
    else entry.distance=0;
-   entry.x=q.x;entry.y=q.y;entry.z=q.z;entry.epoch=epoch;
+   entry.x=q.x;entry.y=q.y;entry.z=q.z;entry.epoch=epoch;if(sign)entry.sign=sign;
   }
   for(const [root,entry]of nearby)if(entry.epoch!==epoch)nearby.delete(root);
-  if(nearest){nearest.entry.distance%=.8;const d=Math.sqrt(nearest.d2);play({level:.075*(1-d/6)**2,pan:(nearest.dx*Math.cos(yaw)-nearest.dz*Math.sin(yaw))/6});}
+  if(nearest){nearest.entry.distance%=.65;const d=Math.sqrt(nearest.d2);play({level:.026*(1-d/6)**2,pan:(nearest.dx*Math.cos(yaw)-nearest.dz*Math.sin(yaw))/6});}
  }
  return {update,reset};
 }

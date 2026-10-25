@@ -41,3 +41,11 @@ Changes: 0.4–19.4 second excerpt, 150 Hz high-pass / 7 kHz low-pass, 16 kHz mo
 A park field recording from Albi, France, used as natural ambience; not a recording made in Yu Garden or an authenticated Shanghai bird-species survey. The author does not endorse this game.
 Runtime: game-local asset, fetched only on the first audible inner-garden visit; 576,044 bytes on disk, 1,152,000 bytes of mono PCM after loading; one reusable buffer, one active source. Night/rain soften playback.
 Player/NPC footsteps remain original synthesized shoe impacts; no Minecraft or other commercial-game sound samples are used.
+
+
+临时加载配乐 / Temporary loading stream (2026-10-25)
+Title: 上海滩 · Artist: 叶丽仪
+Official platform page: https://music.163.com/song?id=5284592
+Official external-play endpoint: https://music.163.com/song/media/outer/url?id=5284592.mp3
+Runtime: a short 0–22 second excerpt loops through the platform stream while the city loads. No recording is downloaded into this repository, packaged, proxied or claimed as original/free game music. Playback availability is controlled by the original platform; unavailable/blocked audio never blocks game initialization.
+Requested as a temporary classmates-playtest cue, to replace before a wider release. The existing URLs/access configuration are unchanged.
