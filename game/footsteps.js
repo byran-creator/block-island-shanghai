@@ -1,20 +1,32 @@
 // One small reusable shoe-impact buffer. No per-person loops or audio downloads.
 export function createFootsteps(ctx,output){
- const buffer=ctx.createBuffer(1,2400,16000),data=buffer.getChannelData(0),sources=new Set();let seed=103,low=0,step=0,disposed=false;
+ const buffer=ctx.createBuffer(1,2400,16000),data=buffer.getChannelData(0),sources=new Set(),playerBuffers=new Map();let seed=103,low=0,step=0,disposed=false;
  for(let i=0;i<data.length;i++){
   seed=(Math.imul(seed,1664525)+1013904223)>>>0;const t=i/16000,noise=seed/2147483648-1;low+=.24*(noise-low);
   const attack=Math.min(1,t/.003),heel=Math.sin(2*Math.PI*(105*t-100*t*t))*Math.exp(-t*45),sole=low*Math.exp(-t*32);
   data[i]=attack*(heel*.55+sole*.8)*Math.min(1,(.15-t)/.018);
  }
- function play({level=.10,pan=0,surface=3}={}){
+ function shoeBuffer(surface){
+  const kind=surface===4||surface===7?'wood':surface===1||surface===2||surface===6?'soft':'stone';if(playerBuffers.has(kind))return playerBuffers.get(kind);
+  const b=ctx.createBuffer(1,2400,16000),samples=b.getChannelData(0),soft=kind==='soft';let random=105,colored=0,bass=0,peak=0;
+  for(let i=0;i<samples.length;i++){
+   random=(Math.imul(random,1664525)+1013904223)>>>0;const t=i/16000,noise=random/2147483648-1;
+   colored+=(soft?.5:kind==='wood'?.22:.34)*(noise-colored);bass+=(soft?.16:.09)*(colored-bass);
+   const heel=Math.exp(-Math.pow((t-.018)/.010,2))*(soft?.12:.32),brush=Math.exp(-Math.pow((t-.052)/.026,2))*(soft?.40:.22);
+   samples[i]=(colored-bass)*(heel+brush)*Math.min(1,t/.006);peak=Math.max(peak,Math.abs(samples[i]));
+  }
+  const scale=(soft?.22:kind==='wood'?.26:.30)/Math.max(.001,peak);for(let i=0;i<samples.length;i++)samples[i]*=scale;
+  playerBuffers.set(kind,b);return b;
+ }
+ function play({level=.10,pan=0,surface=3,profile='npc'}={}){
   if(disposed||sources.size>=4||level<=0)return;
-  const source=ctx.createBufferSource(),gain=ctx.createGain(),stereo=ctx.createStereoPanner();source.buffer=buffer;
+  const source=ctx.createBufferSource(),gain=ctx.createGain(),stereo=ctx.createStereoPanner();source.buffer=profile==='player'?shoeBuffer(surface):buffer;
   source.playbackRate.value=([4,7].includes(surface)?.82:[1,2,6].includes(surface)?.94:1.12)+(step++%2?.035:-.035);
   gain.gain.value=level;stereo.pan.value=Math.max(-1,Math.min(1,pan));source.connect(gain);gain.connect(stereo);stereo.connect(output);
   const clear=()=>{sources.delete(source);source.disconnect();gain.disconnect();stereo.disconnect();};source.onended=clear;sources.add(source);source.start();
  }
  function stop(){for(const source of sources){source.stop();const clear=source.onended;source.onended=null;clear();}}
- return {play,stop,dispose(){disposed=true;stop();}};
+ return {play,stop,dispose(){disposed=true;stop();playerBuffers.clear();}};
 }
 
 // A footfall at movement onset, then one impact per stride. Brief contact gaps
