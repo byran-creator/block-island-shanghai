@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';import {createWelcomeLayout} from '../game/mobile-layout.js';
+const events=()=>({list:new Map(),addEventListener(k,f){this.list.set(k,f);},removeEventListener(k,f){if(this.list.get(k)===f)this.list.delete(k);},emit(k){this.list.get(k)?.();}});
+const classes=new Set(),values={},body={style:{setProperty:(k,v)=>values[k]=v},classList:{add:k=>classes.add(k),toggle(k,on){on?classes.add(k):classes.delete(k);}}};let width=390,height=844,calls=0;
+const doc=Object.assign(events(),{documentElement:{requestFullscreen(){calls++;}}}),win=events(),layout=createWelcomeLayout({mobile:true,body,view:()=>({width,height}),document:doc,events:win,orientation:{lock(){calls++;}},storage:null});
+assert(classes.has('force-landscape')&&classes.has('touch'),'A portrait phone must show a landscape welcome before the city or a tap');assert.equal(calls,0,'No privileged browser calls before the entry tap');assert.equal(values['--touch-height'],'844px');
+width=844;height=390;win.emit('resize');assert(!classes.has('force-landscape'),'Real landscape cannot be rotated twice');width=390;height=844;win.emit('orientationchange');assert(classes.has('force-landscape'));
+doc.emit('block-island-ready');assert.equal(win.list.size,0);assert.equal(doc.list.size,0);layout.dispose();assert.equal(win.list.size,0,'Ready releases the welcome listeners before the game owns orientation');
+assert.equal(createWelcomeLayout({mobile:false}),null,'Desktop welcome remains unchanged');console.log('PASS: welcome applies landscape before city loading, adapts to resize, avoids early native APIs and releases listeners at readiness.');
