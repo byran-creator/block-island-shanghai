@@ -23,3 +23,4 @@
 
 - 生成合批网格的局部坐标归合批器所有（静态顶点/instanceMatrix已含源变换），保持固定单位矩阵，父级world更新不可关闭。整体动画移动父Group；若修改生成批次自身TRS须显式updateMatrix或恢复matrixAutoUpdate并补回归；单源与动态排除分支保留原行为。
 - 实例粗裁剪须覆盖“整批初始在画外→父级移入视野”和运行时frustumCulled切换；matrixAutoUpdate=false不代表世界坐标永不变化。减少绘制不能悄悄停止列车、乘客或区域模拟；局部循环加速必须另验完整帧成本。
+- 正常入口先点击启声再插入主程序module，首次play/resume不得放到await后；欢迎脚本和游戏bundle共享页面音频上下文。保持惰性哈希入口、原存档继续/公告确认与错误重试，QA自动加载不等同于真实触摸启声验收。

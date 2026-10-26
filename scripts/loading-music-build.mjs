@@ -10,3 +10,10 @@ export async function inlineLoadingMusic(html,directory='game'){
  const code=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
  return html.replace(anchor,'<script id="loading-music-bootstrap">'+code+'</script>');
 }
+
+export async function inlineStartupEntry(html,directory='game'){
+ const anchor='<script type="module" src="./startup-entry.js"></script>';
+ if(!html.includes(anchor))throw Error('Startup controller anchor missing');
+ const result=await build({entryPoints:[path.resolve(directory,'startup-entry.js')],bundle:true,minify:true,format:'iife',target:'es2019',write:false,legalComments:'inline'});
+ return html.replace(anchor,'<script id="startup-guard">'+result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script')+'</script>');
+}

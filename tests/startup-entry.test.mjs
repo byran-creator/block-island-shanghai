@@ -1,18 +1,1 @@
-import assert from 'node:assert/strict';
-import vm from 'node:vm';
-import {readFile} from 'node:fs/promises';
-const html=await readFile('game/index.html','utf8'),code=html.match(/<script id="startup-guard">([\s\S]*?)<\/script>/)?.[1];assert(code,'Startup failures need an early independent fallback');
-assert(html.indexOf('id="startup-guard"')>html.indexOf('id="game-entry"'));
-const events=()=>({listeners:new Map(),addEventListener(k,f){const a=this.listeners.get(k)??[];a.push(f);this.listeners.set(k,a);},removeEventListener(k,f){this.listeners.set(k,(this.listeners.get(k)??[]).filter(x=>x!==f));},emit(k,e={}){for(const f of [...(this.listeners.get(k)??[])])f(e);}});
-function rig(){const button=Object.assign(events(),{textContent:'正在加载城市与建筑…',disabled:true,parentNode:{insertBefore(){}},attributes:{},setAttribute(k,v){this.attributes[k]=v;},removeAttribute(k){delete this.attributes[k];}}),entry=Object.assign(events(),{src:'https://example.test/game-hash.js'}),doc=Object.assign(events(),{documentElement:{dataset:{}},createElement:()=>({appendChild(){},style:{}}),getElementById:id=>id==='play'?button:entry}),win=events();let timer,cleared=false,observed,disconnected=false,reloads=0;
- vm.runInNewContext(code,{document:doc,window:win,location:{reload(){reloads++;}},setTimeout(fn,ms){assert.equal(ms,30000);timer=fn;return 1;},clearTimeout(){cleared=true;},MutationObserver:class{constructor(fn){observed=fn;}observe(){}disconnect(){disconnected=true;}}});
- return {button,entry,doc,win,timeout:()=>timer(),mutate:()=>observed(),get reloads(){return reloads;},get cleared(){return cleared;},get disconnected(){return disconnected;}};}
-const slow=rig();slow.timeout();assert.equal(slow.button.disabled,false);assert.match(slow.button.textContent,/下载较慢/);let stopped=false;slow.button.emit('click',{preventDefault(){},stopImmediatePropagation(){stopped=true;}});assert(stopped);assert.equal(slow.reloads,1);
-const failing=rig();failing.entry.emit('error',{target:failing.entry});assert.match(failing.button.textContent,/加载失败/);assert.equal(failing.button.disabled,false);
-const incompatible=rig();incompatible.win.emit('error',{filename:incompatible.entry.src,message:'TypeError: n.at is not a function'});assert.match(incompatible.button.textContent,/加载失败/);incompatible.timeout();assert.match(incompatible.button.textContent,/加载失败/,'The deadline cannot overwrite a concrete error');
-const graph=rig();graph.button.textContent='正在初始化画面…';graph.timeout();assert.match(graph.button.textContent,/初始化尚未完成/);
-const progressing=rig();progressing.button.textContent='正在读取城市缓存…';progressing.timeout();assert.equal(progressing.button.disabled,true,'The early-download deadline must not mislabel later map construction');
-const late=rig();late.timeout();late.button.textContent='正在构建豫园…';late.mutate();assert.equal(late.button.disabled,true);assert.equal(late.button.attributes['data-startup-retry'],undefined,'Late normal progress restores normal controls');
-const audioError=rig();audioError.win.emit('error',{target:{},filename:'https://example.test/loading-music.js'});assert.equal(audioError.button.disabled,true,'Loading music errors do not abort the game');
-const ready=rig();ready.doc.documentElement.dataset.gameReady='true';ready.doc.emit('block-island-ready');assert(ready.cleared&&ready.disconnected);assert([...ready.entry.listeners.values(),...ready.win.listeners.values(),...ready.button.listeners.values(),...ready.doc.listeners.values()].every(a=>!a.length));ready.timeout();assert.equal(ready.button.textContent,'正在加载城市与建筑…','A finished startup cannot be overwritten by a late watchdog');
-console.log('PASS: independent script failure/slow-start recovery, normal progress restoration, audio isolation and watchdog cleanup.');
+import './startup-flow.test.mjs';

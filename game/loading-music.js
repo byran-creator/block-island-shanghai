@@ -1,4 +1,6 @@
 // Temporary playtest excerpt. Served with the game to avoid external redirects.
+import {primeGameAudioContext} from './audio-context.js';
+import {createMobileLayout} from './mobile-layout.js';
 export const LOADING_SONG={title:'上海滩',artist:'叶丽仪',audio:new URL('./assets/audio/loading-shanghai-4297cd84acac.mp3',import.meta.url).href,source:'https://music.163.com/song?id=5284592'};
 export function loadingMusicAllowed(location){const parts=location.pathname.split('/');return !parts[parts.length-1].startsWith('__')&&new URLSearchParams(location.search).get('silent')!=='1';}
 
@@ -53,5 +55,16 @@ if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&(document.curre
  const ready=()=>{document.removeEventListener('DOMContentLoaded',ready);paint();};
  const onStatus=state=>{status=state;document.documentElement.dataset.loadingMusicState=state;paint();if(state==='stopped')document.removeEventListener('DOMContentLoaded',ready);};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);
- const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus});music.start();
+ const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus});
+ function begin(){
+  document.removeEventListener('block-island-load-start',begin);
+  document.removeEventListener('click',welcomeClick,true);
+  music.start();
+  try{primeGameAudioContext();}catch{}
+  if(typeof navigator!=='undefined'&&(navigator.maxTouchPoints>0||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)))try{
+   const layout=createMobileLayout({body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage:localStorage});void layout.requestNative();
+  }catch{}
+ }
+ function welcomeClick(event){if(document.documentElement.dataset.bootPhase==='welcome'&&event.target.closest?.('#play'))begin();}
+ if(document.documentElement.dataset.startGated==='true'){document.addEventListener('click',welcomeClick,true);document.addEventListener('block-island-load-start',begin);}else music.start();
 }

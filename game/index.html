@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-start-gated="true" data-boot-phase="welcome">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script type="module" src="./loading-music.js"></script>
@@ -15,7 +15,8 @@
 <link rel="stylesheet" href="./world-hints.css?v=20261020interiors84">
 <link rel="stylesheet" href="./photo-mode.css">
 </head>
-<body>
+<body class="in-menu">
+<div id="welcome-backdrop" aria-hidden="true"></div>
 <div id="orientation-tip" class="orientation-tip" hidden>
   <span class="tip-icon">🔄</span>
   <span class="tip-text">建议横屏游玩 · 视野更开阔</span>
@@ -99,7 +100,7 @@
   <div class="menu-tag">SHANGHAI SKYLINE · SANDBOX EXPLORATION</div>
   <h1 id="menu-title">初到上海，故事从这里开始。</h1>
   <p id="menu-description">收下一张明信片，逛南京路，乘地铁去陆家嘴登高，再到豫园慢慢喝一杯茶。</p>
-  <button id="play" class="play hero-cta" disabled>正在加载城市与建筑… <span>→</span></button>
+  <button id="play" class="play hero-cta" disabled>开始旅程 <span>→</span></button>
   <p class="menu-journey-note">首次进入会自动开始两章新手引导 · 游戏内按 I 查看进度</p>
   <div class="mode-entry">
    <button id="mobile-menu-fullscreen" class="mode-pill mobile-only">📱 切换横屏全屏</button>
@@ -380,45 +381,6 @@
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>
-<script id="game-entry" type="module" src="./game.js?v=20261018L"></script>
-<script id="startup-guard">
-// Independent of module parsing/evaluation: an early script failure must not
-// strand the disabled start button. No storage access, telemetry or auto-reload.
-(function(){
- var button=document.getElementById('play'),entry=document.getElementById('game-entry');
- var finished=false,retryText='',initial=button.textContent,timer;
- var detail=document.createElement('details'),message=document.createElement('p'),summary=document.createElement('summary');
- detail.hidden=true;detail.id='startup-help';detail.style.cssText='max-width:32rem;margin:12px auto;color:#fff;font-size:13px;line-height:1.6;text-align:left;overflow-wrap:anywhere';
- summary.textContent='加载帮助 / 错误详情';detail.appendChild(summary);detail.appendChild(message);button.parentNode.insertBefore(detail,button.nextSibling);
- function ready(){return finished||document.documentElement.dataset.gameReady==='true';}
- function offer(text,reason){
-  if(ready())return;
-  retryText=text;button.textContent=text;button.disabled=false;button.setAttribute('data-startup-retry','true');
-  message.textContent=reason+' 可等待继续加载，或点击上方重试。微信内也可从右上角菜单选择在浏览器打开。重试不会清除存档。';detail.hidden=false;
- }
- function reload(event){if(!retryText||ready())return;event.preventDefault();event.stopImmediatePropagation();location.reload();}
- function failed(event){
-  if(ready())return;
-  // Only this game entry owns the failure UI; audio and unrelated resources
-  // must never turn a working game into a failed startup.
-  if(event.target!==entry&&(!event.filename||event.filename.split('?')[0]!==entry.src.split('?')[0]))return;
-  offer('游戏加载失败 · 点击重新加载',event.message?String(event.message).slice(0,240):'游戏程序未能下载或执行，请检查网络连接。');
- }
- var observer=new MutationObserver(function(){
-  if(!retryText||button.textContent===retryText)return;
-  retryText='';button.removeAttribute('data-startup-retry');button.disabled=!ready();detail.hidden=true;
- });
- function dispose(){
-  finished=true;clearTimeout(timer);observer.disconnect();detail.hidden=true;retryText='';button.removeAttribute('data-startup-retry');
-  entry.removeEventListener('error',failed);window.removeEventListener('error',failed);button.removeEventListener('click',reload,true);document.removeEventListener('block-island-ready',dispose);
- }
- entry.addEventListener('error',failed);window.addEventListener('error',failed);button.addEventListener('click',reload,true);document.addEventListener('block-island-ready',dispose);
- observer.observe(button,{childList:true,subtree:true,characterData:true});
- timer=setTimeout(function(){
-  if(ready()||retryText)return;
-  if(button.textContent===initial)offer('程序下载较慢 · 点击重新加载','游戏主程序尚未完成加载，可能是网络或当前浏览器兼容性问题。');
-  else if(button.textContent==='正在初始化画面…')offer('画面初始化尚未完成 · 点击重新加载','当前浏览器还未完成画面初始化。');
- },30000);
-})();
-</script>
+<script id="game-entry" type="application/json" data-src="./game.js?v=20261018L"></script>
+<script type="module" src="./startup-entry.js"></script>
 </body></html>
