@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {ALL_BUILDINGS} from '../game/city-layout.js';import {CITY,riverWestEdge,riverEastEdge} from '../game/shanghai-map.js';import {LANDMARKS,WORLD_MIN,WORLD_MAX} from '../game/world.js';import {mobileChunkDistances} from '../game/mobile-performance.js';
+const source=readFileSync('game/game.js','utf8'),body=source.match(/function ensureChunks\(point,force=false,immediate=false\)\{([^\n]+)\}/)[1];
+function planned(point,mobile){let desired;const run=new Function('point','isMobile','mobileChunkDistances','ALL_BUILDINGS','CITY','LANDMARKS','WORLD_MIN','WORLD_MAX','riverWestEdge','riverEastEdge','chunkWork',`const CHUNK=16,force=false,immediate=false,chunks=new Map(),needsChunkPlan=()=>true;let lastChunkPlan=null;${body}`);run(point,mobile,mobileChunkDistances,ALL_BUILDINGS,CITY,LANDMARKS,WORLD_MIN,WORLD_MAX,riverWestEdge,riverEastEdge,{setDesired:keys=>desired=keys});return desired;}
+const tower=ALL_BUILDINGS.find(b=>b.id==='pudong-infill-southeast-2'),keys=new Set();for(let x=Math.floor((tower.x-tower.rx)/16);x<=Math.floor((tower.x+tower.rx)/16);x++)for(let z=Math.floor((tower.z-tower.rz)/16);z<=Math.floor((tower.z+tower.rz)/16);z++)keys.add(x+','+z);
+for(const mobile of [true,false]){const desired=planned(LANDMARKS.bund,mobile);assert([...keys].every(k=>desired.has(k)),'Bund skyline must include all Tomson body chunks: mobile='+mobile+' missing='+[...keys].filter(k=>!desired.has(k)));}
+assert(![...keys].some(k=>planned({x:-250,z:-250},true).has(k)),'Tomson must not become globally resident');
+console.log('PASS: real mobile/desktop Bund chunk planning includes complete Tomson body, with far-away resource bounds retained.');
