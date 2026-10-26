@@ -382,6 +382,46 @@
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>
-<script type="module" src="./loading-music-IBGIX7ZI.js"></script>
-<script type="module" src="./game-XEBCGYNK.js"></script>
+<script type="module" src="./loading-music-RPTBM3PZ.js"></script>
+<script id="game-entry" type="module" src="./game-IFVSOQDS.js"></script>
+<script id="startup-guard">
+// Independent of module parsing/evaluation: an early script failure must not
+// strand the disabled start button. No storage access, telemetry or auto-reload.
+(function(){
+ var button=document.getElementById('play'),entry=document.getElementById('game-entry');
+ var finished=false,retryText='',initial=button.textContent,timer;
+ var detail=document.createElement('details'),message=document.createElement('p'),summary=document.createElement('summary');
+ detail.hidden=true;detail.id='startup-help';detail.style.cssText='max-width:32rem;margin:12px auto;color:#fff;font-size:13px;line-height:1.6;text-align:left;overflow-wrap:anywhere';
+ summary.textContent='加载帮助 / 错误详情';detail.appendChild(summary);detail.appendChild(message);button.parentNode.insertBefore(detail,button.nextSibling);
+ function ready(){return finished||document.documentElement.dataset.gameReady==='true';}
+ function offer(text,reason){
+  if(ready())return;
+  retryText=text;button.textContent=text;button.disabled=false;button.setAttribute('data-startup-retry','true');
+  message.textContent=reason+' 可等待继续加载，或点击上方重试。微信内也可从右上角菜单选择在浏览器打开。重试不会清除存档。';detail.hidden=false;
+ }
+ function reload(event){if(!retryText||ready())return;event.preventDefault();event.stopImmediatePropagation();location.reload();}
+ function failed(event){
+  if(ready())return;
+  // Only this game entry owns the failure UI; audio and unrelated resources
+  // must never turn a working game into a failed startup.
+  if(event.target!==entry&&(!event.filename||event.filename.split('?')[0]!==entry.src.split('?')[0]))return;
+  offer('游戏加载失败 · 点击重新加载',event.message?String(event.message).slice(0,240):'游戏程序未能下载或执行，请检查网络连接。');
+ }
+ var observer=new MutationObserver(function(){
+  if(!retryText||button.textContent===retryText)return;
+  retryText='';button.removeAttribute('data-startup-retry');button.disabled=!ready();detail.hidden=true;
+ });
+ function dispose(){
+  finished=true;clearTimeout(timer);observer.disconnect();detail.hidden=true;retryText='';button.removeAttribute('data-startup-retry');
+  entry.removeEventListener('error',failed);window.removeEventListener('error',failed);button.removeEventListener('click',reload,true);document.removeEventListener('block-island-ready',dispose);
+ }
+ entry.addEventListener('error',failed);window.addEventListener('error',failed);button.addEventListener('click',reload,true);document.addEventListener('block-island-ready',dispose);
+ observer.observe(button,{childList:true,subtree:true,characterData:true});
+ timer=setTimeout(function(){
+  if(ready()||retryText)return;
+  if(button.textContent===initial)offer('程序下载较慢 · 点击重新加载','游戏主程序尚未完成加载，可能是网络或当前浏览器兼容性问题。');
+  else if(button.textContent==='正在初始化画面…')offer('画面初始化尚未完成 · 点击重新加载','当前浏览器还未完成画面初始化。');
+ },30000);
+})();
+</script>
 </body></html>
