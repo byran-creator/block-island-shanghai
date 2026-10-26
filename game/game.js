@@ -121,6 +121,7 @@ if(isMobile){mobileLayout=createMobileLayout({body:document.body,view:()=>({widt
 let mobileQuality='smooth';try{if(localStorage.getItem('block-island-mobile-quality-v1')==='clear')mobileQuality='clear';}catch{}
 const mobilePacer=createFramePacer();
 const initialRenderProfile=renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight});
+$('play').textContent='正在初始化画面…';
 let renderer;
 try{
  renderer=new THREE.WebGLRenderer({

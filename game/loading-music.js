@@ -1,9 +1,9 @@
 // Temporary playtest excerpt. Served with the game to avoid external redirects.
 export const LOADING_SONG={title:'上海滩',artist:'叶丽仪',audio:new URL('./assets/audio/loading-shanghai-4297cd84acac.mp3',import.meta.url).href,source:'https://music.163.com/song?id=5284592'};
-export function loadingMusicAllowed(location){return !location.pathname.split('/').at(-1).startsWith('__')&&new URLSearchParams(location.search).get('silent')!=='1';}
+export function loadingMusicAllowed(location){const parts=location.pathname.split('/');return !parts[parts.length-1].startsWith('__')&&new URLSearchParams(location.search).get('silent')!=='1';}
 
 export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onStatus=()=>{},activationControl=null}){
- let finished=false,armed=false,pending=false,gesturePending=false,failed=false,attempt=0;
+ let finished=false,armed=false,pending=false,gesturePending=false,failed=false,attempt=0,bridgeTried=false;
  const gestures=['pointerdown','touchend','keydown','click'];
  function loop(){if(!finished&&audio.currentTime>=22)audio.currentTime=0;}
  function play(fromGesture=false){
@@ -20,10 +20,15 @@ export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onS
   catch(error){pending=false;if(error?.name==='NotAllowedError')onStatus('blocked');else{failed=true;onStatus('error');}}
  }
  function gesturePlay(){play(true);}
+ // Some WeChat WebViews deliver media activation when their bridge becomes
+ // ready. Try once in that callback; no SDK, permission calls or polling.
+ // A rejection still follows the normal visible gesture fallback.
+ function bridgeReady(){if(bridgeTried)return;bridgeTried=true;play(true);}
  function dispose(){
   if(finished)return;finished=true;attempt++;audio.pause();audio.removeAttribute('src');audio.load();
   for(const type of gestures)events.removeEventListener(type,gesturePlay,true);
   activationControl?.removeEventListener('click',gesturePlay);
+  events.removeEventListener('WeixinJSBridgeReady',bridgeReady);
   events.removeEventListener('input',play);events.removeEventListener('change',play);
   events.removeEventListener('visibilitychange',play);events.removeEventListener('block-island-enter',dispose);audio.removeEventListener?.('timeupdate',loop);onStatus('stopped');
  }
@@ -31,6 +36,7 @@ export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onS
   if(finished||armed)return;armed=true;audio.preload='metadata';audio.loop=true;
   for(const type of gestures)events.addEventListener(type,gesturePlay,{passive:true,capture:true});
   activationControl?.addEventListener('click',gesturePlay);
+  events.addEventListener('WeixinJSBridgeReady',bridgeReady);
   events.addEventListener('input',play);events.addEventListener('change',play);
   events.addEventListener('visibilitychange',play);events.addEventListener('block-island-enter',dispose);audio.addEventListener('timeupdate',loop);play();
  }
