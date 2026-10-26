@@ -1,3 +1,4 @@
+import {createStaticSolids} from './static-solids.js';
 import {bundStaticGeometry} from './bund-static-batch.js';
 import {posePhotographer} from './photographer-pose.js';
 import {cityCarAppearance,createCitySpecialCar} from './city-car-appearance.js';
@@ -38,7 +39,7 @@ export function routePose(samples,d,lane=0){const length=samples.lengthMeters;
  const p=center(d),a=center(d-1.3),b=center(d+1.3),dx=b.x-a.x,dz=b.z-a.z,n=Math.hypot(dx,dz)||1;return {x:p.x+dz/n*lane,z:p.z-dx/n*lane,y:Math.round(p.y),yaw:Math.atan2(dx,dz)+Math.PI};}
 export function bridgeRoadFloor(world,x,z){return nanpuFloor(world,x,z)??26;}
 export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{},place=()=>{},setView=()=>{}}){
- const existingObjects=new Set(scene.children);
+ const existingObjects=new Set(scene.children),fixtures=createStaticSolids();
  const waibaidu=createWaibaidu(scene);existingObjects.add(scene.children.at(-1));
  const box=new THREE.BoxGeometry(1,1,1),materials=new Map(),cars=[],boats=[],lamps=[],windows=[],facadeLights=[],goldSurfaces=[],pedestrians=[],skylineLEDs=[],shoppingStone=[],benches=[];let clock=0,seatedBench=null;
  const skylineMaterial=new THREE.MeshBasicMaterial({color:'#68bddf'});
@@ -96,6 +97,9 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   const root=new THREE.Group();
   root.position.set(promenadeX(z)+.5,26,z+.5);
   buildExquisiteBench(root);
+  fixtures.add(root.position.x-1.30,26.45,root.position.z-1.06,root.position.x-.60,26.56,root.position.z+1.06,'bench');
+  fixtures.add(root.position.x-1.37,26.45,root.position.z-1.06,root.position.x-1.15,27.19,root.position.z+1.06,'bench');
+  for(const side of [-1,1])fixtures.add(root.position.x-1.30,26.50,root.position.z+side*.92-.06,root.position.x-.60,26.76,root.position.z+side*.92+.06,'bench');
   // Light the space between seats; leave the river view in front of each seat open.
   const lampZ=z+7,lamp=new THREE.Group();
   lamp.position.set(promenadeX(lampZ)+1.5,26,lampZ+.5);
@@ -103,6 +107,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    cube(lamp,'#687879',0,1.6,0,.15,3.2,.15);
    lamps.push(cube(lamp,'#ffe2a1',0,3.25,0,.45,.5,.45,true));
    scene.add(lamp);
+   fixtures.add(lamp.position.x-.075,26,lamp.position.z-.075,lamp.position.x+.075,29.2,lamp.position.z+.075,'lamp');
   }
   scene.add(root);
   benches.push({
@@ -309,7 +314,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  }
  const cc=CITY_BUILDINGS.find(b=>b.id==='convention');for(const dx of [-4,4]){const orb=new THREE.Mesh(new THREE.SphereGeometry(3.2,20,12),new THREE.MeshPhongMaterial({color:'#9bcbd3',shininess:85}));orb.position.set(cc.x+dx,26+cc.h+1,cc.z);orb.userData.range=285;scene.add(orb);const ring=new THREE.Mesh(new THREE.TorusGeometry(3.25,.06,4,28),mat('#dbe5d7',true));ring.position.copy(orb.position);ring.rotation.x=Math.PI/2;ring.userData.range=285;scene.add(ring);}
  // A broad continuous observation deck, with seats and warm riverside edge lights.
- for(let z=-148;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=CRUISE_DOCK.z+1.15<z-3.25||CRUISE_DOCK.z-1.15>z+4.25?[[z-3.25,z+4.25]]:[[z-3.25,Math.min(z+4.25,CRUISE_DOCK.z-1.15)],[Math.max(z-3.25,CRUISE_DOCK.z+1.15),z+4.25]];for(const [a,b]of cuts){if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
+ for(let z=-148;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=CRUISE_DOCK.z+1.15<z-3.25||CRUISE_DOCK.z-1.15>z+4.25?[[z-3.25,z+4.25]]:[[z-3.25,Math.min(z+4.25,CRUISE_DOCK.z-1.15)],[Math.max(z-3.25,CRUISE_DOCK.z+1.15),z+4.25]];for(const [a,b]of cuts){if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);fixtures.add(r.position.x-.10,26.02,a,r.position.x+.10,27.22,b,'parapet');facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
  label('外滩大观景台 · 对岸陆家嘴',promenadeX(86)-15,29.2,86);
  const customsClock=createCustomsClock(scene,BUND_BUILDINGS.find(b=>b.kind==='clock'));
  function carModel(i,route){const appearance=cityCarAppearance(route,i);if(appearance){const car=createCitySpecialCar(appearance);scene.add(car.root);return car;}const root=new THREE.Group(),body=['#e7b44d','#75b7b2','#dc7274','#7395c6','#f0ecdb','#607181'][i%6];cube(root,body,0,.48,0,1.2,.7,2.5);cube(root,'#b5dde2',0,1,.1,1.04,.5,1.3);for(const x of [-.62,.62])for(const z of [-.78,.78])cube(root,'#263137',x,.25,z,.18,.48,.48);const lights=[];for(const x of [-.39,.39])lights.push(cube(root,'#fff5b8',x,.55,-1.28,.22,.16,.08,true));scene.add(root);return {root,lights};}
@@ -320,7 +325,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  for(let i=0;i<24;i++){const start=24+(i%4)*44,end=start+41,points=[];for(let z=start;z<=end;z++)points.push([walkX(z,2+i%3),z]);for(let z=end;z>=start;z--)points.push([walkX(z,3+i%3),z]);points.push(points[0]);person(i,'walk',routeSamples(points));}
  for(let i=0;i<9;i++){const z=24+i*24;person(i+24,i%3?'photo':'view',null,{x:promenadeX(z)-2,y:26,z});}
  for(let i=0;i<12;i++){const x=-90+i%3*14;person(i+33,'shop',routeSamples([[x,64],[x+11,64],[x+11,68],[x,68],[x,64]]));}
- const canopy=new THREE.SphereGeometry(1,10,7);for(let z=-132;z<234;z+=12){if(BUND_STREETS.some(s=>Math.abs(s.z-z)<s.width+3)||inSuzhou(riverCenter(z)-33-BUND_SHIFT,z))continue;const r=new THREE.Group();r.position.set(riverCenter(z)-33-BUND_SHIFT,26,z);cube(r,'#6d5037',0,1.1,0,.25,2.2,.25);const leaves=new THREE.Mesh(canopy,mat('#588d50'));leaves.position.y=2.6;leaves.scale.set(1.2,1.25,1.15);leaves.userData.range=285;r.add(leaves);scene.add(r);}
+ const canopy=new THREE.SphereGeometry(1,10,7);for(let z=-132;z<234;z+=12){if(BUND_STREETS.some(s=>Math.abs(s.z-z)<s.width+3)||inSuzhou(riverCenter(z)-33-BUND_SHIFT,z))continue;const r=new THREE.Group();r.position.set(riverCenter(z)-33-BUND_SHIFT,26,z);cube(r,'#6d5037',0,1.1,0,.25,2.2,.25);fixtures.add(r.position.x-.125,26,r.position.z-.125,r.position.x+.125,28.2,r.position.z+.125,'tree');const leaves=new THREE.Mesh(canopy,mat('#588d50'));leaves.position.y=2.6;leaves.scale.set(1.2,1.25,1.15);leaves.userData.range=285;r.add(leaves);scene.add(r);}
  for(let i=0;i<3;i++){const root=new THREE.Group();cube(root,['#dbeced','#a88652','#6e9fb1'][i],0,.35,0,2.3,.7,5.4);cube(root,'#4f7884',0,.78,0,2.15,.2,4.8);cube(root,'#f3e7c9',0,1.32,.1,1.75,.95,2.6);cube(root,'#7ab8cf',0,1.46,-1.22,1.5,.4,.08);cube(root,'#e4b985',0,1.95,0,1.9,.12,2.85);for(const x of [-.9,.9])cube(root,'#ffdea4',x,.92,-2.1,.14,.2,.14,true);const wake=new THREE.Mesh(new THREE.PlaneGeometry(2.8,3),new THREE.MeshBasicMaterial({color:'#d5f4ed',transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false}));wake.rotation.x=-Math.PI/2;wake.position.set(0,.04,4.2);root.add(wake);scene.add(root);boats.push({root,navigationIndex:i,z:64+i*21,dir:i%2?-1:1,lane:i%2?-2.5:2.5});}
  boats.push(...createHuangpuCruises(scene));
  function tick(dt,{night=false,rain=0,dayClock=36,festival=false,showTime=0}={}){clock+=dt;for(const m of shoppingStone)m.emissiveIntensity=night?.12:0;const p=getPos(),cue=showCue(showTime);skylineMaterial.color.setHSL(festival?cue.hue:.55,festival?.82:.5,festival?.57*cue.brightness:.45);for(const m of skylineLEDs)m.visible=night||festival;customsClock.tick(dayClock,night);for(const m of windows)m.visible=lightGroupVisible(m.userData.lightGroup,night,dayClock);for(const m of [...facadeLights,...goldSurfaces])m.visible=night;roadMat.shininess=22+rain*90;roadMat.color.set(rain>.3?'#293b46':'#34424b');for(const l of lamps)l.material.color.set(night?'#ffe2a1':'#c5bda5');
@@ -339,13 +344,13 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  }
  windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;
  for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
- for(const p of pedestrians){const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
+ for(const p of pedestrians){if(!p.route)for(let i=0;i<8&&fixtures.collides(p.point.x,26,p.point.z,.36);i++)p.point.x-=.25;const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
  const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
  const promenadePeople=pedestrians.filter(p=>p.kind==='walk');
  for(const p of promenadePeople){p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);}
  const promenadeFlow=createStreetCrowd(promenadePeople,{
   area:{x1:22,x2:145,z1:22,z2:202},seedOffset:100,
-  clear:q=>!overlaps(world,q.x,q.y,q.z)&&overlaps(world,q.x,q.y-.1,q.z)&&![-.45,.45].some(dx=>[-.45,.45].some(dz=>roadContains(q.x+dx,q.z+dz))),
+  clear:q=>!fixtures.collides(q.x,q.y,q.z,.36)&&!overlaps(world,q.x,q.y,q.z)&&overlaps(world,q.x,q.y-.1,q.z)&&![-.45,.45].some(dx=>[-.45,.45].some(dz=>roadContains(q.x+dx,q.z+dz))),
   others:()=>[...getObstacles().filter(o=>o.person),...pedestrians.filter(p=>!p.route),...traffic.officers],
   pickGoal:p=>{p.t=(p.t+2)%p.route.lengthMeters;return {...routePose(p.route,p.t),y:26};},
   spawnPoint:p=>{p.t=p.crowd.random()*p.route.lengthMeters;return {...routePose(p.route,p.t),y:26};}
@@ -354,10 +359,10 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  function isSeated(){return !!seatedBench;}
  function leaveSeat(){seatedBench=null;}
  function sit(b){seatedBench=b;place({x:b.seatX,y:b.seatY,z:b.z});setView(b.facingYaw,-.04);notify('已在外滩长椅坐下 · 临江欣赏陆家嘴天际线 · 按 V 或 WASD 起身');return true;}
- function standUp(){if(!seatedBench)return false;const b=seatedBench;seatedBench=null;place({x:b.seatX+.85,y:26,z:b.z});notify('已起身 · 继续漫步外滩');return true;}
+ function standUp(){if(!seatedBench)return false;const b=seatedBench,point=[{x:b.seatX+.85,y:26,z:b.z},{x:b.seatX,y:26,z:b.z+1.55},{x:b.seatX,y:26,z:b.z-1.55},{x:b.seatX-1,y:26,z:b.z}].find(p=>!fixtures.collides(p.x,p.y,p.z)&&!overlaps(world,p.x,p.y,p.z));if(!point){notify('椅边暂时被挡住了，请稍后再起身');return false;}seatedBench=null;place(point);notify('已起身 · 继续漫步外滩');return true;}
  function use(){if(cruises.use())return true;if(seatedBench)return standUp();const b=getNearBench();if(b)return sit(b);return false;}
  function getPrompt(p=getPos()){const cruisePrompt=cruises.getPrompt(p);if(cruisePrompt)return cruisePrompt;if(seatedBench)return 'V / WASD 起身';const b=getNearBench(p);if(b)return 'V 坐在长椅上欣赏外滩与江景';return '';}
  const cruises=createCruiseService({scene,ships:boats.filter(b=>b.kind==='luxury-cruise'),getPos,place,setView,notify});
  tick(0,{});
- return {tick,cruises,cruisePorts:cruises.ports,cruisePeople:cruises.people,customsClock,cars,boats,pedestrians,windows,facadeLights,goldSurfaces,skylineLEDs,traffic,benches,getNearBench,isSeated,sit,standUp,leaveSeat,use,getPrompt,collides:(x,y,z)=>traffic.collides(x,y,z)||cars.some(c=>{if(y>=c.root.position.y+1.3||y+1.75<=c.root.position.y)return false;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<.9&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<1.55;})};
+ return {tick,cruises,cruisePorts:cruises.ports,cruisePeople:cruises.people,customsClock,cars,boats,pedestrians,windows,facadeLights,goldSurfaces,skylineLEDs,traffic,benches,getNearBench,isSeated,sit,standUp,leaveSeat,use,getPrompt,staticCollides:fixtures.collides,fixtures:fixtures.boxes,collides:(x,y,z)=>fixtures.collides(x,y,z)||traffic.collides(x,y,z)||cars.some(c=>{if(y>=c.root.position.y+1.3||y+1.75<=c.root.position.y)return false;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<.9&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<1.55;})};
 }

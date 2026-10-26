@@ -21,7 +21,7 @@ export const FERRY_STOPS=[{name:'金陵东路渡口',x:riverWestEdge(185)-11,z:1
 export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:0,u:0};if(t<47)return {port:null,u:(t-12)/35};if(t<59)return {port:1,u:1};return {port:null,u:1-(t-59)/35};}
 export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestEdge(185)+7,z:185},b={x:riverEastEdge(136)-13,z:136};return {...phase,x:a.x+(b.x-a.x)*phase.u,z:a.z+(b.z-a.z)*phase.u,y:22.3,yaw:Math.atan2(b.x-a.x,b.z-a.z)+(time%94<59?Math.PI:0)};}
 
-export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null}){
+export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null,solidAt=()=>false}){
  const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),signArt=createStreetSignArt();let clock=0,ride=null,panel=false,cooldown=0,purchases=0,lastSignNight=null;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  function material(color,glow=false){const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);}
@@ -274,11 +274,11 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
  const financialPeople=createLujiazuiPeople({person,cube});tourists.push(...financialPeople);
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
- const shopperClear=p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
+ const shopperClear=p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
  const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
  const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear});
  const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos});
- const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
+ const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
  function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);if(night!==lastSignNight){lastSignNight=night;for(const s of signs)s.mesh.material=night?s.night:s.day;}for(const m of neons)m.visible=night;
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
 
