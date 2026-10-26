@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import vm from 'node:vm';
 import {inlineLoadingMusic} from '../scripts/loading-music-build.mjs';
 const html=await readFile('game/index.html','utf8');
+assert(html.indexOf('src="./loading-music.js"')<html.indexOf('rel="stylesheet"'),'Production music initialization precedes potentially blocking stylesheets');
 assert(html.indexOf('id="loading-music-credit"')<html.indexOf('<main id="menu"'),'Loading music control must be outside and before the scrolling menu');
 assert(!html.includes('loading-music-enable')&&!html.includes('轻触启声'),'The loading screen must not ask the player to find an audio activation control');
 assert(html.includes('src="./loading-music.js"'),'Loading music must bootstrap separately before the heavy game module');
@@ -25,7 +26,7 @@ let mutedPlays=0;const muted=createLoadingMusic({audio:Object.assign(events(),{p
 const pendingDoc=events(),registrations=[],baseAdd=pendingDoc.addEventListener;pendingDoc.addEventListener=function(type,fn,options){registrations.push({type,options});baseAdd.call(this,type,fn,options);};
 let rejectAuto,finishGesture,mobileCalls=0;const pendingStates=[],pendingMedia=Object.assign(events(),{paused:true,currentTime:0,play(){mobileCalls++;this.paused=false;return mobileCalls===1?new Promise((resolve,reject)=>{rejectAuto=reject;}):new Promise(resolve=>{finishGesture=resolve;});},pause(){this.paused=true;},removeAttribute(){},load(){}});
 const pendingMusic=createLoadingMusic({audio:pendingMedia,events:pendingDoc,onStatus:s=>pendingStates.push(s)});pendingMusic.start();assert.equal(mobileCalls,1);
-pendingDoc.emit('touchend');assert.equal(mobileCalls,2,'First mobile gesture must retry an unsettled autoplay call even when paused is already false');
+pendingDoc.emit('touchstart');assert.equal(mobileCalls,2,'The first touch point retries synchronously without requiring a completed swipe');pendingDoc.emit('touchend');assert.equal(mobileCalls,2,'The same touch cannot accumulate unsettled play promises');
 for(let i=0;i<20;i++){pendingDoc.emit('pointerdown');pendingDoc.emit('click');}assert.equal(mobileCalls,2,'A pending gesture attempt cannot accumulate play promises');
 finishGesture();await new Promise(r=>setTimeout(r,0));assert.equal(pendingStates.at(-1),'playing');rejectAuto(Object.assign(Error('old autoplay denied'),{name:'NotAllowedError'}));await new Promise(r=>setTimeout(r,0));assert.equal(pendingStates.at(-1),'playing','A late rejection from the superseded autoplay attempt cannot replace current playback status');
 for(const type of ['pointerdown','touchend','keydown','click'])assert(registrations.some(r=>r.type===type&&r.options?.capture),'Activation listens before child controls can stop propagation');
@@ -57,3 +58,10 @@ for(const [pathname,muted,silent]of [['/block-island-shanghai/',false,false],['/
  earlyDoc.emit('block-island-enter');assert.equal(earlyCredit.hidden,!silent);assert([...earlyDoc.listeners.values()].every(a=>!a.length));
 }
 console.log('PASS: exact inline production boot attempts playback before city controls, captures early bridge readiness, keeps correct subpath audio URL, mute/QA isolation and cleanup.');
+// The production head script runs before the credit and all other body nodes.
+const headDoc=events();headDoc.currentScript={id:'loading-music-bootstrap'};headDoc.readyState='loading';headDoc.baseURI='https://example.test/block-island-shanghai/';headDoc.documentElement={dataset:{}};
+const headCredit={hidden:false},headStatus={textContent:''};let mounted=false,headCalls=0;
+headDoc.getElementById=id=>mounted?(id==='loading-music-credit'?headCredit:id==='loading-music-state'?headStatus:null):null;
+class HeadAudio{constructor(){Object.assign(this,events(),{paused:true,currentTime:0});}play(){headCalls++;if(headCalls===1)return Promise.reject(Object.assign(Error('gesture required'),{name:'NotAllowedError'}));this.paused=false;return Promise.resolve();}pause(){this.paused=true;}removeAttribute(){}load(){}}
+vm.runInNewContext(inline,{document:headDoc,location:{pathname:'/block-island-shanghai/',search:''},Audio:HeadAudio,URL,URLSearchParams,localStorage:{getItem:()=>null}});await new Promise(r=>setTimeout(r,0));assert.equal(headCalls,1);assert.equal(headDoc.documentElement.dataset.loadingMusicState,'blocked');
+headDoc.emit('WeixinJSBridgeReady');await new Promise(r=>setTimeout(r,0));assert.equal(headCalls,2,'Bridge readiness is captured before any body element exists');mounted=true;headDoc.emit('DOMContentLoaded');assert.equal(headStatus.textContent,'正在播放');assert.equal(headCredit.hidden,false);headDoc.emit('block-island-enter');assert(headCredit.hidden);assert([...headDoc.listeners.values()].every(a=>!a.length),'Head UI listener is released along with the player');

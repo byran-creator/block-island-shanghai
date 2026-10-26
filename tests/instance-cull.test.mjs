@@ -18,4 +18,18 @@ const replaced=sources[12];replaced.material=new T.MeshBasicMaterial();update();
 replaced.material=material;replaced.geometry=new T.SphereGeometry();update();assert(replaced.layers.isEnabled(0));
 holder.scale.y=1;sheared.rotation.z=0;holder.position.x=0;mirrored.frustumCulled=true;mirrored.position.x=0;mirrored.scale.x=1;update();assert.equal(instances.batches[0].mesh.count,12,'Supported objects rejoin immediately on return');
 instances.dispose();assert(sources.every(o=>o.layers.isEnabled(0)));
+// A fully offscreen batch has no visible member to invalidate an aggregate
+// bound. Parent motion, manual matrices and runtime culling opt-outs must still
+// recover immediately; a creation-time batch AABB is insufficient.
+for(const frozen of [false,true]){
+ const s=new T.Scene(),holder=new T.Group(),parts=[];s.add(holder);holder.position.x=500;
+ for(let i=0;i<3;i++){const p=new T.Mesh(geometry,material);p.position.x=i*.2;if(frozen){p.updateMatrix();p.matrixAutoUpdate=false;}holder.add(p);parts.push(p);}
+ if(frozen){holder.updateMatrix();holder.matrixAutoUpdate=false;}
+ const shared=createSceneInstances(s),refresh=()=>{s.updateMatrixWorld(true);shared.update(camera);};refresh();assert.equal(shared.batches[0].mesh.count,0);
+ holder.position.x=0;holder.updateMatrix();refresh();assert.equal(shared.batches[0].mesh.count,3,'Parent motion returns an entirely culled batch');
+ holder.visible=false;refresh();assert.equal(shared.batches[0].mesh.count,0);holder.visible=true;refresh();assert.equal(shared.batches[0].mesh.count,3);
+ holder.position.x=500;holder.updateMatrix();parts[0].frustumCulled=false;refresh();assert.equal(shared.batches[0].mesh.count,1,'Runtime opt-out restores an originally culled batch');
+ holder.removeFromParent();refresh();assert(parts.every(p=>p.layers.isEnabled(0)),'Detached sources recover their original draw paths');s.add(holder);refresh();assert.equal(shared.batches[0].mesh.count,1);
+ shared.dispose();
+}
 console.log(JSON.stringify({passed:true,sourceCount:1000,visibleTransformChecks:10,hiddenMirrorAndShearReturn:true,cullingOptOut:true,offscreenReplacement:true}));

@@ -4,7 +4,7 @@ export function loadingMusicAllowed(location){const parts=location.pathname.spli
 
 export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onStatus=()=>{},activationControl=null}){
  let finished=false,armed=false,pending=false,gesturePending=false,failed=false,attempt=0,bridgeTried=false;
- const gestures=['pointerdown','touchend','keydown','click'];
+ const gestures=['pointerdown','touchstart','touchend','keydown','click'];
  function loop(){if(!finished&&audio.currentTime>=22)audio.currentTime=0;}
  function play(fromGesture=false){
   if(finished||failed)return;
@@ -44,10 +44,14 @@ export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onS
 }
 
 // Separate lightweight entry: audio can run while game.js builds the city.
-if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&document.getElementById('loading-music-credit')&&document.documentElement.dataset.gameStarted!=='true'){
+if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&(document.currentScript?.id==='loading-music-bootstrap'||document.getElementById('loading-music-credit'))&&document.documentElement.dataset.gameStarted!=='true'){
  const preferences=()=>{try{return JSON.parse(localStorage.getItem('block-island-music-preferences')||'{}')??{};}catch{return {};}};
  const enabled=()=>preferences().enabled!==false&&document.getElementById('music-toggle')?.getAttribute('aria-pressed')!=='false'&&document.getElementById('sound')?.getAttribute('aria-pressed')!=='false';
  const volume=()=>{const saved=preferences().volume,slider=document.getElementById('music-volume');return (Number.isFinite(saved)?saved:slider?Number(slider.value)/100:.28)*.45;};
- const onStatus=state=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=state==='playing'?'正在播放':state==='muted'?'配乐已静音':'';if(credit)credit.hidden=state==='stopped';};
+ let status='';
+ const paint=()=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=status==='playing'?'正在播放':status==='muted'?'配乐已静音':'';if(credit)credit.hidden=status==='stopped';};
+ const ready=()=>{document.removeEventListener('DOMContentLoaded',ready);paint();};
+ const onStatus=state=>{status=state;document.documentElement.dataset.loadingMusicState=state;paint();if(state==='stopped')document.removeEventListener('DOMContentLoaded',ready);};
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);
  const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus});music.start();
 }
