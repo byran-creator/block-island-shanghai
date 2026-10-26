@@ -20,6 +20,8 @@ export function createStartupEntry({document,window,location,MutationObserver,se
   // Dispatch synchronously inside the real welcome click. The audio element
   // and WebAudio context are activated before any city request/evaluation.
   document.dispatchEvent(new window.Event('block-island-load-start'));
+  // Native button focus can scroll the compact mobile card before this click.
+  const menu=document.getElementById('menu');if(menu)menu.scrollTop=0;
   entry=document.createElement('script');entry.id='game-runtime';entry.type='module';entry.src=new URL(config.dataset.src,document.baseURI).href;entry.addEventListener('error',failed);
   timer=setTimeout(()=>{if(ready()||retryText)return;if(button.textContent==='正在加载城市与建筑…')offer('程序下载较慢 · 点击重新加载','游戏主程序尚未完成加载。');else if(button.textContent==='正在初始化画面…')offer('画面初始化尚未完成 · 点击重新加载','当前浏览器还未完成画面初始化。');},30000);
   document.body.appendChild(entry);
