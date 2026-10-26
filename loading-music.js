@@ -48,6 +48,6 @@ if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&document.getEle
  const preferences=()=>{try{return JSON.parse(localStorage.getItem('block-island-music-preferences')||'{}')??{};}catch{return {};}};
  const enabled=()=>preferences().enabled!==false&&document.getElementById('music-toggle')?.getAttribute('aria-pressed')!=='false'&&document.getElementById('sound')?.getAttribute('aria-pressed')!=='false';
  const volume=()=>{const saved=preferences().volume,slider=document.getElementById('music-volume');return (Number.isFinite(saved)?saved:slider?Number(slider.value)/100:.28)*.45;};
- const onStatus=state=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=state==='playing'?'《上海滩》播放中':'';if(credit)credit.hidden=state!=='playing';};
+ const onStatus=state=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=state==='playing'?'正在播放':state==='muted'?'配乐已静音':'';if(credit)credit.hidden=state==='stopped';};
  const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus});music.start();
 }
