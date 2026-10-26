@@ -339,7 +339,7 @@ body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + 
 /* Lightweight Shanghai photo before start; the city loads after the click. */
 #entry-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;background:#18333a linear-gradient(90deg,#102b37a6,#102b3726);background-size:cover;background-position:center}
 html[data-boot-phase="welcome"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/welcome-shanghai-photo.jpg')}
-html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-game.jpg')}
+html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-game.jpg');transform:scale(1.25);transform-origin:72% 52%}
 html[data-boot-phase="ready"] #entry-backdrop{display:none}
 html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) #world{visibility:hidden}
 html:not([data-game-started="true"]) :is(.top-actions,.menu .mode-entry,.teleport-pills,.menu-secondary,.instructions,.island-caption){display:none}
@@ -350,7 +350,7 @@ html:not([data-game-started="true"]) .menu p{font-size:13px;line-height:1.6;marg
 html:not([data-game-started="true"]) .menu .footnote{display:none}
 
 /* First entry stays out of the city view; pause menus retain their full UI. */
-html:not([data-game-started="true"]) #menu{align-items:flex-end;justify-content:center;padding:0 20px clamp(52px,18dvh,150px)!important;background:none;overflow-y:auto}
+html:not([data-game-started="true"]) #menu{align-items:flex-end;justify-content:center;padding:0 20px max(24px,6dvh,calc(env(safe-area-inset-bottom) + 16px))!important;background:none;overflow-y:auto}
 html:not([data-game-started="true"]) .menu-card{width:min(280px,calc(100% - 24px));max-width:none;padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
 html:not([data-game-started="true"]) .menu-card>:not(#play):not(#startup-help){display:none}
 html:not([data-game-started="true"]) #play{width:100%;margin:0;padding:12px 22px!important;min-height:48px;font-size:16px!important;letter-spacing:2px!important;border-radius:6px!important;border:1px solid #f1e7bf!important;background:linear-gradient(110deg,#eee1b2,#c6a56d)!important;color:#302b20!important;box-shadow:0 3px 14px #091e303b!important}
