@@ -90,10 +90,10 @@
  </div>
 </div>
 <div id="survival-goal" class="survival-goal" hidden></div>
-<aside id="loading-music-credit" aria-label="加载配乐">
- <div class="loading-music-copy"><strong>加载配乐 ·《上海滩》</strong><span id="loading-music-state" role="status">正在准备配乐 · 可轻触启声</span><a href="https://music.163.com/song?id=5284592" target="_blank" rel="noopener noreferrer">叶丽仪 · 网易云音乐</a></div>
- <button id="loading-music-enable" type="button" aria-label="开启加载页上海滩配乐">轻触启声</button>
+<aside id="loading-music-credit" aria-label="加载配乐" hidden>
+ <div class="loading-music-copy"><strong>加载配乐 ·《上海滩》</strong><span id="loading-music-state" role="status"></span><a href="https://music.163.com/song?id=5284592" target="_blank" rel="noopener noreferrer">叶丽仪 · 网易云音乐</a></div>
 </aside>
+<script type="module" src="./loading-music.js"></script>
 <main id="menu" class="menu">
  <section class="menu-card glass-luxury" aria-labelledby="menu-title">
   <div class="menu-tag">SHANGHAI SKYLINE · SANDBOX EXPLORATION</div>
@@ -380,7 +380,6 @@
  <details><summary>夜晚、受伤与保存</summary><p>生存模式夜里可能出现少量夜影，Q 反击，石剑更有效；床、篝火和灯帮助准备夜晚。创造模式不会出现夜影。饥饿、溺水、摔落和撞车会受伤，Z 进食恢复；水中空格上浮、Shift 下潜，潜水套装提供更长氧气。</p><p>体力耗尽会回到床旁或出生点，当前版本保留建筑和背包。暂停菜单管理存档；同学打开网址使用自己的存档。篝火进度会保存，关闭页面不推进；未完成的钓鱼会收起，下次重新抛线。</p></details>
 </dialog>
 <dialog id="yuyuan-dialog" class="game-dialog" aria-labelledby="yuyuan-title"><header><h2 id="yuyuan-title">豫园</h2><button id="yuyuan-close">继续游园</button></header><div id="yuyuan-actions" class="recipe-grid"></div><p id="yuyuan-result" aria-live="polite"></p></dialog>
-<script type="module" src="./loading-music.js"></script>
 <script id="game-entry" type="module" src="./game.js?v=20261018L"></script>
 <script id="startup-guard">
 // Independent of module parsing/evaluation: an early script failure must not

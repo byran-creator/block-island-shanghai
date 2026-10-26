@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import vm from 'node:vm';
+import {inlineLoadingMusic} from '../scripts/loading-music-build.mjs';
 const html=await readFile('game/index.html','utf8');
 assert(html.indexOf('id="loading-music-credit"')<html.indexOf('<main id="menu"'),'Loading music control must be outside and before the scrolling menu');
-assert.match(html,/<button id="loading-music-enable" type="button"/,'A native first-screen button must work independently of the disabled start button');
+assert(!html.includes('loading-music-enable')&&!html.includes('轻触启声'),'The loading screen must not ask the player to find an audio activation control');
 assert(html.includes('src="./loading-music.js"'),'Loading music must bootstrap separately before the heavy game module');
 const {createLoadingMusic,LOADING_SONG,loadingMusicAllowed}=await import('../game/loading-music.js');
 assert(loadingMusicAllowed({pathname:'/block-island-shanghai/',search:''}));assert(!loadingMusicAllowed({pathname:'/__review.html',search:''}));assert(!loadingMusicAllowed({pathname:'/',search:'?silent=1'}));
@@ -39,6 +41,19 @@ console.log('PASS: early default playback attempt, official source, excerpt loop
 
 // Exercise the actual bootstrap: live settings exist before final city stages.
 const old={document:globalThis.document,location:globalThis.location,localStorage:globalThis.localStorage,Audio:globalThis.Audio};
-let prefs={enabled:true,volume:.28},buttonOn=true,slider='28';const bootstrapDoc=events(),enableControl=events();bootstrapDoc.documentElement={dataset:{}};bootstrapDoc.getElementById=id=>id==='loading-music-enable'?enableControl:id==='loading-music-credit'?{}:id==='music-volume'?{value:slider}:id==='music-toggle'?{getAttribute:()=>String(buttonOn)}:{getAttribute:()=> 'true'};
+let prefs={enabled:true,volume:.28},buttonOn=true,slider='28';const bootstrapDoc=events(),credit={hidden:true};bootstrapDoc.documentElement={dataset:{}};bootstrapDoc.getElementById=id=>id==='loading-music-credit'?credit:id==='music-volume'?{value:slider}:id==='music-toggle'?{getAttribute:()=>String(buttonOn)}:{getAttribute:()=> 'true'};
 let bootAudio;globalThis.document=bootstrapDoc;globalThis.location={pathname:'/',search:''};globalThis.localStorage={getItem:()=>JSON.stringify(prefs)};globalThis.Audio=class{constructor(){bootAudio=Object.assign(this,events(),{paused:true,currentTime:0});}play(){this.paused=false;return Promise.resolve();}pause(){this.paused=true;}removeAttribute(){}load(){}};
-try{await import('../game/loading-music.js?bootstrap-live');await new Promise(r=>setTimeout(r,0));assert.equal(enableControl.hidden,true,'Autoplay success removes the unnecessary enable prompt');buttonOn=false;prefs.enabled=false;bootstrapDoc.emit('click');assert(bootAudio.paused,'The actual loading bootstrap must obey turning background music off');buttonOn=true;prefs.enabled=true;prefs.volume=.1;slider='10';bootstrapDoc.emit('input');assert(Math.abs(bootAudio.volume-.045)<1e-9,'Live volume slider applies to the loading stream');slider='0';prefs.volume=0;bootstrapDoc.emit('input');assert(bootAudio.paused,'Zero volume stops streaming');bootstrapDoc.emit('block-island-enter');}finally{for(const [key,value]of Object.entries(old)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
+try{await import('../game/loading-music.js?bootstrap-live');await new Promise(r=>setTimeout(r,0));assert.equal(credit.hidden,false,'Only actual playback shows the music credit');buttonOn=false;prefs.enabled=false;bootstrapDoc.emit('click');assert(bootAudio.paused,'The actual loading bootstrap must obey turning background music off');assert(credit.hidden);buttonOn=true;prefs.enabled=true;prefs.volume=.1;slider='10';bootstrapDoc.emit('input');assert(Math.abs(bootAudio.volume-.045)<1e-9,'Live volume slider applies to the loading stream');slider='0';prefs.volume=0;bootstrapDoc.emit('input');assert(bootAudio.paused,'Zero volume stops streaming');bootstrapDoc.emit('block-island-enter');}finally{for(const [key,value]of Object.entries(old)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
+
+// Execute the exact production classic-script bundle before any game controls
+// exist. This tests event ordering, not a claim about real WebView permission.
+const published=await inlineLoadingMusic(html),inline=published.match(/<script id="loading-music-bootstrap">([\s\S]*?)<\/script>/)?.[1];assert(inline);assert(published.indexOf('id="loading-music-bootstrap"')<published.indexOf('<main id="menu"'));assert(!published.includes('src="./loading-music.js"'),'Production audio does not wait for an external module download');
+for(const [pathname,muted,silent]of [['/block-island-shanghai/',false,false],['/block-island-shanghai/preview/',false,false],['/',true,false],['/__qa.html',false,true]]){
+ const earlyDoc=events(),earlyCredit={hidden:true},earlyStatus={textContent:''};earlyDoc.baseURI='https://example.test'+pathname;earlyDoc.documentElement={dataset:{}};earlyDoc.getElementById=id=>id==='loading-music-credit'?earlyCredit:id==='loading-music-state'?earlyStatus:null;let earlyAudio,calls=0;
+ class EarlyAudio{constructor(){earlyAudio=Object.assign(this,events(),{paused:true,currentTime:0});}play(){calls++;if(calls===1)return Promise.reject(Object.assign(Error('default denied'),{name:'NotAllowedError'}));this.paused=false;return Promise.resolve();}pause(){this.paused=true;}removeAttribute(){}load(){}}
+ vm.runInNewContext(inline,{document:earlyDoc,location:{pathname,search:''},Audio:EarlyAudio,URL,URLSearchParams,localStorage:{getItem:()=>JSON.stringify({enabled:!muted})}});await new Promise(r=>setTimeout(r,0));
+ assert.equal(calls,muted||silent?0:1,'Default playback is attempted without a touch or scroll');assert(earlyCredit.hidden,'Blocked/muted startup has no enable prompt or false playing label');
+ earlyDoc.emit('WeixinJSBridgeReady');await new Promise(r=>setTimeout(r,0));assert.equal(calls,muted||silent?0:2);if(!muted&&!silent){assert(!earlyCredit.hidden);assert.equal(earlyAudio.src,'https://example.test'+pathname+'assets/audio/loading-shanghai-4297cd84acac.mp3');}
+ earlyDoc.emit('block-island-enter');assert(earlyCredit.hidden);assert([...earlyDoc.listeners.values()].every(a=>!a.length));
+}
+console.log('PASS: exact inline production boot attempts playback before city controls, captures early bridge readiness, keeps correct subpath audio URL, mute/QA isolation and cleanup.');
