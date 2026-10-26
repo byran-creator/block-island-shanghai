@@ -325,6 +325,10 @@ body.touch :is(button,summary,[role="button"],#touch-controls,#hotbar,#world),bo
 body.touch :is(input,textarea,select,[contenteditable="true"]){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 
 /* Loading audio stays in the viewport, outside the scrolling menu card. */
+#menu{padding-top:88px}
+@media(max-height:780px){#menu{padding-top:68px}}
+@media(max-width:700px){#menu{padding-top:73px}}
+body.force-landscape #menu{padding-top:60px}
 #loading-music-credit{position:fixed;z-index:6;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;max-width:min(360px,calc(100vw - 24px));padding:10px 13px;border:1px solid #d5fd8755;border-radius:12px;background:#18333aeb;box-shadow:0 4px 16px #071e2733;color:#ecf4e5;font-size:12px;line-height:1.45}
 #loading-music-credit[hidden]{display:none}
 .loading-music-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
