@@ -65,6 +65,6 @@ if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&(document.curre
    const layout=createMobileLayout({body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage:localStorage});void layout.requestNative();
   }catch{}
  }
- function welcomeClick(event){if(document.documentElement.dataset.bootPhase==='welcome'&&event.target.closest?.('#play'))begin();}
+ function welcomeClick(event){if(document.documentElement.dataset.gameStarted!=='true'&&event.target.closest?.('#play'))begin();}
  if(document.documentElement.dataset.startGated==='true'){document.addEventListener('click',welcomeClick,true);document.addEventListener('block-island-load-start',begin);}else music.start();
 }
