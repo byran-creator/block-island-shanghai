@@ -22,7 +22,7 @@ export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onS
  function gesturePlay(){play(true);}
  // Some WeChat WebViews deliver media activation when their bridge becomes
  // ready. Try once in that callback; no SDK, permission calls or polling.
- // A rejection still follows the normal visible gesture fallback.
+ // A rejection can still recover from the next normal page interaction.
  function bridgeReady(){if(bridgeTried)return;bridgeTried=true;play(true);}
  function dispose(){
   if(finished)return;finished=true;attempt++;audio.pause();audio.removeAttribute('src');audio.load();
@@ -48,8 +48,6 @@ if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&document.getEle
  const preferences=()=>{try{return JSON.parse(localStorage.getItem('block-island-music-preferences')||'{}')??{};}catch{return {};}};
  const enabled=()=>preferences().enabled!==false&&document.getElementById('music-toggle')?.getAttribute('aria-pressed')!=='false'&&document.getElementById('sound')?.getAttribute('aria-pressed')!=='false';
  const volume=()=>{const saved=preferences().volume,slider=document.getElementById('music-volume');return (Number.isFinite(saved)?saved:slider?Number(slider.value)/100:.28)*.45;};
- const labels={loading:'正在准备《上海滩》 · 可轻触页面启声',playing:'《上海滩》播放中',blocked:'轻触页面开启《上海滩》',muted:'配乐已静音',hidden:'配乐已暂停',error:'配乐暂不可用',stopped:''};
- const activationControl=document.getElementById('loading-music-enable');
- const onStatus=state=>{const node=document.getElementById('loading-music-state');if(node)node.textContent=labels[state]??'';if(activationControl)activationControl.hidden=!['loading','blocked'].includes(state);};
- const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus,activationControl});music.start();
+ const onStatus=state=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=state==='playing'?'《上海滩》播放中':'';if(credit)credit.hidden=state!=='playing';};
+ const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus});music.start();
 }

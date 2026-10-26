@@ -326,9 +326,8 @@ body.touch :is(input,textarea,select,[contenteditable="true"]){-webkit-user-sele
 
 /* Loading audio stays in the viewport, outside the scrolling menu card. */
 #loading-music-credit{position:fixed;z-index:6;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;max-width:min(360px,calc(100vw - 24px));padding:10px 13px;border:1px solid #d5fd8755;border-radius:12px;background:#18333aeb;box-shadow:0 4px 16px #071e2733;color:#ecf4e5;font-size:12px;line-height:1.45}
-#loading-music-credit[hidden],#loading-music-enable[hidden]{display:none}
+#loading-music-credit[hidden]{display:none}
 .loading-music-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
 .loading-music-copy strong{font-size:13px;color:#e7f7bf}
 .loading-music-copy a{font-size:10px;color:#b6c9c6;text-decoration:none}
-#loading-music-enable{flex-shrink:0;min-height:40px;padding:7px 11px;border:1px solid #d5fd8788;border-radius:8px;background:#d5fd87;color:#1b352c;font-size:12px;font-weight:700}
 body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
