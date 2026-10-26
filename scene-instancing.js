@@ -33,7 +33,10 @@ export function createSceneInstances(scene){
   projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(projection);inverse.copy(scene.matrixWorld).invert();
   for(const {mesh,entries}of batches){let count=0;
    for(const {source,mask}of entries){
-    const flags=hierarchy(source),attached=!!(flags&1),visible=!!(flags&2);
+    // Cache the shared parent chain, not every leaf mesh. Most source meshes
+    // have no children; their own visibility is a direct read, not a WeakMap
+    // lookup/write on every frame. Dynamic reparenting still resolves now.
+    const flags=hierarchy(source.parent),attached=!!(flags&1),visible=!!(flags&2)&&source.visible;
     if(attached&&!visible&&source.geometry===mesh.geometry&&source.material===mesh.material){source.layers.mask=mask&~1;continue;}
     // Fall back to its original draw path if another system replaces a part.
     if(!attached||source.geometry!==mesh.geometry||source.material!==mesh.material||source.material.transparent||source.material.opacity!==1){source.layers.mask=mask;continue;}
