@@ -31,6 +31,7 @@ import {boatSurfaces,boatSupport,boatSolid,boatWorld} from './boat-support.js';
 import {createPrivateSuites} from './private-suites.js';
 import {createBuildingResidents} from './building-residents.js';
 import {loadWorld,clearWorldCache} from './world-cache.js';
+import {primeGameAudioContext} from './audio-context.js';
 import {metroInterior,metroRampFloor} from './metro-layout.js';
 import {CanvasRenderer} from './canvas-renderer.js';
 import {createCompanions} from './companions.js';
@@ -206,7 +207,8 @@ function updateSky(dt){dayClock=advanceDay(dayClock,dt,timeOptions);streetBounce
 
 function notify(msg){$('toast').textContent=msg;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),2400)}
 function getAudio(){
- audioCtx??=new (window.AudioContext||window.webkitAudioContext)();
+ audioCtx??=primeGameAudioContext();
+ if(!audioCtx)return null;
  if(audioCtx.state==='suspended'){
   try{audioCtx.resume()?.catch(()=>{});}catch(_){}
  }
@@ -238,7 +240,7 @@ function refreshMusic(){for(const id of ['music-toggle']){$(id).setAttribute('ar
 $('music-toggle').onclick=()=>{music.setEnabled(!music.enabled);refreshMusic()};$('music-quick').onclick=()=>{music.nextTrack();refreshMusic();notify('BGM：'+music.track.name)};$('music-choice').value=music.track.id;$('music-choice').addEventListener('change',e=>{music.setTrack(e.target.value);refreshMusic()});$('music-volume').addEventListener('input',e=>{music.setVolume(Number(e.target.value)/100);refreshMusic()});refreshMusic();
 function refreshSceneAudio(){$('music-auto').textContent='区域配乐：'+(music.automatic?'开':'关');$('music-auto').setAttribute('aria-pressed',String(music.automatic));$('ambient-toggle').textContent='环境音：'+(sceneAudio.enabled?'开':'关');$('ambient-toggle').setAttribute('aria-pressed',String(sceneAudio.enabled));$('footsteps-toggle').textContent='玩家脚步：'+(sceneAudio.footstepsEnabled?'开':'关');$('footsteps-toggle').setAttribute('aria-pressed',String(sceneAudio.footstepsEnabled));}
 $('music-auto').onclick=()=>{music.setAutomatic(!music.automatic);refreshSceneAudio();};$('ambient-toggle').onclick=()=>{sceneAudio.setEnabled(!sceneAudio.enabled);refreshSceneAudio();};$('footsteps-toggle').onclick=()=>{sceneAudio.setFootstepsEnabled(!sceneAudio.footstepsEnabled);refreshSceneAudio();};$('music-choice').addEventListener('change',refreshSceneAudio);$('music-quick').addEventListener('click',refreshSceneAudio);refreshSceneAudio();
-function beep(kind){if(!sound)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume()?.catch(()=>{});const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='triangle';osc.frequency.setValueAtTime(kind?320:170,audioCtx.currentTime);osc.frequency.exponentialRampToValueAtTime(kind?130:60,audioCtx.currentTime+.09);gain.gain.setValueAtTime(.07,audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.1);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.1)}catch{}}
+function beep(kind){if(!sound)return;try{audioCtx??=primeGameAudioContext();if(audioCtx.state==='suspended')audioCtx.resume()?.catch(()=>{});const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='triangle';osc.frequency.setValueAtTime(kind?320:170,audioCtx.currentTime);osc.frequency.exponentialRampToValueAtTime(kind?130:60,audioCtx.currentTime+.09);gain.gain.setValueAtTime(.07,audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.1);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.1)}catch{}}
 for(let id=1;id<BLOCKS.length;id++){
  const button=document.createElement('button');button.className='slot'+(id===1?' active':'');button.title=`${id<=9?id:id===10?'0':id===11?'-':'='} · ${BLOCKS[id].name}`;button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',id===1?'true':'false');
  const thumb=document.createElement('canvas');thumb.width=16;thumb.height=16;thumb.getContext('2d').drawImage(atlasCanvas,(id>=9?id+1:id-1)*16,0,16,16,0,0,16,16);

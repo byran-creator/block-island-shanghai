@@ -325,6 +325,15 @@ body.touch :is(button,summary,[role="button"],#touch-controls,#hotbar,#world),bo
 body.touch :is(input,textarea,select,[contenteditable="true"]){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 
 /* Loading audio stays in the viewport, outside the scrolling menu card. */
+#welcome-backdrop{position:fixed;inset:0;z-index:0;background:#9ecbdc url('./assets/welcome-shanghai.svg') center/cover no-repeat;pointer-events:none}
+html[data-boot-phase="ready"] #welcome-backdrop{display:none}
+html[data-boot-phase="welcome"] :is(.top-actions,.menu .mode-entry,.teleport-pills,.menu-secondary,.instructions,.island-caption),html[data-boot-phase="loading"] :is(.top-actions,.menu .mode-entry,.teleport-pills,.menu-secondary,.instructions,.island-caption){display:none}
+html[data-boot-phase="welcome"] .menu-card{overflow:visible;max-height:none}
+html[data-boot-phase="welcome"] .hud:not(.topbar),html[data-boot-phase="loading"] .hud:not(.topbar){visibility:hidden!important}
+html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) .menu-card{padding:18px 24px}
+html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) .menu h1{font-size:clamp(26px,min(4.6vw,8dvh),43px);line-height:1.2;margin:12px 0}
+html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) .menu p{font-size:13px;line-height:1.6;margin-bottom:14px}
+html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) .menu .footnote{display:none}
 #menu{padding-top:88px}
 @media(max-height:780px){#menu{padding-top:68px}}
 @media(max-width:700px){#menu{padding-top:73px}}
