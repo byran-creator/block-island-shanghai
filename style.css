@@ -335,3 +335,11 @@ body.force-landscape #menu{padding-top:60px}
 .loading-music-copy strong{font-size:13px;color:#e7f7bf}
 .loading-music-copy a{font-size:10px;color:#b6c9c6;text-decoration:none}
 body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+
+/* Keep the compact first-entry menu over the original live city canvas. */
+html:not([data-game-started="true"]) :is(.top-actions,.menu .mode-entry,.teleport-pills,.menu-secondary,.instructions,.island-caption){display:none}
+html:not([data-game-started="true"]) .hud:not(.topbar){visibility:hidden!important}
+html:not([data-game-started="true"]) .menu-card{padding:18px 24px;overflow:visible;max-height:none}
+html:not([data-game-started="true"]) .menu h1{font-size:clamp(26px,min(4.6vw,8dvh),43px);line-height:1.2;margin:12px 0}
+html:not([data-game-started="true"]) .menu p{font-size:13px;line-height:1.6;margin-bottom:14px}
+html:not([data-game-started="true"]) .menu .footnote{display:none}
