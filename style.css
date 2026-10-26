@@ -339,7 +339,7 @@ body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + 
 /* Lightweight Shanghai photo before start; the city loads after the click. */
 #entry-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;background:#18333a linear-gradient(90deg,#102b37a6,#102b3726);background-size:cover;background-position:center}
 html[data-boot-phase="welcome"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/welcome-shanghai-photo.jpg')}
-html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-game-e3e1e35ab7f8.jpg');transform:scale(1.5);transform-origin:98% 30%}
+html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-821651f6736d.jpg')}
 html[data-boot-phase="ready"] #entry-backdrop{display:none}
 html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) #world{visibility:hidden}
 html:not([data-game-started="true"]) :is(.top-actions,.menu .mode-entry,.teleport-pills,.menu-secondary,.instructions,.island-caption){display:none}
