@@ -1,3 +1,4 @@
+import {createWelcomeLayout} from './mobile-layout.js';
 export function createStartupEntry({document,window,location,MutationObserver,setTimeout,clearTimeout,queueMicrotask}){
  const button=document.getElementById('play'),config=document.getElementById('game-entry'),root=document.documentElement;
  let phase='welcome',entry=null,retryText='',timer,autoEnter=false,closed=false;
@@ -30,4 +31,7 @@ export function createStartupEntry({document,window,location,MutationObserver,se
  if(location.pathname.split('/').pop().startsWith('__'))start(false);
  return {start,get phase(){return phase;}};
 }
-if(typeof document!=='undefined'&&document.getElementById('game-entry')&&document.getElementById('play'))createStartupEntry({document,window,location,MutationObserver,setTimeout,clearTimeout,queueMicrotask});
+if(typeof document!=='undefined'&&document.getElementById('game-entry')&&document.getElementById('play')){
+ try{let storage;try{storage=window.localStorage;}catch{}createWelcomeLayout({mobile:window.navigator.maxTouchPoints>0||/Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent),body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage,events:window});}catch{}
+ createStartupEntry({document,window,location,MutationObserver,setTimeout,clearTimeout,queueMicrotask});
+}

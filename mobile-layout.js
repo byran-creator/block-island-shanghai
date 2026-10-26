@@ -12,3 +12,15 @@ export function createMobileLayout({body,view,document,orientation,storage}){
  }
  apply();return {apply,setLandscape,requestNative,get landscape(){return landscape;}};
 }
+
+// The lightweight welcome entry owns these listeners until the city is ready.
+// Native fullscreen/orientation requests remain in the real start gesture.
+export function createWelcomeLayout({mobile,body,view,document,orientation,storage,events}){
+ if(!mobile)return null;
+ body.classList.add('touch');
+ const layout=createMobileLayout({body,view,document,orientation,storage});
+ const apply=()=>layout.apply();let disposed=false;
+ function dispose(){if(disposed)return;disposed=true;events.removeEventListener('resize',apply);events.removeEventListener('orientationchange',apply);document.removeEventListener('block-island-ready',dispose);}
+ events.addEventListener('resize',apply);events.addEventListener('orientationchange',apply);document.addEventListener('block-island-ready',dispose);
+ return {dispose};
+}
