@@ -5,4 +5,6 @@ coach.tick(10,{eligible:true,playing:false});assert(hint.hidden,'Dialogue and ci
 coach.tick(12,{eligible:true,playing:true});assert(hint.hidden&&!classes.size);coach.tick(1,{eligible:true,playing:true});assert(hint.hidden,'The cue does not restart every frame');
 const dismissed=createQuestIntro(tracker,doc);dismissed.tick(.2,{eligible:true,playing:true});dismissed.dismiss();dismissed.tick(.2,{eligible:true,playing:true});assert(hint.hidden);dismissed.dispose();assert(hint.removed);
 const later=createQuestIntro(tracker,doc);later.tick(1,{eligible:false,playing:true});assert(hint.hidden,'Existing players after chapter one are not sent through the tutorial again');
+assert(later.finished,'Non-tutorial players stop requesting journey summaries');
+const idle=createQuestIntro(tracker,doc);let writes=0,value;Object.defineProperty(span,'textContent',{configurable:true,get:()=>value,set:v=>{writes++;value=v;}});idle.tick(.2,{eligible:true,playing:true});for(let i=0;i<20;i++)idle.tick(.2,{eligible:true,playing:true});assert.equal(writes,1,'Unchanged visible cue does not rewrite its DOM');idle.pause();assert(hint.hidden);idle.tick(.2,{eligible:true,playing:true});assert(!hint.hidden);assert.equal(writes,1);idle.dismiss();assert(idle.finished);
 console.log('PASS: finite chapter-one coach, pause/resume, desktop/touch wording, dismiss and cleanup.');
