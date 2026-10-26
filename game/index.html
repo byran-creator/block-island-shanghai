@@ -17,6 +17,7 @@
 </head>
 <body class="in-menu">
 <div id="entry-backdrop" aria-hidden="true"></div>
+<button id="welcome-updates" type="button" aria-haspopup="dialog" aria-controls="update-dialog">公告</button>
 <div id="orientation-tip" class="orientation-tip" hidden>
   <span class="tip-icon">🔄</span>
   <span class="tip-text">建议横屏游玩 · 视野更开阔</span>
@@ -232,7 +233,7 @@
 <dialog id="npc-dialog" class="game-dialog" aria-labelledby="npc-title"><header><h2 id="npc-title">街区向导</h2><button id="npc-close">结束对话</button></header><p id="npc-answer" aria-live="polite"></p><div id="npc-actions" class="recipe-grid"></div></dialog>
 <aside id="quest-tracker" class="quest-tracker" hidden><div class="quest-tracker-header"><span class="quest-tracker-icon">◆</span><strong id="tracked-title"></strong></div><div class="quest-tracker-divider"></div><div class="quest-tracker-target"><span id="tracked-arrow" aria-label="任务方向"><svg viewBox="0 0 24 32" aria-hidden="true" focusable="false"><path d="M12 2 22 13H16V29H8V13H2Z" fill="currentColor" stroke="#76551a" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span id="tracked-place"></span></div><p id="tracked-step"></p><div class="quest-tracker-actions"><button id="quest-map" type="button">M 地图查看</button><button id="quest-stop" type="button">停止追踪</button><button id="travel-book-track" type="button" aria-haspopup="dialog" aria-controls="travel-journal">N 旅行手账</button></div><p id="travel-nearby-track" class="travel-nearby"></p></aside>
 <dialog id="tasks-dialog" class="game-dialog quest-browser-dialog" aria-labelledby="tasks-title"><header><div><small>SHANGHAI / 你的旅程</small><h2 id="tasks-title">旅程与委托</h2></div><button id="tasks-close">返回游戏 · I</button></header><p id="task-summary"></p><div class="quest-browser"><nav class="quest-sidebar" aria-label="任务列表"><div id="task-categories" class="quest-categories"></div><div id="task-list"></div></nav><section id="task-detail" class="quest-detail" aria-live="polite"></section></div><details class="quest-legacy"><summary>明珠灵感收集 · 城市长期目标</summary><section class="main-quest"><h3>支线 · 明珠灵感收集</h3><div class="quest-eyebrow">奶龙的委托 · PEARL QUEST</div><strong><span id="quest-title">寻找 5 枚灵感晶体</span><span id="quest-count">0 / 5</span></strong><div class="quest-track"><i id="quest-fill"></i></div><p id="quest-description">让东方明珠亮起来。</p><div class="gem-list"><span id="gem-village"></span><span id="gem-gallery"></span><span id="gem-forest"></span><span id="gem-deck"></span><span id="gem-race"></span></div></section></details></dialog>
-<dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title">
+<dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title" data-notice-key="block-island-journey-echoes-20261021-seen">
  <header>
   <div>
    <small>FEATURE UPDATE · 相遇有回声 / 2026.10.21</small>
@@ -362,7 +363,7 @@
 </details>
   <div class="update-footer">
    <div class="update-hint">💡 提示：此更新通知可在开始菜单点击「📋 查看更新通知」随时再次回顾。</div>
-   <button id="update-start-btn" class="update-cta-btn">知道了，立即进入游戏 <span>→</span></button>
+   <button id="update-start-btn" class="update-cta-btn">知道了，返回 <span>→</span></button>
   </div>
  </div>
 </dialog>
