@@ -252,7 +252,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
     // Keep the near face clear of the stone for every column width; coplanar
     // or embedded surfaces shimmer as the camera moves (depth fighting).
     const columnLight=cube(r,'#ffe699',front+side*(.22+columnWidth/2+.09),30.38+colH/2,dz,.12,colH*.88,.22,true);
-    if(BUND_BUILDINGS.includes(b))columnLight.userData.showBand=Math.max(0,Math.min(5,Math.floor((b.z+dz-20)/30)));
+    if(BUND_BUILDINGS.includes(b))columnLight.userData.showBand=((Math.floor((b.z+dz-20)/2.5)%6)+6)%6;
     facadeLights.push(columnLight);
    }
    // Building-specific stone profiles use the existing static material batches.
@@ -351,7 +351,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  for(let i=0;i<3;i++){const root=new THREE.Group();cube(root,['#dbeced','#a88652','#6e9fb1'][i],0,.35,0,2.3,.7,5.4);cube(root,'#4f7884',0,.78,0,2.15,.2,4.8);cube(root,'#f3e7c9',0,1.32,.1,1.75,.95,2.6);cube(root,'#7ab8cf',0,1.46,-1.22,1.5,.4,.08);cube(root,'#e4b985',0,1.95,0,1.9,.12,2.85);for(const x of [-.9,.9])cube(root,'#ffdea4',x,.92,-2.1,.14,.2,.14,true);const wake=new THREE.Mesh(new THREE.PlaneGeometry(2.8,3),new THREE.MeshBasicMaterial({color:'#d5f4ed',transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false}));wake.rotation.x=-Math.PI/2;wake.position.set(0,.04,4.2);root.add(wake);scene.add(root);boats.push({root,navigationIndex:i,z:64+i*21,dir:i%2?-1:1,lane:i%2?-2.5:2.5});}
  boats.push(...createHuangpuCruises(scene));
  function tick(dt,{night=false,rain=0,dayClock=36,festival=false,showTime=0}={}){clock+=dt;for(const m of shoppingStone)m.emissiveIntensity=night?.12:0;const p=getPos(),cue=showCue(showTime);skylineMaterial.color.setHSL(festival?cue.hue:.55,festival?.82:.5,festival?.57*cue.brightness:.45);for(const m of skylineLEDs)m.visible=night||festival;customsClock.tick(dayClock,night);for(const m of windows)m.visible=lightGroupVisible(m.userData.lightGroup,night,dayClock);for(const m of [...facadeLights,...goldSurfaces])m.visible=night;roadMat.shininess=22+rain*90;roadMat.color.set(rain>.3?'#293b46':'#34424b');for(const l of lamps)l.material.color.set(night?'#ffe2a1':'#c5bda5');
-  if(festival||showWasActive)for(const m of showColumns){let level=1;if(festival){const phase=Math.max(0,showTime),wave=phase<36?Math.abs((phase%12)/6-1)*5:2.5;const highlight=phase<36?Math.max(0,1-Math.abs(m.userData.showBand-wave)/1.6):Math.min(1,(phase-36)/1.5);level=.65+.35*highlight;}m.material.color.set('#ffe699').multiplyScalar(level);}showWasActive=festival;
+  if(festival||showWasActive)for(const m of showColumns){let level=1;if(festival){const phase=Math.max(0,showTime),wave=phase<36?Math.abs((phase%12)/6-1)*5:2.5;const highlight=phase<36?Math.max(0,1-Math.abs(m.userData.showBand-wave)/1.1):Math.min(1,(phase-36)/1.5);level=.12+.88*highlight;}m.material.color.set('#ffe699').multiplyScalar(level);}showWasActive=festival;
   waibaidu.tick(night);traffic.tick(dt,{night,rain});cruises.tick(dt,{night});
   for(const car of cars){const at=car.root.position,a=car.root.rotation.y,front=nanpuFloor(world,at.x-Math.sin(a),at.z-Math.cos(a)),back=nanpuFloor(world,at.x+Math.sin(a),at.z+Math.cos(a));car.root.rotation.x=front!==null&&back!==null?Math.atan2(front-back,2):0;}
   const vehicles=[...traffic.agents,...getObstacles().filter(o=>!o.person)];
