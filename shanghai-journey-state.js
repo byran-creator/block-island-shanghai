@@ -41,9 +41,9 @@ export class ShanghaiJourneyState{
    case 'metro':return e.type==='metro10'&&e.from==='nanjing'&&e.to==='yuyuan'&&e.departed===true?this.advance():false;
    case 'garden':if(e.type==='journey-talk'&&e.npc==='gu'){this.gardenTalk=true;return true;}return this.gardenTalk&&e.type==='yuyuan-entry'?this.advance():false;
    case 'view':
-    if(e.type==='journey-view'&&e.visible===true&&e.seconds>=2||e.type==='yuyuan-riddle'&&e.solved===3){this.windowSeen=true;this.journal.stamp('window');return this.edition===1?this.advance():true;}
+    if(e.type==='journey-view'&&e.visible===true&&e.seconds>=2||e.type==='yuyuan-riddle'&&e.solved===3){this.windowSeen=true;this.journal.stamp('window');return true;}
     if(e.type==='journey-gallery'&&this.windowSeen){this.gallerySeen=true;this.journal.stamp('gallery');return this.advance();}return false;
-   case 'tea':if(e.type==='yuyuan-shop-visit'){if(this.bazaarSeen)return false;this.bazaarSeen=true;return true;}return e.type==='yuyuan-tea'&&(this.edition===1||this.bazaarSeen)?this.advance():false;
+   case 'tea':if(e.type==='yuyuan-shop-visit'){if(this.bazaarSeen)return false;this.bazaarSeen=true;return true;}return e.type==='yuyuan-tea'&&this.bazaarSeen?this.advance():false;
    case 'keepsake':if(e.type!=='journey-claim')return false;this.memory=['江风','灯火','茶香'].includes(e.memory)?e.memory:'江风';this.completedAt=typeof e.at==='string'?e.at:new Date().toISOString();return this.advance();
   }return false;
  }

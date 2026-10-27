@@ -565,7 +565,8 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
    }
   }
 
-  extraShops.push({id:conf.id,x:doorX,z:doorZ,title:conf.title,type:conf.type,accent:conf.accent});
+  const towardCenterX=Math.sign(x-doorX),towardCenterZ=Math.sign(z-doorZ);
+  extraShops.push({id:conf.id,x:doorX,z:doorZ,insideX:doorX+towardCenterX*1.25,insideZ:doorZ+towardCenterZ*1.25,title:conf.title,type:conf.type,accent:conf.accent});
   vendors.push({
    root: {position: {x: doorX, y: 26, z: doorZ}},
    position: {x: doorX, y: 26, z: doorZ},
