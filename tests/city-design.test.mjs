@@ -64,13 +64,18 @@ try{
  const bounce=new Set();scene.traverse(o=>{if(o.material?.name==='nanjing-stone-bounce')bounce.add(o.material);});
  assert(bounce.size>0&&bounce.size<16,'Shopping bounce must reuse a small set of stone materials');
  assert([...bounce].every(m=>m.map===m.emissiveMap),'Bounce keeps the existing stone texture');
+ const groundMaterials=new Set();scene.traverse(o=>{if(o.material?.name==='nanjing-stone-bounce'&&o.geometry?.attributes.position){const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++)if(p.getY(i)>=26&&p.getY(i)<=30){groundMaterials.add(o.material);break;}}});
+ assert(groundMaterials.size>0,'Ground-floor shopping walls participate in the night glow');
+ const shoppingWash=civil.goldSurfaces.filter(m=>m.material?.name==='nanjing-facade-wash');assert.equal(shoppingWash.length,1,'Street-facing wash remains one merged draw batch');assert(shoppingWash[0].material.transparent&&!shoppingWash[0].material.depthWrite,'Night wash keeps the underlying facade visible');
  assert(civil.windows.length<130,'Occupancy batching must keep draw calls bounded');
  assert(civil.windows.every(m=>m.parent===scene),'Night visibility must control the actual merged meshes');
  civil.tick(0,{night:true,dayClock:140});assert(civil.windows.some(m=>m.visible)&&civil.windows.some(m=>!m.visible));
- assert([...bounce].every(m=>m.emissiveIntensity>0));
+ assert([...bounce].every(m=>m.emissiveIntensity===.36));
+ assert(shoppingWash[0].visible,'Shopping facade wash is on at night');
  const roomCount=()=>civil.windows.filter(m=>m.visible).reduce((n,m)=>n+m.geometry.attributes.position.count/4,0),evening=roomCount();
  civil.tick(0,{night:true,dayClock:200});assert(roomCount()<evening);
  civil.tick(0,{night:false,dayClock:36});assert(civil.windows.every(m=>!m.visible));
  assert([...bounce].every(m=>m.emissiveIntensity===0),'Night bounce must be completely off in daylight');
+ assert(!shoppingWash[0].visible,'Shopping facade wash is off in daylight');
 }finally{globalThis.document=savedDocument;}
 console.log('PASS: broad navigable river, shore/save migration, southeast infill, balanced Bund massing, sparse stable night occupancy and real merged-mesh visibility.');
