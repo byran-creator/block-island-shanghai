@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {VoxelWorld,overlaps} from '../game/world.js';
-import {ALL_BUILDINGS,promenadeX,buildShell} from '../game/city-layout.js';
+import {ALL_BUILDINGS,DENSE_BUILDINGS,promenadeX,buildShell} from '../game/city-layout.js';
+import {shopSignAnchor,shopPlaqueHalfWidth} from '../game/shop-sign-layout.js';
 import {riverCenter,riverWestEdge,riverEastEdge,BRIDGES,migrateWestBankPoint} from '../game/shanghai-map.js';
 import {inSuzhou} from '../game/waibaidu-layout.js';
 import {buildingStyle} from '../game/city-architecture.js';
@@ -61,6 +62,9 @@ const savedDocument=globalThis.document;
 globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},clearRect(){},save(){},restore(){},translate(){},scale(){},rotate(){},fill(){},closePath(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}})})};
 try{
  const scene=new THREE.Scene(),civil=createBund({scene,world,getPos:()=>({x:0,y:26,z:84})});
+ const example=DENSE_BUILDINGS.find(b=>b.id==='nanjing-infill-1--113'),anchor=shopSignAnchor(example,31),gap=shopPlaqueHalfWidth(example,anchor.width);let checked=0;
+ for(const mesh of civil.windows){const p=mesh.geometry.attributes.position;for(let i=0;i+3<p.count;i+=4){let x=0,y=0,z=0;for(let j=0;j<4;j++){x+=p.getX(i+j);y+=p.getY(i+j);z+=p.getZ(i+j);}x/=4;y/=4;z/=4;if(Math.abs(y-31)<.01&&Math.abs(z-(anchor.z+example.entranceSide*.125))<.02&&Math.abs(x-(example.x+.5))<example.rx){assert(Math.abs(x-anchor.x)>=gap+.4,'Upper shop window must not sit behind its plaque');checked++;}}}
+ assert(checked>0,'The photographed storefront retains visible windows beside its sign');
  const bounce=new Set();scene.traverse(o=>{if(o.material?.name==='nanjing-stone-bounce')bounce.add(o.material);});
  assert(bounce.size>0&&bounce.size<16,'Shopping bounce must reuse a small set of stone materials');
  assert([...bounce].every(m=>m.map===m.emissiveMap),'Bounce keeps the existing stone texture');

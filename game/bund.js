@@ -1,4 +1,5 @@
 import {NANJING_CONNECTOR_LAMPS} from './nanjing-connector-lamps.js';
+import {shopPlaqueHalfWidth} from './shop-sign-layout.js';
 import {addLandmarkFinish} from './landmark-finish.js';
 import {createStaticSolids} from './static-solids.js';
 import {bundStaticGeometry} from './bund-static-batch.js';
@@ -145,9 +146,13 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    for(const face of facadeRuns(q)){
     const {xx,zz,angle,width,axis,side}=face;
     if(shopping&&(b.entranceAxis||'z')===axis&&(b.entranceSide??1)===side){
-     const wx=axis==='x'?xx+side*.09:xx,wz=axis==='z'?zz+side*.09:zz;
+     // Behind the window planes, but just ahead of the stone wall.
+     const wx=axis==='x'?xx+side*.025:xx,wz=axis==='z'?zz+side*.025:zz;
      if(end>4){const base=Math.max(start,4);goldSurfaces.push(panel(r,width,end-base,wx,26+(base+end)/2,wz,angle,shoppingWash));}
      if(start<4){const height=Math.min(end,4)-start;for(const [a,c]of [[face.from,Math.min(-1.45,face.to)],[Math.max(1.45,face.from),face.to]])if(c>a){const u=(a+c)/2;goldSurfaces.push(panel(r,c-a,height,axis==='z'?u:wx,26+start+height/2,axis==='x'?u:wz,angle,shoppingWash));}}
+     // Avoid the tall blade signs and letter signs: the accent begins above
+     // the horizontal plaque and stays at the opposite edge of the facade.
+     if(b.streetIndex%3!==0&&start<=5&&end>5){const bottom=31.5,top=Math.min(26+end-.3,39),u=face.from+.28;if(top>bottom)facadeLights.push(cube(r,'#ffe5a5',axis==='z'?u:wx+side*.11,(bottom+top)/2,axis==='x'?u:wz+side*.11,axis==='x'?.08:.13,top-bottom,axis==='z'?.08:.13,true));}
     }
     if(!s.modern){
      // Ground-floor rusticated stone plinth (levels 0..4)
@@ -188,13 +193,19 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
      for(let level=start;level<end;level++)if(level%s.floor===0)cube(r,s.seed%2?'#a8b7b8':'#67787e',xx,26+level+.12,zz,axis==='x'?.08:width,.18,axis==='z'?.08:width);
      for(let u=face.from;u<=face.to;u+=s.spacing)cube(r,'#87989a',axis==='x'?xx:u,26+(start+end)/2,axis==='z'?zz:u,axis==='x'?.08:.1,end-start,axis==='z'?.08:.1);
     }
-    for(let level=start;level<end-1;level++)if(level%s.floor===1){
+    for(let level=start;level<end-1;level++)if(level%s.floor===1){const placed=[];
      for(let u=face.from;u<=face.to;u++){
       if((u+s.seed)%s.spacing!==0||Math.abs(u)<=1&&level<4)continue;
-      const px=axis==='x'?xx+side*.015:u,pz=axis==='z'?zz+side*.015:u;
-      if(!s.modern)panel(r,.8,1.7,px,27+level,pz,angle,west?historicWinDay:mat('#58747a'));
+      const windowOffset=shopping&&(b.entranceAxis||'z')===axis&&(b.entranceSide??1)===side ? .15 : .015;
+      let drawU=u;const windowY=27+level;
+      // Projecting lintels can cover nearby upper windows from street level.
+      // Reserve space on both sides using the actual shop plaque dimensions.
+      if(windowOffset===.15&&windowY>=29&&windowY<=32){const edge=shopPlaqueHalfWidth(b,width)+.85;if(Math.abs(drawU)<edge)drawU=drawU<0?-edge:edge;if(drawU<face.from+.4||drawU>face.to-.4)continue;}
+      if(placed.some(q=>Math.abs(q-drawU)<.85))continue;placed.push(drawU);
+      const px=axis==='x'?xx+side*windowOffset:drawU,pz=axis==='z'?zz+side*windowOffset:drawU;
+      if(!s.modern)panel(r,.8,1.7,px,windowY,pz,angle,west?historicWinDay:mat('#58747a'));
       // Occupied rooms vary per building and floor, avoiding identical luminous grids.
-      const window=panel(r,.7,1.35,axis==='x'?px+side*.02:px,27+level,axis==='z'?pz+side*.02:pz,angle,nightMaterial);window.userData.lightGroup=windowLightGroup(b,level,u,`${axis}:${side}:${face.at}`);windows.push(window);
+      const window=panel(r,.7,1.35,axis==='x'?px+side*.02:px,windowY,axis==='z'?pz+side*.02:pz,angle,nightMaterial);window.userData.lightGroup=windowLightGroup(b,level,u,`${axis}:${side}:${face.at}`);windows.push(window);
      }
     }
     if((start===0||end===s.height)&&(!/back|infill|front|density/.test(b.id)||s.seed%4===0))facadeLights.push(cube(r,glow,xx,26+end+.12,zz,axis==='x'?.12:width,.12,axis==='z'?.12:width,true));
