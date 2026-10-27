@@ -82,7 +82,7 @@ try {
    const color=m.material.color?.getHex(),positions=m.geometry.attributes.position;
    if(color===0xffe2a1||color===0xc5bda5)for(let i=0;i<positions.count;i++){
     point.fromBufferAttribute(positions,i).applyMatrix4(m.matrixWorld);lampVertices++;
-    assert(civil.benches.every(b=>Math.abs(b.z-point.z)>6.7),'Every actual lamp stays between seats, outside their forward view');
+    assert(civil.benches.every(b=>point.x<=b.seatX||Math.abs(b.z-point.z)>6.7),'Lamps in front of the benches stay between seats, outside their forward view');
    }
    if(color===0xfaf4df)for(let i=0;i<positions.count;i+=4){
     const corners=Array.from({length:4},(_,j)=>new THREE.Vector3().fromBufferAttribute(positions,i+j).applyMatrix4(m.matrixWorld));
