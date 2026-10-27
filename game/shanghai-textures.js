@@ -3,6 +3,23 @@ import * as THREE from './three.module.js';
 
 const cache = new Map();
 
+// One small shared, neutral curtain-wall tile. Tint stays in each existing
+// facade material; world-sized UVs live in geometry, never texture.repeat.
+export function getCurtainWallTexture(){
+ return getCachedTexture('curtain-wall-finish', (ctx,w,h)=>{
+  ctx.fillStyle='#e7eff1';ctx.fillRect(0,0,w,h);
+  for(let row=0;row<2;row++)for(let col=0;col<4;col++){
+   const x=col*w/4,y=row*h/2,bw=w/4,bh=h/2;
+   ctx.fillStyle=(row+col)%3===0?'#ccdce1':(row+col)%3===1?'#e2eef1':'#dae6e9';ctx.fillRect(x+2,y+2,bw-3,bh-3);
+   ctx.fillStyle='#ffffff24';ctx.fillRect(x+3,y+3,bw-7,Math.round(bh*.32));
+   ctx.fillStyle='#536c7b66';ctx.fillRect(x,y,bw,1);ctx.fillRect(x,y,1,bh);
+   ctx.fillStyle='#f8ffffb0';ctx.fillRect(x+1,y+1,1,bh-1);ctx.fillRect(x+1,y+1,bw-1,1);
+   ctx.fillStyle='#8ca2ae65';ctx.fillRect(x+2,y+bh-9,bw-3,6);
+   ctx.fillStyle='#ffffff44';ctx.fillRect(x+bw-5,y+5,2,bh-15);
+  }
+ },128,128);
+}
+
 // Helper to create and cache CanvasTextures
 function getCachedTexture(key, drawFn, width = 256, height = 256) {
   if (cache.has(key)) return cache.get(key);
@@ -72,6 +89,9 @@ export function getBundGraniteTexture(tone = 'warm') {
     ctx.fillStyle = 'rgba(30, 25, 20, 0.25)';
     ctx.fillRect(0, 0, 4, h);
     ctx.fillRect(w - 4, 0, 4, h);
+    // Fine chisel beads and recessed joints, drawn into the existing stone tile.
+    ctx.fillStyle='rgba(255,252,235,.24)';for(let y=8;y<h;y+=32)for(let x=18;x<w-18;x+=16)ctx.fillRect(x,y,6,1);
+    ctx.fillStyle='rgba(67,57,42,.15)';for(let y=16;y<h;y+=32)ctx.fillRect(16,y,w-32,1);
   });
 }
 
@@ -123,6 +143,9 @@ export function getPeaceCopperRoofTexture() {
       ctx.fillStyle = 'rgba(100, 210, 170, 0.35)';
       ctx.fillRect(0, y + 2, w, 1);
     }
+    // Standing-seam copper: highlight one edge and shade the return, no geometry.
+    for(let x=0;x<w;x+=32){ctx.fillStyle='#173f354f';ctx.fillRect(x,0,3,h);ctx.fillStyle='#9bc6a34f';ctx.fillRect(x+3,0,1,h);}
+    for(let y=48;y<h;y+=64){ctx.fillStyle='#d3e0b826';ctx.fillRect(0,y,w,1);}
   });
 }
 
@@ -180,6 +203,12 @@ export function getHistoricWindowTexture(night = false) {
       ctx.closePath?.();
       ctx.fill();
     }
+    // Recessed sash, sill and radiating fanlight, retained in the same 256px tile.
+    ctx.fillStyle=night?'#593e1b55':'#142a3955';ctx.fillRect(23,24,8,h-49);ctx.fillRect(w-31,24,7,h-49);
+    ctx.fillStyle='#f2e8cd';ctx.fillRect(10,h-14,w-20,3);ctx.fillStyle='#766d59';ctx.fillRect(10,h-11,w-20,3);
+    ctx.fillStyle='#ded4bd';ctx.fillRect(w/2-10,3,20,12);ctx.fillStyle='#f8edcc';ctx.fillRect(w/2-8,4,16,2);
+    if(ctx.beginPath&&ctx.moveTo&&ctx.lineTo&&ctx.stroke){ctx.strokeStyle=night?'#785428':'#253b47';ctx.lineWidth=2;for(let i=1;i<6;i++){const a=Math.PI+i*Math.PI/6;ctx.beginPath();ctx.moveTo(w/2,h*.38);ctx.lineTo(w/2+Math.cos(a)*w*.27,h*.38+Math.sin(a)*w*.27);ctx.stroke();}}
+    ctx.fillStyle=night?'#fff4ca22':'#ffffff18';for(const x of [35,w/2+9])ctx.fillRect(x,h*.43,w*.14,2);
   });
 }
 

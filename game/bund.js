@@ -1,3 +1,4 @@
+import {addLandmarkFinish} from './landmark-finish.js';
 import {createStaticSolids} from './static-solids.js';
 import {bundStaticGeometry} from './bund-static-batch.js';
 import {posePhotographer} from './photographer-pose.js';
@@ -11,7 +12,7 @@ import {styleNpc} from './npc-appearance.js';
 import {createCustomsClock} from './customs-clock.js';
 import {roadSegmentOrientation} from './road-orientation.js';
 import * as THREE from './three.module.js';
-import {getBundGraniteTexture,getPeaceCopperRoofTexture,getHistoricWindowTexture,getRusticatedGraniteTexture} from './shanghai-textures.js';
+import {getBundGraniteTexture,getPeaceCopperRoofTexture,getHistoricWindowTexture,getRusticatedGraniteTexture,getCurtainWallTexture} from './shanghai-textures.js';
 import {riverCenter,CITY,MAP_BOUNDS,BUND_SHIFT} from './shanghai-map.js';
 import {windowLightGroup,lightGroupVisible} from './city-lighting.js';
 import {createCityTraffic,trafficSeed} from './city-traffic.js';
@@ -126,7 +127,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  function panel(root,width,height,x,y,z,angle,material){const m=new THREE.Mesh(new THREE.PlaneGeometry(width,height),material);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=285;root.add(m);return m;}
  function architecturalFacade(r,b,s){
   const west=b.bank==='west';
-  let dayGlass=west&&!s.modern?westGraniteMat(s.color):mat(s.color);
+  let dayGlass=s.modern?null:west?westGraniteMat(s.color):mat(s.color);if(s.modern){const key='curtain:'+s.color;if(!materials.has(key))materials.set(key,new THREE.MeshLambertMaterial({color:s.color,map:getCurtainWallTexture()}));dayGlass=materials.get(key);}
   // A small baked bounce term makes the shopping street legible beyond the
   // nearest four lamps. Reuse textures and batches; no extra real-time lights.
   if(b.id.startsWith('nanjing-')&&!s.modern){
@@ -177,7 +178,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
      if(end===s.height){cube(r,'#d5cbad',axis==='x'?xx+side*.16:xx,26+end+.18,axis==='z'?zz+side*.16:zz,axis==='x'?.36:width+.4,.35,axis==='z'?.36:width+.4);cube(r,'#e0d7c2',axis==='x'?xx+side*.12:xx,26+end+.56,axis==='z'?zz+side*.12:zz,axis==='x'?.2:width+.25,.42,axis==='z'?.2:width+.25);}
     }
     if(s.modern){
-     panel(r,width,end-start,xx,26+(start+end)/2,zz,angle,dayGlass);
+     const skin=panel(r,width,end-start,xx,26+(start+end)/2,zz,angle,dayGlass),uv=skin.geometry.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*width/4,uv.getY(i)*(end-start)/4);
      for(let level=start;level<end;level++)if(level%s.floor===0)cube(r,s.seed%2?'#a8b7b8':'#67787e',xx,26+level+.12,zz,axis==='x'?.08:width,.18,axis==='z'?.08:width);
      for(let u=face.from;u<=face.to;u+=s.spacing)cube(r,'#87989a',axis==='x'?xx:u,26+(start+end)/2,axis==='z'?zz:u,axis==='x'?.08:.1,end-start,axis==='z'?.08:.1);
     }
@@ -336,6 +337,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    for(const person of pedestrians){if(person.crowdManaged)continue;const close=Math.hypot(p.x-person.root.position.x,p.z-person.root.position.z)<1.1&&Math.abs(p.y-26)<2;if(person.route){const next=close?person.t:(person.t+dt*person.speed)%person.route.lengthMeters,at=routePose(person.route,next);if(pedestrianStepClear(person.root.position,{x:at.x,y:26,z:at.z},vehicles)){person.t=next;person.root.position.set(at.x,26,at.z);person.root.rotation.y=at.yaw;}for(const limb of person.limbs){limb.leg.rotation.x=Math.sin(clock*4+person.phase)*.34*limb.side;limb.arm.rotation.x=-limb.leg.rotation.x*.6;}}else{person.root.position.set(person.point.x,26,person.point.z);const baseYaw=Math.atan2(CITY.shanghai.x-person.point.x,CITY.shanghai.z-person.point.z)+Math.PI;const lArm=person.limbs.find(l=>l.side===-1)?.arm,rArm=person.limbs.find(l=>l.side===1)?.arm;if(person.kind==='photo'){posePhotographer(person,clock,dt,baseYaw);}else{const cycleTime=16,t=((clock*.75+person.phase)%cycleTime);let tTorsoX=0,headTurn=Math.sin(clock*.6+person.phase)*.16;if(t>=4.0&&t<=8.5){if(rArm)rArm.rotation.set(-1.4,.22,-.15);if(lArm)lArm.rotation.set(-.15,0,-.05);headTurn=.24;}else{tTorsoX=.08;if(lArm)lArm.rotation.set(-.76,0,-.12);if(rArm)rArm.rotation.set(-.76,0,.12);}if(person.torso)person.torso.rotation.x=tTorsoX;if(person.head)person.head.rotation.y=headTurn;person.root.rotation.y=baseYaw+headTurn*.3;}}person.root.visible=!pedestrianBlocked(person.root.position,vehicles)&&(Math.hypot(p.x-person.root.position.x,p.z-person.root.position.z)>1||Math.abs(p.y-26)>2);}
   for(const boat of boats){if(boat.kind==='luxury-cruise'){continue;}tickWorkboat(boat,clock);}
  }
+ addLandmarkFinish(scene,world,mat('#a8b7b8'));
  // Merge static streets, windows and facade details by material. Moving people/cars stay animated.
  const animated=new Set([...cars,...boats,...pedestrians].map(o=>o.root).concat(customsClock.root)),nightSet=new Map([...windows.map(m=>[m,'window']),...facadeLights.map(m=>[m,'facade']),...goldSurfaces.map(m=>[m,'wash']),...skylineLEDs.map(m=>[m,'skyline-led'])]),batches=new Map();
  scene.updateMatrixWorld(true);
@@ -343,7 +345,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),group=o.userData.lightGroup,key=o.material.uuid+':'+kind+':'+(group??'');let batch=batches.get(key);if(!batch){batch={material:o.material,kind,group,sources:[]};batches.set(key,batch);}batch.sources.push(o);});scene.remove(root);
  }
  windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;
- for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
+ for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);for(const source of b.sources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
  for(const p of pedestrians){if(!p.route)for(let i=0;i<8&&fixtures.collides(p.point.x,26,p.point.z,.36);i++)p.point.x-=.25;const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
  const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
  const promenadePeople=pedestrians.filter(p=>p.kind==='walk');
