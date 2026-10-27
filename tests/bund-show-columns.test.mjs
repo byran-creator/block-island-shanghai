@@ -13,6 +13,9 @@ try{
  const a=capture(0),b=capture(6),ending=capture(40);
  assert.notDeepEqual(a,b,'highlight travels across the buildings');
  assert(a.some((v,i)=>v>b[i])&&a.some((v,i)=>v<b[i]),'direction changes which band is brightest');
+ assert(Math.max(...a)-Math.min(...a)>.7,'show lights have a clearly visible bright-to-dim contrast');
+ const bandByBuilding=new Map();for(const mesh of columns){const pos=mesh.geometry.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),key=Math.round(x/10)+':'+Math.round(z/16);let bands=bandByBuilding.get(key);if(!bands)bandByBuilding.set(key,bands=new Set());bands.add(mesh.userData.showBand);}}
+ assert([...bandByBuilding.values()].some(bands=>bands.size>=3),'nearby columns are assigned different phases');
  assert(ending.every(v=>Math.abs(v-ending[0])<1e-6),'finale illuminates every band');
  assert(city.facadeLights.every(m=>m.visible),'ordinary facade illumination stays on during the show');
  city.tick(0,{night:true,festival:false});assert(columns.every(m=>Math.abs(m.material.color.r-ending[0])<1e-6),'normal night lighting is restored');

@@ -21,8 +21,8 @@ export function createNanjingBakedLight(){
    point.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld);
    if(point.x<-200||point.x>12||point.z<49||point.z>84||point.y<25.8||point.y>31.5)continue;
    normal.fromBufferAttribute(n,i).applyMatrix3(normalMatrix).normalize();let e=0;
-   for(const s of sources){const dx=s.x-point.x,dy=s.y-point.y,dz=s.z-point.z,d2=dx*dx+dy*dy+dz*dz;const limit=s.radiusSq??49;if(d2>=limit||d2<.01)continue;const facing=Math.max(0,(normal.x*dx+normal.y*dy+normal.z*dz)/Math.sqrt(d2));e+=(s.strength??.23)*(1-d2/limit)**2*facing;}
-   if(e>=1/255){indices.push(i);energy.push(Math.round(Math.min(.22,e)*255));}
+   for(const s of sources){const dx=s.x-point.x,dy=s.y-point.y,dz=s.z-point.z,d2=dx*dx+dy*dy+dz*dz;const limit=s.radiusSq??49;if(d2>=limit||d2<.01)continue;const facing=Math.max(0,(normal.x*dx+normal.y*dy+normal.z*dz)/Math.sqrt(d2));e+=(s.strength??.32)*(1-d2/limit)**2*facing;}
+   if(e>=1/255){indices.push(i);energy.push(Math.round(Math.min(.28,e)*255));}
   }
   if(!indices.length)return false;
   const existing=g.attributes.color;if(existing&&!mat.vertexColors)return false;
