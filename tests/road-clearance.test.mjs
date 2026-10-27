@@ -24,6 +24,7 @@ const mutable=[{width:2,samples:[{x:0,z:0}]}];assert(nearSampledRoad(mutable,0,0
 for(const [x,z]of [[0,0],[-300,-120],[202,61]])assert.equal(roadContains(x,z),original(ROADS,x,z,1.2));
 const world=new VoxelWorld(),hash=b=>createHash('sha256').update(b).digest('hex');
 // Release92 map oracle: changing the layout requires an explicit new baseline.
-assert.equal(hash(world.data),'22b9d26d0b9806b35424081da33b22df925f64ea51dff88a11892c08b48a6128');
+// The 126 Pearl interior intentionally changes only 176 cells at x122..130/y68..72/z38..50; road predicate checks above remain unchanged.
+assert.equal(hash(world.data),'ad7784ec0b610516ef2be44389ec8954001cfae7b1caf5648753da710d63bb02');
 assert.equal(hash(new Uint8Array(world.surface.buffer)),'995465d1bbe3c03b6c5bd6d01ad3a636d8076dfe0b0c155bbf6304347d72b88a');
-console.log(JSON.stringify({passed:true,checks,release92MapIdentical:true}));
+console.log(JSON.stringify({passed:true,checks,pearl126MapHashVerified:true}));
