@@ -1,3 +1,4 @@
+import {NANJING_CONNECTOR_LAMPS} from './nanjing-connector-lamps.js';
 import {addLandmarkFinish} from './landmark-finish.js';
 import {createStaticSolids} from './static-solids.js';
 import {bundStaticGeometry} from './bund-static-batch.js';
@@ -322,6 +323,12 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
     facadeLights.push(spire);
    }
   }scene.add(r);
+ }
+ for(const p of NANJING_CONNECTOR_LAMPS){
+  const lamp=new THREE.Group();lamp.position.set(p.x,26,p.z);scene.add(lamp);
+  cube(lamp,'#687879',0,1.6,0,.15,3.2,.15);
+  cube(lamp,'#ffe2a1',0,3.25,0,.45,.5,.45,true);
+  fixtures.add(p.x-.075,26,p.z-.075,p.x+.075,29.2,p.z+.075,'lamp');
  }
  const cc=CITY_BUILDINGS.find(b=>b.id==='convention');for(const dx of [-4,4]){const orb=new THREE.Mesh(new THREE.SphereGeometry(3.2,20,12),new THREE.MeshPhongMaterial({color:'#9bcbd3',shininess:85}));orb.position.set(cc.x+dx,26+cc.h+1,cc.z);orb.userData.range=285;scene.add(orb);const ring=new THREE.Mesh(new THREE.TorusGeometry(3.25,.06,4,28),mat('#dbe5d7',true));ring.position.copy(orb.position);ring.rotation.x=Math.PI/2;ring.userData.range=285;scene.add(ring);}
  // A broad continuous observation deck, with seats and warm riverside edge lights.
