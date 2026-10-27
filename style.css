@@ -339,7 +339,7 @@ body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + 
 /* Lightweight Shanghai photo before start; the city loads after the click. */
 #entry-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;background:#18333a linear-gradient(90deg,#102b37a6,#102b3726);background-size:cover;background-position:center}
 html[data-boot-phase="welcome"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/welcome-shanghai-photo.jpg')}
-html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-0356ad6b8848.jpg')}
+html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-ed37c8107235.jpg')}
 
 /* A brief chapter-one cue, anchored to the existing tracker on both layouts. */
 .quest-tracker.quest-intro-highlight::after{content:"";position:absolute;inset:-8px -10px;border:1px solid #edd494b8;border-radius:9px;box-shadow:0 0 0 3px #edd4940c,0 0 18px #f4d28524;pointer-events:none;animation:quest-intro-glow 2.4s ease-in-out infinite}

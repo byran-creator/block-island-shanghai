@@ -1,3 +1,4 @@
+import {buildPearlObservationWorld,pearlObservationCollides,PEARL_DECK} from './pearl-observation-layout.js';
 import {buildTowerInteriors} from './tower-interior-layout.js';
 import {buildBund,bundProtected,promenadeX} from './bund.js';
 import {roadContains} from './city-layout.js';
@@ -20,10 +21,10 @@ export const COURSES=[
 ];
 export const COURSE=COURSES[0].platforms;
 export const courseById=id=>COURSES.find(c=>c.id===id)||COURSES[0];
-export const LANDMARKS={yuyuan:YUYUAN.arrival,waibaidu:{x:WAIBAIDU.x+5.2,y:26,z:WAIBAIDU.south-1,name:'外白渡桥 · 苏州河口'},village:{x:75,y:26,z:329,name:'奶龙村'},gallery:{x:92,y:26,z:329,name:'涂鸦街'},tower:{x:126,y:26,z:54,name:'东方明珠'},deck:{x:126,y:70,z:49,name:'云端观景台'},race:{...COURSES[0].start,name:'海港跑酷'},spring:{x:95,y:26,z:339,name:'弹跳广场'},dock:{x:260.5,y:23,z:228.5,name:'潜水补给站'},reef:{x:284,y:9,z:287,name:'珊瑚花园'},temple:{x:273.5,y:9,z:301.5,name:'海底神殿'},forest:{x:331,y:35,z:240,name:'翡翠林岛'},desert:{x:65,y:29,z:230,name:'金沙岛'},shanghai:{x:CITY.shanghai.x,y:26,z:CITY.shanghai.z-3,name:'上海中心大厦'},towerOffice:{x:CITY.shanghai.x,y:46,z:CITY.shanghai.z-3,name:'上海中心 · 办公层'},duoyun:{x:CITY.shanghai.x,y:66,z:CITY.shanghai.z-3,name:'52F · 朵云书院'},skyGarden:{x:CITY.shanghai.x,y:86,z:CITY.shanghai.z+4,name:'上海中心 · 空中花园'},skyDeck:{x:CITY.shanghai.x,y:136,z:CITY.shanghai.z,name:'上海中心 · 巅峰观景台'},jinmao:{x:CITY.jinmao.x,y:26,z:CITY.jinmao.z+9,name:'金茂大厦'},jinmaoDeck:{x:CITY.jinmao.x,y:91,z:CITY.jinmao.z,name:'金茂 · 观景台'},swfc:{x:CITY.swfc.x+11,y:26,z:CITY.swfc.z,name:'环球金融中心'},swfcDeck:{x:CITY.swfc.x,y:104,z:CITY.swfc.z,name:'环球 · 云端天桥'},magnolia:{x:MAGNOLIA.x+10.5,y:26,z:MAGNOLIA.z+.5,name:'白玉兰广场'},helipad:{x:MAGNOLIA.x+4.5,y:83,z:MAGNOLIA.z+4.5,name:'白玉兰 · 直升机平台'},northBund:{x:145.5,y:26,z:-130.5,name:'北外滩观景点'},bund:{x:promenadeX(84)-10.5,y:26,z:84.5,name:'外滩观景步道'},nanpu:{x:236.5,y:31,z:206.5,name:'南浦风格斜拉桥'},bankStreet:{x:29.5,y:26,z:94.5,name:'外滩万国建筑街'},southPark:{x:195.5,y:26,z:48.5,name:'陆家嘴中心绿地'},survivalCamp:{x:130.5,y:26,z:309.5,name:'生存营地'}};
+export const LANDMARKS={yuyuan:YUYUAN.arrival,waibaidu:{x:WAIBAIDU.x+5.2,y:26,z:WAIBAIDU.south-1,name:'外白渡桥 · 苏州河口'},village:{x:75,y:26,z:329,name:'奶龙村'},gallery:{x:92,y:26,z:329,name:'涂鸦街'},tower:{x:126,y:26,z:54,name:'东方明珠'},deck:{...PEARL_DECK.arrival,name:'东方明珠 · 玻璃观景层'},race:{...COURSES[0].start,name:'海港跑酷'},spring:{x:95,y:26,z:339,name:'弹跳广场'},dock:{x:260.5,y:23,z:228.5,name:'潜水补给站'},reef:{x:284,y:9,z:287,name:'珊瑚花园'},temple:{x:273.5,y:9,z:301.5,name:'海底神殿'},forest:{x:331,y:35,z:240,name:'翡翠林岛'},desert:{x:65,y:29,z:230,name:'金沙岛'},shanghai:{x:CITY.shanghai.x,y:26,z:CITY.shanghai.z-3,name:'上海中心大厦'},towerOffice:{x:CITY.shanghai.x,y:46,z:CITY.shanghai.z-3,name:'上海中心 · 办公层'},duoyun:{x:CITY.shanghai.x,y:66,z:CITY.shanghai.z-3,name:'52F · 朵云书院'},skyGarden:{x:CITY.shanghai.x,y:86,z:CITY.shanghai.z+4,name:'上海中心 · 空中花园'},skyDeck:{x:CITY.shanghai.x,y:136,z:CITY.shanghai.z,name:'上海中心 · 巅峰观景台'},jinmao:{x:CITY.jinmao.x,y:26,z:CITY.jinmao.z+9,name:'金茂大厦'},jinmaoDeck:{x:CITY.jinmao.x,y:91,z:CITY.jinmao.z,name:'金茂 · 观景台'},swfc:{x:CITY.swfc.x+11,y:26,z:CITY.swfc.z,name:'环球金融中心'},swfcDeck:{x:CITY.swfc.x,y:104,z:CITY.swfc.z,name:'环球 · 云端天桥'},magnolia:{x:MAGNOLIA.x+10.5,y:26,z:MAGNOLIA.z+.5,name:'白玉兰广场'},helipad:{x:MAGNOLIA.x+4.5,y:83,z:MAGNOLIA.z+4.5,name:'白玉兰 · 直升机平台'},northBund:{x:145.5,y:26,z:-130.5,name:'北外滩观景点'},bund:{x:promenadeX(84)-10.5,y:26,z:84.5,name:'外滩观景步道'},nanpu:{x:236.5,y:31,z:206.5,name:'南浦风格斜拉桥'},bankStreet:{x:29.5,y:26,z:94.5,name:'外滩万国建筑街'},southPark:{x:195.5,y:26,z:48.5,name:'陆家嘴中心绿地'},survivalCamp:{x:130.5,y:26,z:309.5,name:'生存营地'}};
 export const SHANGHAI={...CITY.shanghai,base:26};
 export function towerProfile(y,a){const t=Math.max(0,Math.min(1,(y-26)/110)),radius=9*(1-.43*t),rotation=t*Math.PI*2/3;return radius*(.87+.13*Math.cos((a-rotation)*3));}
-export const CRYSTALS=[{id:'village',name:'出发之光',x:78.5,y:27.5,z:327.5},{id:'gallery',name:'涂鸦之光',x:93,y:27.5,z:329,requires:'paint'},{id:'forest',name:'森林之光',x:63.5,y:30.5,z:339.5},{id:'deck',name:'云端之光',x:128,y:71.5,z:48},{id:'race',name:'跃动之光',x:COURSE.at(-1).x,y:COURSE.at(-1).y+1.5,z:COURSE.at(-1).z}];
+export const CRYSTALS=[{id:'village',name:'出发之光',x:78.5,y:27.5,z:327.5},{id:'gallery',name:'涂鸦之光',x:93,y:27.5,z:329,requires:'paint'},{id:'forest',name:'森林之光',x:63.5,y:30.5,z:339.5},{id:'deck',name:'云端之光',...PEARL_DECK.crystal},{id:'race',name:'跃动之光',x:COURSE.at(-1).x,y:COURSE.at(-1).y+1.5,z:COURSE.at(-1).z}];
 export class VoxelWorld {
  constructor({data,surface,generate=true}={}){this.data=data??new Uint8Array(SIZE*SIZE*HEIGHT);this.surface=surface??new Uint16Array(SIZE*SIZE);if(generate)this.generate()}
  index(x,y,z){return (y*SIZE+z-WORLD_MIN)*SIZE+x-WORLD_MIN}
@@ -68,9 +69,10 @@ export class VoxelWorld {
   legacy.orb(90,26,42,5);legacy.fill(89,19,41,91,65,43,9);legacy.orb(90,54,42,4.5);legacy.orb(90,67,42,2);legacy.fill(90,65,42,90,PEARL.top-WORLD_SHIFT,42,9);
   legacy.disc(90,27,42,6,9);legacy.disc(90,53,42,5,9);
   for(let a=0;a<360;a+=10){const r=a*Math.PI/180;legacy.set(Math.round(90+Math.cos(r)*4.5),54,Math.round(42+Math.sin(r)*4.5),11)}
-  legacy.fill(89,9,52,91,9,54,12);legacy.fill(89,53,48,91,53,50,12);legacy.fill(89,54,48,91,56,50,0);
+  legacy.fill(89,9,52,91,9,54,12);
   legacy.fill(85,10,52,87,10,52,7);legacy.fill(94,10,52,96,10,52,7);
   }
+  buildPearlObservationWorld(this);
   // A bouncy plaza and a forest lookout with a staircase.
   legacy.fill(59,9,58,61,9,60,12);
   legacy.fill(26,0,57,31,12,62,3);legacy.fill(26,13,57,31,20,62,0);legacy.fill(26,12,57,31,12,62,7);
@@ -109,6 +111,7 @@ export class VoxelWorld {
  }
 }
 export function overlaps(world,x,y,z){
+ if(y>68.09&&y<73&&pearlObservationCollides(x,y,z))return true;
  if(x<WORLD_MIN+.3||z<WORLD_MIN+.3||x>WORLD_MAX-.3||z>WORLD_MAX-.3||y<1)return true;
  for(let ix=Math.floor(x-.29);ix<=Math.floor(x+.29);ix++)for(let iy=Math.floor(y+.001);iy<=Math.floor(y+1.75);iy++)for(let iz=Math.floor(z-.29);iz<=Math.floor(z+.29);iz++)if(world.get(ix,iy,iz))return true;return false;
 }

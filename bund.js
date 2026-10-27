@@ -242,13 +242,23 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    const colH=h-5.2;
    for(let dz=-rz+1.8;dz<=rz-1.2;dz+=2.5){
     // Column base plinth
-    cube(r,'#dfd6be',front+side*.22,30.38,dz,.44,.45,.44);
-    // Classical column shaft
-    cube(r,'#ddd4bd',front+side*.22,30.38+colH/2,dz,.32,colH,.32);
-    // Classical Corinthian/Ionic capital
-    cube(r,'#e6dec8',front+side*.22,30.38+colH,dz,.48,.42,.48);
+    const columnWidth=b.id==='hsbc'?.58:b.id==='customs'?.46:.36;
+    cube(r,'#dfd6be',front+side*.22,30.38,dz,columnWidth+.18,.45,columnWidth+.18);
+    // Monumental pillars remain visible at ordinary street distance.
+    cube(r,'#ddd4bd',front+side*.22,30.38+colH/2,dz,columnWidth,colH,columnWidth);
+    cube(r,'#e6dec8',front+side*.22,30.38+colH,dz,columnWidth+.24,.42,columnWidth+.24);
     // Night vertical column warm-gold lighting (图3核心视觉特征：每根立柱在夜间泛出璀璨金光)
     facadeLights.push(cube(r,'#ffe699',front+side*.34,30.38+colH/2,dz,.12,colH*.88,.22,true));
+   }
+   // Building-specific stone profiles use the existing static material batches.
+   if(b.id==='hsbc'||b.id==='customs'){
+    const y=30.2;cube(r,'#ded5bc',front+side*.5,y,0,.48,.42,7.2);
+    cube(r,'#e4dcbf',front+side*.53,y+.48,0,.35,.35,5.7);
+    for(const dz of [-3,3])cube(r,'#ddd4bd',front+side*.42,28.35,dz,.45,3.9,.45);
+   }
+   if(b.id==='peace'){
+    for(const dz of [-5,-3,3,5])cube(r,'#e0d7c2',front+side*.17,38.2,dz,.20,15.1,.27);
+    for(const y of [33.4,39.4,45.4])cube(r,'#d5cbad',front+side*.2,y,0,.24,.20,rz*2-.4);
    }
    // 2. Classical Pediment above roofline (中心古典三角山花与重檐)
    cube(r,'#ded5bc',front+side*.25,26+h+.6,0,.45,.9,Math.min(rz*2-1,6.4));

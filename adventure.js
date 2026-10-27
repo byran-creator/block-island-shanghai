@@ -1,3 +1,5 @@
+import {PEARL_DECK} from './pearl-observation-layout.js';
+import {createPearlObservation} from './pearl-observation.js';
 import {createWorldCaption} from './world-caption.js';
 import {LINE10_WORLD_STATIONS} from './metro-line10-layout.js';
 import {yuyuanWalkRoute} from './yuyuan-access.js';
@@ -13,7 +15,8 @@ import {DRONE_CENTER,SHOW_VIEW} from './drone-show.js';
 import {createPearlShow} from './pearl-show.js';
 import {TRAVEL_POINTS,mapPosition,mapHit} from './map-travel.js';
 const $=id=>document.getElementById(id);
-export function createAdventure({scene,world,notify,beep,teleport,setFlying,getFlying,pause,resume,burst,setNight,lookAt=()=>{},onProgress=()=>{},fastTravel=teleport,getQuestTarget=()=>null,getYaw=()=>0}){
+export function createAdventure({scene,world,notify,beep,teleport,setFlying,getFlying,pause,resume,burst,setNight,lookAt=()=>{},onProgress=()=>{},fastTravel=teleport,getQuestTarget=()=>null,getYaw=()=>0,grantPearlSnack=()=>{}}){
+ createPearlObservation(scene);
  const state=new AdventureState(),crystals=[],markers=[],show=createPearlShow(scene);
  const gemGeo=new THREE.OctahedronGeometry(.43),beamGeo=new THREE.CylinderGeometry(.1,.1,6,6);
  let currentPos={...LANDMARKS.bund},lastPaint=0,lastSpring=-10,fireworkTime=0,wasComplete=false,currentPrompt='',panel=null;
@@ -23,7 +26,7 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
  function preset(name,context=pc){const w=context.canvas.width,h=context.canvas.height;context.fillStyle=name==='chatgpt'?'#102f2c':name==='nailong'?'#3c254f':'#122f55';context.fillRect(0,0,w,h);context.fillStyle=name==='nailong'?'#ffe472':'#baffb7';context.fillRect(w*.055,h*.12,w*.013,h*.74);context.textAlign='left';context.font=`bold ${w*.028}px sans-serif`;context.fillText('BLOCK ISLAND / 创意补给站',w*.1,h*.23);context.font=`bold ${w*.095}px sans-serif`;context.fillText(name==='chatgpt'?'ChatGPT':name==='nailong'?'奶龙出没！':'HELLO, SHANGHAI',w*.1,h*.49);context.font=`bold ${w*.031}px sans-serif`;context.fillText(name==='chatgpt'?'把想象，变成你的世界。':name==='nailong'?'今天也要开开心心。':'下一站，云端见。',w*.1,h*.7);context.font=`${w*.018}px sans-serif`;context.fillStyle='#ffffffb0';context.fillText('按 B 拿起喷漆 · 留下你的灵感',w*.1,h*.86);if(context===pc)posterTexture.needsUpdate=true;}
  preset('chatgpt');
  function sign(text,x,y,z,color='#d5fd87',scale=3.8){const s=createWorldCaption(text,{color,width:scale});s.position.set(x,y+WORLD_SHIFT,z);scene.add(s);markers.push(s);return s;}
- sign('东方明珠 · V 乘观光电梯',126,13.3,53,'#ffb9db',5);sign('云端观景台 · V 返回地面',126,57.3,49,'#ffb9db',4);sign('涂鸦街 · B 开始创作',92,17,325,'#c4f77c',4.6);for(const c of COURSES)sign(c.name+' · V 选赛道',c.start.x,c.start.y+3-WORLD_SHIFT,c.start.z,'#a1e8ff',4.8);
+ sign('东方明珠 · V 乘观光电梯',126,13.3,53,'#ffb9db',5);sign('观景层 · 电梯与沪上小食',126,57.3,41.3,'#ffb9db',2.5);sign('涂鸦街 · B 开始创作',92,17,325,'#c4f77c',4.6);for(const c of COURSES)sign(c.name+' · V 选赛道',c.start.x,c.start.y+3-WORLD_SHIFT,c.start.z,'#a1e8ff',4.8);
  sign('弹跳广场 · 踩上去！',95,13.2,339,'#d5fd87',3.6);sign('森林观景台',63.5,16,339.5,'#d5fd87',3);
  for(const c of CRYSTALS){const group=new THREE.Group();group.position.set(c.x,c.y,c.z);const gem=new THREE.Mesh(gemGeo,new THREE.MeshBasicMaterial({color:c.id==='deck'?'#ff98cb':'#bdff75'}));group.add(gem);const ring=new THREE.Mesh(new THREE.TorusGeometry(.68,.035,5,24),new THREE.MeshBasicMaterial({color:'#ffffdc',transparent:true,opacity:.7}));ring.rotation.x=Math.PI/2;group.add(ring);scene.add(group);crystals.push({data:c,group,gem});}
  const minimap=$('minimap'),mc=minimap.getContext('2d'),mapBg=document.createElement('canvas');mapBg.width=SIZE;mapBg.height=SIZE;const bg=mapBg.getContext('2d');
@@ -45,9 +48,9 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
   const caption=$('minimap-caption'),captionText=mapGoal?'蓝：我 · 黄：目标':'点击地图 / M';if(caption&&caption.textContent!==captionText)caption.textContent=captionText;drawMap(minimap,mc,currentPos);if(panel==='map-dialog')drawMap($('large-map'),$('large-map').getContext('2d'),currentPos);
  }
  function near(p,r=3){return Math.hypot(currentPos.x-p.x,currentPos.z-p.z)<r&&Math.abs(currentPos.y-p.y)<3}
- function getPrompt(){if(state.race)return 'V 退出跑酷 · 空格跳跃 · 落下会回到检查点';if(near(LANDMARKS.deck))return 'V 乘电梯返回地面';if(near(LANDMARKS.tower,3.5))return 'V 乘观光电梯 · K 烟花灯光秀';if(COURSES.some(c=>near(c.start,4)))return 'V 选择赛道 · 转弯、窄台和高低跳跃';if(near(LANDMARKS.gallery,5))return 'B 在墙上涂鸦 · 解锁涂鸦之光';return '';}
+ function getPrompt(){if(state.race)return 'V 退出跑酷 · 空格跳跃 · 落下会回到检查点';if(near(PEARL_DECK.snacks,1.3))return state.pearlSnackClaimed?'V 看看沪上小食':'V 领取沪上糕点';if(near(LANDMARKS.deck,1.1))return 'V 乘电梯返回地面';if(near(LANDMARKS.tower,3.5))return 'V 乘观光电梯 · K 烟花灯光秀';if(COURSES.some(c=>near(c.start,4)))return 'V 选择赛道 · 转弯、窄台和高低跳跃';if(near(LANDMARKS.gallery,5))return 'B 在墙上涂鸦 · 解锁涂鸦之光';return '';}
  function cancelRace(){if(state.race){const flying=state.race.previousFlying;const start=courseById(state.race.course).start;state.race=null;teleport(start);setFlying(flying);hud();notify('已退出跑酷，可以继续自由探索。')}}
- function use(){if(state.race){cancelRace();return true;}if(near(LANDMARKS.deck)){teleport(LANDMARKS.tower);return true;}if(near(LANDMARKS.tower,3.5)){teleport(LANDMARKS.deck);state.towerVisited=true;onProgress();notify('欢迎来到云端观景台！沿着平台找一找晶体。');return true;}if(COURSES.some(c=>near(c.start,4))){open('race-dialog');return true;}notify('靠近塔下电梯或跑酷起点，再按 V。');return false;}
+ function use(){if(state.race){cancelRace();return true;}if(near(PEARL_DECK.snacks,1.3)){if(state.pearlSnackClaimed)notify('沪上小食铺 · 愿这份甜味陪你看风景。');else{grantPearlSnack();state.pearlSnackClaimed=true;onProgress();notify('获得一份沪上糕点，已放入背包食物。');}return true;}if(near(LANDMARKS.deck,1.1)){teleport(LANDMARKS.tower);return true;}if(near(LANDMARKS.tower,3.5)){teleport(LANDMARKS.deck);state.towerVisited=true;onProgress();notify('欢迎来到玻璃观景层！环顾浦江，找找云端之光。');return true;}if(COURSES.some(c=>near(c.start,4))){open('race-dialog');return true;}notify('靠近塔下电梯或跑酷起点，再按 V。');return false;}
  function open(id){if(panel)return;pause();panel=id;$(id).showModal();if(id==='paint-dialog'){const dc=$('paint-canvas').getContext('2d');dc.drawImage(poster,0,0,1024,448);}hud();}
  function close(){if(!panel)return;$(panel).close();panel=null;resume();}
  function paint(){if(near(LANDMARKS.gallery,6))open('paint-dialog');else notify('先到涂鸦街的白墙旁，再按 B。地图上的粉色墙标记就是它。');}
