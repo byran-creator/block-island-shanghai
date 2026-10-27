@@ -249,7 +249,9 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
     cube(r,'#ddd4bd',front+side*.22,30.38+colH/2,dz,columnWidth,colH,columnWidth);
     cube(r,'#e6dec8',front+side*.22,30.38+colH,dz,columnWidth+.24,.42,columnWidth+.24);
     // Night vertical column warm-gold lighting (图3核心视觉特征：每根立柱在夜间泛出璀璨金光)
-    facadeLights.push(cube(r,'#ffe699',front+side*.34,30.38+colH/2,dz,.12,colH*.88,.22,true));
+    // Keep the near face clear of the stone for every column width; coplanar
+    // or embedded surfaces shimmer as the camera moves (depth fighting).
+    facadeLights.push(cube(r,'#ffe699',front+side*(.22+columnWidth/2+.09),30.38+colH/2,dz,.12,colH*.88,.22,true));
    }
    // Building-specific stone profiles use the existing static material batches.
    if(b.id==='hsbc'||b.id==='customs'){
