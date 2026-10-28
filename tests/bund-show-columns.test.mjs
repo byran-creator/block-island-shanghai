@@ -2,23 +2,27 @@ import assert from 'node:assert/strict';
 import * as THREE from '../game/three.module.js';
 import {VoxelWorld} from '../game/world.js';
 import {createBund} from '../game/bund.js';
+import {bundShowLevel} from '../game/bund-show-lighting.js';
 const oldDocument=globalThis.document;
 const ctx={fillRect(){},clearRect(){},save(){},restore(){},translate(){},scale(){},rotate(){},fill(){},closePath(){},fillText(){},beginPath(){},arc(){},stroke(){},moveTo(){},lineTo(){}};
 globalThis.document={createElement:()=>({getContext:()=>ctx})};
 try{
- const city=createBund({scene:new THREE.Scene(),world:new VoxelWorld(),getPos:()=>({x:-200,y:26,z:-150})});
- const columns=city.facadeLights.filter(m=>m.userData.showBand!==undefined);
- assert(columns.length>=3&&columns.length<=6,'bounded, spatially grouped column batches');
- const capture=time=>{city.tick(0,{night:true,festival:true,showTime:time});return columns.map(m=>m.material.color.r);};
- const a=capture(0),b=capture(6),ending=capture(40);
- assert.notDeepEqual(a,b,'highlight travels across the buildings');
- assert(a.some((v,i)=>v>b[i])&&a.some((v,i)=>v<b[i]),'direction changes which band is brightest');
- assert(Math.max(...a)-Math.min(...a)>.7,'show lights have a clearly visible bright-to-dim contrast');
- const bandByBuilding=new Map();for(const mesh of columns){const pos=mesh.geometry.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),key=Math.round(x/10)+':'+Math.round(z/16);let bands=bandByBuilding.get(key);if(!bands)bandByBuilding.set(key,bands=new Set());bands.add(mesh.userData.showBand);}}
- assert([...bandByBuilding.values()].some(bands=>bands.size>=3),'nearby columns are assigned different phases');
- assert(ending.every(v=>Math.abs(v-ending[0])<1e-6),'finale illuminates every band');
- assert(city.facadeLights.every(m=>m.visible),'ordinary facade illumination stays on during the show');
- city.tick(0,{night:true,festival:false});assert(columns.every(m=>Math.abs(m.material.color.r-ending[0])<1e-6),'normal night lighting is restored');
- city.tick(0,{night:false,festival:false});assert(columns.every(m=>!m.visible),'normal daylight does not leave show lights on');
+ const scene=new THREE.Scene(),city=createBund({scene,world:new VoxelWorld(),getPos:()=>({x:-200,y:26,z:-150})});
+ const lights=scene.children.filter(m=>m.userData.showBand!==undefined);
+ assert(lights.length>6,'building windows, washes and facade lights participate');
+ assert.equal(new Set(lights.map(m=>m.userData.showBand)).size,6);
+ const snapshot=()=>lights.map(m=>[m.visible,m.material.color.getHex(),m.material.opacity]);
+ city.tick(0,{night:true,festival:false});const normal=snapshot();
+ city.tick(0,{night:true,festival:true,showTime:1});const dim=snapshot();
+ assert(dim.some((v,i)=>v[1]!==normal[i][1]||v[2]!==normal[i][2]),'opening fades existing lights');
+ assert(bundShowLevel(3,0)>bundShowLevel(3,5));
+ assert(bundShowLevel(10,5)>bundShowLevel(10,0));
+ assert(bundShowLevel(18,0)>bundShowLevel(18,5));
+ assert(bundShowLevel(33,0)>.9&&bundShowLevel(34,0)<.1,'shared finale pulses');
+ assert.equal(bundShowLevel(41,0),bundShowLevel(41,5));
+ city.tick(0,{night:true,festival:false});assert.deepEqual(snapshot(),normal,'night state and original materials restored');
+ city.tick(0,{night:false,festival:false});assert(lights.every(m=>!m.visible),'ordinary daytime');
+ for(let t=0;t<42;t+=.1)for(let band=0;band<6;band++)assert(Math.abs(bundShowLevel(t+.001,band)-bundShowLevel(t,band))<.01,'cue transitions are smooth');
 }finally{globalThis.document=oldDocument;}
-console.log('PASS: bounded Bund column light waves, shared finale and restoration.');
+console.log('PASS: Bund building show fade, travelling waves, synchronized finale and restoration.');
+

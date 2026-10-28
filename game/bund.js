@@ -24,6 +24,7 @@ import {overlaps} from './world.js';
 import {buildingStyle,buildingSection,facadeRuns} from './city-architecture.js';
 import {nanpuFloor,nanpuSurfaceAt} from './bridge-road.js';
 import {showCue} from './show-cues.js';
+import {bundShowLevel} from './bund-show-lighting.js';
 import {createWaibaidu} from './waibaidu.js';
 import {inSuzhou} from './waibaidu-layout.js';
 import {promenadeX,roadX,westSpine,roadContains,BUND_BUILDINGS,BUND_STREETS,ALL_BUILDINGS,CITY_BUILDINGS,buildingEntrance,AVENUE,AVENUE_POINTS,CENTURY,ROADS,CAR_ROUTES,routeSamples,layoutProtected,buildCity} from './city-layout.js';
@@ -215,6 +216,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   if((s.form==='lantern'||s.form==='deco')&&s.seed%3===0)facadeLights.push(cube(r,glow,0,28+s.height,0,2.15,3,2.15,true));
  }
  for(const b of ALL_BUILDINGS){const {x,z,rx,rz,h}=b,r=new THREE.Group(),west=b.bank==='west',gold=b.kind==='gold',side=b.entranceSide??1,front=side>0?rx+.515:-rx-.515;r.position.set(x+.5,0,z+.5);
+  const lightStart=[windows.length,facadeLights.length,goldSurfaces.length];
   if(!/back|infill|front|density/.test(b.id)||b.id==='pudong-infill-187-89'||b.id.startsWith('nanjing-')&&b.name!=='南京东路沿街商厦')label(b.name,buildingEntrance(b,2).x,30,buildingEntrance(b,2).z);
   const style=buildingStyle(b);
   if(b.bank==='east'&&style.modern){
@@ -268,7 +270,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
     // Keep the near face clear of the stone for every column width; coplanar
     // or embedded surfaces shimmer as the camera moves (depth fighting).
     const columnLight=cube(r,'#ffe699',front+side*(.22+columnWidth/2+.09),30.38+colH/2,dz,.12,colH*.88,.22,true);
-    if(BUND_BUILDINGS.includes(b))columnLight.userData.showBand=((Math.floor((b.z+dz-20)/2.5)%6)+6)%6;
+    
     facadeLights.push(columnLight);
    }
    // Building-specific stone profiles use the existing static material batches.
@@ -342,7 +344,12 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
     const spire=cube(r,'#f0d178',0,26+h+17.2,0,.3,3.2,.3,true);
     facadeLights.push(spire);
    }
-  }scene.add(r);
+  }
+  if(BUND_BUILDINGS.includes(b)){
+   const band=Math.min(5,Math.max(0,Math.floor((b.z-5)/224*6)));
+   for(const [index,lights] of [windows,facadeLights,goldSurfaces].entries())for(let i=lightStart[index];i<lights.length;i++)lights[i].userData.showBand=band;
+  }
+  scene.add(r);
  }
  for(const p of NANJING_CONNECTOR_LAMPS){
   const lamp=new THREE.Group();lamp.position.set(p.x,26,p.z);scene.add(lamp);
@@ -367,7 +374,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  for(let i=0;i<3;i++){const root=new THREE.Group();cube(root,['#dbeced','#a88652','#6e9fb1'][i],0,.35,0,2.3,.7,5.4);cube(root,'#4f7884',0,.78,0,2.15,.2,4.8);cube(root,'#f3e7c9',0,1.32,.1,1.75,.95,2.6);cube(root,'#7ab8cf',0,1.46,-1.22,1.5,.4,.08);cube(root,'#e4b985',0,1.95,0,1.9,.12,2.85);for(const x of [-.9,.9])cube(root,'#ffdea4',x,.92,-2.1,.14,.2,.14,true);const wake=new THREE.Mesh(new THREE.PlaneGeometry(2.8,3),new THREE.MeshBasicMaterial({color:'#d5f4ed',transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false}));wake.rotation.x=-Math.PI/2;wake.position.set(0,.04,4.2);root.add(wake);scene.add(root);boats.push({root,navigationIndex:i,z:64+i*21,dir:i%2?-1:1,lane:i%2?-2.5:2.5});}
  boats.push(...createHuangpuCruises(scene));
  function tick(dt,{night=false,rain=0,dayClock=36,festival=false,showTime=0}={}){clock+=dt;for(const m of shoppingStone)m.emissiveIntensity=night?.36:0;const p=getPos(),cue=showCue(showTime);skylineMaterial.color.setHSL(festival?cue.hue:.55,festival?.82:.5,festival?.57*cue.brightness:.45);for(const m of skylineLEDs)m.visible=night||festival;customsClock.tick(dayClock,night);for(const m of windows)m.visible=lightGroupVisible(m.userData.lightGroup,night,dayClock);for(const m of [...facadeLights,...goldSurfaces])m.visible=night;roadMat.shininess=22+rain*90;roadMat.color.set(rain>.3?'#293b46':'#34424b');for(const l of lamps)l.material.color.set(night?'#ffe2a1':'#c5bda5');
-  if(festival||showWasActive)for(const m of showColumns){let level=1;if(festival){const phase=Math.max(0,showTime),wave=phase<36?Math.abs((phase%12)/6-1)*5:2.5;const highlight=phase<36?Math.max(0,1-Math.abs(m.userData.showBand-wave)/1.1):Math.min(1,(phase-36)/1.5);level=.12+.88*highlight;}m.material.color.set('#ffe699').multiplyScalar(level);}showWasActive=festival;
+  if(festival||showWasActive)for(const m of showColumns){const level=festival?bundShowLevel(showTime,m.userData.showBand):1,material=m.material;if(material.transparent)material.opacity=m.userData.showOpacity*level;else material.color.copy(m.userData.showColor).multiplyScalar(level);if(festival)m.visible=true;}showWasActive=festival;
   waibaidu.tick(night);traffic.tick(dt,{night,rain});cruises.tick(dt,{night});
   for(const car of cars){const at=car.root.position,a=car.root.rotation.y,front=nanpuFloor(world,at.x-Math.sin(a),at.z-Math.cos(a)),back=nanpuFloor(world,at.x+Math.sin(a),at.z+Math.cos(a));car.root.rotation.x=front!==null&&back!==null?Math.atan2(front-back,2):0;}
   const vehicles=[...traffic.agents,...getObstacles().filter(o=>!o.person)];
@@ -383,7 +390,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),group=o.userData.lightGroup,band=o.userData.showBand,key=o.material.uuid+':'+kind+':'+(group??'')+':'+(band??'');let batch=batches.get(key);if(!batch){batch={material:band===undefined?o.material:o.material.clone(),kind,group,band,sources:[]};batches.set(key,batch);}batch.sources.push(o);});scene.remove(root);
  }
  windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;
- for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);for(const source of b.sources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade'){facadeLights.push(m);if(b.band!==undefined){m.userData.showBand=b.band;showColumns.push(m);}}else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
+ for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);for(const source of b.sources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();if(b.band!==undefined){m.userData.showBand=b.band;m.userData.showColor=m.material.color.clone();m.userData.showOpacity=m.material.opacity;showColumns.push(m);}if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
  for(const p of pedestrians){if(!p.route)for(let i=0;i<8&&fixtures.collides(p.point.x,26,p.point.z,.36);i++)p.point.x-=.25;const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
  const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
  const promenadePeople=pedestrians.filter(p=>p.kind==='walk');
