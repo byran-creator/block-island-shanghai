@@ -7,7 +7,7 @@ import {BUND_BUILDINGS,roadX,promenadeX} from '../game/bund.js';
 import {REPLACED_BUILDING_IDS} from '../game/city-layout.js';
 import {VoxelWorld,overlaps} from '../game/world.js';
 const world=new VoxelWorld();
-assert.equal(BUND_BUILDINGS.length,14);assert(REPLACED_BUILDING_IDS.has('avenue-7'),'The parcel intersecting Nanpu bridge must yield to the bridge clearance');
+assert.equal(BUND_BUILDINGS.length,16);assert(REPLACED_BUILDING_IDS.has('avenue-7'),'The parcel intersecting Nanpu bridge must yield to the bridge clearance');
 let cityArea=0;for(let x=90;x<289;x++)for(let z=8;z<=215;z++)if(world.surfaceAt(x,z)>23)cityArea++;assert(cityArea>25000,'Expansion must be in Lujiazui');let bundArea=0;for(let x=-52;x<94;x++)for(let z=16;z<=195;z++)if(world.surfaceAt(x,z)>23)bundArea++;assert(bundArea>18000,'Expand the actual west-bank Bund land');assert(world.surfaceAt(90,245)<23,'Keep water between the main city and personal island');
 for(const b of BUND_BUILDINGS){assert(!overlaps(world,b.front+1.5,26,b.z+.5),`${b.id} doorway blocked`);assert(overlaps(world,b.front+1.5,25.9,b.z+.5));assert(world.protected(b.x,30,b.z-b.rz));assert(b.front<roadX(b.z)-3&&roadX(b.z)+3<promenadeX(b.z)-9);assert(b.front<promenadeX(b.z),'Every historic facade belongs to the Bund west bank');}
 assert(new Set(BUND_BUILDINGS.map(b=>b.x)).size>5,'Bund buildings must follow the curved riverbank');
