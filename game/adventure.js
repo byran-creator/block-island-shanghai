@@ -11,7 +11,7 @@ import {SIZE,WORLD_MIN,WORLD_MAX,BLOCKS,LANDMARKS,COURSE,COURSES,courseById,WORL
 import {AdventureState} from './adventure-state.js';
 import {BUND_BUILDINGS} from './bund.js';
 import {ROADS,roadX} from './city-layout.js';
-import {DRONE_CENTER,SHOW_VIEW} from './drone-show.js';
+import {SHOW_VIEW} from './drone-show.js';
 import {createPearlShow} from './pearl-show.js';
 import {TRAVEL_POINTS,mapPosition,mapHit} from './map-travel.js';
 const $=id=>document.getElementById(id);
@@ -68,7 +68,7 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
  $('paint-clear').onclick=()=>{dc.fillStyle='#102f2c';dc.fillRect(0,0,1024,448)};
  $('paint-apply').onclick=()=>{pc.drawImage(paintCanvas,0,0);posterTexture.needsUpdate=true;state.painted=true;onProgress();beep(1);close();notify('涂鸦上墙！附近出现了一枚灵感晶体。');hud()};
  document.querySelectorAll('[data-close-panel]').forEach(b=>b.onclick=close);for(const id of ['paint-dialog','map-dialog','race-dialog'])$(id).addEventListener('cancel',e=>{e.preventDefault();close()});
- function launch(view=false){if(view){cancelRace();resume();teleport(SHOW_VIEW);setFlying(false);}setNight();show.start();lookAt({...DRONE_CENTER,y:94});state.showWatched=true;onProgress();notify('42 秒夜空秀：三点烟花齐射、无人机与楼群联动灯光。暂停菜单可直达观赏点，K 重播。');}
+ function launch(view=false){if(view){cancelRace();resume();teleport(SHOW_VIEW);setFlying(false);}setNight();show.start();state.showWatched=true;onProgress();notify('42 秒夜空秀：三点烟花齐射、无人机与楼群联动灯光。暂停菜单可直达观赏点，K 重播。');}
  function tick(dt,pos,time,night=false){show.tick(dt,night);currentPos=pos;for(const c of crystals){c.group.visible=state.available(c.data);c.group.position.y=c.data.y+Math.sin(time*2+c.data.x)*.18;c.gem.rotation.y=time;c.gem.rotation.z=time*.4;}
   for(const c of state.collectAt(pos)){burst({x:c.x,y:c.y,z:c.z},'#dbff8c',15);beep(1);onProgress();notify(`获得「${c.name}」 · ${state.collected.size} / 5`);hud()}
   if(state.completed&&!wasComplete){wasComplete=true;launch();}

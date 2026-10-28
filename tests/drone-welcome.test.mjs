@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../game/three.module.js';
+import {DRONE_COUNT,droneWordTargets} from '../game/drone-lettering.js';
+import {createDroneShow,DRONE_CENTER} from '../game/drone-show.js';
+const zh=droneWordTargets('zh'),en=droneWordTargets('en');
+assert.equal(DRONE_COUNT,336);assert.equal(zh.length,DRONE_COUNT);assert.equal(en.length,DRONE_COUNT);
+for(const phrase of [zh,en])assert(phrase.every(p=>Number.isFinite(p.y)&&Number.isFinite(p.z)));
+assert.throws(()=>droneWordTargets('unknown'));
+const scene=new THREE.Scene(),show=createDroneShow(scene);assert.equal(show.drones.length,336);
+show.start();for(let i=0;i<16*60;i++)show.tick(1/60,true);assert.equal(show.phase,'欢迎来到上海');
+assert(show.drones.every((d,i)=>d.mesh.position.distanceTo(new THREE.Vector3(DRONE_CENTER.x,DRONE_CENTER.y+zh[i].y,DRONE_CENTER.z+zh[i].z))<.02),'Chinese formation settles');
+for(let i=0;i<15*60;i++)show.tick(1/60,true);assert.equal(show.phase,'WELCOME');
+assert(show.drones.every((d,i)=>d.mesh.position.distanceTo(new THREE.Vector3(DRONE_CENTER.x,DRONE_CENTER.y+en[i].y,DRONE_CENTER.z+en[i].z))<.02),'English formation settles');
+const colors=new Set(show.drones.map(d=>d.mesh.material.color.getHex()));assert(colors.size===2,'shared pale colors');
+show.tick(0,false);assert(!show.drones[0].mesh.parent.visible);show.start();show.tick(.1,true);assert.equal(show.phase,'升空');assert(show.drones.every(d=>d.mesh.position.toArray().every(Number.isFinite)));
+console.log('PASS: same 336 drones form deterministic Chinese and English lettering, smooth transitions, finish and replay.');
