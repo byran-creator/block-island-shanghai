@@ -346,8 +346,8 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    }
   }
   if(BUND_BUILDINGS.includes(b)){
-   const band=Math.min(5,Math.max(0,Math.floor((b.z-5)/224*6)));
-   for(const [index,lights] of [windows,facadeLights,goldSurfaces].entries())for(let i=lightStart[index];i<lights.length;i++)lights[i].userData.showBand=band;
+   const band=Math.min(2,Math.max(0,Math.floor((b.z-5)/224*3)))*2;
+   for(const [index,lights] of [windows,facadeLights,goldSurfaces].entries())for(let i=lightStart[index];i<lights.length;i++)lights[i].userData.showBand=index===0?-1:band;
   }
   scene.add(r);
  }
