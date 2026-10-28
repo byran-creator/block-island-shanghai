@@ -26,6 +26,7 @@ for(const time of [0,60,110,114.99,115,115.01,120,130,180,239]){
 }
 const sunBlock=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshBasicMaterial()),water=new THREE.Mesh(new THREE.PlaneGeometry(),new THREE.MeshBasicMaterial());
 const weather=createWeather({scene,camera,world:{ground:()=>23},sunBlock,clouds,cloudMat,bellyMat,water,terrainMaterial:new THREE.MeshBasicMaterial()});
+camera.far=270;weather.tick(0,20);const relativeSun=sunBlock.position.clone().sub(camera.position),sunPhase=20/240*Math.PI*2,oldSun=new THREE.Vector3(Math.cos(sunPhase)*125,18+Math.abs(Math.sin(sunPhase))*50,-90);assert(Math.abs(relativeSun.length()-camera.far*.96)<1e-6,'sun is behind normal visible city geometry');assert(relativeSun.clone().normalize().distanceTo(oldSun.clone().normalize())<1e-10,'sun direction is unchanged');assert(Math.abs(sunBlock.scale.x/relativeSun.length()-.60/oldSun.length())<1e-10,'sun and halo retain their apparent angular size');assert(relativeSun.length()-7*sunBlock.scale.x>200,'sun surface stays behind distant city buildings');
 weather.state.setMode('cloudy');weather.tick(60,114.999);const tint=bellyMat.color.clone();weather.tick(0,115.001);
 assert(Math.max(...tint.toArray().map((v,i)=>Math.abs(v-bellyMat.color.toArray()[i])))<.002,'Cloud tint stays continuous across old hard switch');
 weather.state.setMode('rain');weather.tick(60,180);assert(!weather.moon.visible);weather.state.setMode('clear');weather.tick(60,180);assert(weather.moon.visible);
