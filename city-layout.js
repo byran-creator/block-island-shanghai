@@ -22,6 +22,8 @@ export const BUND_STREETS=[
 ];
 // Addresses increase northwards. Nanjing Road separates the two Peace Hotel wings.
 export const BUND_BUILDINGS=[
+ {id:'bund-origin-north',name:'外滩源 · 江畔旧商楼',z:-9,h:11,kind:'steps',rx:3,rz:2},
+ {id:'bund-origin-south',name:'外滩源 · 历史商楼',z:-3,h:12,kind:'baroque',rx:3,rz:2},
  {id:'consulate',name:'外滩源 · 英国领事馆',z:5,h:9,kind:'brick',rz:4},
  {id:'avenue-0',name:'怡和洋行 · 外滩27号',z:25,h:13,kind:'steps',rz:5},
  {id:'bank',name:'中国银行 · 外滩23号',z:38,h:21,kind:'steps',rz:4},
@@ -37,7 +39,7 @@ export const BUND_BUILDINGS=[
  {id:'avenue-6',name:'有利银行 · 外滩3号',z:200,h:15,kind:'dome',rz:4},
  {id:'avenue-7',name:'上海总会 · 外滩2号',z:214,h:11,kind:'baroque',rz:6},
  {id:'asia',name:'亚细亚大楼 · 外滩1号',z:228,h:14,kind:'steps',rz:5}
-].map(b=>({...b,x:Math.round(riverCenter(b.z)-58),rx:7,front:Math.round(riverCenter(b.z)-58)+7,bank:'west'}));
+].map(b=>({...b,x:Math.round(riverCenter(b.z)-58),rx:b.rx??7,front:Math.round(riverCenter(b.z)-58)+(b.rx??7),bank:'west'}));
 
 export function routeSamples(points){const out=[];let distance=0;for(let k=1;k<points.length;k++){const [x,z,y=26]=points[k-1],[xx,zz,yy=26]=points[k],length=Math.hypot(xx-x,zz-z),n=Math.max(1,Math.ceil(length*2));for(let j=k===1?0:1;j<=n;j++){const t=j/n;out.push({x:x+(xx-x)*t,z:z+(zz-z)*t,y:y+(yy-y)*t,d:distance+length*t});}distance+=length;}out.lengthMeters=distance;return out;}
 const curve=(offset,from,to)=>{const p=[];const dir=Math.sign(to-from);for(let z=from;dir*(to-z)>=0;z+=dir*2)p.push([riverCenter(z)-offset,z]);if(p.at(-1)[1]!==to)p.push([riverCenter(to)-offset,to]);return p;};
