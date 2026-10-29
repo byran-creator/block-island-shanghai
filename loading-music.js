@@ -9,7 +9,8 @@ export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onS
  const gestures=['pointerdown','touchstart','touchend','keydown','click'];
  function loop(){if(!finished&&audio.currentTime>=22)audio.currentTime=0;}
  function play(fromGesture=false){
-  if(finished||failed)return;
+  if(finished||failed&&!fromGesture)return;
+  if(fromGesture===true)failed=false;
   if(events.hidden||!enabled()){attempt++;pending=false;gesturePending=false;audio.pause();onStatus(events.hidden?'hidden':'muted');return;}
   const level=typeof volume==='function'?volume():volume;audio.volume=Math.max(0,Math.min(.18,Number.isFinite(level)?level:.12));
   if(audio.volume===0){attempt++;pending=false;gesturePending=false;audio.pause();onStatus('muted');return;}
@@ -51,7 +52,7 @@ if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&(document.curre
  const enabled=()=>preferences().enabled!==false&&document.getElementById('music-toggle')?.getAttribute('aria-pressed')!=='false'&&document.getElementById('sound')?.getAttribute('aria-pressed')!=='false';
  const volume=()=>{const saved=preferences().volume,slider=document.getElementById('music-volume');return (Number.isFinite(saved)?saved:slider?Number(slider.value)/100:.28)*.45;};
  let status='';
- const paint=()=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=status==='playing'?'正在播放':status==='muted'?'配乐已静音':'';if(credit)credit.hidden=status==='stopped';};
+ const paint=()=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=status==='playing'?'正在播放':status==='muted'?'配乐已静音':status==='error'?'音乐加载失败':status==='blocked'?'等待浏览器允许播放':'';if(credit)credit.hidden=status==='stopped';};
  const ready=()=>{document.removeEventListener('DOMContentLoaded',ready);paint();};
  const onStatus=state=>{status=state;document.documentElement.dataset.loadingMusicState=state;paint();if(state==='stopped')document.removeEventListener('DOMContentLoaded',ready);};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);
