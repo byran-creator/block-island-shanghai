@@ -12,7 +12,7 @@ export async function generateWorld(createWorker=()=>new Worker(new URL('./world
  // Native asynchronous decompression precedes one bounded lossless expansion.
  if(snapshot&&WORLD_SNAPSHOT){
   attemptedSnapshot=true;
-  try{const record=await loadWorldSnapshot(new URL('./'+WORLD_SNAPSHOT.file,import.meta.url),WORLD_SNAPSHOT,{timeoutMilliseconds:2500}),world=new VoxelWorld({...record,generate:false});world.baseline=record.baseline;world.generationWorker=false;world.generationSource='snapshot';return world;}catch{}
+  try{const record=await loadWorldSnapshot(new URL('./'+WORLD_SNAPSHOT.file,import.meta.url),WORLD_SNAPSHOT,{timeoutMilliseconds:15000}),world=new VoxelWorld({...record,generate:false});world.baseline=record.baseline;world.generationWorker=false;world.generationSource='snapshot';return world;}catch{}
  }
  let worker,timer;
  try{
