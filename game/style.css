@@ -339,7 +339,8 @@ body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + 
 /* Lightweight Shanghai photo before start; the city loads after the click. */
 #entry-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;background:#18333a linear-gradient(90deg,#102b37a6,#102b3726);background-size:cover;background-position:center}
 html[data-boot-phase="welcome"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/welcome-shanghai-photo.jpg')}
-html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-ed37c8107235.jpg')}
+html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(145deg,#172634,#25384a 55%,#182c34)}
+html[data-boot-phase="loading"][data-loading-backdrop="ready"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-ed37c8107235.jpg')}
 
 /* A brief chapter-one cue, anchored to the existing tracker on both layouts. */
 .quest-tracker.quest-intro-highlight::after{content:"";position:absolute;inset:-8px -10px;border:1px solid #edd494b8;border-radius:9px;box-shadow:0 0 0 3px #edd4940c,0 0 18px #f4d28524;pointer-events:none;animation:quest-intro-glow 2.4s ease-in-out infinite}
@@ -359,7 +360,7 @@ html:not([data-game-started="true"]) .menu .footnote{display:none}
 /* First entry stays out of the city view; pause menus retain their full UI. */
 html:not([data-game-started="true"]) #menu{align-items:flex-end;justify-content:center;padding:0 20px max(24px,6dvh,calc(env(safe-area-inset-bottom) + 16px))!important;background:none;overflow-y:auto}
 html:not([data-game-started="true"]) .menu-card{width:min(280px,calc(100% - 24px));max-width:none;padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
-html:not([data-game-started="true"]) .menu-card>:not(#play):not(#startup-help){display:none}
+html:not([data-game-started="true"]) .menu-card>:not(#play):not(#startup-help):not(#startup-progress){display:none}
 html:not([data-game-started="true"]) #play{width:100%;margin:0;padding:12px 22px!important;min-height:48px;font-size:16px!important;letter-spacing:2px!important;border-radius:6px!important;border:1px solid #f1e7bf!important;background:linear-gradient(110deg,#eee1b2,#c6a56d)!important;color:#302b20!important;box-shadow:0 3px 14px #091e303b!important}
 html:not([data-game-started="true"]) #play:hover:not(:disabled){transform:translateY(-1px)!important;background:linear-gradient(110deg,#f6edcf,#d4b681)!important;box-shadow:0 5px 18px #091e3040!important}
 html:not([data-game-started="true"]) .brand-mark{display:none}
@@ -372,3 +373,7 @@ html:not([data-game-started="true"]) .loading-music-copy a{display:none}
 html[data-game-started="true"] #welcome-updates{display:none}
 
 body.has-tracker.quest-intro-active #coordinates{top:calc(var(--quest-coordinate-top,180px) + 68px)!important}
+
+html[data-boot-phase="loading"] .menu-card{width:min(560px,calc(100% - 32px))!important}
+#startup-progress:not([hidden]){display:flex;align-items:center;gap:10px;width:100%;margin-bottom:8px}.startup-track{flex:1;height:12px;background:#111923d9;border:1px solid #98b5c36b;border-radius:3px;overflow:hidden;box-shadow:0 2px 8px #0008}.startup-fill{height:100%;width:0;background:linear-gradient(#9fe9ff,#2999df 55%,#1766a5);transition:width .4s}.startup-percent{min-width:40px;color:white;font-size:13px;text-align:right;text-shadow:0 1px 4px #000}
+html[data-boot-phase="loading"] #play:disabled{background:none!important;border:0!important;box-shadow:none!important;color:white!important;text-align:center;justify-content:center;padding:3px!important;min-height:26px;font-size:13px!important;text-shadow:0 1px 5px #000;opacity:1}
