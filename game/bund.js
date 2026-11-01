@@ -44,7 +44,7 @@ export function routePose(samples,d,lane=0){const length=samples.lengthMeters;
 export function bridgeRoadFloor(world,x,z){return nanpuFloor(world,x,z)??26;}
 export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{},place=()=>{},setView=()=>{}}){
  const existingObjects=new Set(scene.children),fixtures=createStaticSolids();
- const waibaidu=createWaibaidu(scene);existingObjects.add(scene.children.at(-1));
+ const waibaidu=createWaibaidu(scene,fixtures);existingObjects.add(scene.children.at(-1));
  const box=new THREE.BoxGeometry(1,1,1),materials=new Map(),cars=[],boats=[],lamps=[],windows=[],facadeLights=[],goldSurfaces=[],pedestrians=[],skylineLEDs=[],shoppingStone=[],benches=[];let clock=0,seatedBench=null;
  const skylineMaterial=new THREE.MeshBasicMaterial({color:'#68bddf'}),showColumns=[];let showWasActive=false;
  function mat(color,glow=false){const key=color+glow;if(!materials.has(key))materials.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return materials.get(key);}
@@ -392,7 +392,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;
  for(const b of batches.values()){const g=bundStaticGeometry(b.sources);const m=new THREE.Mesh(g,b.material);m.matrixAutoUpdate=false;m.userData.range=285;scene.add(m);for(const source of b.sources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();if(b.band!==undefined){m.userData.showBand=b.band;m.userData.showColor=m.material.color.clone();m.userData.showOpacity=m.material.opacity;showColumns.push(m);}if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}else if(b.kind==='facade')facadeLights.push(m);else if(b.kind==='wash')goldSurfaces.push(m);else if(b.kind==='skyline-led')skylineLEDs.push(m);}
  for(const p of pedestrians){if(!p.route)for(let i=0;i<8&&fixtures.collides(p.point.x,26,p.point.z,.36);i++)p.point.x-=.25;const at=p.route?routePose(p.route,p.t):p.point;p.root.position.set(at.x,26,at.z);}
- const traffic=createCityTraffic({scene,world,getPos,routePose,cars,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
+ const traffic=createCityTraffic({scene,world,getPos,routePose,cars,solids:fixtures,getObstacles:()=>[...getObstacles(),...pedestrians.map(p=>({root:p.root,person:true}))]});
  const promenadePeople=pedestrians.filter(p=>p.kind==='walk');
  for(const p of promenadePeople){p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);}
  const promenadeFlow=createStreetCrowd(promenadePeople,{

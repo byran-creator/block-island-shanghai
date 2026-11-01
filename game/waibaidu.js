@@ -1,16 +1,16 @@
 import * as THREE from './three.module.js';
 import {WAIBAIDU} from './waibaidu-layout.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
-export function createWaibaidu(scene){
+export function createWaibaidu(scene,solids=null){
  const root=new THREE.Group();root.name='waibaidu-double-steel-truss';scene.add(root);
  const steel=new THREE.MeshLambertMaterial({color:'#7e9395'}),stone=new THREE.MeshLambertMaterial({color:'#b8b6a8'}),road=new THREE.MeshLambertMaterial({color:'#34424b'}),lamp=new THREE.MeshBasicMaterial({color:'#ffd691'}),white=new THREE.MeshBasicMaterial({color:'#e8e4d5'}),lights=[];
  const box=new THREE.BoxGeometry(1,1,1);
- function cube(x,y,z,w,h,d,mat){const m=new THREE.Mesh(box,mat);m.position.set(x,y,z);m.scale.set(w,h,d);m.userData.range=300;root.add(m);return m;}
- function beam(a,b,width=.18){const d=new THREE.Vector3().subVectors(b,a),m=new THREE.Mesh(new THREE.BoxGeometry(width,d.length(),width),steel);m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.userData.range=300;root.add(m);}
+ function cube(x,y,z,w,h,d,mat,solid=true){if(solid)solids?.add(x-w/2,y-h/2,z-d/2,x+w/2,y+h/2,z+d/2,'bridge');const m=new THREE.Mesh(box,mat);m.position.set(x,y,z);m.scale.set(w,h,d);m.userData.range=300;root.add(m);return m;}
+ function beam(a,b,width=.18){solids?.add(Math.min(a.x,b.x)-width/2,Math.min(a.y,b.y)-width/2,Math.min(a.z,b.z)-width/2,Math.max(a.x,b.x)+width/2,Math.max(a.y,b.y)+width/2,Math.max(a.z,b.z)+width/2,'bridge-truss');const d=new THREE.Vector3().subVectors(b,a),m=new THREE.Mesh(new THREE.BoxGeometry(width,d.length(),width),steel);m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.userData.range=300;root.add(m);}
  const {x,north,south,y}=WAIBAIDU;
- cube(x+.5,y+.018,(north+south+1)/2,8.05,.04,south-north+1,road);
- for(let z=north;z<=south;z+=4)cube(x+.5,y+.065,z+.5,.12,.025,1.4,white);
- for(const side of [-1,1]){cube(x+.5+side*4.85,y+.04,(north+south+1)/2,1.5,.08,south-north+1,stone);for(let z=north;z<=south;z+=2)cube(x+.5+side*6.1,26.6,z+.5,.09,1.2,.09,steel);cube(x+.5+side*6.1,27.22,(north+south+1)/2,.12,.12,south-north+1,steel);}
+ cube(x+.5,y+.018,(north+south+1)/2,8.05,.04,south-north+1,road,false);
+ for(let z=north;z<=south;z+=4)cube(x+.5,y+.065,z+.5,.12,.025,1.4,white,false);
+ for(const side of [-1,1]){cube(x+.5+side*4.85,y+.04,(north+south+1)/2,1.5,.08,south-north+1,stone,false);for(let z=north;z<=south;z+=2)cube(x+.5+side*6.1,26.6,z+.5,.09,1.2,.09,steel);cube(x+.5+side*6.1,27.22,(north+south+1)/2,.12,.12,south-north+1,steel);}
  for(const [a,b]of [[north,-21],[-21,south]]){
   const top=z=>y+4.1+2.1*Math.sin(Math.PI*(z-a)/(b-a));
   for(const side of [-1,1]){const xx=x+.5+side*4.1;

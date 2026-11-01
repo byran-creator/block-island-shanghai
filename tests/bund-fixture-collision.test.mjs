@@ -7,7 +7,7 @@ const previous=globalThis.document;const ctx=new Proxy({},{get:(_,key)=>key==='m
 try{
  const scene=new T.Scene(),world=new VoxelWorld(),pos={x:0,y:26,z:66};let civil;civil=createBund({scene,world,getPos:()=>pos,place:p=>Object.assign(pos,p)});
  for(const b of civil.benches){assert(civil.staticCollides(b.seatX,26,b.z),'Walkers cannot pass through the seat');assert(civil.collides(b.seatX,26,b.z),'Public player collision includes furniture');Object.assign(pos,{x:b.seatX,y:26,z:b.z});civil.sit(b);assert(civil.standUp(),'Every bench has an exit');assert(!civil.staticCollides(pos.x,pos.y,pos.z),'Every seated exit lands outside fixtures');}
- const kinds=new Set(civil.fixtures.map(b=>b.kind));for(const kind of ['bench','parapet','lamp','tree'])assert(kinds.has(kind));
+ const kinds=new Set(civil.fixtures.map(b=>b.kind));for(const kind of ['bench','parapet','lamp','tree','traffic-light','bridge-truss'])assert(kinds.has(kind));
  const actor=JOURNEY_ACTORS.lin,start={x:actor.x-1.5,y:actor.y,z:actor.z-2},blocked=(x,y,z)=>civil.staticCollides(x,y,z);
  assert(blocked(start.x,start.y,start.z),'The old cinematic arrival intersects an actual bench');const landing=safeLanding(world,start,blocked);assert(landing&&!blocked(landing.x,landing.y,landing.z),'First arrival and legacy positions have a nearby unblocked pavement landing');assert(Math.hypot(landing.x-start.x,landing.z-start.z)<2,'Recovery stays next to the volunteer');
  for(const b of civil.fixtures){assert(civil.staticCollides((b.minX+b.maxX)/2,b.minY,(b.minZ+b.maxZ)/2),b.kind+' survives render merging');assert(!civil.staticCollides((b.minX+b.maxX)/2,40,(b.minZ+b.maxZ)/2),'Fixture never creates a wall at high floors');}
