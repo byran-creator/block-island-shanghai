@@ -8,3 +8,5 @@ const later=createQuestIntro(tracker,doc);later.tick(1,{eligible:false,playing:t
 assert(later.finished,'Non-tutorial players stop requesting journey summaries');
 const idle=createQuestIntro(tracker,doc);let writes=0,value;Object.defineProperty(span,'textContent',{configurable:true,get:()=>value,set:v=>{writes++;value=v;}});idle.tick(.2,{eligible:true,playing:true});for(let i=0;i<20;i++)idle.tick(.2,{eligible:true,playing:true});assert.equal(writes,1,'Unchanged visible cue does not rewrite its DOM');idle.pause();assert(hint.hidden);idle.tick(.2,{eligible:true,playing:true});assert(!hint.hidden);assert.equal(writes,1);idle.dismiss();assert(idle.finished);
 console.log('PASS: finite chapter-one coach, pause/resume, desktop/touch wording, dismiss and cleanup.');
+
+coach.reset();coach.tick(.2,{eligible:true,playing:true});assert(!hint.hidden&&!coach.finished,'Replaying the first chapter re-arms its intro');coach.dismiss();
