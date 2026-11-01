@@ -1,9 +1,10 @@
 import {vehicleContact} from './vehicle-dynamics.js';
 import {nanpuFloor} from './bridge-road.js';
 
-// Traffic keeps its right of way; eject the player to the nearest clear side.
+// Walking players retain the original nearest-clear-side contact response.
 export function trafficContact({agents,player,vehicle,world,blocked=()=>false}){
- if(vehicle&&!['car','bicycle'].includes(vehicle.kind))return null;
+ // Driven vehicles use full-body movement collision and must be able to back out.
+ if(vehicle)return null;
  const v=vehicle??{root:{},halfWidth:.3,halfLength:.3,height:1.75},p=vehicle?.root.position??player,a=vehicle?.root.rotation.y??0;
  const actor=agents.find(o=>vehicleContact(v,p.x,p.y,p.z,a,o));if(!actor)return null;
  const q=actor.root.position,b=actor.root.rotation.y,c=Math.cos(b),s=Math.sin(b),dx=p.x-q.x,dz=p.z-q.z,side=dx*c-dz*s,front=dx*s+dz*c;

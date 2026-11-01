@@ -49,7 +49,7 @@ export function trafficTravel(agent,dt,time,agents=[],getPose,onFollow=()=>{},cr
 }
 
 export const trafficSeed=(index,salt=0)=>{let n=Math.imul(index+1,2654435761)^Math.imul(salt+7,1597334677);n=Math.imul(n^(n>>>16),2246822507);return ((n^(n>>>13))>>>0)/4294967296;};
-export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacles=()=>[]}){
+export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null,getObstacles=()=>[]}){
  const root=new THREE.Group();root.name='city-traffic-details';scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),buses=[],riders=[],officers=[],stops=[];
  const mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=285;parent.add(m);return m;}
@@ -58,6 +58,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  const signals=[66,99,162].map((z,i)=>({x:roadX(z),z,offset:i*5,id:'bund-'+z})).concat(
   {x:westSpine(66),z:66,offset:0,id:'stele-66'},
   {x:westSpine(99),z:99,offset:8,id:'rear-99'});
+ const signalRoots=[];
  for(const signal of signals){
   signal.heads=[];
   if(signal.id==='bund-66'||signal.id==='stele-66'){
@@ -66,7 +67,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
     const {px,armDir}=signal.id==='bund-66'?{px:23.5,armDir:-1}:{px:-31.5,armDir:1};
      const r=new THREE.Group();
      r.position.set(px, 26, signal.z);
-     root.add(r);
+     root.add(r);signalRoots.push(r);
      cube(r,'#3e4a52',0,2.7,0,.15,5.4,.15);
      cube(r,'#3e4a52',armDir*1.2,5.1,0,2.4,.12,.12);
      const v=new THREE.Group();
@@ -105,7 +106,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
     const r=new THREE.Group();
     r.position.set(signal.x+.5+(axis==='ns'?side*4.4:side*6),26,signal.z+.5+(axis==='ns'?side*6:side*4.4));
     r.rotation.y=axis==='ns'?(side>0?0:Math.PI):(side>0?Math.PI/2:-Math.PI/2);
-    root.add(r);
+    root.add(r);signalRoots.push(r);
     cube(r,'#687a7e',0,2.5,0,.12,5,.12);
     cube(r,'#192731',0,4.9,0,.55,1.65,.28);
     const lamps=[];
@@ -124,6 +125,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
   // Stop lines and zebra crossing remain on the road, leaving the sidewalk passable.
   for(const dz of [-6,6]){const m=new THREE.Mesh(new THREE.PlaneGeometry(6,.15),mat('#f5eee0'));m.rotation.x=-Math.PI/2;m.position.set(signal.x+.5,26.055,signal.z+.5+dz);m.userData.range=220;root.add(m);}
  }
+ for(const r of signalRoots){r.updateMatrixWorld(true);r.traverse(o=>{if(o.isMesh&&o.geometry.type==='BoxGeometry'){const b=new THREE.Box3().setFromObject(o);solids?.add(b.min.x,b.min.y,b.min.z,b.max.x,b.max.y,b.max.z,'traffic-light');}});}
  function officer(signal,i){let point;for(const [dx,dz]of [[5.5,-8],[-5.5,8],[8,-8]])if(clearPoint(signal.x+dx,signal.z+dz)&&!roadContains(signal.x+dx,signal.z+dz)){point={x:signal.x+dx,z:signal.z+dz};break;}if(!point)return;const r=new THREE.Group();r.position.set(point.x,26,point.z);root.add(r);cube(r,'#88b4d5',0,1,0,.46,.7,.3);cube(r,'#d4eb69',0,1.06,-.17,.45,.53,.08);for(const y of [.86,1.23])cube(r,'#eef6ed',0,y,-.22,.47,.06,.03);cube(r,'#e3b38b',0,1.61,0,.34,.34,.33);cube(r,'#f0f2ee',0,1.83,0,.43,.15,.42);cube(r,'#243649',0,1.77,-.17,.4,.06,.14);for(const x of [-.12,.12])cube(r,'#293a52',x,.38,0,.18,.76,.23);const arm=new THREE.Group();arm.position.set(.31,1.3,0);cube(arm,'#88b4d5',0,-.22,0,.16,.45,.18);cube(arm,'#f2efdf',0,-.49,0,.17,.18,.18);r.add(arm);cube(r,'#88b4d5',-.3,1,0,.16,.58,.18);styleNpc({root:r,torso:r.children[0],head:r.children[4],arms:[arm,r.children[10]],legs:[r.children[7],r.children[8]]},i,'officer');officers.push({root:r,arm,signal,phase:i});}
  signals.filter((s,i)=>i!==2&&s.id!=='stele-66').forEach(officer);
  function bus(route,i){const r=new THREE.Group();r.name='blue-white-city-bus';root.add(r);cube(r,'#e7eeed',0,1.1,0,1.65,1.65,4.8);cube(r,'#287aad',0,.42,0,1.7,.38,4.82);cube(r,'#273d4a',0,1.56,-2.43,1.45,.92,.05);cube(r,'#395866',0,1.5,2.43,1.45,.85,.05);cube(r,'#e8eeed',0,2.02,0,1.7,.15,4.9);for(const x of [-.83,.83]){for(let z=-1.65;z<=1.75;z+=.8)cube(r,'#578b9b',x,1.48,z,.05,.8,.67);for(const z of [-1.5,1.5])cube(r,'#202d35',x,.3,z,.18,.6,.6);}for(const z of [-1.45,.9])cube(r,'#213b49',-.85,1,z,.05,1.3,.6);cube(r,'#a3cad1',-.88,1.2,-1.45,.03,.82,.46);board(r,route.id==='bund'?'游1 · 滨江环线':'游2 · 陆家嘴',0,1.87,-2.47,1.35,.24);const lights=[-.54,.54].map(x=>cube(r,'#fff4ae',x,.66,-2.48,.24,.17,.06,true));const t=80+i*route.samples.lengthMeters/2;return {root:r,lights,route:route.samples,t:t%route.samples.lengthMeters,dir:1,lane:2.2,speed:2.6,halfLength:2.45,halfWidth:.93,height:2.1,kind:'bus',stopD:80,stopCooldown:0,dwell:0,crossings:routeCrossings(route.samples,signals)};}
@@ -191,7 +193,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  const detourJobs=new Map();let detourObstacles=[];
  function requestDetour(c){if(!detourJobs.has(c))detourJobs.set(c,{start:{x:c.root.position.x,y:c.root.position.y,z:c.root.position.z},index:0,search:null});}
  function processDetours(){
-  if(!detourJobs.size)return;detourObstacles=getObstacles().filter(o=>!o.root.userData.piloted);const start=performance.now();
+  if(!detourJobs.size)return;detourObstacles=getObstacles();const start=performance.now();
   do{
    const [c,job]=detourJobs.entries().next().value;detourJobs.delete(c);
    if(c.waitTime<3||Math.hypot(c.root.position.x-job.start.x,c.root.position.z-job.start.z)>.75)continue;
@@ -219,7 +221,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,getObstacle
  }
  function advance(step){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}
   const playerPos=getPos?getPos():null;
-  const obstacles=getObstacles().filter(o=>!o.root.userData.piloted);
+  const obstacles=getObstacles();
   const playerRiding=playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
    const occupied=new Set();
    for(const id of ['bund-66','stele-66'])if(!playerRiding&&pedestrianCrossingOccupied(playerPos,id)||obstacles.some(o=>o.person&&o.root.visible!==false&&pedestrianCrossingOccupied(o.root.position,id)))occupied.add(id);
