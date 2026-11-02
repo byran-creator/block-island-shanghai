@@ -328,7 +328,7 @@ for(const btn of document.querySelectorAll('[data-key]')){
 
 const contextGuide=createContextGuide({document,storage:deviceStorage});let contextGuideClock=0;
 for(const [id,key] of [['map-button','map'],['photo-open','photo'],['backpack-open','backpack'],['touch-run','run'],['touch-fly','fly'],['touch-fly-more','fly'],['firework-quick','fireworks'],['touch-firework','fireworks'],['touch-firework-more','fireworks']])$(id)?.addEventListener('click',()=>contextGuide.used(key));
-window.addEventListener('keydown',e=>{const key=({KeyM:'map',KeyO:'backpack',KeyF:'fly',KeyK:'fireworks',ShiftLeft:'run',ShiftRight:'run'})[e.code];if(key)contextGuide.used(key);});
+window.addEventListener('keydown',e=>{const key=({AltLeft:'cursor',AltRight:'cursor',KeyM:'map',KeyO:'backpack',KeyF:'fly',KeyK:'fireworks',ShiftLeft:'run',ShiftRight:'run'})[e.code];if(key&&(key!=='cursor'||(started&&active&&cursorFree&&!e.repeat)))contextGuide.used(key);});
 const touchStorage=deviceStorage;
 touchMovement=createTouchMovement({pad:$('touch-joystick'),thumb:$('joystick-thumb'),select:$('touch-movement-choice'),body:document.body,storage:touchStorage,enabled:()=>active&&!story?.filming,rotated:()=>document.body.classList.contains('force-landscape'),onMode:mode=>{document.querySelector('.dpad-label').textContent=mode==='joystick'?'滑动移动':'方向键移动';if(touch)$('device-note').textContent=mode==='joystick'?'左下角摇杆移动 · 推远快走、轻推慢走 · 右侧滑动环顾':'左下角方向键移动 · 右侧滑动环顾视角';}});
 $('mobile-quality-choice').value=mobileQuality;
