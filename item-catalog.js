@@ -3,6 +3,8 @@ import {SHOP_PRODUCTS} from './city-products.js';
 
 // Original small vector illustrations; no extra WebGL textures or frame work.
 const art={
+ cruise_ticket:'<path fill="#d7eced" d="M8 14h48v11q-8 4 0 8v17H8V33q8-4 0-8Z"/><path fill="#4a8291" d="M14 35h36l-4 7H20Z"/><path fill="#f5d99e" d="M24 24h17v10H24Z"/><path d="M18 46q6-3 12 0t12 0m-15-22v-5h9v5"/>',
+ survival_guide:'<path fill="#d6b886" d="M10 12h36q8 0 8 8v35H16q-6 0-6-6Z"/><path fill="#eee0b6" d="M16 16h33v31H16Z"/><path fill="#709b76" d="m21 40 11-15 11 15Z"/><path d="M32 25v15m-21 9q0-4 5-4h38"/>',
  food:'<path fill="#efc381" d="M10 34q0-20 22-20t22 20v14H10z"/><path d="m20 25 4 10m7-13 4 12m7-8 3 9"/>',
  raw:'<path fill="#dc9690" d="M12 32Q26 8 49 25L39 42Q20 51 12 32Z"/><path fill="#f8dccc" d="m49 25 9-7v27l-15-7"/><circle cx="23" cy="29" r="2"/>',
  wool:'<path fill="#f1e8d2" d="M12 42Q1 28 15 23q-1-17 17-11 17-6 20 12 15 6 2 21Q33 55 12 42Z"/><path d="M20 25q-5 10 7 12m9-15q14 3 7 15"/>',
@@ -53,13 +55,15 @@ const resources={food:['熟食 / 浆果','恢复6点饥饿与2点生命，已满
 const gear={woodpick:'降低采集所需时间，共可使用32次。',stonepick:'更快地采集硬质方块，共可使用96次。',fishingrod:'站在水岸看向水面抛线，等咬钩后收竿。',sword:'生存夜间看向近处夜影反击。',dive:'穿戴后氧气上限提高到180秒。',glider:'在空中展开，延缓下落并滑翔。'};
 const controls={woodpick:'看向可挖掘方块，按住 Q',stonepick:'看向可挖掘方块，按住 Q',fishingrod:'水岸 G 抛线 / 收竿',sword:'看向夜影 Q',dive:'L 穿戴 / 脱下',glider:'P 展开 / 收起'};
 const furniture={bed:['设置重生点，夜间可以睡觉。','放好后靠近 G'],chair:['放在喜欢的风景前休息。','放好后靠近 G'],table:['为住处增添一张餐桌。','装饰家具'],lamp:['点亮自己搭建的小屋。','装饰照明'],chest:['分别存入或取回已有方块。','放好后靠近 G'],campfire:['将生肉或生鱼烤成食物，需要30秒。','放好后 G 放入 / 领取'],bookshelf:['把书香留在自己的小屋。','装饰家具'],planter:['种植后等待60秒，收获食物。','放好后靠近 G 收获']};
-export function collectibleKey(name){return name==='沪上初游 · 旅行纪念卡'?'souvenir':({'吹糖金龙':'dragon','康熙通宝铜钱':'coin','老坑古玉扳指':'jade','江南茶具套装':'tea'})[name]??(SHOP_PRODUCTS[name]?name:Object.keys(SHOP_PRODUCTS).find(id=>SHOP_PRODUCTS[id].name===name)??'gift');}
+export function collectibleKey(name){return name==='沪上初游 · 旅行纪念卡'?'souvenir':name==='浦江巡游纪念船票'?'cruise_ticket':name==='生存探险指南'?'survival_guide':({'吹糖金龙':'dragon','康熙通宝铜钱':'coin','老坑古玉扳指':'jade','江南茶具套装':'tea'})[name]??(SHOP_PRODUCTS[name]?name:Object.keys(SHOP_PRODUCTS).find(id=>SHOP_PRODUCTS[id].name===name)??'gift');}
 export function itemDetails(item){
  const key=item.key??(item.id?'block:'+item.id:collectibleKey(item.name));
  if(key.startsWith('block:')){const id=Number(key.slice(6));return {key,name:item.name,description:blockNotes[id-1]??'建造材料。',source:'可在未受保护的自然区域采集，部分材料可制作或领取委托奖励；创造模式无限使用。',controls:'选择为手持后，E 放置；Q 挖掘。城市保护区域不能拆改。'};}
  if(resources[key]){const [name,description,source,controls]=resources[key];return {key,name,description,source,controls};}
  if(gear[key])return {key,name:item.name,description:gear[key],source:'C 制作菜单查看材料配方。',controls:controls[key]};
  if(furniture[key])return {key,name:item.name,description:furniture[key][0],source:'C 制作；也可在制作菜单取出已有家具。',controls:'C 取出，E 放置；'+furniture[key][1]};
+ if(key==='cruise_ticket')return {key,name:'浦江巡游纪念船票',description:'记录一次从外滩出发、沿黄浦江欣赏两岸风光的游轮体验。',source:'完成城市任务“浦江观光 · 江上慢游”后领取。',controls:'收藏展示，可在背包翻阅。'};
+ if(key==='survival_guide')return {key,name:'生存探险指南',description:'为第一次尝试采集、制作与野炊留下的入门纪念。',source:'完成城市任务“生存 · 初次探索”后领取。',controls:'收藏展示；可在任务栏继续钓鱼与野炊。'};
  if(key==='souvenir')return {key,name:'沪上初游 · 旅行纪念卡',description:'属于这一趟初到上海的旅程，记下你选择的江风、灯火或茶香。每份存档只领取一次。',source:'完成十章上海旅程，在湖心亭旁向沈伯领取。',controls:'查看旅程结算；N 手账回看短片与重游章节。'};
  return {key,name:SHOP_PRODUCTS[item.name]?.name??item.name,description:SHOP_PRODUCTS[item.name]?.food?'街头购得的一份上海风味。购买时补入的食物可按 Z 使用，收藏数量保留作旅途记录。':'从上海街头带走的一份纪念收藏，可在背包和旅行手账查看。',source:'南京路或豫园附近的商铺，靠近柜台按 V 购买。',controls:'收藏展示；N 翻阅旅行手账。'};
 }
