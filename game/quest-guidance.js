@@ -21,7 +21,7 @@ function transferTarget(pos){
  if(distance(pos,{x:TRANSFER_POINTS[index][0],z:TRANSFER_POINTS[index][1]})<1.2)index=Math.min(index+1,TRANSFER_POINTS.length-1);
  const [x,z]=TRANSFER_POINTS[index];return point({x,y:16,z},'南京东路 · 付费换乘通道','沿紫色地面线转弯去10号线，不用出闸和重复安检。','transfer');
 }
-export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,trains=[],landings=[],ferryRiding=false,life=null,metroNetwork=null}){
+export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,trains=[],landings=[],ferryRiding=false,life=null,metroNetwork=null,cruise=null}){
  if(!pos)return null;
  if(id==='yuyuan-tea')return point({...YUYUAN.tea,z:YUYUAN.tea.z-1.2},'湖心亭 · 茶席','沿九曲桥走进湖心亭，靠近茶席按 V，再选择品茶。','tea');
  if(id==='yuyuan-riddle')return point(YUYUAN.riddle,'豫园 · 灯谜向导','靠近灯谜向导按 V，答对三题；完成后 I 领取奖励。','riddle');
@@ -31,6 +31,7 @@ export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,tra
   if(pos.y>=23)return point({...METRO_STATIONS[0].exits[0],y:26},'南京东路 · 地铁入口','从南京路站口下B1，安检刷票后走付费换乘通道去10号线。','entrance');
   return line10Target({pos,stations,ride,metroNetwork});
  }
+ if(id==='cruise'){if(cruise?.isAboard())return {...point(pos,'豪华游轮 · 航行中','随船航行15秒欣赏浦江，完成后可在任务栏领取纪念船票。','cruise-sail'),npcTarget:true};const d=cruise?.dock;return d?point({x:43,y:26,z:d.z},'外滩观光码头','等豪华游轮靠岸，按 V 或沿栈桥登船，随船航行一段。','cruise-dock'):null;}
  if(id==='survival-fish')return point(LANDMARKS.dock,'潜水补给码头 · 水边','先切生存模式，C 制作鱼竿；站在码头看向开阔水面按 G，等咬钩提示后再 G 收竿。','fish');
  if(id==='survival-cook'){const fire=(life?.furniture??[]).filter(f=>f.type==='campfire').reduce((a,b)=>!a||distance(b,pos)<distance(a,pos)?b:a,null);return point(fire?{x:fire.x+1.5,y:fire.y,z:fire.z}:LANDMARKS.survivalCamp,fire?'你的篝火':'生存营地 · 野炊',fire?'靠近篝火按 G 放肉；等30秒，G 领取熟食后任务才完成。':'C 制作篝火，在营地平整空地按 E 放置；钓鱼获得生鱼，再 G 放入烤制。','cook');}
  if(id==='hello'){const n=npcs.reduce((a,b)=>!a||distance(b.root.position,pos)<distance(a.root.position,pos)?b:a,null);return point(n?.root.position??LANDMARKS.village,'奶龙 · 生活岛','按 M 查看黄色目标；可先点地图下方的生活岛名称传送，再走近奶龙、看向它并按 G。','hello');}

@@ -42,7 +42,7 @@ export function routePose(samples,d,lane=0){const length=samples.lengthMeters;
  function center(d){d=((d%length)+length)%length;let lo=0,hi=samples.length-1;while(lo+1<hi){const m=(lo+hi)>>1;if(samples[m].d<=d)lo=m;else hi=m;}const a=samples[lo],b=samples[hi],t=(d-a.d)/(b.d-a.d||1);return {x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t,y:a.y+(b.y-a.y)*t};}
  const p=center(d),a=center(d-1.3),b=center(d+1.3),dx=b.x-a.x,dz=b.z-a.z,n=Math.hypot(dx,dz)||1;return {x:p.x+dz/n*lane,z:p.z-dx/n*lane,y:Math.round(p.y),yaw:Math.atan2(dx,dz)+Math.PI};}
 export function bridgeRoadFloor(world,x,z){return nanpuFloor(world,x,z)??26;}
-export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{},place=()=>{},setView=()=>{}}){
+export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{},place=()=>{},setView=()=>{},onEvent=()=>{}}){
  const existingObjects=new Set(scene.children),fixtures=createStaticSolids();
  const waibaidu=createWaibaidu(scene,fixtures);existingObjects.add(scene.children.at(-1));
  const box=new THREE.BoxGeometry(1,1,1),materials=new Map(),cars=[],boats=[],lamps=[],windows=[],facadeLights=[],goldSurfaces=[],pedestrians=[],skylineLEDs=[],shoppingStone=[],benches=[];let clock=0,seatedBench=null;
@@ -409,7 +409,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  function standUp(){if(!seatedBench)return false;const b=seatedBench,point=[{x:b.seatX+.85,y:26,z:b.z},{x:b.seatX,y:26,z:b.z+1.55},{x:b.seatX,y:26,z:b.z-1.55},{x:b.seatX-1,y:26,z:b.z}].find(p=>!fixtures.collides(p.x,p.y,p.z)&&!overlaps(world,p.x,p.y,p.z));if(!point){notify('椅边暂时被挡住了，请稍后再起身');return false;}seatedBench=null;place(point);notify('已起身 · 继续漫步外滩');return true;}
  function use(){if(cruises.use())return true;if(seatedBench)return standUp();const b=getNearBench();if(b)return sit(b);return false;}
  function getPrompt(p=getPos()){const cruisePrompt=cruises.getPrompt(p);if(cruisePrompt)return cruisePrompt;if(seatedBench)return 'V / WASD 起身';const b=getNearBench(p);if(b)return 'V 坐在长椅上欣赏外滩与江景';return '';}
- const cruises=createCruiseService({scene,ships:boats.filter(b=>b.kind==='luxury-cruise'),getPos,place,setView,notify});
+ const cruises=createCruiseService({scene,ships:boats.filter(b=>b.kind==='luxury-cruise'),getPos,place,setView,notify,onEvent});
  tick(0,{});
  return {tick,cruises,cruisePorts:cruises.ports,cruisePeople:cruises.people,customsClock,cars,boats,pedestrians,windows,facadeLights,goldSurfaces,skylineLEDs,traffic,benches,getNearBench,isSeated,sit,standUp,leaveSeat,use,getPrompt,vehicleCollides:fixtures.vehicleCollides,staticCollides:fixtures.collides,fixtures:fixtures.boxes,collides:(x,y,z)=>fixtures.collides(x,y,z)||traffic.collides(x,y,z)||cars.some(c=>{if(y>=c.root.position.y+1.3||y+1.75<=c.root.position.y)return false;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<.9&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<1.55;})};
 }
