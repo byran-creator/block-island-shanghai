@@ -60,4 +60,9 @@ body.touch .travel-journal>header,body.force-landscape .travel-journal>header{fl
 body.touch .travel-journal-layout,body.force-landscape .travel-journal-layout{flex:1;min-height:0;overflow:hidden}
 body.touch .travel-journal nav,body.force-landscape .travel-journal nav{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:auto}
 body.touch .travel-journal-page,body.force-landscape .travel-journal-page{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:auto}
-@media(max-width:650px){body.touch .travel-journal-layout,body.force-landscape .travel-journal-layout{grid-template-rows:auto minmax(0,1fr)}body.touch .travel-journal nav,body.force-landscape .travel-journal nav{max-height:35%;align-content:start}}
+/* Categories must remain fully visible; only the content page scrolls. */
+body.touch .travel-journal-layout,body.force-landscape .travel-journal-layout{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:6px}
+body.touch .travel-journal nav,body.force-landscape .travel-journal nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding-top:6px;overflow:visible;align-content:start}
+body.touch .travel-journal nav button,body.force-landscape .travel-journal nav button{min-width:0;min-height:40px;padding:4px 2px;font-size:11px;white-space:nowrap}
+@media(orientation:landscape){body.touch .travel-journal nav{grid-template-columns:repeat(5,minmax(0,1fr))}}
+body.force-landscape .travel-journal nav{grid-template-columns:repeat(5,minmax(0,1fr))}
