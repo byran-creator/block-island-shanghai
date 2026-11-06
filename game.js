@@ -1,3 +1,4 @@
+import {isMobileDevice} from './device-input.js';
 import {createContextGuide} from './context-guide.js';
 import {installTouchCalloutGuard} from './touch-callout.js';
 import {createMobileLayout} from './mobile-layout.js';
@@ -70,7 +71,8 @@ async function loadingStage(message){
  await new Promise(resolve=>{const timer=setTimeout(resolve,80);requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(timer);resolve();}));});
 }
 document.body.classList.add('in-menu');
-let touch=('ontouchstart' in window)||(navigator.maxTouchPoints>0)||matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+const isMobile=isMobileDevice(navigator,window.matchMedia?.bind(window));
+let touch=false;
 function updateOrientationUI(){
  const isForced=document.body.classList.contains('force-landscape'),landscapePreferred=mobileLayout?.landscape??isForced;
  const portrait=!isForced&&(window.innerHeight>window.innerWidth);
@@ -109,16 +111,20 @@ $('tip-dismiss-btn')?.addEventListener('click',()=>{
 $('mobile-fullscreen')?.addEventListener('click',toggleLandscapeFullscreen);
 $('mobile-menu-fullscreen')?.addEventListener('click',toggleLandscapeFullscreen);
 function enableTouch(){
+ if(touch)return;
  touch=true;
  document.body.classList.add('touch');
  if($('run-status'))$('run-status').hidden=true;
  if($('device-note'))$('device-note').textContent='左下角移动 · 右侧滑动环顾视角';
  updateOrientationUI();
 }
-if(touch)enableTouch();
-window.addEventListener('touchstart',enableTouch,{once:true,passive:true});
+if(isMobile)enableTouch();
+window.addEventListener('touchstart',enableTouch,{passive:true});
+// On hybrid computers, return to keyboard/mouse controls when they are used.
+function useDesktopInput(){if(isMobile||!touch)return;touch=false;touchMovement?.reset();document.body.classList.remove('touch');updateOrientationUI();}
+window.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')useDesktopInput();},{passive:true});
+window.addEventListener('keydown',useDesktopInput);
 const isWeChat=typeof navigator!=='undefined'&&/MicroMessenger/i.test(navigator.userAgent);
-const isMobile=Boolean(touch||(typeof navigator!=='undefined'&&/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)));
 let deviceStorage;try{deviceStorage=localStorage;}catch{}
 if(isMobile){mobileLayout=createMobileLayout({body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage:deviceStorage});updateOrientationUI();}
 let mobileQuality='smooth';try{if(localStorage.getItem('block-island-mobile-quality-v1')==='clear')mobileQuality='clear';}catch{}

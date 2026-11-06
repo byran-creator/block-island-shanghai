@@ -1,3 +1,4 @@
+import {isMobileDevice} from './device-input.js';
 import {primeStartupPointer} from './startup-pointer.js';
 import {createWelcomeLayout} from './mobile-layout.js';
 import {createWelcomeNotice} from './welcome-notice.js';
@@ -24,7 +25,7 @@ export function createStartupEntry({document,window,location,MutationObserver,se
   // Dispatch synchronously inside the real welcome click. The audio element
   // and WebAudio context are activated before any city request/evaluation.
   document.dispatchEvent(new window.Event('block-island-load-start'));
-  if(enter)primeStartupPointer(document,window.navigator);
+  if(enter)primeStartupPointer(document,window.navigator,window.matchMedia?.bind(window));
   // Native button focus can scroll the compact mobile card before this click.
   const menu=document.getElementById('menu');if(menu)menu.scrollTop=0;
   entry=document.createElement('script');entry.id='game-runtime';entry.type='module';entry.src=new URL(config.dataset.src,document.baseURI).href;entry.addEventListener('error',failed);
@@ -40,6 +41,6 @@ export function createStartupEntry({document,window,location,MutationObserver,se
 }
 if(typeof document!=='undefined'&&document.getElementById('game-entry')&&document.getElementById('play')){
  let noticeStorage;try{noticeStorage=window.localStorage;}catch{}createWelcomeNotice({document,storage:noticeStorage});
- try{let storage;try{storage=window.localStorage;}catch{}createWelcomeLayout({mobile:window.navigator.maxTouchPoints>0||/Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent),body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage,events:window});}catch{}
+ try{let storage;try{storage=window.localStorage;}catch{}createWelcomeLayout({mobile:isMobileDevice(window.navigator,window.matchMedia?.bind(window)),body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage,events:window});}catch{}
  createStartupEntry({document,window,location,MutationObserver,setTimeout,clearTimeout,queueMicrotask});
 }

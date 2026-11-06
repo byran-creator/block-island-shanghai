@@ -1,9 +1,10 @@
+import {isMobileDevice} from './device-input.js';
 // Prime desktop pointer lock inside the same real welcome click as audio. An
 // explicit programmatic release permits later reacquisition after city loading;
 // never keep the pointer captured over the loading menu or bypass user Escape.
-export function primeStartupPointer(document,navigator){
+export function primeStartupPointer(document,navigator,matchMedia){
  const canvas=document.getElementById('world');
- if(!canvas?.requestPointerLock||navigator?.maxTouchPoints>0||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator?.userAgent??''))return;
+ if(!canvas?.requestPointerLock||isMobileDevice(navigator,matchMedia))return;
  let done=false;
  const clear=()=>{document.removeEventListener('pointerlockchange',changed);document.removeEventListener('pointerlockerror',clear);document.removeEventListener('block-island-ready',clear);};
  function changed(){if(done||document.pointerLockElement!==canvas)return;done=true;clear();document.documentElement.dataset.pointerPrimed='true';if(document.documentElement.dataset.gameStarted!=='true')document.exitPointerLock?.();}
