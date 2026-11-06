@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {isMobileDevice} from '../game/device-input.js';
+import {primeStartupPointer} from '../game/startup-pointer.js';
+const media=kind=>query=>({matches:query==='(pointer:'+kind+')'});
+const windows={userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome',maxTouchPoints:10};
+assert.equal(isMobileDevice(windows,media('fine')),false,'Touchscreen laptops with a primary mouse keep desktop controls');
+assert.equal(isMobileDevice({...windows,maxTouchPoints:0},media('fine')),false,'Desktop touch API availability alone does not imply mobile');
+assert.equal(isMobileDevice(windows,media('coarse')),true,'Touch-first Windows tablets retain touch controls');
+for(const ua of ['Mozilla/5.0 (Linux; Android 14; HUAWEI) Mobile','Mozilla/5.0 (iPhone; CPU iPhone OS) Mobile','Mozilla/5.0 (iPad; CPU OS)'])assert.equal(isMobileDevice({userAgent:ua,maxTouchPoints:5},media('fine')),true,ua);
+assert.equal(isMobileDevice({userAgent:'Mozilla/5.0 (Macintosh)',platform:'MacIntel',maxTouchPoints:5},undefined),true,'iPadOS desktop-style UA fallback');
+assert.equal(isMobileDevice({userAgent:'Mozilla/5.0 (Macintosh)',maxTouchPoints:0},media('fine')),false);
+let calls=0;const canvas={requestPointerLock(){calls++;return Promise.resolve();}},doc={getElementById:()=>canvas,addEventListener(){},removeEventListener(){},documentElement:{dataset:{}}};
+primeStartupPointer(doc,windows,media('fine'));assert.equal(calls,1,'Touch-capable mouse-first PC still primes desktop pointer lock');
+primeStartupPointer(doc,{userAgent:'iPhone',maxTouchPoints:5},media('coarse'));assert.equal(calls,1,'Phone does not request pointer lock');
+console.log('PASS: mouse-first hybrid desktop, ordinary desktop, touch-first tablet, Android, iPhone, iPadOS and startup pointer detection.');
