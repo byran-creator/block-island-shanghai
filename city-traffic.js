@@ -48,6 +48,21 @@ export function trafficTravel(agent,dt,time,agents=[],getPose,onFollow=()=>{},cr
  return Math.max(0,distance);
 }
 
+// Place each ordinary intersection pole on supported pavement outside all
+// carriageways. Computed once per scene, not in the traffic update loop.
+const SIGNAL_OFFSETS=[];
+for(let x=4;x<=18;x++)for(let z=4;z<=18;z++)SIGNAL_OFFSETS.push({x,z,d:(x-7)**2+(z-7)**2});
+SIGNAL_OFFSETS.sort((a,b)=>a.d-b.d||a.x-b.x||a.z-b.z);
+export function findSignalPost(signal,axis,side,world,occupied=[]){
+ const sx=side,sz=axis==='ns'?side:-side;
+ for(const o of SIGNAL_OFFSETS){const x=signal.x+.5+sx*o.x,z=signal.z+.5+sz*o.z;
+  if(roadContains(x,z)||[-.5,.5].some(d=>roadContains(x+d,z)||roadContains(x,z+d)))continue;
+  if(occupied.some(p=>Math.hypot(p.position.x-x,p.position.z-z)<1.2))continue;
+  const ix=Math.floor(x),iz=Math.floor(z);if(!world.get(ix,25,iz))continue;
+  let clear=true;for(let y=26;y<=31;y++)if(world.get(ix,y,iz)){clear=false;break;}
+  if(clear)return {x,z};
+ }return null;
+}
 export const trafficSeed=(index,salt=0)=>{let n=Math.imul(index+1,2654435761)^Math.imul(salt+7,1597334677);n=Math.imul(n^(n>>>16),2246822507);return ((n^(n>>>13))>>>0)/4294967296;};
 export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null,getObstacles=()=>[]}){
  const root=new THREE.Group();root.name='city-traffic-details';scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),buses=[],riders=[],officers=[],stops=[];
@@ -60,14 +75,15 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   {x:westSpine(99),z:99,offset:8,id:'rear-99'});
  const signalRoots=[];
  for(const signal of signals){
-  signal.heads=[];
+  signal.heads=[];signal.posts=[];
   if(signal.id==='bund-66'||signal.id==='stele-66'){
     // One control per physical crossing: moving a lamp to the rear road must
     // also register that crossing on every passing car, bus and rider route.
-    const {px,armDir}=signal.id==='bund-66'?{px:23.5,armDir:-1}:{px:-31.5,armDir:1};
+    const armDir=signal.id==='bund-66'?-1:1;
+     const post=findSignalPost(signal,'ew',armDir<0?1:-1,world,signalRoots);if(!post)continue;
      const r=new THREE.Group();
-     r.position.set(px, 26, signal.z);
-     root.add(r);signalRoots.push(r);
+     r.position.set(post.x,26,post.z);
+     root.add(r);signalRoots.push(r);signal.posts.push(r);
      cube(r,'#3e4a52',0,2.7,0,.15,5.4,.15);
      cube(r,'#3e4a52',armDir*1.2,5.1,0,2.4,.12,.12);
      const v=new THREE.Group();
@@ -104,9 +120,10 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    }else{
    for(const axis of ['ns','ew'])for(const side of [-1,1]){
     const r=new THREE.Group();
-    r.position.set(signal.x+.5+(axis==='ns'?side*4.4:side*6),26,signal.z+.5+(axis==='ns'?side*6:side*4.4));
+    const post=findSignalPost(signal,axis,side,world,signalRoots);if(!post)continue;
+    r.position.set(post.x,26,post.z);
     r.rotation.y=axis==='ns'?(side>0?0:Math.PI):(side>0?Math.PI/2:-Math.PI/2);
-    root.add(r);signalRoots.push(r);
+    root.add(r);signalRoots.push(r);signal.posts.push(r);
     cube(r,'#687a7e',0,2.5,0,.12,5,.12);
     cube(r,'#192731',0,4.9,0,.55,1.65,.28);
     const lamps=[];

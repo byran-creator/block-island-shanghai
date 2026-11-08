@@ -231,6 +231,11 @@ for(const r of ROADS){
 const bridgeTraffic=CAR_ROUTES.find(r=>r.id==='bridge').samples;
 const bridgeNext=routeSamples(roundedRoad(bridgeTraffic.map(p=>({...p,x:Math.abs(p.x-(roadX(p.z)-2))<.8&&p.z>=14?p.x+2+(p.z>112&&p.z<136?4*Math.sin(Math.PI*(p.z-112)/24):0):p.x})).filter((p,i,a)=>i===0||i===a.length-1||Math.abs((p.x-a[i-1].x)*(a[i+1].z-p.z)-(p.z-a[i-1].z)*(a[i+1].x-p.x))>.001).map(p=>[p.x,p.z,p.y]),7));
 bridgeTraffic.splice(0,bridgeTraffic.length,...bridgeNext);bridgeTraffic.lengthMeters=bridgeNext.lengthMeters;
+const islandLinks=BRIDGES.filter(b=>b.id==='sand'||b.id==='home');
+for(const list of [BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];
+ if(!/^bund-(?:back|infill)/.test(b.id))continue;
+ if(islandLinks.some(bridge=>bridge.samples.some(p=>Math.abs(p.x-b.x)<=b.rx+bridge.width+1&&Math.abs(p.z-b.z)<=b.rz+bridge.width+1))){REPLACED_BUILDING_IDS.add(b.id);list.splice(i,1);}
+}
 // Remove only parcels occupied by the widened carriageway or the new tributary.
 for(const list of [BUND_BUILDINGS,PUDONG_BUILDINGS,BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];
  const riverPlot=inSuzhou(b.x-b.rx,b.z-b.rz)||inSuzhou(b.x+b.rx,b.z+b.rz)||inSuzhou(b.x,b.z);
