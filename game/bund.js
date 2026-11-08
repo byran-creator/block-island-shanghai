@@ -42,6 +42,13 @@ export function routePose(samples,d,lane=0){const length=samples.lengthMeters;
  function center(d){d=((d%length)+length)%length;let lo=0,hi=samples.length-1;while(lo+1<hi){const m=(lo+hi)>>1;if(samples[m].d<=d)lo=m;else hi=m;}const a=samples[lo],b=samples[hi],t=(d-a.d)/(b.d-a.d||1);return {x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t,y:a.y+(b.y-a.y)*t};}
  const p=center(d),a=center(d-1.3),b=center(d+1.3),dx=b.x-a.x,dz=b.z-a.z,n=Math.hypot(dx,dz)||1;return {x:p.x+dz/n*lane,z:p.z-dx/n*lane,y:Math.round(p.y),yaw:Math.atan2(dx,dz)+Math.PI};}
 export function bridgeRoadFloor(world,x,z){return nanpuFloor(world,x,z)??26;}
+// Cut both the cruise entrance and the at-grade Nanpu bridge crossing out
+// of the visual parapet and its matching collision boxes.
+export function waterfrontParapetSpans(z,x,dockZ){
+ let spans=[[z-3.25,z+4.25]];const gaps=[[dockZ-1.15,dockZ+1.15]];
+ if(nanpuSurfaceAt(x,206.5)!==null)gaps.push([202.5,210.5]);
+ for(const [lo,hi]of gaps){const next=[];for(const [a,b]of spans){if(hi<=a||lo>=b)next.push([a,b]);else{if(lo>a)next.push([a,lo]);if(hi<b)next.push([hi,b]);}}spans=next;}return spans;
+}
 export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{},place=()=>{},setView=()=>{},onEvent=()=>{}}){
  const existingObjects=new Set(scene.children),fixtures=createStaticSolids();
  const waibaidu=createWaibaidu(scene,fixtures);existingObjects.add(scene.children.at(-1));
@@ -359,7 +366,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  }
  const cc=CITY_BUILDINGS.find(b=>b.id==='convention');for(const dx of [-4,4]){const orb=new THREE.Mesh(new THREE.SphereGeometry(3.2,20,12),new THREE.MeshPhongMaterial({color:'#9bcbd3',shininess:85}));orb.position.set(cc.x+dx,26+cc.h+1,cc.z);orb.userData.range=285;scene.add(orb);const ring=new THREE.Mesh(new THREE.TorusGeometry(3.25,.06,4,28),mat('#dbe5d7',true));ring.position.copy(orb.position);ring.rotation.x=Math.PI/2;ring.userData.range=285;scene.add(ring);}
  // A broad continuous observation deck, with seats and warm riverside edge lights.
- for(let z=-148;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=CRUISE_DOCK.z+1.15<z-3.25||CRUISE_DOCK.z-1.15>z+4.25?[[z-3.25,z+4.25]]:[[z-3.25,Math.min(z+4.25,CRUISE_DOCK.z-1.15)],[Math.max(z-3.25,CRUISE_DOCK.z+1.15),z+4.25]];for(const [a,b]of cuts){if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);fixtures.add(r.position.x-.10,26.02,a,r.position.x+.10,27.22,b,'parapet');facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
+ for(let z=-148;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=waterfrontParapetSpans(z,r.position.x,CRUISE_DOCK.z);for(const [a,b]of cuts){if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);fixtures.add(r.position.x-.10,26.02,a,r.position.x+.10,27.22,b,'parapet');facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
  label('外滩大观景台 · 对岸陆家嘴',promenadeX(86)-15,29.2,86);
  const customsClock=createCustomsClock(scene,BUND_BUILDINGS.find(b=>b.kind==='clock'));
  function carModel(i,route){const appearance=cityCarAppearance(route,i);if(appearance){const car=createCitySpecialCar(appearance);scene.add(car.root);return car;}const root=new THREE.Group(),body=['#e7b44d','#75b7b2','#dc7274','#7395c6','#f0ecdb','#607181'][i%6];cube(root,body,0,.48,0,1.2,.7,2.5);cube(root,'#b5dde2',0,1,.1,1.04,.5,1.3);for(const x of [-.62,.62])for(const z of [-.78,.78])cube(root,'#263137',x,.25,z,.18,.48,.48);const lights=[];for(const x of [-.39,.39])lights.push(cube(root,'#fff5b8',x,.55,-1.28,.22,.16,.08,true));scene.add(root);return {root,lights};}

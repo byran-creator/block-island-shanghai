@@ -233,19 +233,25 @@
 <dialog id="npc-dialog" class="game-dialog" aria-labelledby="npc-title"><header><h2 id="npc-title">街区向导</h2><button id="npc-close">结束对话</button></header><p id="npc-answer" aria-live="polite"></p><div id="npc-actions" class="recipe-grid"></div></dialog>
 <aside id="quest-tracker" class="quest-tracker" hidden><div class="quest-tracker-header"><span class="quest-tracker-icon">◆</span><strong id="tracked-title"></strong></div><div class="quest-tracker-divider"></div><div class="quest-tracker-target"><span id="tracked-arrow" aria-label="任务方向"><svg viewBox="0 0 24 32" aria-hidden="true" focusable="false"><path d="M12 2 22 13H16V29H8V13H2Z" fill="currentColor" stroke="#76551a" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span id="tracked-place"></span></div><p id="tracked-step"></p><div class="quest-tracker-actions"><button id="quest-map" type="button">M 地图查看</button><button id="quest-stop" type="button">停止追踪</button><button id="travel-book-track" type="button" aria-haspopup="dialog" aria-controls="travel-journal">N 旅行手账</button></div><p id="travel-nearby-track" class="travel-nearby"></p></aside>
 <dialog id="tasks-dialog" class="game-dialog quest-browser-dialog" aria-labelledby="tasks-title"><header><div><small>SHANGHAI / 你的旅程</small><h2 id="tasks-title">旅程与委托</h2></div><button id="tasks-close">返回游戏 · I</button></header><p id="task-summary"></p><div class="quest-browser"><nav class="quest-sidebar" aria-label="任务列表"><div id="task-categories" class="quest-categories"></div><div id="task-list"></div></nav><section id="task-detail" class="quest-detail" aria-live="polite"></section></div><details class="quest-legacy"><summary>明珠灵感收集 · 城市长期目标</summary><section class="main-quest"><h3>支线 · 明珠灵感收集</h3><div class="quest-eyebrow">奶龙的委托 · PEARL QUEST</div><strong><span id="quest-title">寻找 5 枚灵感晶体</span><span id="quest-count">0 / 5</span></strong><div class="quest-track"><i id="quest-fill"></i></div><p id="quest-description">让东方明珠亮起来。</p><div class="gem-list"><span id="gem-village"></span><span id="gem-gallery"></span><span id="gem-forest"></span><span id="gem-deck"></span><span id="gem-race"></span></div></section></details></dialog>
-<dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title" data-notice-key="block-island-pearl-20261027-seen">
+<dialog id="update-dialog" class="game-dialog update-dialog" aria-labelledby="update-title" data-notice-key="block-island-city-exploration-20261108-seen">
  <header>
   <div>
-   <small>CITY UPDATE · 云上看上海 / 2026.10.27</small>
-   <h2 id="update-title">🔭 云上看上海</h2>
+   <small>CITY UPDATE · 探索上海 / 2026.11.08</small>
+   <h2 id="update-title">✨ 两岸漫游，城市新体验</h2>
   </div>
   <button id="update-close" aria-label="关闭更新通知">关闭并返回</button>
  </header>
  <div class="update-body">
 
 
+  <p class="update-intro">从外滩灯火到浦江游轮，从街头驾驶到豫园寻景，用自己的节奏探索上海。已有建造与旅程存档继续保留。</p>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">两岸夜色</span><h3>外滩灯光秀与南京路夜游</h3></div><ul class="update-list"><li>按 K 欣赏外滩建筑灯光与无人机表演，在浦江两岸自由选择观赏角度；南京路的夜间街景也增添了暖色灯光。</li></ul></article>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">城市探索</span><h3>游轮、驾驶与豫园漫游</h3></div><ul class="update-list"><li>城市任务新增豪华游轮和生存入门的可选委托；豫园主线可沿长廊寻景、走进商铺，再回到湖心亭。</li><li>靠近合适的普通汽车时可按 V 接管驾驶，公交车不参与；也可以步行、乘地铁或自由探索。</li></ul></article>
+  <article class="update-section"><div class="update-badge-row"><span class="update-tag">初到上海</span><h3>更清楚的新手指引</h3></div><ul class="update-list"><li>首次旅程会提示任务方向、地图与常用操作，按自己的需要探索；旅行手账仍可记录相遇、收藏与重游章节。</li></ul></article>
+  <details class="update-history"><summary>📚 云上看上海（2026.10.27）</summary>
   <p class="update-intro">2026年10月27日 · 从东方明珠玻璃观景层俯瞰浦江，再沿外滩细看百年建筑。</p>
   <article class="update-section"><div class="update-badge-row"><span class="update-tag">云端观景</span><h3>登上东方明珠</h3></div><ul class="update-list"><li>在塔底靠近电梯按 V 或互动键，前往球体内的玻璃观景层；沿环廊看两岸，靠近电梯可返回地面。</li><li>观景层设有沪上小食柜台，可领取一份糕点；原“云端之光”晶体和已收集进度继续保留。</li><li>和平饭店、海关大楼和汇丰大楼的立面与入口细节进一步丰富。个人建造和旅程存档继续保留。</li></ul></article>
+  </details>
   <details class="update-history"><summary>📚 江两岸，细看上海（2026.10.27）</summary>
   <p class="update-intro">2026年10月27日 · 沿江再走一段，看看石材窗框、铜绿屋顶和玻璃幕墙里更细腻的上海。</p>
   <article class="update-section"><div class="update-badge-row"><span class="update-tag">两岸风貌</span><h3>让熟悉的天际线，经得起细看</h3></div><ul class="update-list"><li>外滩细化石材线脚、窗扇与扇形窗楣，和平饭店的铜绿屋顶增加金属接缝层次。</li><li>陆家嘴楼群增加细密的玻璃分格与柔和反光；上海中心、金茂和环球金融中心补充轻巧的银色立面线条。</li><li>加载页同步新版游戏实景，保留清晰度与原有构图。原有建筑、室内、旅程进度和个人建造继续保留。</li></ul></article>
