@@ -7,7 +7,7 @@ import {safeLanding} from './map-travel.js';
 import {updateDrive,DRIVE_MODES,vehicleContact,vehiclePenetration} from './vehicle-dynamics.js';
 import {nanpuFloor} from './bridge-road.js';
 
-export function createCommute({scene,world,civil,activity,getPos,blocked,fixtureBlocked=()=>false,exitBlocked=blocked,place,setView,turnView,notify,onExit=()=>{},allowed=()=>true,getActors=()=>[],onImpact=()=>{}}){
+export function createCommute({scene,world,civil,activity,getPos,blocked,vehicleBlocked=null,fixtureBlocked=()=>false,exitBlocked=blocked,place,setView,turnView,notify,onExit=()=>{},allowed=()=>true,getActors=()=>[],onImpact=()=>{}}){
  const root=new THREE.Group();root.name='player-commuting';scene.add(root);const vehicles=[],box=new THREE.BoxGeometry(1,1,1);let ride=null;
  function cube(parent,color,x,y,z,sx,sy,sz){const m=new THREE.Mesh(box,new THREE.MeshLambertMaterial({color}));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=220;parent.add(m);return m;}
  function groundVehicle(kind,p){const group=new THREE.Group();group.name='rideable-'+kind;group.rotation.order='YXZ';group.position.set(p.x,p.y,p.z);root.add(group);const bicycle=kind==='bicycle',color=bicycle?'#62d3c1':'#e4af4f',wheels=[],steerRigs=[];
@@ -36,7 +36,18 @@ export function createCommute({scene,world,civil,activity,getPos,blocked,fixture
  function pDistance(v,p){return Math.hypot(p.x-v.root.position.x,p.z-v.root.position.z);}
  function actors(){return [...getActors(),...(civil.traffic.agents??[]),...takeover.owners,...vehicles];}
  function actorClear(v,x,y,z,a){const p=v.root.position;return actors().every(o=>{const next=vehiclePenetration(v,x,y,z,a,o),current=vehiclePenetration(v,p.x,p.y,p.z,v.yaw,o),q=o.root.position;return next<=0||next<current-1e-9||current>0&&next<=current+1e-9&&(x-q.x)**2+(z-q.z)**2>(p.x-q.x)**2+(p.z-q.z)**2;});}
- function bodyClear(v,x,y,z,a=v.yaw){if(fixtureBlocked(x,y,z,a,v.halfWidth,v.halfLength))return false;if(x<WORLD_MIN+3||x>WORLD_MAX-3||z<WORLD_MIN+3||z>WORLD_MAX-3)return false;for(const dx of [-v.halfWidth,0,v.halfWidth])for(const dz of [-v.halfLength,0,v.halfLength]){const xx=x+dx*Math.cos(a)+dz*Math.sin(a),zz=z-dx*Math.sin(a)+dz*Math.cos(a),h=v.kind==='helicopter'?null:nanpuFloor(world,xx,zz),probe=h!==null&&Math.abs(y-h)<1.5?Math.max(y,Math.ceil(h)):y;if(blocked(xx,probe,zz)||v.kind==='helicopter'&&overlaps(world,xx,y+1.5,zz))return false;}return actorClear(v,x,y,z,a);}
+ // Test occupied voxels against the rotated vehicle body, without adding the
+ // player's collision radius to each edge. Bridge deck support is exempted.
+ function voxelBodyBlocked(v,x,y,z,a){
+  const c=Math.cos(a),s=Math.sin(a),w=v.halfWidth,l=v.halfLength,rx=Math.abs(c)*w+Math.abs(s)*l,rz=Math.abs(s)*w+Math.abs(c)*l;
+  for(let ix=Math.floor(x-rx);ix<=Math.floor(x+rx);ix++)for(let iz=Math.floor(z-rz);iz<=Math.floor(z+rz);iz++){
+   const dx=ix+.5-x,dz=iz+.5-z;
+   if(Math.abs(dx)>=rx+.5||Math.abs(dz)>=rz+.5||Math.abs(dx*c-dz*s)>=w+.5*(Math.abs(c)+Math.abs(s))||Math.abs(dx*s+dz*c)>=l+.5*(Math.abs(s)+Math.abs(c)))continue;
+   const h=nanpuFloor(world,ix+.5,iz+.5),probe=h!==null&&Math.abs(y-h)<1.5?Math.max(y,Math.ceil(h)):y;
+   for(let iy=Math.floor(probe+.001);iy<=Math.floor(probe+1.75);iy++)if(world.get(ix,iy,iz))return true;
+  }return false;
+ }
+ function bodyClear(v,x,y,z,a=v.yaw){if(fixtureBlocked(x,y,z,a,v.halfWidth,v.halfLength))return false;if(x<WORLD_MIN+3||x>WORLD_MAX-3||z<WORLD_MIN+3||z>WORLD_MAX-3)return false;if(vehicleBlocked&&v.kind!=='helicopter'&&voxelBodyBlocked(v,x,y,z,a))return false;for(const dx of [-v.halfWidth,0,v.halfWidth])for(const dz of [-v.halfLength,0,v.halfLength]){const xx=x+dx*Math.cos(a)+dz*Math.sin(a),zz=z-dx*Math.sin(a)+dz*Math.cos(a),h=v.kind==='helicopter'?null:nanpuFloor(world,xx,zz),probe=h!==null&&Math.abs(y-h)<1.5?Math.max(y,Math.ceil(h)):y;if((vehicleBlocked&&v.kind!=='helicopter'?vehicleBlocked(xx,probe,zz):blocked(xx,probe,zz))||v.kind==='helicopter'&&overlaps(world,xx,y+1.5,zz))return false;}return actorClear(v,x,y,z,a);}
  function actorAt(v,x,y,z,a){return actors().find(o=>vehicleContact(v,x,y,z,a,o));}
  function hit(v,x,y,z,a){const speed=Math.abs(v.speed),actor=actorAt(v,x,y,z,a);if((v.impactCooldown??0)<=0&&speed>.35){v.shock=Math.min(.9,speed*.09);v.impactCooldown=.45;const sign=Math.sign(v.speed);if(actor)onImpact(actor,-Math.sin(a)*sign,-Math.cos(a)*sign,speed);notify(actor?.person?'撞到行人，已急刹；请减速让行。':actor?'发生车辆碰撞，请减速绕行。':'碰到障碍，松开油门或倒车调整方向。');}v.speed=actor?.person?0:-v.speed*.12;v.throttle=0;}
  function moveGround(v,dt,keys){let remaining=dt;while(remaining>0){const step=Math.min(remaining,1/120);remaining-=step;const before=v.root.position.clone(),{yawDelta,distance}=updateDrive(v,step,keys),a=v.yaw+yawDelta,p=v.root.position;

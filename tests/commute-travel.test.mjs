@@ -17,7 +17,7 @@ let pos={...LANDMARKS.bund},canRide=true;const activity={heli:new THREE.Group()}
 const context={fillRect(){},fillText(){}};const oldDocument=globalThis.document;globalThis.document={createElement:()=>({getContext:()=>context})};
 try{
  const traffic=createCityTraffic({scene,world,getPos:()=>pos,routePose,cars:[]});
- const commute=createCommute({scene,world,civil:{traffic},activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||traffic.collides(x,y,z),place:p=>Object.assign(pos,p),setView(){},turnView(){},notify(){},allowed:()=>canRide});
+ const commute=createCommute({scene,world,civil:{traffic},activity,getPos:()=>pos,blocked:(x,y,z)=>overlaps(world,x,y,z)||traffic.collides(x,y,z),vehicleBlocked:(x,y,z)=>overlaps(world,x,y,z,0)||traffic.collides(x,y,z),place:p=>Object.assign(pos,p),setView(){},turnView(){},notify(){},allowed:()=>canRide});
  assert(commute.vehicles.filter(v=>v.kind==='bicycle').length>=3);assert(commute.vehicles.filter(v=>v.kind==='car').length>=3);
  for(const v of commute.vehicles)assert(commute.bodyClear(v,v.root.position.x,v.root.position.y,v.root.position.z),v.kind+' parking body overlaps a wall');
  for(const v of commute.vehicles.filter(v=>v.kind!=='helicopter'))for(const dx of [-v.halfWidth,v.halfWidth])for(const dz of [-v.halfLength,v.halfLength])assert(!roadContains(v.root.position.x+dx,v.root.position.z+dz),'Initial parked vehicle must leave both traffic lanes clear');

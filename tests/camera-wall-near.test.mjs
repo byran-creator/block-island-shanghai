@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import * as T from '../game/three.module.js';
+const source=await readFile('game/game.js','utf8'),m=source.match(/new THREE\.PerspectiveCamera\(72,[^\n]*?,(0\.\d+),270\)/);assert(m,'Game camera must expose its near plane');const near=Number(m[1]);const camera=new T.PerspectiveCamera(72,16/9,near,270);camera.updateProjectionMatrix();const p=new T.Vector3(0,0,-.29).applyMatrix4(camera.projectionMatrix);assert(p.z>=-1&&p.z<=1,'Wall at player collision distance remains in the view frustum');const angle=72*Math.PI/360;for(const aspect of [1,16/9,3]){const halfWidth=near*Math.tan(angle)*aspect;assert(Math.hypot(near,halfWidth)<.29,'Near-plane edge remains inside player collision radius at common aspect ratios');}assert.equal(camera.fov,72,'Do not narrow the requested view');console.log('PASS: wall at collision distance remains visible, including wide views, without changing FOV.');

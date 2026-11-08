@@ -7,7 +7,7 @@ export const CRUISE_STAIRS=[{x:1.65,z1:-3.9,z2:1.7,low:1.1,high:3.65},{x:-1.65,z
 // Optional sightseeing circuit returns to its west-bank pier. No endpoint flips.
 export function cruisePose(time,index=0){
  const t=((time+index*CRUISE_CYCLE/2)%CRUISE_CYCLE+CRUISE_CYCLE)%CRUISE_CYCLE,a=Math.PI*1.5+Math.max(0,t-CRUISE_DWELL)/(CRUISE_CYCLE-CRUISE_DWELL)*Math.PI*2;
- const z=78+40*Math.cos(a),dz=-40*Math.sin(a),slope=(riverCenter(z+.01)-riverCenter(z-.01))/.02,dx=slope*dz+13*Math.cos(a);
+ const z=78+32*Math.cos(a),dz=-32*Math.sin(a),slope=(riverCenter(z+.01)-riverCenter(z-.01))/.02,dx=slope*dz+13*Math.cos(a);
  return {x:riverCenter(z)-32+13*Math.sin(a),y:22.22,z,yaw:Math.atan2(dx,dz)+Math.PI,moored:t<CRUISE_DWELL,remaining:CRUISE_DWELL-t};
 }
 const box=new THREE.BoxGeometry(1,1,1),materials=new Map();

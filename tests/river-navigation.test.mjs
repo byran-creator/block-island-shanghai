@@ -3,7 +3,7 @@ import * as T from '../game/three.module.js';
 import {workboatPose,WORKBOAT_CYCLE} from '../game/river-navigation.js';
 import {createHuangpuCruises,cruisePose,CRUISE_LEVELS} from '../game/huangpu-cruises.js';
 import {createCruiseService,CRUISE_DOCK as dock} from '../game/huangpu-cruise-service.js';
-import {riverCenter,riverEastEdge,riverWestEdge} from '../game/shanghai-map.js';
+import {riverCenter,riverEastEdge,riverWestEdge,BRIDGES} from '../game/shanghai-map.js';
 import {ferryPosition} from '../game/city-activity.js';
 const cross=(a,b,p)=>(b.x-a.x)*(p.z-a.z)-(b.z-a.z)*(p.x-a.x);
 function area(poly){return Math.abs(poly.reduce((sum,p,i)=>{const q=poly[(i+1)%poly.length];return sum+p.x*q.z-q.x*p.z;},0))/2;}
@@ -16,7 +16,7 @@ assert(minShore>1&&minPeer>3&&maxStep<.2);
 // The captured old forward pair met after the front boat reflected on the same lane.
 const oldMeet=74/3.8;assert(Math.abs((64+1.9*oldMeet)-(138-1.9*oldMeet))<1e-8);assert(intersection(footprint(workboatPose(oldMeet,0)),footprint(workboatPose(oldMeet,2)))<1e-7);
 // Spatial corridors must be disjoint for *any* relative clocks: boarding can hold cruises.
-let cruiseEast=-Infinity;for(let t=0;t<190;t+=.1){const p=cruisePose(t);for(const q of footprint(p,2.85,9.8))cruiseEast=Math.max(cruiseEast,q.x-riverCenter(q.z));assert(intersection(footprint(p,2.85,9.8),rect(41,61,dock.z-1.02,dock.z+1.02))<1e-7,'Complete rotating cruise, not just its centre, clears fixed dock');}assert(minLane-cruiseEast>1,'Separate workboat and cruise navigation corridors');
+const eastWalk=BRIDGES.find(b=>b.id==='city');let cruiseEast=-Infinity;for(let t=0;t<190;t+=.1){const p=cruisePose(t);const cruiseHull=footprint(p,2.85,9.8);for(const q of eastWalk.samples){if(Math.abs(p.x-q.x)>20||Math.abs(p.z-q.z)>20)continue;assert(intersection(cruiseHull,rect(q.x-eastWalk.width,q.x+eastWalk.width+1,q.z-eastWalk.width,q.z+eastWalk.width+1))<1e-7,'Cruise hull must clear the actual Lujiazui waterfront walkway at all headings');}for(const q of footprint(p,2.85,9.8))cruiseEast=Math.max(cruiseEast,q.x-riverCenter(q.z));assert(intersection(footprint(p,2.85,9.8),rect(41,61,dock.z-1.02,dock.z+1.02))<1e-7,'Complete rotating cruise, not just its centre, clears fixed dock');}assert(minLane-cruiseEast>1,'Separate workboat and cruise navigation corridors');
 for(let t=0;t<94;t+=.1){assert(footprint(ferryPosition(t),2.8,5.6).every(p=>p.z>125),'Original cross-river ferry remains south of workboats');}
 // Find positive-area coplanar upward faces after batching: catches deck/landing z-fighting.
 function upwardFaces(root){root.updateMatrixWorld(true);const faces=[],v=new T.Vector3();root.traverse(o=>{if(!o.isMesh||o.material.transparent||o.parent?.name==='cruise-night-decoration')return;const g=o.geometry,p=g.attributes.position,n=g.attributes.normal;for(let k=0;k<(g.index?.count??p.count);k+=3){const ids=[0,1,2].map(d=>g.index?g.index.getX(k+d):k+d);if(!ids.every(i=>n.getY(i)>.999))continue;const vs=ids.map(i=>{v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);return {x:v.x,y:v.y,z:v.z};});if(vs.some(q=>Math.abs(q.y-vs[0].y)>1e-5))continue;faces.push({y:vs[0].y,poly:vs});}});return faces;}
