@@ -389,3 +389,6 @@ body.force-landscape .context-guide{top:22%;left:50%;width:min(370px,80%);transf
 @media(max-height:620px),(max-width:700px){.map-layout>div:first-child>p.map-quick-legend{white-space:normal!important;overflow:visible!important;line-height:1.2!important;font-size:10px!important;padding:3px 5px!important;margin-bottom:2px!important}.map-layout>div:first-child>p:not(.map-quick-legend){display:none!important}}
 .map-legend-gold{color:#ffdb7f}.map-legend-blue{color:#96d6ff}.map-legend-cyan{color:#8af2e6}
 .map-legend-cyan{background:#72d9d327;border-radius:4px;padding:1px 4px;box-shadow:0 0 8px #5bd8ca30}
+
+/* A fresh click restores mouse view control when the browser blocks automatic lock. */
+.pointer-recovery{position:fixed;z-index:90;left:50%;bottom:150px;transform:translateX(-50%);padding:10px 18px;border:1px solid #e1ca8a;border-radius:8px;background:#17313bea;color:#fff2c4;box-shadow:0 4px 18px #0008;font-size:14px}.pointer-recovery[hidden]{display:none}
