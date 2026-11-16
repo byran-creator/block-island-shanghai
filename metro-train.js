@@ -16,9 +16,10 @@ export function createSlidingDoor(parent,cube,{x,z,y=1.62,height=2.9,width=METRO
  }
  return {x,z,width,leaves,amount:0,set(amount){this.amount=Math.max(0,Math.min(1,amount));for(const l of leaves)l.mesh.position.x=l.closed+l.sign*this.amount*(width/2+.08);}};
 }
-export function createMetroTrain({parent,direction,cube,board,person,cars=METRO_CARS,lineNumber=2,lineColor='#96d33d',modelName='02A05',stationNames=['南京东路','陆家嘴'],destinationLabels=['浦东方向','市区方向']}){
- const root=new THREE.Group();root.name='line-'+lineNumber+'-'+modelName;parent.add(root);const doors=[],passengers=[];let route=null;
+export function createMetroTrain({parent,direction,cube,board,person,cars=METRO_CARS,lineNumber=2,lineColor='#96d33d',modelName='02A05',stationNames=['南京东路','陆家嘴'],destinationLabels=['浦东方向','市区方向'],articulated=false}){
+ const root=new THREE.Group();root.name='line-'+lineNumber+'-'+modelName;parent.add(root);const doors=[],passengers=[],carriages=[];let route=null;
  for(const car of cars){
+  const firstChild=root.children.length,firstDoor=doors.length;
   cube(root,'#a8b3b9',car,.02,0,7.75,.15,2.65);cube(root,'#cbd1d3',car,3.28,0,7.7,.16,2.72);
   cube(root,'#e5e9e8',car,3.13,0,7.5,.1,2.5);cube(root,'#edf7f5',car,3.02,0,6.5,.055,.16);
   cube(root,'#687882',car,3.48,0,4.6,.22,1.35);
@@ -36,6 +37,13 @@ export function createMetroTrain({parent,direction,cube,board,person,cars=METRO_
   for(const dx of [-1,1]){cube(root,'#dbe5e7',car+dx,1.64,0,.045,2.95,.045);cube(root,'#313b44',car+dx*2.6,-.24,0,1.1,.3,2.15);}
   for(const side of [-1,1])for(const dx of [-2,2]){let panel;if(!route){route=board(root,[stationNames[direction===1?0:1],stationNames[direction===1?1:0],String(direction)],car+dx,2.85,side*1.25,2.7,.42,'#17201c','#fbfcf7',{layout:'route'});panel=route.mesh;}else{panel=route.mesh.clone();root.add(panel);}if(side===1){const [front,back]=panel.children;const material=front.material;front.material=back.material;back.material=material;panel.userData.signFaces={front:route.mesh.userData.signFaces.back,back:route.mesh.userData.signFaces.front};}panel.position.set(car+dx,2.85,side*1.25);panel.rotation.y=side===1?Math.PI:0;}
   if(car!==cars.at(-1)){for(const side of [-1,1])cube(root,'#323b42',car+4,1.55,side*1.02,.25,2.9,.14);cube(root,'#616d72',car+4,3,0,.25,.12,2.12);cube(root,'#616d72',car+4,.08,0,.25,.12,2.12);}
+  if(articulated){
+   const parts=root.children.slice(firstChild),group=new THREE.Group();
+   group.position.x=car;root.add(group);
+   for(const part of parts){part.position.x-=car;group.add(part);}
+   for(let i=firstDoor;i<doors.length;i++)for(const leaf of doors[i].leaves)leaf.closed-=car;
+   carriages.push({root:group,x:car});
+  }
  }
  // Faceted, sloping black windshield and the characteristic lime headlight band.
  for(const end of [-1,1]){const cab=new THREE.Group();root.add(cab);cab.position.x=end*(cars.at(-1)+3.3);
@@ -46,9 +54,15 @@ export function createMetroTrain({parent,direction,cube,board,person,cars=METRO_
   if(lineNumber===10){for(const side of [-1,1]){cube(cab,lineColor,end*.72,1.65,side*1.02,.1,2.15,.48);const light=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.035,12),new THREE.MeshBasicMaterial({color:end===direction?'#fff2b0':'#ff7563'}));light.rotation.z=Math.PI/2;light.position.set(end*.8,1.12,side*.99);cab.add(light);cube(cab,'#24343c',end*.82,1.63,side*.93,.08,.16,.18);}cube(cab,'#303c45',end*.25,3.11,0,.9,.24,2.48);}
   cube(cab,'#55636b',end*.75,.55,0,.09,.27,1.4);cube(cab,'#313c44',end*.84,.04,0,.35,.22,.42);
   const destination=board(cab,[destinationLabels[direction===1?0:1],lineNumber+'  ·  '+modelName],end*.68,2.7,0,1.75,.47,'#ffb56a');destination.mesh.rotation.y=end*Math.PI/2;
+  if(articulated){const carriage=end<0?carriages[0]:carriages.at(-1);cab.position.x-=carriage.x;carriage.root.add(cab);}
  }
  for(let i=0;i<cars.length*6;i++){const car=i%cars.length,side=(car%2?1:-1)*(i<cars.length*3?1:-1),j=Math.floor((i%(cars.length*3))/cars.length),p=person(root,i,cars[car]+(j-1)*.6,-.13,side*.98);p.rotation.y=side>0?0:Math.PI;p.userData.seatId=car+':'+side+':'+j;for(const index of [4,6])if(p.children[index])p.children[index].rotation.x=1;for(const index of [3,5])if(p.children[index]){p.children[index].position.x=Math.sign(p.children[index].position.x)*.22;p.children[index].rotation.x=1;}batchMeshes(p,staticMeshes(p),'seated-passenger');passengers.push(p);}
- const dynamic=new Set([...doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...passengers]);batchMeshes(root,staticMeshes(root,dynamic),'02A05-body');
- return {root,doors,passengers,route};
+ if(articulated)for(const p of passengers){
+  const carriage=carriages[Number(p.userData.seatId.split(':')[0])];
+  p.position.x-=carriage.x;carriage.root.add(p);
+ }
+ const dynamic=new Set([...doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...passengers]);
+ for(const part of articulated?carriages.map(c=>c.root):[root])batchMeshes(part,staticMeshes(part,dynamic),'02A05-body');
+ return {root,doors,passengers,route,carriages};
 }
 

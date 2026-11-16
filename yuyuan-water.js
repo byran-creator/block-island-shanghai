@@ -141,7 +141,7 @@ function createDragonfly(color='#d63228'){
  return {group:g,wings};
 }
 
-export function createYuyuanWater(root,{ponds}){
+export function createYuyuanWater(root,{ponds,deferView=false}){
  const dynamicRoots=new Set(),surfaces=[],fish=[],ripples=[];
  const waterMaterial=new THREE.MeshPhongMaterial({color:'#82baa0',transparent:true,opacity:.37,shininess:75,depthWrite:false,side:THREE.DoubleSide});
  for(const pond of ponds){
@@ -221,16 +221,37 @@ export function createYuyuanWater(root,{ponds}){
   return {...d,...df};
  });
 
- const dummy=new THREE.Object3D();let elapsed=0,waterTimer=0;
+ const dummy=new THREE.Object3D(),bounds=new THREE.Box3(),worldBounds=new THREE.Box3();
+ const frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),point=new THREE.Vector3();
+ const animatedRoots=[bodies,tails,rings,animalsGroup];
+ // Swept bounds include each complete path, geometry, rotation and bobbing.
+ function bound(x,z,rx,rz){
+  bounds.expandByPoint(point.set(x-rx-2,20,z-rz-2));
+  bounds.expandByPoint(point.set(x+rx+2,25,z+rz+2));
+ }
+ for(const f of [...fish,...ducks,...dragonflies])bound(f.cx,f.cz,f.rx,f.rz);
+ for(const f of [...ripples,...turtles])bound(f.x,f.z,0,0);
+ let elapsed=0,waterTimer=0,waterElapsed=0,paintedWater=-1,paintedWildlife=-1,lastNight,visible=true;
  function tick(dt,{night=false}={}){
   if(Number.isFinite(dt)&&dt>0){
    const step=Math.min(dt,.25);
    elapsed+=step;
    waterTimer+=step;
   }
-  waterMaterial.color.set(night?'#668a79':'#82baa0');rippleMaterial.opacity=night?.11:.18;
+  if(lastNight!==night){
+   waterMaterial.color.set(night?'#668a79':'#82baa0');rippleMaterial.opacity=night?.11:.18;
+   lastNight=night;
+  }
   if(waterTimer>=0.028||dt===0){
    waterTimer=0;
+   waterElapsed=elapsed;
+  }
+  if(!deferView)paint();
+ }
+ function paint(){
+  if(paintedWater!==waterElapsed){
+   const elapsed=waterElapsed;
+   paintedWater=elapsed;
    for(let i=0;i<fish.length;i++){
     const f=fish[i],a=f.phase+elapsed*f.speed,sa=Math.sin(a),ca=Math.cos(a),x=f.cx+f.rx*ca,z=f.cz+f.rz*sa,y=f.height+Math.sin(elapsed*.75+i)*.008;
     const yaw=Math.atan2(-f.rx*sa*f.speed,f.rz*ca*f.speed);
@@ -240,6 +261,8 @@ export function createYuyuanWater(root,{ponds}){
    for(let i=0;i<ripples.length;i++){const r=ripples[i],u=(elapsed*.11+r.phase)%1,scale=.35+u*.6;dummy.position.set(r.x,22.302,r.z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}
    bodies.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;rings.instanceMatrix.needsUpdate=true;
   }
+  if(paintedWildlife===elapsed)return;
+  paintedWildlife=elapsed;
 
   // Animated Mandarin ducks swimming in pairs
   for(const d of ducks){
@@ -273,5 +296,17 @@ export function createYuyuanWater(root,{ponds}){
    }
   }
  }
- tick(0);return {dynamicRoots,tick};
+ function prepareView(camera){
+  if(!deferView)return;
+  camera.updateWorldMatrix(true,false);
+  root.updateWorldMatrix(true,false);
+  frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse),camera.coordinateSystem);
+  const inView=frustum.intersectsBox(worldBounds.copy(bounds).applyMatrix4(root.matrixWorld));
+  if(visible!==inView){
+   visible=inView;
+   for(const object of animatedRoots)object.visible=inView;
+  }
+  if(inView)paint();
+ }
+ tick(0);return {dynamicRoots,tick,prepareView};
 }

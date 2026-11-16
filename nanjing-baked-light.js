@@ -6,23 +6,36 @@ import {shopSignAnchor} from './shop-sign-layout.js';
 // Reuse ordinary vertex colors. Bake sparse daylight originals and window spill;
 // only upload changed colors on a day/night transition or a rebuilt terrain mesh.
 export function createNanjingBakedLight(){
- let night=false;const done=new WeakSet(),entries=new Set(),materials=new WeakMap();
  const sources=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-')).map(b=>{const a=shopSignAnchor(b,28);return {x:a.x,y:28,z:a.z+b.entranceSide*.55};});
  sources.push(...NANJING_CONNECTOR_LAMPS.map(p=>({x:p.x,y:29,z:p.z,radiusSq:81,strength:.34})));
+ return createVertexLightBake({sources,bounds:{minX:-200,maxX:12,minY:25.8,maxY:31.5,minZ:49,maxZ:84}});
+}
+
+function windowSpill(point,normal,source){
+ const dx=source.x-point.x,dy=source.y-point.y,dz=source.z-point.z,d2=dx*dx+dy*dy+dz*dz;
+ const limit=source.radiusSq??49;
+ if(d2>=limit||d2<.01)return 0;
+ const facing=Math.max(0,(normal.x*dx+normal.y*dy+normal.z*dz)/Math.sqrt(d2));
+ return (source.strength??.32)*(1-d2/limit)**2*facing;
+}
+
+export function createVertexLightBake({sources,bounds,sample=windowSpill,cap=.28,gain=3,green=.77,blue=.43}){
+ let night=false;const done=new WeakSet(),entries=new Set(),materials=new WeakMap();
+ const {minX,maxX,minY,maxY,minZ,maxZ}=bounds;
  const stats={meshes:0,bytes:0},sphere=new THREE.Sphere(),point=new THREE.Vector3(),normal=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
- function apply(entry){const {colors,indices,original,energy}=entry;for(let j=0;j<indices.length;j++){const k=j*3,e=night?energy[j]/255*3:0;colors.setXYZ(indices[j],original[k]+e,original[k+1]+e*.77,original[k+2]+e*.43);}colors.needsUpdate=true;}
+ function apply(entry){const {colors,indices,original,energy}=entry;for(let j=0;j<indices.length;j++){const k=j*3,e=night?energy[j]/255*gain:0;colors.setXYZ(indices[j],original[k]+e,original[k+1]+e*green,original[k+2]+e*blue);}colors.needsUpdate=true;}
  function bakeMesh(mesh){
   const g=mesh.geometry,mat=mesh.material;
   if(!mesh.isMesh||mesh.isInstancedMesh||Array.isArray(mat)||(!mat?.isMeshLambertMaterial&&!mat?.isMeshPhongMaterial)||mat.transparent||!g?.attributes.normal||g.attributes.position.count<30||done.has(g))return false;
   if(!g.boundingSphere)g.computeBoundingSphere();sphere.copy(g.boundingSphere).applyMatrix4(mesh.matrixWorld);
-  if(sphere.center.x+sphere.radius<-200||sphere.center.x-sphere.radius>12||sphere.center.z+sphere.radius<49||sphere.center.z-sphere.radius>84||sphere.center.y-sphere.radius>32||sphere.center.y+sphere.radius<25.8)return false;
+  if(sphere.center.x+sphere.radius<minX||sphere.center.x-sphere.radius>maxX||sphere.center.z+sphere.radius<minZ||sphere.center.z-sphere.radius>maxZ||sphere.center.y-sphere.radius>maxY||sphere.center.y+sphere.radius<minY)return false;
   const p=g.attributes.position,n=g.attributes.normal,indices=[],energy=[];normalMatrix.getNormalMatrix(mesh.matrixWorld);
   for(let i=0;i<p.count;i++){
    point.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld);
-   if(point.x<-200||point.x>12||point.z<49||point.z>84||point.y<25.8||point.y>31.5)continue;
+   if(point.x<minX||point.x>maxX||point.z<minZ||point.z>maxZ||point.y<minY||point.y>maxY)continue;
    normal.fromBufferAttribute(n,i).applyMatrix3(normalMatrix).normalize();let e=0;
-   for(const s of sources){const dx=s.x-point.x,dy=s.y-point.y,dz=s.z-point.z,d2=dx*dx+dy*dy+dz*dz;const limit=s.radiusSq??49;if(d2>=limit||d2<.01)continue;const facing=Math.max(0,(normal.x*dx+normal.y*dy+normal.z*dz)/Math.sqrt(d2));e+=(s.strength??.32)*(1-d2/limit)**2*facing;}
-   if(e>=1/255){indices.push(i);energy.push(Math.round(Math.min(.28,e)*255));}
+   for(const s of sources)e+=sample(point,normal,s);
+   if(e>=1/255){indices.push(i);energy.push(Math.round(Math.min(cap,e)*255));}
   }
   if(!indices.length)return false;
   const existing=g.attributes.color;if(existing&&!mat.vertexColors)return false;

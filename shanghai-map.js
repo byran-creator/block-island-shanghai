@@ -1,7 +1,13 @@
-import {nanpuSurfaceAt} from './bridge-road.js';
+import {nanpuSurfaceAt,NANPU_PYLONS,NANPU_LEGS} from './bridge-road.js';
+import {SOUTH_ISLANDS} from './south-islands.js';
+import {wukangLand} from './wukang-layout.js';
+import {puxiSouthLand} from './puxi-south-layout.js';
+import {jinganWestLand} from './jingan-layout.js';
+import {inSuzhou,SUZHOU_WEST} from './waibaidu-layout.js';
 // Game-scale Shanghai: east is +x, south is +z. Heights and distances are compressed.
-export const MAP_REVISION=11;
-export const MAP_BOUNDS={min:-224,max:400};
+export const MAP_REVISION=12;
+export const PUXI_MAINLAND_WEST=-288;
+export const MAP_BOUNDS={min:-336,minZ:-224,max:400};
 export const BUND_SHIFT=56;
 export const CITY={jinmao:{x:191.5,z:78.5,top:99},swfc:{x:217.5,z:90.5,top:112},shanghai:{x:189.5,z:106.5,top:136}};
 export const PEARL={x:126,z:42,top:108};
@@ -12,6 +18,12 @@ export const riverWestEdge=z=>riverCenter(z)-18-BUND_SHIFT;
 export const riverEastEdge=z=>riverCenter(z)+9;
 export const MAGNOLIA={x:Math.round(riverCenter(-66)-122),z:-66,top:83};
 export const inRiver=(x,z)=>x>=riverWestEdge(z)&&x<=riverEastEdge(z);
+// The developed river banks end beyond the northern road loop.
+export const NORTH_BANK_END=-150;
+export function northShoreHeight(x,z,height){
+ const edge=NORTH_BANK_END+Math.round(2*Math.sin(x*.037));
+ return z>=edge?height:Math.min(height,Math.max(9,25+(z-edge)*2));
+}
 // Revision 8 moves the west city as a unit; east-side landmarks and the islands stay fixed.
 export function migrateWestBankPoint(p){
  if(p&&p.z>=-160&&p.z<=242&&p.x<riverCenter(p.z)-10&&(p.z<202||p.x>=102)){p.x-=BUND_SHIFT;return true;}return false;
@@ -20,9 +32,12 @@ export function riverTerrain(x,z,h){
  // Two city shores share the river bend; the personal island sits offshore.
  if(Math.hypot(x-88,z-332)<65)h=Math.max(h,25-Math.floor(Math.max(0,Math.hypot(x-88,z-332)-59)*2));
  if(x>=254&&x<=266&&z>=219&&z<=236)return h; // Diving pier retains its descending water access.
- if(z>=MAP_BOUNDS.min&&z<=244){const d=x-riverCenter(z);
+ if(puxiSouthLand(x,z))return 25;
+ if(x<SUZHOU_WEST.join&&z>=-74&&z<=-21&&inSuzhou(x,z))return 14;
+ if(jinganWestLand(x,z))return 25;
+ if(z>=MAP_BOUNDS.minZ&&z<=244){const d=x-riverCenter(z);
   if(inRiver(x,z))return 7+Math.floor(Math.abs((d+BUND_SHIFT/2+4.5)/(13.5+BUND_SHIFT/2))*5);
-  if(x>=MAP_BOUNDS.min&&x<riverWestEdge(z)-1&&z<=242&&(z<202||x>=102-BUND_SHIFT))return 25;
+  if(wukangLand(x,z)||x>=PUXI_MAINLAND_WEST&&x<riverWestEdge(z)-1&&z<=242&&(z<202||x>=102-BUND_SHIFT))return 25;
   if(d>10&&x<(z<0?MAP_BOUNDS.max:317)&&z<=234)return 25;
  }
  return h;
@@ -31,15 +46,15 @@ const route=(id,name,points,width=2)=>({id,name,points,width});
 export const BRIDGES=[
  route('nanpu','南浦风格斜拉桥',[[176-BUND_SHIFT,190,26],[176-BUND_SHIFT,206,26],[192-BUND_SHIFT,206,26],[212,206,31],[255,206,31],[275,206,26],[282,206,26]],3),
  route('city','陆家嘴滨江步道',[[124,54,26],[139,54,26],[139,110,26],[183,122,26],[215,174,26]]),
- route('mountain','长江风格山岛桥',[[312,42,26],[328,42,31],[328,80,33],[330,75,34]]),
- route('forest','翡翠跨海桥',[[278,216,26],[318,217,29],[330,228,31],[331,240,35]]),
+ route('mountain','南部山岛桥',[[321,348,26],[313,360,26],[298,366,30],[SOUTH_ISLANDS.mountain.arrival.x,SOUTH_ISLANDS.mountain.arrival.z,34]]),
+ route('forest','翡翠跨海桥',[[305,342,26],[289,342,26],[279,342,28],[250,343,31],[SOUTH_ISLANDS.forest.arrival.x,SOUTH_ISLANDS.forest.arrival.z,35]]),
  route('sand','金沙跨海桥',[[30,190,26],[30,204,26],[65,210,28],[65,230,29]]),
  route('home','生活岛连接桥',[[65,230,29],[50,257,29],[45,285,26],[45,329,26],[75,329,26]]),
- route('outer','远岛连接桥',[[353,278,29],[363,328,32],[350,355,30]])
+ route('outer','远岛连接桥',[[346,349,26],[346,355,26],[360,367,29],[SOUTH_ISLANDS.outer.arrival.x,SOUTH_ISLANDS.outer.arrival.z,30]])
 ];
 export function bridgeSamples(b){const samples=[];for(let k=1;k<b.points.length;k++){const [ax,az,ay]=b.points[k-1],[bx,bz,by]=b.points[k],n=Math.max(Math.abs(bx-ax),Math.abs(bz-az))*2;for(let i=k===1?0:1;i<=n;i++){const t=i/n;samples.push({x:Math.round(ax+(bx-ax)*t),z:Math.round(az+(bz-az)*t),y:Math.round(ay+(by-ay)*t)});}}return samples;}
 export function cityProtected(x,y,z){
- if(x>=206&&x<=257&&[208,255].some(px=>Math.abs(x-px)<=1)&&z>=200&&z<=212&&y>=10&&y<=59)return true;
+ if(y>=10&&y<=59&&z>=200&&z<=212&&NANPU_PYLONS.some(px=>Math.abs(x-px)<=1))return true;
  if(y>=25&&Object.values(CITY).some(p=>Math.abs(x+.5-p.x)<=12&&Math.abs(z+.5-p.z)<=13))return true;
  return BRIDGES.some(b=>b.samples.some(p=>Math.abs(x-p.x)<=b.width&&Math.abs(z-p.z)<=b.width&&y>=p.y-1&&y<=p.y+2));
 }
@@ -51,7 +66,7 @@ function plaza(w,x,z,r=10){for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){co
 export function buildRiverfront(w){
  w.fill(110,23,116,124,28,121,0);w.fill(107,24,117,109,28,119,0);w.fill(104,25,117,106,28,119,0);
  // Clear the old path crossing the channel. The raised footbridge is built later.
- for(let z=MAP_BOUNDS.min;z<=236;z++)for(let x=Math.ceil(riverWestEdge(z));x<=riverEastEdge(z);x++){
+ for(let z=MAP_BOUNDS.minZ;z<=236;z++)for(let x=Math.ceil(riverWestEdge(z));x<=riverEastEdge(z);x++){
   // Clear the entire navigation channel before constructing the raised bridge.
   w.fill(x,18,z,x,25,z,0);
  }
@@ -98,5 +113,12 @@ export function buildBridges(w,isRoad=()=>false){
   for(let i=10;i<samples.length-10;i+=28){const p=samples[i],next=samples[Math.min(i+2,samples.length-1)],alongX=Math.abs(next.x-p.x)>=Math.abs(next.z-p.z);for(const side of [-1,1]){const x=p.x+(alongX?0:side*(b.width+1)),z=p.z+(alongX?side*(b.width+1):0);if(isRoad(x,z)||BRIDGES.some(other=>other.samples.some(t=>Math.abs(x-t.x)<=other.width&&Math.abs(z-t.z)<=other.width)))continue;w.fill(x,Math.min(w.surfaceAt(x,z),p.y-1),z,x,p.y-1,z,9);w.set(x,p.y,z,9);w.set(x,p.y+1,z,12);}}
  }
  // Two H pylons, with clear headroom over the carriageway.
- for(const x of [208,255]){for(const z of [201,211]){w.fill(x-1,10,z-1,x+1,59,z+1,9);w.fill(x,49,z,x,58,z,10);}w.fill(x-1,55,201,x+1,57,211,9);}
+ for(const x of NANPU_PYLONS){
+  for(const z of NANPU_LEGS){
+   const ground=Math.min(25,w.surfaceAt(x,z)-1);
+   w.fill(x-1,ground,z-1,x+1,59,z+1,9);
+   w.fill(x,49,z,x,58,z,10);
+  }
+  w.fill(x-1,55,NANPU_LEGS[0],x+1,57,NANPU_LEGS[1],9);
+ }
 }

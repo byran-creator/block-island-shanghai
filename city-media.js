@@ -10,7 +10,7 @@ export function mediaSchedule(dayClock){const hour=(dayClock/240*24+6)%24;return
 // The upper row occupies a full metre before its radius steps down.
 export function crownRadiusAt(y,a){return y<=136?Math.max(6.4,towerProfile(Math.min(y,135),a)+1.4):5-(y-137)*.65+1.4;}
 export function createCityMedia({scene}){
- const root=new THREE.Group();root.name='photo-referenced-led-media';scene.add(root);const screens=[],strips=[],frameColors=['#629cff','#be74e8','#44d7c7'];let clock=0,lastFrame=-1,lastFestival=false;
+ const root=new THREE.Group();root.name='photo-referenced-led-media';scene.add(root);const screens=[],strips=[],frameColors=['#629cff','#be74e8','#44d7c7'];let clock=0,stripsVisible=true;
  function canvasScreen(name,width,height){const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const material=new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});const screen={name,canvas,ctx,texture,material};screens.push(screen);return screen;}
  const crown=canvasScreen('上海中心塔冠屏',512,1024);crown.material.fog=false;crown.material.side=THREE.FrontSide;crown.texture.anisotropy=8;
  // Narrow curved panels follow the existing taper; the observation deck stays open.
@@ -26,7 +26,31 @@ export function createCityMedia({scene}){
   if(screen===crown){ctx.font='bold '+Math.round(w*.76)+'px "Microsoft YaHei",sans-serif';const text=['上海','欢迎','夜游'][frame];[...text].forEach((letter,i)=>ctx.fillText(letter,w/2,h*(i===0?.29:.71)));}
   else{ctx.font='bold 90px sans-serif';ctx.fillText(MEDIA_MESSAGES[frame],w/2,h*.5,w*.87);ctx.font='30px sans-serif';ctx.fillStyle=festival?'#ffffff':'#94e4dd';ctx.fillText('CITY LIFE · SHANGHAI',w/2,h*.77);}texture.needsUpdate=true;}
 
- const white=new THREE.Color('#d9f5ff');
- function tick(dt,{dayClock=36,festival=false,showTime=0}={}){clock+=dt;const frame=Math.floor(clock/8)%3;if(frame!==lastFrame||festival!==lastFestival){screens.forEach(s=>draw(s,frame,festival));lastFrame=frame;lastFestival=festival;}const schedule=mediaSchedule(dayClock),cue=showCue(showTime);crown.mesh.visible=schedule.crown||festival;ad.mesh.visible=schedule.podium||festival;for(const s of screens)festival?s.material.color.setHSL(cue.hue,.78,.68*cue.brightness):s.material.color.set('#ffffff');for(const [i,m]of strips.entries()){m.visible=schedule.crown||festival;if(festival)m.material.color.setHSL(cue.hue,.82,.62*cue.brightness);else m.material.color.set(frameColors[frame]).lerp(white,(.5+.5*Math.sin(clock*.6-i*.07))*.35);}}
+ const white=new THREE.Color('#d9f5ff'),colors=frameColors.map(color=>new THREE.Color(color));
+ function tick(dt,{dayClock=36,festival=false,showTime=0}={}){
+  clock+=dt;
+  const frame=Math.floor(clock/8)%3,schedule=mediaSchedule(dayClock),cue=festival?showCue(showTime):null;
+  crown.mesh.visible=schedule.crown||festival;
+  ad.mesh.visible=schedule.podium||festival;
+  for(const screen of screens){
+   if(!screen.mesh.visible)continue;
+   if(screen.frame!==frame||screen.festival!==festival){
+    draw(screen,frame,festival);
+    if(!festival)screen.material.color.set('#ffffff');
+    screen.frame=frame;
+    screen.festival=festival;
+   }
+   if(cue)screen.material.color.setHSL(cue.hue,.78,.68*cue.brightness);
+  }
+  if(crown.mesh.visible!==stripsVisible){
+   stripsVisible=crown.mesh.visible;
+   for(const strip of strips)strip.visible=stripsVisible;
+  }
+  if(!stripsVisible)return;
+  for(const [i,strip] of strips.entries()){
+   if(cue)strip.material.color.setHSL(cue.hue,.82,.62*cue.brightness);
+   else strip.material.color.copy(colors[frame]).lerp(white,(.5+.5*Math.sin(clock*.6-i*.07))*.35);
+  }
+ }
  tick(0,{});return {tick,screens,strips};
 }

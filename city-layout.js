@@ -2,6 +2,9 @@ import {nearSampledRoad,createRoadClearance} from './road-clearance.js';
 import {riverCenter,inRiver,CITY,PEARL,MAGNOLIA,MAP_BOUNDS,BUND_SHIFT,BRIDGES} from './shanghai-map.js';
 import {buildingStyle,buildArchitecture} from './city-architecture.js';
 import {yuyuanReserved} from './yuyuan-layout.js';
+import {xintiandiReserved} from './xintiandi-layout.js';
+import {WUKANG,WUKANG_ROAD_WIDTH,wukangReserved} from './wukang-layout.js';
+import {westStreets,westRoadAt,westRoadPlot,buildWestStreets} from './west-streets.js';
 import {roundedRoad} from './road-geometry.js';
 import {WAIBAIDU,inSuzhou} from './waibaidu-layout.js';
 
@@ -42,6 +45,36 @@ export const BUND_BUILDINGS=[
 ].map(b=>({...b,x:Math.round(riverCenter(b.z)-58),rx:b.rx??7,front:Math.round(riverCenter(b.z)-58)+(b.rx??7),bank:'west'}));
 
 export function routeSamples(points){const out=[];let distance=0;for(let k=1;k<points.length;k++){const [x,z,y=26]=points[k-1],[xx,zz,yy=26]=points[k],length=Math.hypot(xx-x,zz-z),n=Math.max(1,Math.ceil(length*2));for(let j=k===1?0:1;j<=n;j++){const t=j/n;out.push({x:x+(xx-x)*t,z:z+(zz-z)*t,y:y+(yy-y)*t,d:distance+length*t});}distance+=length;}out.lengthMeters=distance;return out;}
+export const WEST_ROADS=westStreets(westSpine,routeSamples);
+// Preserve the public plazas and river paths inside this road network.
+export const EXPO_ROADS=[
+ ['expo-bridge-link','南浦大桥 · 世博园接线',282,206,282,215],
+ ['expo-north-entry','世博北接线',282,215,313,215],
+ ['expo-inland','浦东南路 · 世博园支路',313,215,313,271],
+ ['expo-cross-north','世博北街',313,226,389,226],
+ ['expo-xueye','雪野路',313,249,389,249],
+ ['expo-avenue','世博大道',313,271,389,271],
+ ['expo-gaoke-north','高科西路 · 北段',359,217,359,275],
+ ['expo-gaoke-bend','高科西路 · 场馆接线',359,275,363,275],
+ ['expo-gaoke','高科西路 · 场馆段',363,275,363,311],
+ ['expo-drop-off','世博园落客路',363,306,373,306],
+ ['expo-drop-off-turn','世博园落客路 · 回转',373,306,373,311],
+ ['expo-drop-off-return','世博园落客路 · 出口',363,311,373,311]
+].map(([id,name,ax,az,bx,bz])=>({id,name,ax,az,bx,bz,width:2,westGrid:true,samples:routeSamples([[ax,az],[bx,bz]])}));
+export function westStreetChunk(cx,cz,chunk){
+ const half=chunk/2;
+ return westRoadPlot(WEST_ROADS,{x:cx*chunk+half,z:cz*chunk+half,rx:half,rz:half});
+}
+const asphaltTone=[.36,.40,.46];
+export function westStreetShade(x,y,z,id){
+ if(id===3&&y===25&&WEST_ROADS.some(r=>westRoadAt(r,x,z)))return asphaltTone;
+}
+export function expoRoadAt(x,z,padding=0){
+ return EXPO_ROADS.some(r=>westRoadAt(r,x,z,padding));
+}
+export function expoStreetShade(x,y,z,id){
+ if(id===3&&y===25&&z>=204&&z<=314&&expoRoadAt(x,z))return asphaltTone;
+}
 const curve=(offset,from,to)=>{const p=[];const dir=Math.sign(to-from);for(let z=from;dir*(to-z)>=0;z+=dir*2)p.push([riverCenter(z)-offset,z]);if(p.at(-1)[1]!==to)p.push([riverCenter(to)-offset,to]);return p;};
 export const AVENUE_POINTS=[[146,31],[213,31],[260,65],[263,121],[256,166],[228,178],[203,137],[197,106],[196,82],[196,50],[196,19],[146,19],[146,31]];
 export const AVENUE=routeSamples(AVENUE_POINTS);
@@ -95,7 +128,7 @@ for(const r of WING_ROADS)CAR_ROUTES.push({id:r.id,samples:r.samples});
 export const WING_BUILDINGS=[];
 function addWing(b){
  b.front=b.x+(b.entranceSide??1)*b.rx;
- if(b.x-b.rx<MAP_BOUNDS.min+4||b.x+b.rx>MAP_BOUNDS.max-4||b.z-b.rz<MAP_BOUNDS.min+4)return;
+ if(b.x-b.rx<MAP_BOUNDS.min+4||b.x+b.rx>MAP_BOUNDS.max-4||b.z-b.rz<MAP_BOUNDS.minZ+4)return;
  for(let x=b.x-b.rx-3;x<=b.x+b.rx+3;x++)for(let z=b.z-b.rz-3;z<=b.z+b.rz+3;z++){
   if(b.bank==='east'?x<riverCenter(z)+11:x>riverCenter(z)-46)return;
   if(nearRoad(x,z,ROADS))return;
@@ -198,6 +231,10 @@ for(const side of [-1,1])for(let x=NANJING_WEST+10;x<=4;x+=13){
  const z=66+side*11,b={id:`nanjing-infill-${side}-${x}`,name:'南京东路沿街商厦',x,z,rx:5,rz:5,h:11+(Math.abs(x)+z)%9,kind:'baroque',form:Math.abs(x)%3?'terrace':'deco',district:'historic-block',bank:'west',entranceAxis:'z',entranceSide:-side,shop:true};
  addParcel(b);
 }
+// Place a full-depth row in the enlarged block between Jiujiang and Hankou.
+for(const [index,x] of [-108,-92,-75,-58,-42,-27].entries()){
+ addParcel({id:'hankou-infill-'+x,name:'汉口路沿街商住楼',x,z:109,rx:5,rz:3,h:10+index%3*2,kind:index%2?'brick':'baroque',form:index%3?'terrace':'deco',district:'historic-block',bank:'west',entranceAxis:'z',entranceSide:1});
+}
 // Fill former freestanding gaps with joined-size blocks: stone commercial fronts and red-roof lanes.
 for(let z=-137;z<=233;z+=9)for(let x=-207;x<=127;x+=9){
  const h=8+(Math.abs(x)*7+Math.abs(z)*3)%12;
@@ -206,6 +243,10 @@ for(let z=-137;z<=233;z+=9)for(let x=-207;x<=127;x+=9){
 // Smaller southeast parcels restore a dense commercial district around the landmark triangle.
 for(let z=-5;z<=179;z+=9)for(let x=146;x<=302;x+=9){
  addParcel({id:`pudong-infill-tight-${x}-${z}`,name:'陆家嘴商住街坊',x,z,rx:3,rz:3,h:15+(x*3+Math.abs(z))%23,kind:(x+z)%4?'glass':'hotel',form:(x+z)%3?'setback':'slab',bank:'east',entranceSide:-1});
+}
+// Set the north edge of the memorial square back from the west-wall sightline.
+for(const [x,z] of [[-255,-100],[-234,-90],[-252,-78],[-255,26],[-235,30],[-253,56],[-242,76],[-228,80],[-252,117],[-235,123]]){
+ addParcel({id:`west-infill-${x}-${z}`,name:'浦西沿街街坊',x,z,rx:5,rz:4,h:9+(x+z+400)%8,kind:'brick',form:'terrace',bank:'west',entranceSide:1});
 }
 // Named examples identify actual street types; parcel distances are compressed for play.
 const streetShops=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-')).sort((a,b)=>a.x-b.x);
@@ -231,6 +272,16 @@ for(const r of ROADS){
 const bridgeTraffic=CAR_ROUTES.find(r=>r.id==='bridge').samples;
 const bridgeNext=routeSamples(roundedRoad(bridgeTraffic.map(p=>({...p,x:Math.abs(p.x-(roadX(p.z)-2))<.8&&p.z>=14?p.x+2+(p.z>112&&p.z<136?4*Math.sin(Math.PI*(p.z-112)/24):0):p.x})).filter((p,i,a)=>i===0||i===a.length-1||Math.abs((p.x-a[i-1].x)*(a[i+1].z-p.z)-(p.z-a[i-1].z)*(a[i+1].x-p.x))>.001).map(p=>[p.x,p.z,p.y]),7));
 bridgeTraffic.splice(0,bridgeTraffic.length,...bridgeNext);bridgeTraffic.lengthMeters=bridgeNext.lengthMeters;
+// Local loops keep the existing through-traffic and bus timetables intact.
+const expoDrive=[[313,226],[359,226],[359,275],[363,275],[363,306],[373,306],[373,311],[363,311],
+ [363,275],[359,275],[359,271],[313,271],[313,226]];
+const puxiDrive=[[-249,209],[-151,209],[-151,253],[-249,253],[-249,209]];
+CAR_ROUTES.push(
+ {id:'expo-local',samples:routeSamples(roundedRoad(expoDrive,2.8)),cars:4,lane:1,oneWay:true},
+ {id:'puxi-local',samples:routeSamples(roundedRoad(puxiDrive,2.8)),cars:4,lane:1.05}
+);
+const establishedRoads=ROADS.slice();
+ROADS.push(...WEST_ROADS,...EXPO_ROADS,{id:'wukang-road',name:'武康路',width:WUKANG_ROAD_WIDTH,samples:routeSamples(WUKANG.road),regionalVoxels:true});
 const islandLinks=BRIDGES.filter(b=>b.id==='sand'||b.id==='home');
 for(const list of [BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];
  if(!/^bund-(?:back|infill)/.test(b.id))continue;
@@ -239,15 +290,18 @@ for(const list of [BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let 
 // Remove only parcels occupied by the widened carriageway or the new tributary.
 for(const list of [BUND_BUILDINGS,PUDONG_BUILDINGS,BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];
  const riverPlot=inSuzhou(b.x-b.rx,b.z-b.rz)||inSuzhou(b.x+b.rx,b.z+b.rz)||inSuzhou(b.x,b.z);
- const roadPlot=ROADS.some(r=>r.samples.some((p,j)=>j%3===0&&Math.abs(p.x-b.x)<=b.rx+r.width+.8&&Math.abs(p.z-b.z)<=b.rz+r.width+.8));
+ const roadPlot=b.bank==='west'&&westRoadPlot(WEST_ROADS,b)||establishedRoads.some(r=>r.samples.some((p,j)=>j%3===0&&Math.abs(p.x-b.x)<=b.rx+r.width+.8&&Math.abs(p.z-b.z)<=b.rz+r.width+.8));
  if(riverPlot||roadPlot&&/back|infill|front|density/.test(b.id)&&b.id!=='pudong-infill-southeast-2'){REPLACED_BUILDING_IDS.add(b.id);list.splice(i,1);}
 }
 // Only replace generated filler plots needed for the new garden and walking entrances.
 // Keep surviving shop brands and vendor slots stable when one parcel makes way.
 for(const [index,b]of DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-')).entries())b.streetIndex=index;
-for(const list of [BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];if(!/back|infill|density/.test(b.id))continue;let hit=false;for(let x=b.x-b.rx-1;x<=b.x+b.rx+1&&!hit;x++)for(let z=b.z-b.rz-1;z<=b.z+b.rz+1;z++)if(yuyuanReserved(x,z)){hit=true;break;}if(hit){REPLACED_BUILDING_IDS.add(b.id);list.splice(i,1);}}
+for(const list of [BACK_BUILDINGS,WING_BUILDINGS,DENSE_BUILDINGS,plots])for(let i=list.length-1;i>=0;i--){const b=list[i];if(!/back|infill|density/.test(b.id))continue;let hit=false;for(let x=b.x-b.rx-1;x<=b.x+b.rx+1&&!hit;x++)for(let z=b.z-b.rz-1;z<=b.z+b.rz+1;z++)if(yuyuanReserved(x,z)||xintiandiReserved(x,z)||wukangReserved(x,z)){hit=true;break;}if(hit){REPLACED_BUILDING_IDS.add(b.id);list.splice(i,1);}}
 export const CITY_BUILDINGS=[...PUDONG_BUILDINGS,...BACK_BUILDINGS,...WING_BUILDINGS,...DENSE_BUILDINGS];
 export const ALL_BUILDINGS=[...BUND_BUILDINGS,...CITY_BUILDINGS];
+// The surveyed vacant parcel lets the rear building move north without reseeding the neighboring blocks.
+const memorialRearParcel=ALL_BUILDINGS.find(b=>b.id==='bund-infill-tight--207--92');
+Object.assign(memorialRearParcel,{x:-222,z:-111,front:-219});
 export function buildingEntrance(b,distance=2.5){const side=b.entranceSide??1;return b.entranceAxis==='z'?{x:b.x+.5,z:b.z+side*(b.rz+distance)}:{x:b.x+side*(b.rx+distance),z:b.z+.5};}
 export function layoutProtected(x,y,z){return y>=25&&ALL_BUILDINGS.some(b=>Math.abs(x-b.x)<=b.rx+1&&Math.abs(z-b.z)<=b.rz+1);}
 export function buildShell(w,b){const {x,z,h,rx,rz}=b,side=b.entranceSide??1,s=buildingStyle(b);
@@ -283,11 +337,13 @@ export function buildShell(w,b){const {x,z,h,rx,rz}=b,side=b.entranceSide??1,s=b
 }
 export function buildCity(w){
  // City blocks have paved courtyards; retain planted riversides and the central green.
- for(let x=MAP_BOUNDS.min;x<MAP_BOUNDS.max;x++)for(let z=MAP_BOUNDS.min;z<=234;z++){if(w.get(x,25,z)!==1||(x<102-BUND_SHIFT&&z>=202))continue;const d=x-riverCenter(z),park=x>=178&&x<=214&&z>=40&&z<=58;if(park||(d>10&&d<18))continue;if(d<-45||d>18)w.set(x,25,z,(Math.floor(x/6)+Math.floor(z/6))%5===0?1:9);}
- for(const r of ROADS)for(const p of r.samples){const x=Math.round(p.x),z=Math.round(p.z);for(let dx=-r.width-2;dx<=r.width+2;dx++)for(let dz=-r.width-2;dz<=r.width+2;dz++){const xx=x+dx,zz=z+dz;if(inRiver(xx,zz)||Object.values(CITY).some(p=>Math.abs(xx+.5-p.x)<=12&&Math.abs(zz+.5-p.z)<=13))continue;w.fill(xx,23,zz,xx,24,zz,3);w.set(xx,25,zz,Math.abs(dx)<=r.width&&Math.abs(dz)<=r.width?3:9);w.fill(xx,26,zz,xx,32,zz,0);}}
+ for(let x=MAP_BOUNDS.min;x<MAP_BOUNDS.max;x++)for(let z=MAP_BOUNDS.minZ;z<=234;z++){if(w.get(x,25,z)!==1||(x<102-BUND_SHIFT&&z>=202))continue;const d=x-riverCenter(z),park=x>=178&&x<=214&&z>=40&&z<=58;if(park||(d>10&&d<18))continue;if(d<-45||d>18)w.set(x,25,z,(Math.floor(x/6)+Math.floor(z/6))%5===0?1:9);}
+ for(const r of establishedRoads)for(const p of r.samples){const x=Math.round(p.x),z=Math.round(p.z);for(let dx=-r.width-2;dx<=r.width+2;dx++)for(let dz=-r.width-2;dz<=r.width+2;dz++){const xx=x+dx,zz=z+dz;if(inRiver(xx,zz)||Object.values(CITY).some(p=>Math.abs(xx+.5-p.x)<=12&&Math.abs(zz+.5-p.z)<=13))continue;w.fill(xx,23,zz,xx,24,zz,3);w.set(xx,25,zz,Math.abs(dx)<=r.width&&Math.abs(dz)<=r.width?3:9);w.fill(xx,26,zz,xx,32,zz,0);}}
  // Nanjing Road is a paved pedestrian corridor through the actual hotel gap.
  const s=BUND_STREETS.find(s=>s.id==='nanjing');for(let x=NANJING_WEST;x<=roadX(s.z)-4;x++)for(let z=s.z-s.width;z<=s.z+s.width;z++){w.fill(x,24,z,x,24,z,3);w.set(x,25,z,Math.abs(z-s.z)<1?6:9);w.fill(x,26,z,x,34,z,0);}
  for(const b of ALL_BUILDINGS)buildShell(w,b);
+ buildWestStreets(w,WEST_ROADS);
+ buildWestStreets(w,EXPO_ROADS);
  // Supported, open landing platform inside the white magnolia crown.
  w.fill(MAGNOLIA.x-7,82,MAGNOLIA.z-6,MAGNOLIA.x+7,82,MAGNOLIA.z+6,9);
  w.fill(MAGNOLIA.x-7,83,MAGNOLIA.z-6,MAGNOLIA.x+7,89,MAGNOLIA.z+6,0);

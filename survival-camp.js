@@ -1,4 +1,4 @@
-import {WATER_LEVEL,WORLD_MIN,WORLD_MAX,trace} from './world.js';
+import {WATER_LEVEL,WORLD_MIN,WORLD_MIN_Z,WORLD_MAX,trace} from './world.js';
 export const COOK_SECONDS=30,COOK_SLOTS=4,FISH_SECONDS=10;
 export function cookingRemaining(f,elapsed){return f.cooking?Math.max(0,f.cooking.readyAt-elapsed):0;}
 export function startCooking(state,f){
@@ -20,7 +20,7 @@ export function fishingTarget(world,p,direction,{dry=false}={}){
  const dx=direction.x/length,dz=direction.z/length,origin={x:p.x,y:p.y+1.62,z:p.z};
  for(let d=4;d<=14;d++){
   const target={x:p.x+dx*d,y:WATER_LEVEL+.08,z:p.z+dz*d},x=Math.floor(target.x),z=Math.floor(target.z);
-  if(x<WORLD_MIN+1||x>=WORLD_MAX-1||z<WORLD_MIN+1||z>=WORLD_MAX-1||world.get(x,23,z)||world.get(x,22,z))continue;
+  if(x<WORLD_MIN+1||x>=WORLD_MAX-1||z<WORLD_MIN_Z+1||z>=WORLD_MAX-1||world.get(x,23,z)||world.get(x,22,z))continue;
   const vector={x:target.x-origin.x,y:target.y-origin.y,z:target.z-origin.z},distance=Math.hypot(vector.x,vector.y,vector.z);
   if(!trace(world,origin,{x:vector.x/distance,y:vector.y/distance,z:vector.z/distance},distance-.15))return target;
  }

@@ -1,7 +1,8 @@
 import {line10MaintainedCell} from './metro-line10-layout.js';
-import {METRO_STATIONS,METRO_RAMPS,metroLineZ} from './metro-layout.js';
+import {METRO_STATIONS,METRO_RAMPS,metroLineZ,eastMetroMaintainedCell} from './metro-layout.js';
+import {westMetroMaintainedCell} from './metro-west-layout.js';
 export function metroMaintainedCell(x,y,z){
- if(line10MaintainedCell(x,y,z))return true;
+ if(eastMetroMaintainedCell(x,y,z)||line10MaintainedCell(x,y,z)||westMetroMaintainedCell(x,y,z))return true;
  for(const s of METRO_STATIONS){
   if(Math.abs(x-s.x)<=36&&Math.abs(z-s.z)<=16&&y>=15&&y<=22)return true;
   if(Math.abs(x-s.x)<=36&&Math.abs(z-s.z)<=12&&y>=2&&y<=11)return true;

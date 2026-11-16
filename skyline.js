@@ -3,7 +3,7 @@ import * as THREE from './three.module.js';
 import {LANDMARKS,SHANGHAI,towerProfile,WORLD_SHIFT} from './world.js';
 import {CITY,BRIDGES} from './shanghai-map.js';
 import {showCue} from './show-cues.js';
-import {nanpuSurfaceAt} from './bridge-road.js';
+import {nanpuSurfaceAt,NANPU_PYLONS,NANPU_LEGS} from './bridge-road.js';
 const $=id=>document.getElementById(id);
 // The at-grade Nanpu approaches meet streets and must not carry floating rails.
 export function bridgeRailSegmentAllowed(bridge,a,b){return bridge.id!=='nanpu'||Math.min(a.x,b.x)>=136&&Math.max(a.x,b.x)<=275;}
@@ -18,7 +18,11 @@ export function createSkyline({scene,getPos,notify,pause,resume,teleport,grantGl
  const cityLights=[];
  function rod(a,b,width,mat){const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),v=to.clone().sub(from),m=new THREE.Mesh(new THREE.CylinderGeometry(width,width,v.length(),4),mat);m.position.copy(from.add(to).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());m.userData.range=230;scene.add(m);return m;}
  const cableMat=new THREE.MeshLambertMaterial({color:'#e3eadf'}),warm=new THREE.MeshBasicMaterial({color:'#ffc778',fog:true}),cool=new THREE.MeshBasicMaterial({color:'#85e9ff',fog:true});
- for(const x of [208,255])for(const z of [201.5,211.5])for(const side of [-1,1])for(let reach=7;reach<=28;reach+=7){const end=x+side*reach;if(end<193||end>266)continue;rod([x+.5,55,z],[end+.5,31,z],.085,cableMat);}
+ for(const x of NANPU_PYLONS)for(const z of NANPU_LEGS)for(const side of [-1,1])for(let reach=7;reach<=28;reach+=7){
+  const end=x+side*reach;
+  const edge=z<206?203.1:209.9;
+  rod([x+.5,55,z+.5],[end+.5,nanpuSurfaceAt(end+.5,206.5)+.25,edge],.085,cableMat);
+ }
  // Low rails and edge lighting follow every bridge, away from the walking lane.
  for(const b of BRIDGES){if(b.id==='city'||b.id==='bund')continue;const points=b.samples;for(let i=0;i<points.length-1;i+=6){const a=points[i],n=points[Math.min(i+6,points.length-1)],dx=n.x-a.x,dz=n.z-a.z,l=Math.hypot(dx,dz);if(!l||!bridgeRailSegmentAllowed(b,a,n))continue;const nx=-dz/l*(b.width+.8),nz=dx/l*(b.width+.8),ay=b.id==='nanpu'?nanpuSurfaceAt(a.x+.5,a.z+.5):a.y,ny=b.id==='nanpu'?nanpuSurfaceAt(n.x+.5,n.z+.5):n.y;for(const side of [-1,1]){rod([a.x+.5+nx*side,ay+.6,a.z+.5+nz*side],[n.x+.5+nx*side,ny+.6,n.z+.5+nz*side],.08,cableMat);cityLights.push(rod([a.x+.5+nx*side,ay-.1,a.z+.5+nz*side],[n.x+.5+nx*side,ny-.1,n.z+.5+nz*side],.06,cool));}}}
  const bridgeLightCount=cityLights.length;

@@ -1,4 +1,4 @@
-import {VoxelWorld,SIZE,HEIGHT} from './world.js';
+import {VoxelWorld,SIZE,DEPTH,HEIGHT} from './world.js';
 import {validBaselineRuns} from './world-baseline.js';
 import {loadWorldSnapshot} from './world-snapshot.js';
 
@@ -25,7 +25,7 @@ export async function generateWorld(createWorker=()=>new Worker(new URL('./world
    worker.onmessageerror=()=>finish(reject,new Error('Invalid worker message'));
    worker.postMessage({generate:true,snapshot:snapshot&&!attemptedSnapshot});
   });
-  if(!(record?.data instanceof Uint8Array)||record.data.length!==SIZE*SIZE*HEIGHT||!(record.surface instanceof Uint16Array)||record.surface.length!==SIZE*SIZE)throw new Error('Invalid generated world');
+  if(!(record?.data instanceof Uint8Array)||record.data.length!==SIZE*DEPTH*HEIGHT||!(record.surface instanceof Uint16Array)||record.surface.length!==SIZE*DEPTH)throw new Error('Invalid generated world');
   const world=new VoxelWorld({...record,generate:false});world.generationWorker=true;world.generationSource=record.source??'generated';if(validBaselineRuns(record.baseline,world.data.length))world.baseline=record.baseline;return world;
  }catch{
   worker?.terminate();worker=null;

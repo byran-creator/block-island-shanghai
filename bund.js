@@ -15,7 +15,7 @@ import {createCustomsClock} from './customs-clock.js';
 import {roadSegmentOrientation} from './road-orientation.js';
 import * as THREE from './three.module.js';
 import {getBundGraniteTexture,getPeaceCopperRoofTexture,getHistoricWindowTexture,getRusticatedGraniteTexture,getCurtainWallTexture} from './shanghai-textures.js';
-import {riverCenter,CITY,MAP_BOUNDS,BUND_SHIFT} from './shanghai-map.js';
+import {riverCenter,CITY,NORTH_BANK_END,BUND_SHIFT} from './shanghai-map.js';
 import {windowLightGroup,lightGroupVisible} from './city-lighting.js';
 import {createCityTraffic,trafficSeed} from './city-traffic.js';
 import {pedestrianBlocked,pedestrianStepClear} from './pedestrian-traffic.js';
@@ -27,11 +27,13 @@ import {showCue} from './show-cues.js';
 import {bundShowLevel} from './bund-show-lighting.js';
 import {createWaibaidu} from './waibaidu.js';
 import {inSuzhou} from './waibaidu-layout.js';
-import {promenadeX,roadX,westSpine,roadContains,BUND_BUILDINGS,BUND_STREETS,ALL_BUILDINGS,CITY_BUILDINGS,buildingEntrance,AVENUE,AVENUE_POINTS,CENTURY,ROADS,CAR_ROUTES,routeSamples,layoutProtected,buildCity} from './city-layout.js';
+import {westRoadAt} from './west-streets.js';
+import {promenadeX,roadX,westSpine,roadContains,BUND_BUILDINGS,BUND_STREETS,ALL_BUILDINGS,CITY_BUILDINGS,buildingEntrance,AVENUE,AVENUE_POINTS,CENTURY,ROADS,WEST_ROADS,EXPO_ROADS,CAR_ROUTES,routeSamples,layoutProtected,buildCity} from './city-layout.js';
 export {promenadeX,roadX,BUND_BUILDINGS,BUND_STREETS,ALL_BUILDINGS,CITY_BUILDINGS,buildingEntrance,AVENUE,AVENUE_POINTS,CENTURY,CAR_ROUTES};
 export const bundProtected=layoutProtected;
+const promenadeStart=NORTH_BANK_END+2;
 export function buildBund(w){
- for(let z=MAP_BOUNDS.min;z<=242;z++){const p=promenadeX(z),r=Math.round(roadX(z));for(let x=r-5;x<=p+2;x++){w.fill(x,18,z,x,24,z,3);w.set(x,25,z,x>=p-10?9:x>=r-3&&x<=r+3?3:1);w.fill(x,26,z,x,38,z,0);}}
+ for(let z=promenadeStart;z<=242;z++){const p=promenadeX(z),r=Math.round(roadX(z));for(let x=r-5;x<=p+2;x++){w.fill(x,18,z,x,24,z,3);w.set(x,25,z,x>=p-10?9:x>=r-3&&x<=r+3?3:1);w.fill(x,26,z,x,38,z,0);}}
  buildCity(w);
  w.fill(258,25,214,262,25,218,7);w.fill(258,26,214,262,30,230,0);w.fill(258,24,219,262,24,220,7);w.fill(258,23,221,262,23,222,7);w.fill(258,22,223,262,22,230,7);
  for(let x=178;x<=214;x++)for(let z=40;z<=58;z++)if(Math.abs(x-195)<2||Math.abs(z-49)<2)w.set(x,25,z,6);
@@ -61,7 +63,25 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  // With the plane tipped onto XZ, positive Z rotation follows the sampled
  // road tangent. Negating it mirrors bends and leaves cars outside the asphalt.
  function roadSegment(ax,az,bx,bz,y,width=7.1){const a=new THREE.Vector3(ax,y,az),b=new THREE.Vector3(bx,y,bz),v=b.clone().sub(a),m=new THREE.Mesh(new THREE.PlaneGeometry(width,v.length()+.2),roadMat);m.rotation.set(-Math.PI/2,0,Math.atan2(v.x,v.z));m.position.copy(a.add(b).multiplyScalar(.5));m.userData.range=170;scene.add(m);}
- for(const r of ROADS)for(let i=4;i<r.samples.length;i+=4){const a=r.samples[i-4],b=r.samples[i];roadSegment(a.x+.5,a.z+.5,b.x+.5,b.z+.5,26.015,r.width*2+.5);if(i%16===0&&!BUND_CROSSWALKS.some(c=>crosswalkContains(c,b.x+.5,b.z+.5))){const stripe=new THREE.Mesh(new THREE.PlaneGeometry(.12,1.2),mat('#f8df8c',true));stripe.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stripe.position.set(b.x+.5,26.04,b.z+.5);stripe.userData.range=285;scene.add(stripe);}}
+ for(const r of ROADS)if(!r.westGrid&&!r.regionalVoxels)for(let i=4;i<r.samples.length;i+=4){const a=r.samples[i-4],b=r.samples[i];roadSegment(a.x+.5,a.z+.5,b.x+.5,b.z+.5,26.015,r.width*2+.5);if(i%16===0&&!BUND_CROSSWALKS.some(c=>crosswalkContains(c,b.x+.5,b.z+.5))){const stripe=new THREE.Mesh(new THREE.PlaneGeometry(.12,1.2),mat('#f8df8c',true));stripe.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stripe.position.set(b.x+.5,26.04,b.z+.5);stripe.userData.range=285;scene.add(stripe);}}
+ // Small, spatially bounded batches for painted markings on the voxel roads.
+ const roadPaint=new Map(),voxelRoads=[...WEST_ROADS,...EXPO_ROADS];
+ for(const r of voxelRoads)for(let d=8;d<r.samples.lengthMeters-6;d+=8){
+  const p=r.samples[d*2];
+  if(voxelRoads.some(other=>other!==r&&westRoadAt(other,p.x,p.z,2)))continue;
+  const key=Math.floor(p.x/64)+','+Math.floor(p.z/64);
+  if(!roadPaint.has(key))roadPaint.set(key,[]);
+  const vertices=roadPaint.get(key),x=p.x+.5,z=p.z+.5,y=26.035;
+  const w=r.ax===r.bx?.09:.74,l=r.az===r.bz?.09:.74;
+  vertices.push(x-w,y,z-l,x+w,y,z+l,x+w,y,z-l,x-w,y,z-l,x-w,y,z+l,x+w,y,z+l);
+ }
+ for(const vertices of roadPaint.values()){
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  const mesh=new THREE.Mesh(geometry,mat('#f3e6c2',true));
+  mesh.name='voxel-street-markings';mesh.userData.range=170;scene.add(mesh);
+  existingObjects.add(mesh);
+ }
  for(const s of BUND_STREETS)label(s.name+' · '+(s.kind==='pedestrian'?'步行':'车行'),roadX(s.z)-6,29,s.z);
  // One crossing surface per road: bars follow the roadway, repeated across it.
  for(const c of BUND_CROSSWALKS)for(const x of c.stripes){const m=new THREE.Mesh(new THREE.PlaneGeometry(.65,c.depth),mat('#faf4df',true));m.rotation.x=-Math.PI/2;m.position.set(x,26.06,c.z);m.userData.range=285;scene.add(m);}
@@ -366,11 +386,11 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  }
  const cc=CITY_BUILDINGS.find(b=>b.id==='convention');for(const dx of [-4,4]){const orb=new THREE.Mesh(new THREE.SphereGeometry(3.2,20,12),new THREE.MeshPhongMaterial({color:'#9bcbd3',shininess:85}));orb.position.set(cc.x+dx,26+cc.h+1,cc.z);orb.userData.range=285;scene.add(orb);const ring=new THREE.Mesh(new THREE.TorusGeometry(3.25,.06,4,28),mat('#dbe5d7',true));ring.position.copy(orb.position);ring.rotation.x=Math.PI/2;ring.userData.range=285;scene.add(ring);}
  // A broad continuous observation deck, with seats and warm riverside edge lights.
- for(let z=-148;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=waterfrontParapetSpans(z,r.position.x,CRUISE_DOCK.z);for(const [a,b]of cuts){if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);fixtures.add(r.position.x-.10,26.02,a,r.position.x+.10,27.22,b,'parapet');facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
+ for(let z=promenadeStart;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=waterfrontParapetSpans(z,r.position.x,CRUISE_DOCK.z);for(const [start,b]of cuts){const a=Math.max(promenadeStart,start);if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);fixtures.add(r.position.x-.10,26.02,a,r.position.x+.10,27.22,b,'parapet');facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
  label('外滩大观景台 · 对岸陆家嘴',promenadeX(86)-15,29.2,86);
  const customsClock=createCustomsClock(scene,BUND_BUILDINGS.find(b=>b.kind==='clock'));
  function carModel(i,route){const appearance=cityCarAppearance(route,i);if(appearance){const car=createCitySpecialCar(appearance);scene.add(car.root);return car;}const root=new THREE.Group(),body=['#e7b44d','#75b7b2','#dc7274','#7395c6','#f0ecdb','#607181'][i%6];cube(root,body,0,.48,0,1.2,.7,2.5);cube(root,'#b5dde2',0,1,.1,1.04,.5,1.3);for(const x of [-.62,.62])for(const z of [-.78,.78])cube(root,'#263137',x,.25,z,.18,.48,.48);const lights=[];for(const x of [-.39,.39])lights.push(cube(root,'#fff5b8',x,.55,-1.28,.22,.16,.08,true));scene.add(root);return {root,lights};}
- for(const [routeIndex,route]of CAR_ROUTES.entries()){const count=route.id==='bund'?8:route.id==='bridge'?12:6;for(let i=0;i<count;i++){const dir=i%2?1:-1,span=route.samples.find(p=>p.x>=185&&p.x<=188&&Math.abs(p.z-206)<.1);cars.push({...carModel(i,route.id),kind:route.id,route:route.samples,t:route.id==='bridge'&&i<4?span.d+[0,17,39,61][i]:route.samples.lengthMeters*(i+.1+trafficSeed(i,routeIndex)*.72)/count,dir,lane:dir>0?2.2:-2.2,speed:2.2+trafficSeed(i,routeIndex+30)*3.2});}}
+ for(const [routeIndex,route]of CAR_ROUTES.entries()){const count=route.cars??(route.id==='bund'?8:route.id==='bridge'?12:6);const span=route.id==='bridge'?route.samples.find(p=>p.x>=185&&p.x<=188&&Math.abs(p.z-206)<.1):null;for(let i=0;i<count;i++){const dir=route.oneWay||i%2?1:-1;cars.push({...carModel(i,route.id),kind:route.id,route:route.samples,t:route.id==='bridge'&&i<4?span.d+[0,17,39,61][i]:route.samples.lengthMeters*(i+.1+trafficSeed(i,routeIndex)*.72)/count,dir,lane:dir*(route.lane??2.2),speed:2.2+trafficSeed(i,routeIndex+30)*3.2});}}
  function person(i,kind,route,point){const root=new THREE.Group(),shirt=['#ecb447','#759ecd','#d68179','#73a895','#eee4c9','#967caf'][i%6];const torso=cube(root,shirt,0,1,0,.46,.62,.26),head=cube(root,'#e6b995',0,1.53,0,.35,.37,.33),hair=cube(root,'#3e342d',0,1.72,0,.36,.08,.34);const limbs=[];for(const side of [-1,1]){const leg=new THREE.Group();leg.position.set(side*.12,.7,0);cube(leg,'#485770',0,-.34,0,.16,.68,.18);cube(leg,'#e8e9e3',0,-.66,-.04,.19,.13,.3);root.add(leg);const arm=new THREE.Group();arm.position.set(side*.3,1.23,0);cube(arm,shirt,0,-.17,0,.14,.34,.17);cube(arm,'#e6b995',0,-.4,0,.12,.2,.14);root.add(arm);limbs.push({leg,arm,side});}styleNpc({root,torso,head,hair,arms:limbs.map(l=>l.arm),legs:limbs.map(l=>l.leg)},i,'visitor');let camera=null,flash=null;if(kind==='photo'){camera=new THREE.Group();camera.position.set(0,1.32,-.48);cube(camera,'#1c2228',0,0,0,.26,.18,.14);cube(camera,'#382a20',.09,0,0,.08,.17,.15);cube(camera,'#252b33',-.04,0,-.1,.13,.13,.12);cube(camera,'#b8c4ce',-.04,0,-.11,.14,.14,.025);cube(camera,'#38aec5',-.04,0,-.165,.09,.09,.015,true);cube(camera,'#1c2228',-.04,.11,0,.1,.05,.1);flash=cube(camera,'#ffffff',.08,.09,-.075,.05,.035,.015,true);flash.visible=false;cube(camera,'#142232',-.02,0,.074,.2,.13,.01,true);root.add(camera);}scene.add(root);pedestrians.push({root,torso,limbs,kind,route,t:route?route.lengthMeters*(i*.137%1):0,point,phase:i*1.7,speed:.65+(i%4)*.1,camera,flash,head,armLX:0,armLY:0,armLZ:0,armRX:0,armRY:0,armRZ:0,crouch:0});}
  const walkXs=new Map();function walkX(z,offset){const key=z+':'+offset;if(!walkXs.has(key)){let x=promenadeX(z)-offset;while(roadContains(x-.4,z)&&x<promenadeX(z)+.5)x+=.25;walkXs.set(key,x);}return walkXs.get(key);}
  // The north bridge approach and the widened bend cross the former walking loop.

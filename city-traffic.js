@@ -190,6 +190,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
  for(const b of buses.filter((b,i)=>i%2===0)){const p=routePose(b.route,b.stopD,5.6),a=p.yaw,x=p.x+.5,z=p.z+.5;if(!clearPoint(x,z))continue;const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const bund=b.route===rear,name=bund?'滨江候车点':'陆家嘴候车点';r.add(createBusStopSign({name,code:bund?'游1':'游2',line:bund?'滨江环线':'陆家嘴环线',stations:bund?['滨江候车点','南京路步行街']:['陆家嘴候车点'],yaw:a}));stops.push({root:r,route:b.route,d:b.stopD,yaw:a,name});}
  for(const c of cars)c.crossings=routeCrossings(c.route,signals);
  const agents=[...cars,...buses,...riders];agents.forEach((a,i)=>a.trafficId=i);let clock=0,first=0,junctionClock=-1,junctions=createJunctionControl(undefined,{getPose:junctionPose});
+ // The active list can shrink on player takeover. Only the active prefix is used.
+ const travelled=new Float64Array(agents.length);
  function pose(c,t){const at=routePose(c.route,t,c.lane);at.x+=.5;at.z+=.5;if(c.kind==='bridge')at.y=nanpuFloor(world,at.x,at.z)??at.y;at.yaw+=c.dir<0?Math.PI:0;return at;}
  function junctionPose(c,d){
   if(!c.detour)return pose(c,c.t+c.dir*d);
@@ -279,7 +281,20 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,allObstacles))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;c.pedaling?.advance(travel);for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
   }first=(first+1)%agents.length;contactGrid=null;gridObstacles=null;gridAllObstacles=null;
  }
- function tick(dt,{night=false,rain=0}={}){if(dt>0)processDetours();let remaining=dt;const travelled=new Map(agents.map(c=>[c,0]));while(remaining>1e-8){const step=Math.min(remaining,1/30);remaining-=step;advance(step);for(const c of agents)travelled.set(c,travelled.get(c)+c.travelSpeed*step);}if(dt>0)for(const c of agents)c.travelSpeed=travelled.get(c)/dt;for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
+ function tick(dt,{night=false,rain=0}={}){
+  if(dt>0){
+   processDetours();
+   let remaining=dt;
+   travelled.fill(0,0,agents.length);
+   while(remaining>1e-8){
+    const step=Math.min(remaining,1/30);
+    remaining-=step;
+    advance(step);
+    for(let i=0;i<agents.length;i++)travelled[i]+=agents[i].travelSpeed*step;
+   }
+   for(let i=0;i<agents.length;i++)agents[i].travelSpeed=travelled[i]/dt;
+  }
+  for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
   for(const c of agents)for(const light of c.lights??[])light.visible=night||rain>.2;
   for(const o of officers){o.arm.rotation.x=signalPhase(clock,o.signal.offset).ns==='green'?-Math.PI/2:-.15;o.root.rotation.y=Math.PI/2;}
  }

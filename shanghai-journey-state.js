@@ -1,4 +1,5 @@
 import {TravelJournalState} from './travel-journal-state.js';
+import {POSTCARD_STOPS} from './shanghai-postcard-sequel.js';
 export const JOURNEY_CHAPTERS=[
  {id:'letter',title:'江风里的一张明信片',hint:'跟随黄色方向走近林阿姨：电脑 WASD / 手机左下角摇杆；按 V 或点「互动 V」聊聊。'},
  {id:'taste',title:'南京路的第一口热气',hint:'沿南京路进入任一家营业店铺，按 V 打开柜台，购买一份商品。'},
@@ -14,9 +15,24 @@ export const JOURNEY_CHAPTERS=[
 export const JOURNEY_SOUVENIR='沪上初游 · 旅行纪念卡';
 export class ShanghaiJourneyState{
  constructor(){this.trailEnabled=true;this.phase='new';this.index=0;this.tracked=true;this.seconds=0;this.gardenTalk=false;this.completedAt=null;this.memory='江风';this.pendingShopTalk=false;this.edition=3;this.encounters=[];this.officeErrand='new';this.touristPhoto='new';this.windowSeen=false;this.gallerySeen=false;this.bazaarSeen=false;this.journal=new TravelJournalState();}
+ postcardIndex=null;
+ postcardTracked=false;
  get chapter(){return JOURNEY_CHAPTERS[this.index]??null;}
  get unlocked(){return this.index>=2;}
  get complete(){return this.index===JOURNEY_CHAPTERS.length;}
+ get postcardStop(){return this.complete?POSTCARD_STOPS[this.postcardIndex??0]??null:null;}
+ trackPostcard(tracked){
+  if(!this.postcardStop)return false;
+  if(tracked)this.postcardIndex??=0;
+  this.postcardTracked=tracked;
+  return true;
+ }
+ recordPostcard(id){
+  if(!this.postcardTracked||this.postcardStop?.id!==id)return false;
+  this.postcardIndex++;
+  if(!this.postcardStop)this.postcardTracked=false;
+  return true;
+ }
  begin(){if(this.phase!=='new')return false;this.phase='opening';return true;}
  opened(){if(this.phase!=='opening')return false;this.phase='journey';return true;}
  advance(){const stamp={letter:'bund',taste:'nanjing','lujiazui-metro':'lujiazui','lujiazui-view':'sky',garden:'garden',view:'window',tea:'tea'}[this.chapter.id];if(stamp)this.journal.stamp(stamp);this.index++;if(this.complete)this.phase='ending';return true;}
@@ -49,11 +65,13 @@ export class ShanghaiJourneyState{
  }
  tick(dt){if(this.phase==='journey'&&Number.isFinite(dt)&&dt>0)this.seconds+=Math.min(dt,.25);}
  ended(){if(this.phase==='ending')this.phase='complete';}
- serialize(){return {version:1,trailEnabled:this.trailEnabled,edition:this.edition,officeErrand:this.officeErrand,touristPhoto:this.touristPhoto,phase:this.phase,index:this.index,tracked:this.tracked,seconds:this.seconds,gardenTalk:this.gardenTalk,completedAt:this.completedAt,memory:this.memory,pendingShopTalk:this.pendingShopTalk,encounters:this.encounters.map(p=>({...p})),windowSeen:this.windowSeen,gallerySeen:this.gallerySeen,bazaarSeen:this.bazaarSeen,journal:this.journal.serialize()};}
+ serialize(){return {version:1,trailEnabled:this.trailEnabled,edition:this.edition,officeErrand:this.officeErrand,touristPhoto:this.touristPhoto,phase:this.phase,index:this.index,tracked:this.tracked,seconds:this.seconds,gardenTalk:this.gardenTalk,completedAt:this.completedAt,memory:this.memory,pendingShopTalk:this.pendingShopTalk,encounters:this.encounters.map(p=>({...p})),windowSeen:this.windowSeen,gallerySeen:this.gallerySeen,bazaarSeen:this.bazaarSeen,journal:this.journal.serialize(),postcardIndex:this.postcardIndex,postcardTracked:this.postcardTracked};}
  restore(d){
   if(!d||d.version!==1){Object.assign(this,new ShanghaiJourneyState());this.tracked=false;return;}
   this.index=Number.isInteger(d.index)?Math.max(0,Math.min(JOURNEY_CHAPTERS.length,d.index)):0;
   this.phase=this.complete?'complete':d.phase==='new'?'new':'journey';
+  this.postcardIndex=this.complete&&Number.isInteger(d.postcardIndex)?Math.max(0,Math.min(POSTCARD_STOPS.length,d.postcardIndex)):null;
+  this.postcardTracked=this.postcardIndex!==null&&!!this.postcardStop&&d.postcardTracked===true;
   this.trailEnabled=d.trailEnabled!==false;this.tracked=d.tracked!==false;this.seconds=Number.isFinite(d.seconds)?Math.max(0,Math.min(1e7,d.seconds)):0;
   const gardenIndex=JOURNEY_CHAPTERS.findIndex(c=>c.id==='garden');this.gardenTalk=this.index>gardenIndex||this.index===gardenIndex&&d.gardenTalk===true;this.pendingShopTalk=this.index===2&&d.pendingShopTalk===true;
   this.completedAt=this.complete&&typeof d.completedAt==='string'?d.completedAt.slice(0,40):null;this.memory=['江风','灯火','茶香'].includes(d.memory)?d.memory:'江风';

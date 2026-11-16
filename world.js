@@ -5,15 +5,28 @@ import {roadContains} from './city-layout.js';
 import {buildPeaceDining} from './peace-restaurant.js';
 import {buildLine10} from './metro-line10-layout.js';
 import {buildYuyuan,YUYUAN,yuyuanReserved} from './yuyuan-layout.js';
-import {buildMetro,metroProtected,METRO_STATIONS} from './metro-layout.js';
+import {buildMetro,buildMetroEast,metroProtected,METRO_STATIONS} from './metro-layout.js';
+import {buildMetroWest} from './metro-west-layout.js';
 import {buildPrivateSuites,suiteProtected} from './private-suite-layout.js';
 import {buildWaibaidu,waibaiduProtected,WAIBAIDU} from './waibaidu-layout.js';
+import {EXPO,EXPO_SHORE,PUDONG_LAND_START,buildExpo,expoProtected,onExpoPromenade} from './expo-layout.js';
+import {CENTURY_PARK,buildCenturyPark,centuryParkGround} from './century-park.js';
+import {XINTIANDI,buildXintiandi} from './xintiandi-layout.js';
+import {WUKANG,PUXI_RESIDENCES,buildWukang,wukangReserved} from './wukang-layout.js';
+import {FUXING_PARK,buildPuxiSouth} from './puxi-south-layout.js';
+import {JINGAN,buildJingan,buildJinganBanks,jinganProtected} from './jingan-layout.js';
+import {NANJING_WEST,buildNanjingWest} from './nanjing-west-layout.js';
+import {buildBeijingEast} from './beijing-east-layout.js';
+import {buildJiujiangHankou} from './jiujiang-hankou-layout.js';
+import {SIHANG,buildSihang,sihangProtected} from './sihang-layout.js';
+import {buildSurvivalPaddock} from './survival-paddock.js';
+import {SOUTH_ISLANDS} from './south-islands.js';
 import {ROADS} from './city-layout.js';
-import {riverTerrain,buildRiverfront,buildBridges,cityProtected,CITY,BRIDGES,PERSONAL,PEARL,MAGNOLIA,MAP_BOUNDS} from './shanghai-map.js';
+import {riverTerrain,northShoreHeight,buildRiverfront,buildBridges,cityProtected,CITY,BRIDGES,PERSONAL,PEARL,MAGNOLIA,MAP_BOUNDS} from './shanghai-map.js';
 export {CITY,BRIDGES} from './shanghai-map.js';
-export const WORLD_MIN=MAP_BOUNDS.min,WORLD_MAX=MAP_BOUNDS.max,SIZE=WORLD_MAX-WORLD_MIN, HEIGHT=144, CHUNK=16, WORLD_SHIFT=16, WATER_LEVEL=22.25;
+export const WORLD_MIN=MAP_BOUNDS.min,WORLD_MAX=MAP_BOUNDS.max,WORLD_MIN_Z=MAP_BOUNDS.minZ,SIZE=WORLD_MAX-WORLD_MIN,DEPTH=WORLD_MAX-WORLD_MIN_Z, HEIGHT=144, CHUNK=16, WORLD_SHIFT=16, WATER_LEVEL=22.25;
 export const BLOCKS=[null,{name:'草方块',color:'#77ad42'},{name:'泥土',color:'#956a45'},{name:'石头',color:'#939e9c'},{name:'木头',color:'#88603d'},{name:'树叶',color:'#498548'},{name:'沙子',color:'#e5d59b'},{name:'木板',color:'#c29b61'},{name:'砖块',color:'#b76950'},{name:'明珠银白',color:'#deded5'},{name:'霓虹玫红',color:'#db6594'},{name:'蓝色玻璃',color:'#61c9df'},{name:'荧光晶砖',color:'#c4f77c'}];
-function track(id,name,description,points,base,sprint=false){if(id==='harbor')points=points.map(([x,z,...rest])=>[x+PERSONAL.dx,z+PERSONAL.dz,...rest]);if(id==='cliff')points=points.map(([x,z,...rest])=>[x+157,z,...rest]);if(id==='forest')points=points.map(([x,z,...rest])=>[x+157,z+91,...rest]);const platforms=points.map(([x,z,dy=0,r=1],i)=>({x:x+.5,y:base+dy,z:z+.5,radius:r,stage:Math.floor(i/5)+1}));return {id,name,description,platforms,start:platforms[0],fallY:base-1.5,sprint,bounds:{x1:Math.min(...points.map(p=>p[0]))-2,x2:Math.max(...points.map(p=>p[0]))+2,z1:Math.min(...points.map(p=>p[1]))-2,z2:Math.max(...points.map(p=>p[1]))+2}};}
+function track(id,name,description,points,base,sprint=false){if(id==='harbor')points=points.map(([x,z,...rest])=>[x+PERSONAL.dx,z+PERSONAL.dz,...rest]);if(id==='cliff')points=points.map(([x,z,...rest])=>[x+157,z,...rest]);if(id==='forest')points=points.map(([x,z,...rest])=>[x+157+SOUTH_ISLANDS.forest.dx,z+91+SOUTH_ISLANDS.forest.dz,...rest]);const platforms=points.map(([x,z,dy=0,r=1],i)=>({x:x+.5,y:base+dy,z:z+.5,radius:r,stage:Math.floor(i/5)+1}));return {id,name,description,platforms,start:platforms[0],fallY:base-1.5,sprint,bounds:{x1:Math.min(...points.map(p=>p[0]))-2,x2:Math.max(...points.map(p=>p[0]))+2,z1:Math.min(...points.map(p=>p[1]))-2,z2:Math.max(...points.map(p=>p[1]))+2}};}
 export const COURSES=[
  track('harbor','海港折线','12 关 · 宽平台、短长间隔与转弯，适合热身。',[[69,70],[72,70],[76,71,1],[79,74,1],[81,77,2],[85,78,2],[89,77,2],[91,73,1],[95,71,1],[98,73,2],[101,77,2],[105,79,3]],26),
  track('forest','林间踏叶','24 关 · 小平台、侧跳和高低落差，沿林冠绕行。',[[158,161,0],[161,163,1],[165,164,1],[169,167,0],[171,171,1,0],[174,174,2],[178,175,2],[181,172,1,0],[184,169,2],[188,170,2],[191,174,3],[193,178,3,0],[190,182,2],[186,184,3],[183,188,4],[187,191,4],[191,194,4],[195,192,5],[198,188,5],[202,190,4],[205,194,5],[202,198,5],[198,202,6],[194,204,6]],45),
@@ -21,29 +34,43 @@ export const COURSES=[
 ];
 export const COURSE=COURSES[0].platforms;
 export const courseById=id=>COURSES.find(c=>c.id===id)||COURSES[0];
-export const LANDMARKS={yuyuan:YUYUAN.arrival,waibaidu:{x:WAIBAIDU.x+5.2,y:26,z:WAIBAIDU.south-1,name:'外白渡桥 · 苏州河口'},village:{x:75,y:26,z:329,name:'奶龙村'},gallery:{x:92,y:26,z:329,name:'涂鸦街'},tower:{x:126,y:26,z:54,name:'东方明珠'},deck:{...PEARL_DECK.arrival,name:'东方明珠 · 玻璃观景层'},race:{...COURSES[0].start,name:'海港跑酷'},spring:{x:95,y:26,z:339,name:'弹跳广场'},dock:{x:260.5,y:23,z:228.5,name:'潜水补给站'},reef:{x:284,y:9,z:287,name:'珊瑚花园'},temple:{x:273.5,y:9,z:301.5,name:'海底神殿'},forest:{x:331,y:35,z:240,name:'翡翠林岛'},desert:{x:65,y:29,z:230,name:'金沙岛'},shanghai:{x:CITY.shanghai.x,y:26,z:CITY.shanghai.z-3,name:'上海中心大厦'},towerOffice:{x:CITY.shanghai.x,y:46,z:CITY.shanghai.z-3,name:'上海中心 · 办公层'},duoyun:{x:CITY.shanghai.x,y:66,z:CITY.shanghai.z-3,name:'52F · 朵云书院'},skyGarden:{x:CITY.shanghai.x,y:86,z:CITY.shanghai.z+4,name:'上海中心 · 空中花园'},skyDeck:{x:CITY.shanghai.x,y:136,z:CITY.shanghai.z,name:'上海中心 · 巅峰观景台'},jinmao:{x:CITY.jinmao.x,y:26,z:CITY.jinmao.z+9,name:'金茂大厦'},jinmaoDeck:{x:CITY.jinmao.x,y:91,z:CITY.jinmao.z,name:'金茂 · 观景台'},swfc:{x:CITY.swfc.x+11,y:26,z:CITY.swfc.z,name:'环球金融中心'},swfcDeck:{x:CITY.swfc.x,y:104,z:CITY.swfc.z,name:'环球 · 云端天桥'},magnolia:{x:MAGNOLIA.x+10.5,y:26,z:MAGNOLIA.z+.5,name:'白玉兰广场'},helipad:{x:MAGNOLIA.x+4.5,y:83,z:MAGNOLIA.z+4.5,name:'白玉兰 · 直升机平台'},northBund:{x:145.5,y:26,z:-130.5,name:'北外滩观景点'},bund:{x:promenadeX(84)-10.5,y:26,z:84.5,name:'外滩观景步道'},nanpu:{x:236.5,y:31,z:206.5,name:'南浦风格斜拉桥'},bankStreet:{x:29.5,y:26,z:94.5,name:'外滩万国建筑街'},southPark:{x:195.5,y:26,z:48.5,name:'陆家嘴中心绿地'},survivalCamp:{x:130.5,y:26,z:309.5,name:'生存营地'}};
+export const LANDMARKS={yuyuan:YUYUAN.arrival,waibaidu:{x:WAIBAIDU.x+5.2,y:26,z:WAIBAIDU.south-1,name:'外白渡桥 · 苏州河口'},village:{x:75,y:26,z:329,name:'奶龙村'},gallery:{x:92,y:26,z:329,name:'涂鸦街'},tower:{x:126,y:26,z:54,name:'东方明珠'},deck:{...PEARL_DECK.arrival,name:'东方明珠 · 玻璃观景层'},race:{...COURSES[0].start,name:'海港跑酷'},spring:{x:95,y:26,z:339,name:'弹跳广场'},dock:{x:260.5,y:23,z:228.5,name:'潜水补给站'},reef:{x:284,y:9,z:287,name:'珊瑚花园'},temple:{x:273.5,y:9,z:301.5,name:'海底神殿'},forest:SOUTH_ISLANDS.forest.arrival,mountain:SOUTH_ISLANDS.mountain.arrival,outer:SOUTH_ISLANDS.outer.arrival,desert:{x:65,y:29,z:230,name:'金沙岛'},shanghai:{x:CITY.shanghai.x,y:26,z:CITY.shanghai.z-3,name:'上海中心大厦'},towerOffice:{x:CITY.shanghai.x,y:46,z:CITY.shanghai.z-3,name:'上海中心 · 办公层'},duoyun:{x:CITY.shanghai.x,y:66,z:CITY.shanghai.z-3,name:'52F · 朵云书院'},skyGarden:{x:CITY.shanghai.x,y:86,z:CITY.shanghai.z+4,name:'上海中心 · 空中花园'},skyDeck:{x:CITY.shanghai.x,y:136,z:CITY.shanghai.z,name:'上海中心 · 巅峰观景台'},jinmao:{x:CITY.jinmao.x,y:26,z:CITY.jinmao.z+9,name:'金茂大厦'},jinmaoDeck:{x:CITY.jinmao.x,y:91,z:CITY.jinmao.z,name:'金茂 · 观景台'},swfc:{x:CITY.swfc.x+11,y:26,z:CITY.swfc.z,name:'环球金融中心'},swfcDeck:{x:CITY.swfc.x,y:104,z:CITY.swfc.z,name:'环球 · 云端天桥'},magnolia:{x:MAGNOLIA.x+10.5,y:26,z:MAGNOLIA.z+.5,name:'白玉兰广场'},helipad:{x:MAGNOLIA.x+4.5,y:83,z:MAGNOLIA.z+4.5,name:'白玉兰 · 直升机平台'},northBund:{x:145.5,y:26,z:-130.5,name:'北外滩观景点'},bund:{x:promenadeX(84)-10.5,y:26,z:84.5,name:'外滩观景步道'},nanpu:{x:236.5,y:31,z:206.5,name:'南浦风格斜拉桥'},bankStreet:{x:29.5,y:26,z:94.5,name:'外滩万国建筑街'},southPark:{x:195.5,y:26,z:48.5,name:'陆家嘴中心绿地'},survivalCamp:{x:130.5,y:26,z:309.5,name:'生存营地'}};
 export const SHANGHAI={...CITY.shanghai,base:26};
+LANDMARKS.expo=EXPO.arrival;
+LANDMARKS.expoRiver=EXPO.river;
+LANDMARKS.centuryPark=CENTURY_PARK.arrival;
+LANDMARKS.xintiandi=XINTIANDI.arrival;
+LANDMARKS.wukang=WUKANG.arrival;
+LANDMARKS.puxiResidences=PUXI_RESIDENCES.arrival;
+LANDMARKS.fuxingPark=FUXING_PARK.arrival;
+LANDMARKS.jingan=JINGAN.arrival;
+LANDMARKS.exhibition=NANJING_WEST.arrival;
+LANDMARKS.sihang=SIHANG.arrival;
 export function towerProfile(y,a){const t=Math.max(0,Math.min(1,(y-26)/110)),radius=9*(1-.43*t),rotation=t*Math.PI*2/3;return radius*(.87+.13*Math.cos((a-rotation)*3));}
 export const CRYSTALS=[{id:'village',name:'出发之光',x:78.5,y:27.5,z:327.5},{id:'gallery',name:'涂鸦之光',x:93,y:27.5,z:329,requires:'paint'},{id:'forest',name:'森林之光',x:63.5,y:30.5,z:339.5},{id:'deck',name:'云端之光',...PEARL_DECK.crystal},{id:'race',name:'跃动之光',x:COURSE.at(-1).x,y:COURSE.at(-1).y+1.5,z:COURSE.at(-1).z}];
+const ISLAND_TERRAIN=[[65,230,27,28,0],...Object.values(SOUTH_ISLANDS).map(p=>[p.x,p.z,p.radius,p.peak,p.noiseOffset])];
 export class VoxelWorld {
- constructor({data,surface,generate=true}={}){this.data=data??new Uint8Array(SIZE*SIZE*HEIGHT);this.surface=surface??new Uint16Array(SIZE*SIZE);if(generate)this.generate()}
- index(x,y,z){return (y*SIZE+z-WORLD_MIN)*SIZE+x-WORLD_MIN}
- valid(x,y,z){return x>=WORLD_MIN&&z>=WORLD_MIN&&y>=0&&x<WORLD_MAX&&z<WORLD_MAX&&y<HEIGHT}
+ constructor({data,surface,generate=true}={}){this.data=data??new Uint8Array(SIZE*DEPTH*HEIGHT);this.surface=surface??new Uint16Array(SIZE*DEPTH);if(generate)this.generate()}
+ index(x,y,z){return (y*DEPTH+z-WORLD_MIN_Z)*SIZE+x-WORLD_MIN}
+ valid(x,y,z){return x>=WORLD_MIN&&z>=WORLD_MIN_Z&&y>=0&&x<WORLD_MAX&&z<WORLD_MAX&&y<HEIGHT}
  get(x,y,z){return this.valid(x,y,z)?this.data[this.index(x,y,z)]:0}
  set(x,y,z,id){if(!this.valid(x,y,z))return false;this.data[this.index(x,y,z)]=id;return true}
  ground(x,z){for(let y=HEIGHT-1;y>=0;y--)if(this.get(x,y,z))return y+1;return 0}
- protected(x,y,z){return y===0||y>=25&&yuyuanReserved(x,z)||waibaiduProtected(x,y,z)||suiteProtected(x,y,z)||metroProtected(x,y,z)||bundProtected(x,y,z)||cityProtected(x,y,z)||(x>=113&&x<=139&&z>=29&&z<=56&&y>=25)||(x>=86&&x<=98&&z>=323&&z<=328&&y>=25)||COURSES.some(c=>x>=c.bounds.x1&&x<=c.bounds.x2&&z>=c.bounds.z1&&z<=c.bounds.z2&&y>=c.fallY-2)||(x>=61&&x<=66&&z>=337&&z<=342&&y>=25)||(x>=94&&x<=97&&z>=338&&z<=341&&y>=25)||(x>=257&&x<=263&&z>=214&&z<=230&&y>=21)||(x>=262&&x<=278&&z>=292&&z<=308&&y>=6);}
- surfaceAt(x,z){return this.valid(Math.floor(x),0,Math.floor(z))?this.surface[(Math.floor(z)-WORLD_MIN)*SIZE+Math.floor(x)-WORLD_MIN]||1:1;}
+ protected(x,y,z){return y===0||sihangProtected(x,y,z)||expoProtected(x,y,z)||jinganProtected(x,y,z)||y>=25&&(yuyuanReserved(x,z)||wukangReserved(x,z))||waibaiduProtected(x,y,z)||suiteProtected(x,y,z)||metroProtected(x,y,z)||bundProtected(x,y,z)||cityProtected(x,y,z)||(x>=113&&x<=139&&z>=29&&z<=56&&y>=25)||(x>=86&&x<=98&&z>=323&&z<=328&&y>=25)||COURSES.some(c=>x>=c.bounds.x1&&x<=c.bounds.x2&&z>=c.bounds.z1&&z<=c.bounds.z2&&y>=c.fallY-2)||(x>=61&&x<=66&&z>=337&&z<=342&&y>=25)||(x>=94&&x<=97&&z>=338&&z<=341&&y>=25)||(x>=257&&x<=263&&z>=214&&z<=230&&y>=21)||(x>=262&&x<=278&&z>=292&&z<=308&&y>=6);}
+ surfaceAt(x,z){return this.valid(Math.floor(x),0,Math.floor(z))?this.surface[(Math.floor(z)-WORLD_MIN_Z)*SIZE+Math.floor(x)-WORLD_MIN]||1:1;}
  fill(x1,y1,z1,x2,y2,z2,id){for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)for(let z=z1;z<=z2;z++)this.set(x,y,z,id)}
  disc(cx,y,cz,r,id){for(let x=Math.ceil(cx-r);x<=cx+r;x++)for(let z=Math.ceil(cz-r);z<=cz+r;z++)if(Math.hypot(x-cx,z-cz)<=r)this.set(x,y,z,id)}
  orb(cx,cy,cz,r){for(let x=Math.floor(cx-r);x<=Math.ceil(cx+r);x++)for(let y=Math.floor(cy-r);y<=Math.ceil(cy+r);y++)for(let z=Math.floor(cz-r);z<=Math.ceil(cz+r);z++){const d=Math.hypot(x-cx,y-cy,z-cz);if(d<=r&&d>r-1.3)this.set(x,y,z,Math.abs(y-cy)<=1?11:10)}}
  generate(){
-  for(let x=WORLD_MIN;x<WORLD_MAX;x++)for(let z=WORLD_MIN;z<WORLD_MAX;z++){
+  for(let x=WORLD_MIN;x<WORLD_MAX;x++)for(let z=WORLD_MIN_Z;z<WORLD_MAX;z++){
    let h=6+Math.floor(Math.sin(x*.14)+Math.cos(z*.17));
-   for(const [cx,cz,r,peak] of [[330,60,31,34],[330,259,37,35],[65,230,27,28],[350,355,21,29]]){const d=Math.hypot(x-cx,z-cz);if(d<r)h=Math.max(h,Math.floor(peak-Math.max(0,d-r*.53)*.8+Math.sin((x-(cx===330?157:cx===350?132:0))*.2)*1.4));}
+   for(const [cx,cz,r,peak,noise] of ISLAND_TERRAIN){const d=Math.hypot(x-cx,z-cz);if(d<r)h=Math.max(h,Math.floor(peak-Math.max(0,d-r*.53)*.8+Math.sin((x-noise)*.2)*1.4));}
    if((x>=69&&x<=82&&z>=312&&z<=334)||(x>=82&&x<=139&&z>=315&&z<=358))h=25;
    h=riverTerrain(x,z,h);
-   this.surface[(z-WORLD_MIN)*SIZE+x-WORLD_MIN]=h+1;
+   const shore=EXPO_SHORE[z-PUDONG_LAND_START];if(shore!==undefined&&x>=shore&&!(x>=254&&x<=266&&z>=219&&z<=236))h=25;
+   if(x>=CENTURY_PARK.bounds.minX&&x<=CENTURY_PARK.bounds.maxX&&z>=CENTURY_PARK.bounds.minZ&&z<=CENTURY_PARK.bounds.maxZ)h=centuryParkGround(x,z,h);
+   if(z<-147)h=northShoreHeight(x,z,h);
+   this.surface[(z-WORLD_MIN_Z)*SIZE+x-WORLD_MIN]=h+1;
    const desert=Math.hypot(x-65,z-230)<28;
    for(let y=0;y<=h;y++)this.set(x,y,z,y===h?(h<WATER_LEVEL||desert?6:1):y<h-3?3:2);
   }
@@ -79,7 +106,7 @@ export class VoxelWorld {
   for(let i=0;i<4;i++){legacy.fill(29,12-i,63+i,30,12-i,63+i,7)}
   // Star crystal at the lookout is reachable from the platform, even in walking mode.
   // New islands and deep-sea landmarks.
-  for(let x=299;x<365;x+=7)for(let z=224;z<293;z+=9){const y=this.surfaceAt(x,z);if(y<=WATER_LEVEL+1||COURSES.some(c=>x>=c.bounds.x1&&x<=c.bounds.x2&&z>=c.bounds.z1&&z<=c.bounds.z2))continue;this.fill(x,y,z,x,y+4,z,4);for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=3;dy<=5;dy++)if(Math.abs(dx)+Math.abs(dz)<4)this.set(x+dx,y+dy,z+dz,5);}
+  for(let x=192;x<258;x+=7)for(let z=327;z<396;z+=9){const y=this.surfaceAt(x,z);if(y<=WATER_LEVEL+1||COURSES.some(c=>x>=c.bounds.x1&&x<=c.bounds.x2&&z>=c.bounds.z1&&z<=c.bounds.z2))continue;this.fill(x,y,z,x,y+4,z,4);for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=3;dy<=5;dy++)if(Math.abs(dx)+Math.abs(dz)<4)this.set(x+dx,y+dy,z+dz,5);}
 
   for(const c of COURSES){const b=c.bounds;this.fill(b.x1,Math.floor(c.fallY)-1,b.z1,b.x2,65,b.z2,0);for(const [i,p] of c.platforms.entries()){const x=Math.floor(p.x),z=Math.floor(p.z),r=p.radius;this.fill(x-r,p.y-1,z-r,x+r,p.y-1,z+r,i%5===0?12:c.id==='forest'?5:c.id==='cliff'?10:11);this.set(x,p.y-1,z,12);}}
   const towerDx=CITY.shanghai.x-136.5,towerDz=CITY.shanghai.z-38.5;
@@ -102,17 +129,22 @@ export class VoxelWorld {
   sea.fill(122,16,137,138,16,153,11);sea.fill(128,9,141,132,10,149,9);
   for(let i=0;i<32;i++){const x=140+(i*7%23),z=119+(i*11%29),y=sea.surfaceAt(x,z);if(y>WATER_LEVEL-5)continue;sea.set(x,y,z,i%2?10:12);sea.set(x,y+1,z,i%2?10:11);if(i%3===0){sea.set(x-1,y+1,z,10);sea.set(x+1,y+1,z,10)}}
   // A small wreck and seaweed beds.
-  sea.fill(151,6,119,160,6,124,7);sea.fill(152,7,119,159,8,119,7);sea.fill(152,7,124,159,8,124,7);sea.fill(156,7,122,156,13,122,4);
+  sea.fill(98,6,119,107,6,124,7);sea.fill(99,7,119,106,8,119,7);sea.fill(99,7,124,106,8,124,7);sea.fill(103,7,122,103,13,122,4);
   for(let i=0;i<55;i++){const x=115+i*13%60,z=103+i*19%55,y=sea.surfaceAt(x,z);if(y<WATER_LEVEL-7)for(let h=0;h<2+i%4;h++)sea.set(x,y+h,z,5);}
   // A clear arrival pocket inside the coral garden keeps equipment teleport safe.
   this.fill(283,8,286,285,8,288,6);this.fill(283,9,286,285,12,288,0);
-  buildRiverfront(this);buildBund(this);buildBridges(this,roadContains);buildWaibaidu(this,ROADS);buildPeaceDining(this);buildYuyuan(this);buildMetro(this);buildLine10(this,buildMetro,METRO_STATIONS);buildPrivateSuites(this);buildTowerInteriors(this,towerProfile);
+  buildRiverfront(this);buildBund(this);buildExpo(this,roadContains);buildCenturyPark(this);buildXintiandi(this);buildWukang(this);buildPuxiSouth(this);buildJingan(this,roadContains);buildNanjingWest(this);buildBridges(this,(x,z)=>roadContains(x,z)||onExpoPromenade(x,z));buildWaibaidu(this,ROADS,WORLD_MIN);buildJinganBanks(this,roadContains);buildPeaceDining(this);buildYuyuan(this);buildMetro(this);buildLine10(this,buildMetro,METRO_STATIONS);buildPrivateSuites(this);buildTowerInteriors(this,towerProfile);
+  buildBeijingEast(this,roadContains);
+  buildJiujiangHankou(this,roadContains);
+  buildMetroWest(this,buildMetro);buildMetroEast(this);
+  buildSihang(this);
+  buildSurvivalPaddock(this);
 
  }
 }
 export function overlaps(world,x,y,z,radius=.29){
  if(y>68.09&&y<73&&pearlObservationCollides(x,y,z))return true;
- if(x<WORLD_MIN+.3||z<WORLD_MIN+.3||x>WORLD_MAX-.3||z>WORLD_MAX-.3||y<1)return true;
+ if(x<WORLD_MIN+.3||z<WORLD_MIN_Z+.3||x>WORLD_MAX-.3||z>WORLD_MAX-.3||y<1)return true;
  for(let ix=Math.floor(x-radius);ix<=Math.floor(x+radius);ix++)for(let iy=Math.floor(y+.001);iy<=Math.floor(y+1.75);iy++)for(let iz=Math.floor(z-radius);iz<=Math.floor(z+radius);iz++)if(world.get(ix,iy,iz))return true;return false;
 }
 export function trace(world,origin,dir,reach=7){let last=null;for(let t=0;t<=reach;t+=.025){const x=Math.floor(origin.x+dir.x*t),y=Math.floor(origin.y+dir.y*t),z=Math.floor(origin.z+dir.z*t);if(world.get(x,y,z))return {x,y,z,id:world.get(x,y,z),place:last};last={x,y,z}}return null;}

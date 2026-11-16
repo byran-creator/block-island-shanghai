@@ -15,7 +15,7 @@ export class CanvasRenderer {
    if(!obj.isMesh||obj.userData.skyGradient||!obj.geometry.attributes.position)return;
    const geo=obj.geometry,pos=geo.attributes.position,norm=geo.attributes.normal,uv=geo.attributes.uv,colors=geo.attributes.color,ix=geo.index,mat=obj.material;
    if(Array.isArray(mat))return;
-   let palette=null;if(mat.map?.image&&uv){palette=this.textureColors.get(mat.map);if(!palette){try{const image=mat.map.image;if(image.width===224){const c=image.getContext('2d');palette=Array.from({length:14},(_,i)=>{const d=c.getImageData(i*16+8,8,1,1).data;return new THREE.Color(`rgb(${d[0]},${d[1]},${d[2]})`)});this.textureColors.set(mat.map,palette)}}catch{}}}
+   let palette=null;if(mat.map?.image&&uv){palette=this.textureColors.get(mat.map);if(!palette){try{const image=mat.map.image;if(image.width===224){const c=image.getContext('2d');palette=Array.from({length:14*(image.height/16)},(_,i)=>{const d=c.getImageData(i%14*16+8,Math.floor(i/14)*16+8,1,1).data;return new THREE.Color(`rgb(${d[0]},${d[1]},${d[2]})`)});this.textureColors.set(mat.map,palette)}}catch{}}}
    const start=geo.drawRange.start,count=Math.min(ix?ix.count:pos.count,start+geo.drawRange.count);
    for(let instance=0;instance<(obj.isInstancedMesh?obj.count:1);instance++){
     const objectWorld=obj.isInstancedMesh?(obj.getMatrixAt(instance,this.instanceMatrix),this.instanceWorld.multiplyMatrices(obj.matrixWorld,this.instanceMatrix)):obj.matrixWorld;this.mvp.multiplyMatrices(this.pv,objectWorld);
@@ -26,7 +26,7 @@ export class CanvasRenderer {
     const screen=[];let invalid=false;for(const id of ids){point.fromBufferAttribute(pos,id).applyMatrix4(this.mvp);if(point.z<-.99||point.z>=1.001){invalid=true;break}screen.push([(point.x+1)*w/2,(1-point.y)*h/2,point.z])}if(invalid)continue;
     const [a,b,c]=screen;const cross=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);if(cross>=0&&mat.side!==THREE.DoubleSide)continue;
     if(screen.every(v=>v[0]<0)||screen.every(v=>v[0]>w)||screen.every(v=>v[1]<0)||screen.every(v=>v[1]>h))continue;
-    color.copy(mat.color??new THREE.Color('white'));if(palette){const tile=Math.min(13,Math.floor(uv.getX(ids[0])*14));color.multiply(palette[tile]);}
+    color.copy(mat.color??new THREE.Color('white'));if(palette){const row=Math.min(palette.length/14-1,Math.floor((1-uv.getY(ids[0]))*palette.length/14));const tile=row*14+Math.min(13,Math.floor(uv.getX(ids[0])*14));color.multiply(palette[tile]);}
     let light=1;if(!mat.isMeshBasicMaterial){this.normal.fromBufferAttribute(norm,ids[0]).transformDirection(objectWorld);light=.68+Math.max(0,this.normal.y)*.28+Math.max(0,-this.normal.x)*.06;light*=scene.userData.softwareLight??1;}
     if(colors){if(obj.userData.rgbColors){color.r*=colors.getX(ids[0]);color.g*=colors.getY(ids[0]);color.b*=colors.getZ(ids[0]);}else light*=colors.getX(ids[0]);}color.multiplyScalar(light);const fog=mat.fog===false?0:Math.max(0,Math.min(1,(dist-scene.fog.near)/(scene.fog.far-scene.fog.near)));color.lerp(scene.fog.color,fog);
     polygons.push({screen,depth:(a[2]+b[2]+c[2])/3,fill:color.getStyle(),alpha:mat.opacity??1,image:obj.userData.panel?mat.map?.image:null,tex:obj.userData.panel?ids.map(id=>[uv.getX(id)*mat.map.image.width,(1-uv.getY(id))*mat.map.image.height]):null});

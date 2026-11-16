@@ -8,5 +8,6 @@ export function createBicyclePedaling({legs,makePart,phase=0}){
  function pose(){for(const r of rigs){const a=angle+(r.side<0?0:Math.PI),fy=.6+Math.cos(a)*.15,fz=.01+Math.sin(a)*.15,hy=1.2,hz=.15,dy=fy-hy,dz=fz-hz,d=Math.hypot(dy,dz),bend=Math.sqrt(Math.max(0,.41*.41-d*d/4)),ky=(hy+fy)/2-dz/d*bend,kz=(hz+fz)/2+dy/d*bend,x=r.side*.15;
    segment(r.upper,hy,hz,ky,kz,x);segment(r.shin,ky,kz,fy,fz,x);r.shoe.position.set(x,fy-.035,fz-.04);r.pedal.position.set(r.side*.2,fy-.09,fz);segment(r.crank,.51,.01,fy-.09,fz,r.side*.18);
   }}
- pose();return {rigs,get phase(){return angle;},advance(distance){if(!Number.isFinite(distance)||!distance)return;angle=(angle+distance/.72)%(Math.PI*2);pose();}};
+ // The bicycle faces local -Z, so the upper pedal travels towards -Z.
+ pose();return {rigs,get phase(){return angle;},advance(distance){if(!Number.isFinite(distance)||!distance)return;angle=(angle-distance/.72)%(Math.PI*2);pose();}};
 }

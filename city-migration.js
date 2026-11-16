@@ -1,4 +1,22 @@
 import {migrateWestBankPoint,CITY} from './shanghai-map.js';
+import {moveFormerEastIslandPoint} from './south-islands.js';
+
+export function migrateSouthIslandsSave(data){
+ if(data?.version!==6||!Number.isInteger(data.mapRevision)||data.mapRevision>=12)return data;
+ const copy=structuredClone(data);
+ moveFormerEastIslandPoint(copy.pos);
+ copy.edits=copy.edits.map(entry=>{
+  if(!Array.isArray(entry)||typeof entry[0]!=='string')return entry;
+  const xyz=entry[0].split(',').map(Number);
+  if(xyz.length!==3||!xyz.every(Number.isInteger))return entry;
+  const point={x:xyz[0],y:xyz[1],z:xyz[2]};
+  moveFormerEastIslandPoint(point);
+  return [`${point.x},${point.y},${point.z}`,entry[1]];
+ });
+ for(const item of copy.life?.furniture??[])moveFormerEastIslandPoint(item);
+ moveFormerEastIslandPoint(copy.life?.home);
+ return copy;
+}
 const previousCity={jinmao:{x:159.5,z:62.5},swfc:{x:181.5,z:56.5},shanghai:{x:157.5,z:91.5}};
 const revision10City={jinmao:{x:171.5,z:78.5},swfc:{x:197.5,z:90.5},shanghai:{x:169.5,z:106.5}};
 export function migrateTrioPoint(p,source=previousCity){

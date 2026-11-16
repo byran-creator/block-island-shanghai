@@ -1,9 +1,9 @@
-import {VoxelWorld,SIZE,HEIGHT} from './world.js';
+import {VoxelWorld,SIZE,DEPTH,HEIGHT} from './world.js';
 import {generateWorld,WORLD_BUILD_ID} from './world-generation.js';
 import {validBaselineRuns} from './world-baseline.js';
 // Base-world cache is separate from player saves. Bump this when generation changes.
-export const WORLD_CACHE_REVISION='island-bridge-clear-v87';
-export const validWorldCache=r=>r?.revision===WORLD_CACHE_REVISION&&(!WORLD_BUILD_ID||r.buildId===WORLD_BUILD_ID)&&r.data instanceof Uint8Array&&r.data.length===SIZE*SIZE*HEIGHT&&r.surface instanceof Uint16Array&&r.surface.length===SIZE*SIZE;
+export const WORLD_CACHE_REVISION='sihang-and-paddock-v109';
+export const validWorldCache=r=>r?.revision===WORLD_CACHE_REVISION&&(!WORLD_BUILD_ID||r.buildId===WORLD_BUILD_ID)&&r.data instanceof Uint8Array&&r.data.length===SIZE*DEPTH*HEIGHT&&r.surface instanceof Uint16Array&&r.surface.length===SIZE*DEPTH;
 function database(){return new Promise((resolve,reject)=>{const request=indexedDB.open('block-island-city-cache',1);request.onupgradeneeded=()=>request.result.createObjectStore('base');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);request.onblocked=()=>reject(new Error('Cache blocked'));});}
 async function read(){const db=await database();try{return await new Promise((resolve,reject)=>{const t=db.transaction('base'),r=t.objectStore('base').get('city');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}finally{db.close();}}
 async function write(world){const db=await database();try{await new Promise((resolve,reject)=>{const t=db.transaction('base','readwrite');t.objectStore('base').put({revision:WORLD_CACHE_REVISION,buildId:WORLD_BUILD_ID,data:world.data,surface:world.surface,baseline:world.baseline},'city');t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});}finally{db.close();}}

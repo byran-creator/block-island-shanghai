@@ -1,11 +1,12 @@
 import {createVehicleTakeover} from './vehicle-takeover.js';
 import {createBicyclePedaling} from './bicycle-pedaling.js';
 import * as THREE from './three.module.js';
-import {LANDMARKS,WORLD_MIN,WORLD_MAX,HEIGHT,overlaps,trace} from './world.js';
+import {LANDMARKS,WORLD_MIN,WORLD_MIN_Z,WORLD_MAX,HEIGHT,overlaps,trace} from './world.js';
 import {promenadeX,roadContains} from './city-layout.js';
 import {safeLanding} from './map-travel.js';
 import {updateDrive,DRIVE_MODES,vehicleContact,vehiclePenetration} from './vehicle-dynamics.js';
 import {nanpuFloor} from './bridge-road.js';
+import {EXPO} from './expo-layout.js';
 
 export function createCommute({scene,world,civil,activity,getPos,blocked,vehicleBlocked=null,fixtureBlocked=()=>false,exitBlocked=blocked,place,setView,turnView,notify,onExit=()=>{},allowed=()=>true,getActors=()=>[],onImpact=()=>{}}){
  const root=new THREE.Group();root.name='player-commuting';scene.add(root);const vehicles=[],box=new THREE.BoxGeometry(1,1,1);let ride=null;
@@ -23,7 +24,7 @@ export function createCommute({scene,world,civil,activity,getPos,blocked,vehicle
  });}
  for(const z of [99,162]){const p=parking('bicycle',promenadeX(z)-6,z+5);if(p)groundVehicle('bicycle',p);}
  for(const z of [99,192]){const p=parking('car',promenadeX(z)-12,z+9);if(p)groundVehicle('car',p);}
- for(const [kind,x,z]of [['bicycle',184,52],['car',224,37]]){const p=parking(kind,x,z);if(p)groundVehicle(kind,p);}
+ for(const [kind,x,z]of [['bicycle',184,52],['car',224,37],['bicycle',EXPO.bicycle.x,EXPO.bicycle.z]]){const p=parking(kind,x,z);if(p)groundVehicle(kind,p);}
  const heli={kind:'helicopter',root:activity.heli,speed:0,yaw:0,halfWidth:1.15,halfLength:2.1,maxSpeed:24};vehicles.push(heli);const home=heli.root.position.clone();
  const takeover=createVehicleTakeover({scene,world,traffic:civil.traffic,cars:civil.cars??(civil.traffic.agents??[]).filter(c=>!['bus','delivery','bicycle'].includes(c.kind)),getPos,blocked,mount,vehicles,notify,canStart:()=>!ride&&allowed()});
  function exitPoint(){if(!ride)return null;const v=ride.vehicle,p=v.root.position,a=v.root.rotation.y,isHeli=ride.kind==='helicopter',bridge=nanpuFloor(world,p.x,p.z),base=bridge??Math.round(p.y),levels=isHeli?[base,base-1]:[base];
@@ -47,7 +48,7 @@ export function createCommute({scene,world,civil,activity,getPos,blocked,vehicle
    for(let iy=Math.floor(probe+.001);iy<=Math.floor(probe+1.75);iy++)if(world.get(ix,iy,iz))return true;
   }return false;
  }
- function bodyClear(v,x,y,z,a=v.yaw){if(fixtureBlocked(x,y,z,a,v.halfWidth,v.halfLength))return false;if(x<WORLD_MIN+3||x>WORLD_MAX-3||z<WORLD_MIN+3||z>WORLD_MAX-3)return false;if(vehicleBlocked&&v.kind!=='helicopter'&&voxelBodyBlocked(v,x,y,z,a))return false;for(const dx of [-v.halfWidth,0,v.halfWidth])for(const dz of [-v.halfLength,0,v.halfLength]){const xx=x+dx*Math.cos(a)+dz*Math.sin(a),zz=z-dx*Math.sin(a)+dz*Math.cos(a),h=v.kind==='helicopter'?null:nanpuFloor(world,xx,zz),probe=h!==null&&Math.abs(y-h)<1.5?Math.max(y,Math.ceil(h)):y;if((vehicleBlocked&&v.kind!=='helicopter'?vehicleBlocked(xx,probe,zz):blocked(xx,probe,zz))||v.kind==='helicopter'&&overlaps(world,xx,y+1.5,zz))return false;}return actorClear(v,x,y,z,a);}
+ function bodyClear(v,x,y,z,a=v.yaw){if(fixtureBlocked(x,y,z,a,v.halfWidth,v.halfLength))return false;if(x<WORLD_MIN+3||x>WORLD_MAX-3||z<WORLD_MIN_Z+3||z>WORLD_MAX-3)return false;if(vehicleBlocked&&v.kind!=='helicopter'&&voxelBodyBlocked(v,x,y,z,a))return false;for(const dx of [-v.halfWidth,0,v.halfWidth])for(const dz of [-v.halfLength,0,v.halfLength]){const xx=x+dx*Math.cos(a)+dz*Math.sin(a),zz=z-dx*Math.sin(a)+dz*Math.cos(a),h=v.kind==='helicopter'?null:nanpuFloor(world,xx,zz),probe=h!==null&&Math.abs(y-h)<1.5?Math.max(y,Math.ceil(h)):y;if((vehicleBlocked&&v.kind!=='helicopter'?vehicleBlocked(xx,probe,zz):blocked(xx,probe,zz))||v.kind==='helicopter'&&overlaps(world,xx,y+1.5,zz))return false;}return actorClear(v,x,y,z,a);}
  function actorAt(v,x,y,z,a){return actors().find(o=>vehicleContact(v,x,y,z,a,o));}
  function hit(v,x,y,z,a){const speed=Math.abs(v.speed),actor=actorAt(v,x,y,z,a);if((v.impactCooldown??0)<=0&&speed>.35){v.shock=Math.min(.9,speed*.09);v.impactCooldown=.45;const sign=Math.sign(v.speed);if(actor)onImpact(actor,-Math.sin(a)*sign,-Math.cos(a)*sign,speed);notify(actor?.person?'撞到行人，已急刹；请减速让行。':actor?'发生车辆碰撞，请减速绕行。':'碰到障碍，松开油门或倒车调整方向。');}v.speed=actor?.person?0:-v.speed*.12;v.throttle=0;}
  function moveGround(v,dt,keys){let remaining=dt;while(remaining>0){const step=Math.min(remaining,1/120);remaining-=step;const before=v.root.position.clone(),{yawDelta,distance}=updateDrive(v,step,keys),a=v.yaw+yawDelta,p=v.root.position;

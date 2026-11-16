@@ -1,5 +1,8 @@
 import {BUND_SHIFT} from './shanghai-map.js';
 
+export const NANPU_PYLONS=[168,210];
+export const NANPU_LEGS=[201,211];
+
 // One continuous height profile for the visible deck, traffic and player vehicles.
 export function nanpuSurfaceAt(x,z){
  if(x>=120-.5&&x<=283&&z>=203&&z<=210){
@@ -10,7 +13,9 @@ export function nanpuSurfaceAt(x,z){
  return null;
 }
 export function nanpuFloor(world,x,z){
- const y=nanpuSurfaceAt(x,z),ix=Math.floor(x),iz=Math.floor(z),column=nanpuSurfaceAt(ix+.5,iz+.5);
- return y!==null&&column!==null&&world.get(ix,Math.floor(column+1e-6)-1,iz)===9?y:null;
+ const y=nanpuSurfaceAt(x,z);
+ if(y===null)return null;
+ const ix=Math.floor(x),iz=Math.floor(z),column=nanpuSurfaceAt(ix+.5,iz+.5);
+ return column!==null&&world.get(ix,Math.floor(column+1e-6)-1,iz)===9?y:null;
 }
 export function nanpuDeckCell(x,y,z){const h=nanpuSurfaceAt(x+.5,z+.5);return h!==null&&y===Math.floor(h+1e-6)-1;}

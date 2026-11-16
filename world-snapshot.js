@@ -4,7 +4,7 @@ const MAX_VOXELS=64*1024*1024,MAX_SURFACE=1024*1024,MAX_PACKED=16*1024*1024,MAX_
 const integer=(n,max)=>Number.isSafeInteger(n)&&n>0&&n<=max;
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 function validateManifest(m){
- if(!m||m.format!==FORMAT||typeof m.revision!=='string'||!m.revision.length||m.revision.length>128||!Number.isSafeInteger(m.maxBlockId)||m.maxBlockId<0||m.maxBlockId>255||!integer(m.size,1024)||!integer(m.height,512)||!integer(m.voxelLength,MAX_VOXELS)||!integer(m.surfaceLength,MAX_SURFACE)||m.surfaceLength!==m.size*m.size||m.voxelLength!==m.surfaceLength*m.height||!integer(m.runCount,m.voxelLength)||!integer(m.packedByteLength,MAX_PACKED)||!integer(m.compressedByteLength,MAX_COMPRESSED)||!hash(m.packedSha256)||!hash(m.compressedSha256))throw new Error('Invalid world snapshot manifest');
+ if(!m||m.format!==FORMAT||typeof m.revision!=='string'||!m.revision.length||m.revision.length>128||!Number.isSafeInteger(m.maxBlockId)||m.maxBlockId<0||m.maxBlockId>255||!integer(m.size,1024)||!integer(m.height,512)||!integer(m.voxelLength,MAX_VOXELS)||!integer(m.surfaceLength,MAX_SURFACE)||!integer(m.depth??m.size,1024)||m.surfaceLength!==m.size*(m.depth??m.size)||m.voxelLength!==m.surfaceLength*m.height||!integer(m.runCount,m.voxelLength)||!integer(m.packedByteLength,MAX_PACKED)||!integer(m.compressedByteLength,MAX_COMPRESSED)||!hash(m.packedSha256)||!hash(m.compressedSha256))throw new Error('Invalid world snapshot manifest');
  return m;
 }
 export function decodeWorldSnapshot(packed,manifest){

@@ -4,6 +4,7 @@ import {itemImage,collectibleKey} from './item-catalog.js';
 import {CITY_QUESTS,CityQuestState} from './city-quests.js';
 import {BLOCKS} from './world.js';
 import {questTarget} from './quest-guidance.js';
+import {POSTCARD_INTRO,POSTCARD_TITLE} from './shanghai-postcard-sequel.js';
 import * as THREE from './three.module.js';
 export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},canOpen=()=>true,scene=null,getContext=()=>null,getYaw=()=>0,getStory=()=>null,getJourney=()=>null,onJourneyAction=()=>{},onTrack=()=>{},openMap=()=>{},openSettings=()=>{}}){
  const $=id=>document.getElementById(id),state=new CityQuestState();let lastReplayRevision=0,panel=false,clock=0,marker=null,selected=null,category='all',openedOnce=false;
@@ -32,6 +33,10 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
   const {done,ready,j}=updateLauncher();$('task-summary').textContent='主线与城市委托随当前存档保存 · 支线 '+done+' / '+CITY_QUESTS.length+' · 待领取 '+ready+' 项';
   const filters=$('task-categories');filters.replaceChildren();for(const [id,label]of [['all','全部'],['main','主线'],['city','城市'],['survival','生存'],['done','已完成']]){const b=el('button',label);b.setAttribute('aria-pressed',String(category===id));b.onclick=()=>{category=id;selected=null;render();};filters.append(b);}
   const rows=[];if(j&&(category==='all'||category==='main'||category==='done'&&j.complete))rows.push({id:'journey',name:'初到上海 · 一张明信片',kind:j.unlocked?'主线旅程':'新手引导',status:j.complete?'已完成 · 纪念卡已领取':j.phase==='new'?'旧存档可自由加入':j.chapter.title,progress:j.index+' / '+j.chapters.length});
+  const postcard=j?.postcard;
+  if(postcard&&(category==='all'||category==='main'||category==='done'&&!postcard.stop))rows.push({
+   id:'postcard',name:POSTCARD_TITLE,kind:'可选续篇',status:!postcard.stop?'已完成':!postcard.started?'可开启':postcard.stop.title,progress:postcard.index+' / '+postcard.total
+  });
   for(const q of CITY_QUESTS){const survival=q.id.startsWith('survival-'),finished=state.done(q.id);if(category==='main'||category==='city'&&survival||category==='survival'&&!survival||category==='done'&&!finished)continue;rows.push({id:q.id,name:q.title,kind:survival?'生存探索':'城市委托',status:state.claimed.has(q.id)?'已领取':finished?'可领取奖励':state.tracked===q.id?'正在追踪':'进行中',progress:Math.min(q.target,state.progress[q.id]??0)+' / '+q.target});}
   if(!rows.some(r=>r.id===selected))selected=rows[0]?.id;$('task-list').replaceChildren();
   for(const row of rows){const b=el('button',null,'quest-row');if(row.id==='journey')b.id='journey-journal';b.setAttribute('aria-current',String(selected===row.id));b.append(el('small',row.kind,'quest-kind'),el('strong',row.name),el('small',row.status+' · '+row.progress));b.onclick=()=>{selected=row.id;render();};$('task-list').append(b);}
@@ -44,6 +49,18 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
    const chapters=el('details'),summary=el('summary','查看十章旅程 · '+j.index+' / '+j.chapters.length);chapters.append(summary);for(const [i,c]of j.chapters.entries())chapters.append(el('p',(i<j.index?'✓ ':i===j.index?'◆ ':'○ ')+(i+1)+'. '+c.title));detail.append(chapters);
    const act=action=>{close();onJourneyAction(action);};if(j.phase==='new')add('开启新手旅程',()=>act('start'),true);else if(j.complete){add('查看纪念卡与结算',()=>act('recap'),true);add('重看终章',()=>act('film'));}else{add(j.unlocked?'继续主线':'继续新手引导',()=>act('track'),true);if(j.tracked)add('暂时收起追踪',()=>act('stop'));add('地图查看',()=>{onJourneyAction('track');close();openMap();});}
    if(!j.complete&&j.index<5)add(j.trailEnabled===false?'开启地面方向箭头':'收起地面方向箭头',()=>{onJourneyAction('trail');render();});add('上海旅行手账 · N',()=>act('book'));if(j.replaying)add('结束本次重游',()=>act('stop-replay'));
+  }else if(selected==='postcard'){
+   detail.append(el('small','可选续篇 / '+POSTCARD_TITLE),el('h3',postcard.stop?.title??'写给下一位旅人'),
+    el('p',placeLabel(postcard.goal,'上海旅行手账'),'quest-place'),
+    el('p',postcard.stop?postcard.goal.instruction:'明信片已经写完。可在手账的「纪念与重游」重读五段札记。','quest-objective'),
+    el('p',POSTCARD_INTRO,'quest-description'));
+   const act=action=>{close();onJourneyAction(action);};
+   if(postcard.stop){
+    add(postcard.started?'继续续篇':'开启续篇',()=>act('postcard-track'),true);
+    if(postcard.tracked)add('暂时收起追踪',()=>act('postcard-stop'));
+    add('地图查看',()=>{act('postcard-track');openMap();});
+   }
+   add('上海旅行手账 · N',()=>act('book'),!postcard.stop);
   }else{
    const q=CITY_QUESTS.find(q=>q.id===selected),goal=questTarget(q.id,getContext()??{}),finished=state.done(q.id),claimed=state.claimed.has(q.id);detail.append(el('small',q.id.startsWith('survival-')?'生存探索':'城市委托'),el('h3',q.title),el('p',placeLabel(goal,q.id==='survival-intro'?'设置 · 游玩模式':'完成后可在此领取'),'quest-place'),el('p',finished?'任务已完成':goal?.instruction??q.description,'quest-objective'),el('p',q.description,'quest-description'));rewardTiles([...Object.entries(q.reward.blocks??{}).map(([id,n])=>({key:'block:'+id,text:BLOCKS[id].name+' × '+n})),...['food','wool','pearls'].filter(k=>q.reward[k]).map(key=>({key,text:({food:'食物',wool:'羊毛',pearls:'海珍珠'})[key]+' × '+q.reward[key]})),...Object.entries(q.reward.collectibles??{}).map(([name,n])=>({key:collectibleKey(name),text:name+' × '+n}))]);if(finished){const b=add(claimed?'奖励已领取':'领取奖励',()=>{const r=state.claim(q.id);if(!r)return;grant(r);render();onProgress();notify('已领取「'+q.title+'」奖励：'+rewards(r));},true);b.disabled=claimed;}else{add(state.tracked===q.id?'停止追踪':'追踪目标',()=>{track(state.tracked===q.id?null:q.id);close();},true);if(q.id==='survival-intro')add('打开设置',()=>{track(q.id);close();openSettings();});else add('地图查看',()=>{track(q.id);close();openMap();});}
   }detail.append(controls);

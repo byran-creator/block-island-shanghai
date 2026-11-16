@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import {trace,WORLD_MIN,WORLD_MAX,HEIGHT,LANDMARKS} from './world.js';
+import {trace,WORLD_MIN,WORLD_MIN_Z,WORLD_MAX,HEIGHT,LANDMARKS} from './world.js';
 const box=new THREE.BoxGeometry(1,1,1),materials=new Map();
 function block(parent,color,x,y,z,w,h,d){let mat=materials.get(color);if(!mat){mat=new THREE.MeshLambertMaterial({color});materials.set(color,mat)}const m=new THREE.Mesh(box,mat);m.position.set(x,y,z);m.scale.set(w,h,d);parent.add(m);return m;}
 function label(text,color='#d5fd87'){
@@ -49,7 +49,7 @@ export function createCompanions(scene,world,notify,onInteraction){
    if(n.happy>0)moving=false;
    const floor=floorAt(p.x,p.z,p.y);if(p.y>floor)p.y=Math.max(floor,p.y-dt*8);
    if(moving){const speed=n.follow?1.8:.55;const nx=p.x+Math.sin(n.heading)*speed*dt,nz=p.z+Math.cos(n.heading)*speed*dt,ny=floorAt(nx,nz,p.y);
-    if(nx>WORLD_MIN+3&&nz>WORLD_MIN+3&&nx<WORLD_MAX-3&&nz<WORLD_MAX-3&&ny>=23&&Math.abs(ny-p.y)<=1.05&&clear(n,nx,ny,nz)){p.x=nx;p.z=nz;p.y=ny;n.root.rotation.y=n.heading;}
+    if(nx>WORLD_MIN+3&&nz>WORLD_MIN_Z+3&&nx<WORLD_MAX-3&&nz<WORLD_MAX-3&&ny>=23&&Math.abs(ny-p.y)<=1.05&&clear(n,nx,ny,nz)){p.x=nx;p.z=nz;p.y=ny;n.root.rotation.y=n.heading;}
     else{moving=false;n.heading+=Math.PI*.7;n.timer=1.5;}
    }
    if(dist<4&&!moving)n.root.rotation.y=Math.atan2(pos.x-p.x,pos.z-p.z);

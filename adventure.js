@@ -1,19 +1,22 @@
 import {PEARL_DECK} from './pearl-observation-layout.js';
 import {createPearlObservation} from './pearl-observation.js';
 import {createWorldCaption} from './world-caption.js';
-import {LINE10_WORLD_STATIONS} from './metro-line10-layout.js';
+import {METRO_MAP_ROUTES} from './metro-map-routes.js';
 import {yuyuanWalkRoute} from './yuyuan-access.js';
 import {drawQuestTarget} from './quest-guidance.js';
 import {drawMapPlayer} from './map-heading.js';
-import {mapBackgroundPixels} from './map-background.js';
+import {layoutCityMapLabels,drawCityMapLabels} from './city-map-labels.js';
+import {MAP_WATER_COLOR,mapBackgroundPixels} from './map-background.js';
 import * as THREE from './three.module.js';
-import {SIZE,WORLD_MIN,WORLD_MAX,BLOCKS,LANDMARKS,COURSE,COURSES,courseById,WORLD_SHIFT,WATER_LEVEL,CRYSTALS,CITY,overlaps} from './world.js';
+import {SIZE,DEPTH,WORLD_MIN,WORLD_MIN_Z,WORLD_MAX,BLOCKS,LANDMARKS,COURSE,COURSES,courseById,WORLD_SHIFT,WATER_LEVEL,CRYSTALS,CITY,overlaps} from './world.js';
 import {AdventureState} from './adventure-state.js';
 import {BUND_BUILDINGS} from './bund.js';
 import {ROADS,roadX} from './city-layout.js';
 import {SHOW_VIEW} from './drone-show.js';
 import {createPearlShow} from './pearl-show.js';
-import {TRAVEL_POINTS,mapPosition,mapHit} from './map-travel.js';
+import {TRAVEL_POINTS,mapPosition,mapHit,MAP_VIEW_MIN_Z,MAP_VIEW_DEPTH} from './map-travel.js';
+import {expoBank} from './expo-layout.js';
+import {createCityMapViewport} from './city-map-viewport.js';
 const $=id=>document.getElementById(id);
 export function createAdventure({scene,world,notify,beep,teleport,setFlying,getFlying,pause,resume,burst,setNight,lookAt=()=>{},onProgress=()=>{},fastTravel=teleport,getQuestTarget=()=>null,getYaw=()=>0,grantPearlSnack=()=>{}}){
  createPearlObservation(scene);
@@ -29,14 +32,26 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
  sign('东方明珠 · V 乘观光电梯',126,13.3,53,'#ffb9db',5);sign('观景层 · 电梯与沪上小食',126,57.3,41.3,'#ffb9db',2.5);sign('涂鸦街 · B 开始创作',92,17,325,'#c4f77c',4.6);for(const c of COURSES)sign(c.name+' · V 选赛道',c.start.x,c.start.y+3-WORLD_SHIFT,c.start.z,'#a1e8ff',4.8);
  sign('弹跳广场 · 踩上去！',95,13.2,339,'#d5fd87',3.6);sign('森林观景台',63.5,16,339.5,'#d5fd87',3);
  for(const c of CRYSTALS){const group=new THREE.Group();group.position.set(c.x,c.y,c.z);const gem=new THREE.Mesh(gemGeo,new THREE.MeshBasicMaterial({color:c.id==='deck'?'#ff98cb':'#bdff75'}));group.add(gem);const ring=new THREE.Mesh(new THREE.TorusGeometry(.68,.035,5,24),new THREE.MeshBasicMaterial({color:'#ffffdc',transparent:true,opacity:.7}));ring.rotation.x=Math.PI/2;group.add(ring);scene.add(group);crystals.push({data:c,group,gem});}
- const minimap=$('minimap'),mc=minimap.getContext('2d'),mapBg=document.createElement('canvas');mapBg.width=SIZE;mapBg.height=SIZE;const bg=mapBg.getContext('2d');
+ const minimap=$('minimap'),mc=minimap.getContext('2d'),mapBg=document.createElement('canvas');mapBg.width=SIZE;mapBg.height=DEPTH;const bg=mapBg.getContext('2d');
+ const largeMap=$('large-map');
+ for(const canvas of [minimap,largeMap]){canvas.height=Math.round(canvas.width*MAP_VIEW_DEPTH/SIZE);canvas.style?.setProperty('--city-map-ratio',String(SIZE/MAP_VIEW_DEPTH));}
+ const mapViewport=createCityMapViewport(largeMap.parentElement,largeMap,()=>document.body.classList.contains('force-landscape'));
+ let cityMapLabels;
  if(bg?.createImageData){
-  const imgData=bg.createImageData(SIZE,SIZE);mapBackgroundPixels(world,imgData.data);
+  const imgData=bg.createImageData(SIZE,DEPTH);mapBackgroundPixels(world,imgData.data);
   bg.putImageData(imgData,0,0);
  }else{
-  for(let x=WORLD_MIN;x<WORLD_MAX;x++)for(let z=WORLD_MIN;z<WORLD_MAX;z++){const y=world.ground(x,z),id=world.get(x,y-1,z);bg.fillStyle=y<WATER_LEVEL?'#236179':id===5?'#315b40':BLOCKS[id]?.color??'#46874e';bg.fillRect(x-WORLD_MIN,z-WORLD_MIN,1,1)}
+  for(let x=WORLD_MIN;x<WORLD_MAX;x++)for(let z=WORLD_MIN_Z;z<WORLD_MAX;z++){const y=world.ground(x,z),id=world.get(x,y-1,z);bg.fillStyle=y<WATER_LEVEL?MAP_WATER_COLOR:id===5?'#315b40':BLOCKS[id]?.color??'#46874e';bg.fillRect(x-WORLD_MIN,z-WORLD_MIN_Z,1,1)}
  }
- function drawMap(canvas,context,pos){const s=canvas.width/SIZE,m=v=>(v-WORLD_MIN)*s;context.imageSmoothingEnabled=false;context.fillStyle='#236179';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(mapBg,0,0,canvas.width,canvas.height);context.lineWidth=Math.max(.8,s*3);context.strokeStyle='#4b6779';for(const road of ROADS){context.beginPath();road.samples.forEach((p,i)=>i?context.lineTo(m(p.x),m(p.z)):context.moveTo(m(p.x),m(p.z)));context.stroke();}context.strokeStyle='#c5a3cd';context.beginPath();LINE10_WORLD_STATIONS.forEach((p,i)=>i?context.lineTo(m(p.x),m(p.z)):context.moveTo(m(p.x),m(p.z)));context.stroke();context.strokeStyle='#c5ae7b';context.beginPath();yuyuanWalkRoute(world).forEach((p,i)=>i?context.lineTo(m(p[0]),m(p[1])):context.moveTo(m(p[0]),m(p[1])));context.stroke();context.strokeStyle='#e5b85a';context.lineWidth=Math.max(1,s*5);context.beginPath();context.moveTo(m(-188),m(66));context.lineTo(m(roadX(66)-4),m(66));context.stroke();for(const [key,l] of Object.entries(LANDMARKS)){if(['deck','skyGarden','skyDeck','jinmaoDeck','swfcDeck'].includes(key))continue;context.fillStyle=key==='tower'?'#ff76ae':'#ffffff';context.fillRect(m(l.x)-2,m(l.z)-2,4,4)}for(const b of BUND_BUILDINGS){context.fillStyle='#ffdc8d';context.fillRect(m(b.x)-2,m(b.z)-2,4,4);}for(const c of CRYSTALS)if(!state.collected.has(c.id)){context.fillStyle=c.requires&&!state.painted?'#798687':'#d8ff83';context.beginPath();context.arc(m(c.x),m(c.z),2.6,0,Math.PI*2);context.fill();}if(canvas.width>=400){context.font='bold 13px sans-serif';context.textAlign='center';context.lineWidth=3;context.strokeStyle='#15323d';context.fillStyle='#fff';for(const [text,x,z] of [['东方明珠',126,27],['金茂',191,78],['环球',225,86],['上海中心',189,120],['白玉兰',82,-66],['黄浦江',85,87],['外滩街区',-8,86],['南浦风格桥',238,211],['东北山岛',330,41],['翡翠林岛',330,234],['金沙岛',65,244],['远岛',350,369],['生活岛',75,321],['中心绿地',195,49],['生存营地',131,303]]){context.strokeText(text,m(x),m(z));context.fillText(text,m(x),m(z));}}if(canvas.width>=400){for(const p of TRAVEL_POINTS){const q=mapPosition(p,canvas.width);context.fillStyle='#72e5e5';context.strokeStyle='#102e3b';context.lineWidth=2.5;context.beginPath();context.arc(q.x,q.y,7,0,Math.PI*2);context.fill();context.stroke();}}drawQuestTarget(context,getQuestTarget(),canvas.width,WORLD_MIN,SIZE,pos);drawMapPlayer(context,pos,getYaw(),canvas.width,WORLD_MIN,SIZE);}
+ function drawExpoPath(context,toPixel,toZ){
+  context.strokeStyle='#97dfab';context.lineWidth=2;context.beginPath();
+  for(let z=174;z<=357;z++){
+   const x=toPixel(expoBank(z)+2),y=toZ(z);
+   if(z===174)context.moveTo(x,y);else context.lineTo(x,y);
+  }
+  context.stroke();
+ }
+ function drawMap(canvas,context,pos){const s=canvas.width/SIZE,m=v=>(v-WORLD_MIN)*s,mz=v=>(v-MAP_VIEW_MIN_Z)*s;context.imageSmoothingEnabled=false;context.fillStyle=MAP_WATER_COLOR;context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(mapBg,0,MAP_VIEW_MIN_Z-WORLD_MIN_Z,SIZE,MAP_VIEW_DEPTH,0,0,canvas.width,canvas.height);context.lineWidth=Math.max(.8,s*3);context.strokeStyle='#4b6779';for(const road of ROADS){context.beginPath();if(road.westGrid){context.moveTo(m(road.ax),mz(road.az));context.lineTo(m(road.bx),mz(road.bz));context.stroke();continue;}road.samples.forEach((p,i)=>i?context.lineTo(m(p.x),mz(p.z)):context.moveTo(m(p.x),mz(p.z)));context.stroke();}for(const [color,route] of METRO_MAP_ROUTES){context.strokeStyle=color;context.beginPath();route.forEach((p,i)=>i?context.lineTo(m(p.x),mz(p.z)):context.moveTo(m(p.x),mz(p.z)));context.stroke();}context.strokeStyle='#c5ae7b';context.beginPath();yuyuanWalkRoute(world).forEach((p,i)=>i?context.lineTo(m(p[0]),mz(p[1])):context.moveTo(m(p[0]),mz(p[1])));context.stroke();context.strokeStyle='#e5b85a';context.lineWidth=Math.max(1,s*5);context.beginPath();context.moveTo(m(-188),mz(66));context.lineTo(m(roadX(66)-4),mz(66));context.stroke();for(const [key,l] of Object.entries(LANDMARKS)){if(['deck','skyGarden','skyDeck','jinmaoDeck','swfcDeck'].includes(key))continue;context.fillStyle=key==='tower'?'#ff76ae':'#ffffff';context.fillRect(m(l.x)-2,mz(l.z)-2,4,4)}for(const b of BUND_BUILDINGS){context.fillStyle='#ffdc8d';context.fillRect(m(b.x)-2,mz(b.z)-2,4,4);}for(const c of CRYSTALS)if(!state.collected.has(c.id)){context.fillStyle=c.requires&&!state.painted?'#798687':'#d8ff83';context.beginPath();context.arc(m(c.x),mz(c.z),2.6,0,Math.PI*2);context.fill();}if(canvas.width>=400){drawExpoPath(context,m,mz);cityMapLabels??=layoutCityMapLabels(context,m,canvas.width,mz,canvas.height);drawCityMapLabels(context,cityMapLabels);}if(canvas.width>=400){for(const p of TRAVEL_POINTS){const q=mapPosition(p,canvas.width);context.fillStyle='#72e5e5';context.strokeStyle='#102e3b';context.lineWidth=2.5;context.beginPath();context.arc(q.x,q.y,7,0,Math.PI*2);context.fill();context.stroke();}}drawQuestTarget(context,getQuestTarget(),canvas.width,WORLD_MIN,SIZE,pos,false,MAP_VIEW_MIN_Z,canvas.height);drawMapPlayer(context,pos,getYaw(),canvas.width,WORLD_MIN,SIZE,MAP_VIEW_MIN_Z,canvas.height);}
  function hud(){
   $('quest-count').textContent=`${state.collected.size} / 5`;$('quest-fill').style.width=`${state.collected.size*20}%`;
   $('quest-title').textContent=state.completed?'明珠已经点亮！':'寻找 5 枚灵感晶体';
@@ -45,7 +60,7 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
   $('race-status').classList.toggle('visible',!!state.race);const rc=courseById(state.race?.course);$('race-status').textContent=state.race?`${rc.name} ${state.race.time.toFixed(1)} s · 检查点 ${state.race.checkpoint+1} / ${rc.platforms.length} · V 退出`:'';
   $('show-status').textContent=show.active?'无人机 + 聚光灯 · '+show.drones.phase:'K 烟花 + 无人机 + 陆家嘴灯光秀';$('best-time').textContent=state.best===null?'尚未完成':`${state.best.toFixed(2)} 秒`;
   const mapGoal=getQuestTarget(),mapGuide=$('map-current-quest');if(mapGuide){mapGuide.hidden=!mapGoal;mapGuide.textContent=mapGoal?'◆ '+mapGoal.label+' · 距你 '+Math.round(Math.hypot(mapGoal.x-currentPos.x,mapGoal.z-currentPos.z))+' 格\n'+mapGoal.instruction:'';}
-  const caption=$('minimap-caption'),captionText=mapGoal?'蓝：我 · 黄：目标':'点击地图 / M';if(caption&&caption.textContent!==captionText)caption.textContent=captionText;drawMap(minimap,mc,currentPos);if(panel==='map-dialog')drawMap($('large-map'),$('large-map').getContext('2d'),currentPos);
+  const caption=$('minimap-caption'),captionText=mapGoal?'蓝：我 · 黄：目标':'点击地图 / M';if(caption&&caption.textContent!==captionText)caption.textContent=captionText;drawMap(minimap,mc,currentPos);if(panel==='map-dialog')drawMap(largeMap,largeMap.getContext('2d'),currentPos);
  }
  function near(p,r=3){return Math.hypot(currentPos.x-p.x,currentPos.z-p.z)<r&&Math.abs(currentPos.y-p.y)<3}
  function getPrompt(){if(state.race)return 'V 退出跑酷 · 空格跳跃 · 落下会回到检查点';if(near(PEARL_DECK.snacks,1.3))return state.pearlSnackClaimed?'V 看看沪上小食':'V 领取沪上糕点';if(near(LANDMARKS.deck,1.1))return 'V 乘电梯返回地面';if(near(LANDMARKS.tower,3.5))return 'V 乘观光电梯 · K 烟花灯光秀';if(COURSES.some(c=>near(c.start,4)))return 'V 选择赛道 · 转弯、窄台和高低跳跃';if(near(LANDMARKS.gallery,5))return 'B 在墙上涂鸦 · 解锁涂鸦之光';return '';}
@@ -54,10 +69,20 @@ export function createAdventure({scene,world,notify,beep,teleport,setFlying,getF
  function open(id){if(panel)return;pause();panel=id;$(id).showModal();if(id==='paint-dialog'){const dc=$('paint-canvas').getContext('2d');dc.drawImage(poster,0,0,1024,448);}hud();}
  function close(){if(!panel)return;$(panel).close();panel=null;resume();}
  function paint(){if(near(LANDMARKS.gallery,6))open('paint-dialog');else notify('先到涂鸦街的白墙旁，再按 B。地图上的粉色墙标记就是它。');}
- function map(){open('map-dialog');$('map-dialog').scrollTop=0;}
+ function map(){if(panel)return;open('map-dialog');mapViewport.reset();$('map-dialog').querySelector('.map-sidebar-body')?.scrollTo(0,0);}
  function travel(p){if(state.race){notify('跑酷中不能传送；按 V 退出挑战后再使用。');return;}if(fastTravel(p)!==false){close();hud();notify('已传送到'+p.name);}}
  for(const p of TRAVEL_POINTS){const button=document.createElement('button');button.textContent=p.name;button.dataset.destination=p.id;button.onclick=()=>travel(p);$('map-destinations').appendChild(button);}
- $('large-map').addEventListener('click',e=>{const canvas=$('large-map'),rect=canvas.getBoundingClientRect(),isForced=document.body.classList.contains('force-landscape');const mx=isForced?((e.clientY-rect.top)/rect.height*canvas.width):((e.clientX-rect.left)/rect.width*canvas.width);const mz=isForced?((rect.right-e.clientX)/rect.width*canvas.height):((e.clientY-rect.top)/rect.height*canvas.height);const goal=getQuestTarget();if(goal&&Math.hypot(mx-(goal.x-WORLD_MIN)/SIZE*canvas.width,mz-(goal.z-WORLD_MIN)/SIZE*canvas.height)<28){notify(goal.label+'：'+goal.instruction);return;}const p=mapHit(mx,mz,canvas.width,28);if(p)travel(p);});
+ largeMap.addEventListener('click',event=>{
+  const hit=mapViewport.point(event);
+  if(!hit)return;
+  const goal=getQuestTarget();
+  if(goal){
+   const point=mapPosition(goal,largeMap.width);
+   if(Math.hypot(hit.x-point.x,hit.y-point.y)<hit.radius){notify(goal.label+'：'+goal.instruction);return;}
+  }
+  const destination=mapHit(hit.x,hit.y,largeMap.width,hit.radius);
+  if(destination)travel(destination);
+ });
  for(const c of COURSES){const b=document.createElement('button');b.className='recipe-card';b.textContent=c.name+' · '+c.platforms.length+' 关 · '+c.description;b.onclick=()=>{close();state.startRace(getFlying(),c.id);setFlying(false);teleport(c.start);hud();notify(c.name+'开始！'+(c.sprint?'Shift 冲刺，':'')+'空格跳跃；落下回检查点。')};$('race-options').appendChild(b);}
  const paintCanvas=$('paint-canvas'),dc=paintCanvas.getContext('2d');let drawing=false,ink='#c4ff78',prev=null;dc.lineCap='round';dc.lineJoin='round';
  function paintPoint(e){const r=paintCanvas.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*1024,y:(e.clientY-r.top)/r.height*448}}

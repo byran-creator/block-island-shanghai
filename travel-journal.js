@@ -3,9 +3,10 @@ import {TRAVEL_DISCOVERIES} from './travel-discoveries.js';
 import {travelPhoto,travelThumbnail,removeTravelPhoto} from './travel-photo-store.js';
 import {itemImage,collectibleKey} from './item-catalog.js';
 import {SHOP_PRODUCTS} from './city-products.js';
+import {POSTCARD_INTRO,POSTCARD_TITLE} from './shanghai-postcard-sequel.js';
 
 export function photoPlace(p){return p.x>125&&p.z<210?'陆家嘴 · '+(p.y>50?'云端一眼':'楼下的风'):p.x<40&&p.z>205&&p.z<340?'豫园 · 曲径与灯火':p.x<-10&&Math.abs(p.z-66)<12?'南京路 · 街头一刻':'外滩 · 江的两岸';}
-export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onReplay=()=>{},onFilm=()=>{},onStopReplay=()=>{},onFollow=()=>{},notify=()=>{}}){
+export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onReplay=()=>{},onFilm=()=>{},onStopReplay=()=>{},onFollow=()=>{},onPostcard=()=>{},notify=()=>{}}){
  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
  const panel=el('dialog',null,'game-dialog travel-journal');panel.id='travel-journal';panel.setAttribute('aria-labelledby','travel-journal-title');
  const header=el('header'),heading=el('div'),title=el('h2','上海旅行手账');title.id='travel-journal-title';heading.append(el('small','SHANGHAI / 把这一程收好'),title);const exit=el('button','返回游戏');header.append(heading,exit);
@@ -40,8 +41,16 @@ export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onRe
    }
   }else{
    const items=Object.entries(info.collectibles??{}).filter(([,n])=>n>0);content.append(el('h4','带走的纪念'));for(const [name,count]of items){const row=el('p',null,'travel-keepsake');row.append(itemImage(collectibleKey(name)),el('span',`${SHOP_PRODUCTS[name]?.name??name} × ${count}`));content.append(row);}if(!items.length)content.append(el('p','逛店挑一份纪念，或完成旅程领取专属纪念卡。'));
+   if(info.postcard){
+    const {index,total,entries,stop,started}=info.postcard;
+    content.append(el('h4',POSTCARD_TITLE),el('p',index===total?'五段旅途札记已收齐。':POSTCARD_INTRO));
+    for(const {place,note} of entries){const card=el('article',null,'travel-message');card.append(el('h4',place),el('p',note));content.append(card);}
+    if(stop&&!info.replaying)button(content,started?'继续续篇 · '+stop.title:'开启续篇 · '+POSTCARD_TITLE,()=>{close(false);onPostcard();});
+   }
    content.append(el('h4','回看这一程'),el('p','重游已走到的章节，只改变临时引导；原主线、建造与奖励记录保留。第4章体验陆家嘴相遇；第8章重游豫园圆窗与水上长廊，第9章逛商铺、去湖心亭。原地开始，可用地图前往目标。'));
-   if(info.complete){button(content,'重看开场短片',()=>{close(false);onFilm('opening');});button(content,'重看终章短片',()=>{close(false);onFilm('ending');});}if(info.replayCount>0||info.complete){const chapters=el('div',null,'travel-replays');for(const [i,c]of info.chapters.slice(0,info.replayCount??info.chapters.length).entries())button(chapters,`${i+1} · ${c.title}`,()=>{close(false);onReplay(i);});content.append(chapters);}
+   if(info.replayCount>0||info.complete)button(content,'重看开场短片',()=>{close(false);onFilm('opening');});
+   if(info.complete)button(content,'重看终章短片',()=>{close(false);onFilm('ending');});
+   if(info.replayCount>0||info.complete){const chapters=el('div',null,'travel-replays');for(const [i,c]of info.chapters.slice(0,info.replayCount??info.chapters.length).entries())button(chapters,`${i+1} · ${c.title}`,()=>{close(false);onReplay(i);});content.append(chapters);}
   }
  }
  function open(){pause();document.body.classList.add('in-dialogue');if(!panel.open)panel.showModal();render();exit.focus();}
