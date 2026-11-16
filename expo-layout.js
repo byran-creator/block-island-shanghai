@@ -46,13 +46,15 @@ export function expoChunk(cx,cz,size) {
 }
 
 export function addExpoLandmarkChunks(desired,point,size) {
- // Existing radius already covers close terrain; prepare complete silhouettes
- // a little farther out, only when approaching the Expo waterfront.
- if(point.z<245||point.x<245)return;
- for(const landmark of [EXPO.arena,EXPO.palace]){
-  if(Math.hypot(point.x-landmark.x,point.z-landmark.z)>120)continue;
-  for(let x=Math.floor((landmark.x-landmark.rx)/size);x<=Math.floor((landmark.x+landmark.rx)/size);x++){
-   for(let z=Math.floor((landmark.z-landmark.rz)/size);z<=Math.floor((landmark.z+landmark.rz)/size);z++)desired.add(x+','+z);
+ // Include the southern islands in waterfront views. Measure to the footprint
+ // so a venue can never be requested only along the near edge of its roof.
+ if(point.z<245)return;
+ for(const [venue,front,back] of [[EXPO.arena,15,17],[EXPO.palace,22,20]]){
+  const minX=venue.x-venue.rx,maxX=venue.x+venue.rx,minZ=venue.z-front,maxZ=venue.z+back;
+  const dx=Math.max(minX-point.x,point.x-maxX,0),dz=Math.max(minZ-point.z,point.z-maxZ,0);
+  if(dx*dx+dz*dz>130**2)continue;
+  for(let x=Math.floor(minX/size);x<=Math.floor(maxX/size);x++){
+   for(let z=Math.floor(minZ/size);z<=Math.floor(maxZ/size);z++)desired.add(x+','+z);
   }
  }
 }
