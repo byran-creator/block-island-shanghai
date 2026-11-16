@@ -42,7 +42,7 @@ const expoActors=[
  ['run','闻帆 · 夕阳跑者',.90,'跑到这一段，灯亮起来的时候很好看。','哪里能看夕阳？','往靠水的步道去，站在开阔处，能望到江对岸。']
 ];
 
-export function createParkLife({scene,world,getPos,getVehicles=()=>[]}){
+export function createParkLife({scene,world,getPos,getVehicles=()=>[],hasTerrainAt=()=>true}){
  const box=new THREE.BoxGeometry(1,1,1),tire=new THREE.TorusGeometry(.31,.045,5,12).rotateY(Math.PI/2);
  const materials=new Map();
  function material(color){
@@ -97,7 +97,7 @@ export function createParkLife({scene,world,getPos,getVehicles=()=>[]}){
  const routes={walk:sample(CENTURY_PARK_ROUTES.walking),run:sample(CENTURY_PARK_ROUTES.running),bike:sample(CENTURY_PARK_ROUTES.cycling)};
  const river={walk:sample(EXPO_RIVER_WALK),run:sample(EXPO_RIVER_RUN)},b=CENTURY_PARK.bounds;
  const parkNear=p=>p.x>=b.minX-25&&p.x<=b.maxX+25&&p.z>=b.minZ-25&&p.z<=b.maxZ+25;
- const riverNear=p=>p.z>=248&&p.z<=362&&Math.abs(p.x-expoBank(p.z))<=34;
+ const riverNear=p=>p.z>=168&&p.z<=439&&p.x>=expoBank(270)-102&&p.x<=expoBank(337)+108;
  function place(actor,pose){
   actor.root.position.set(pose.x,26,pose.z);
   actor.root.rotation.y=pose.yaw;
@@ -135,14 +135,23 @@ export function createParkLife({scene,world,getPos,getVehicles=()=>[]}){
   for(const area of areas){
    const near=area.isNear(player);
    if(near&&area.mount){area.mount();area.mount=null;}
-   if(area.root.visible!==near){
+   if(area===waterfront){
+    let visible=false;
+    for(const actor of area.people){
+     const p=actor.root.position,dx=player.x-p.x,dy=player.y-p.y,dz=player.z-p.z;
+     const radius=actor.root.visible?102:88;
+     actor.root.visible=near&&dx*dx+dy*dy+dz*dz<radius*radius&&hasTerrainAt(p.x,p.z);
+     visible||=actor.root.visible;
+    }
+    area.root.visible=visible;
+   }else if(area.root.visible!==near){
     area.root.visible=near;
     for(const actor of area.people)actor.root.visible=near;
    }
-   if(!near||!dt)continue;
+   if(!area.root.visible||!dt)continue;
    const vehicles=getVehicles();
    for(const actor of area.people){
-    if(!actor.route)continue;
+    if(!actor.root.visible||!actor.route)continue;
     const p=actor.root.position,step=dt*actor.speed,at=routePose(actor.route,actor.distance+step);
     const nearPlayer=Math.abs(player.y-26)<2&&Math.hypot(player.x-at.x,player.z-at.z)<1.55;
     const blocked=nearPlayer||!world.get(Math.floor(at.x),25,Math.floor(at.z))||overlaps(world,at.x,26,at.z)||!pedestrianStepClear(p,at,vehicles);

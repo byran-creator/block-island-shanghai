@@ -29,10 +29,16 @@ const bookshops=[
  [20,27,154,160,35,0],[30,37,154,160,36,2],[41,47,155,160,34,0],
  [-116,-112,173,168,33,2],[-94,-90,173,168,34,0],[-67,-56,173,168,34,2],
  [-52,-44,173,168,35,0],[-40,-33,173,168,33,0],[-29,-19,173,168,34,2],
- [-16,-7,173,168,34,0],[-3,6,173,168,35,2],[9,16,173,168,34,0]
+ [-16,-7,173,168,34,0],[-3,6,173,168,35,2],[9,16,173,168,34,0],
+ [20,26,173,168,34,1],[30,38,173,168,35,2],[43,51,172,168,34,0]
+];
+// Continue the low-rise block up to the cross street and the island bridge.
+const bridgeheadFrontages=[
+ [13,20,137,141,37,0],[56,60,136,142,36,1],
+ [12,22,196,189,37,2],[37,46,195,188,39,1],[50,60,197,188,36,0]
 ];
 const bookTile=27,bookLane={minX:-116,maxX:48};
-export const JIUJIANG_HANKOU_BOUNDS={minX:-180,maxX:48,minZ:86,maxZ:173,minY:25,maxY:40};
+export const JIUJIANG_HANKOU_BOUNDS={minX:-180,maxX:61,minZ:86,maxZ:198,minY:25,maxY:41};
 export const JIUJIANG_HANKOU_PASSAGES=[-110,-88,-69,-51,-35];
 export const HANKOU_SOUTH_PASSAGES=[-110,-88,-69,-54,-42,-31];
 export const HISTORIC_STREET_SIGNS=[
@@ -115,6 +121,7 @@ export function buildJiujiangHankou(w,roadContains){
   const shop=[left,right,back,face,top-2,style];
   buildStreetFrontage(w,shop);bookshopFront(w,shop);
  }
+ for(const frontage of bridgeheadFrontages)buildStreetFrontage(w,frontage);
  for(let x=bookLane.minX;x<=bookLane.maxX;x++)for(let z=161;z<=167;z++){
   pave(w,x,z,roadContains,z===164?6:9);
  }
@@ -134,7 +141,7 @@ export function jiujiangHankouChunk(cx,cz,size){
 export function jiujiangHankouTile(x,y,z,id){
  if(id!==11||y<27||y>29)return;
  if(z===160||z===168)return bookshops.some(([left,right,,face])=>z===face&&x>left&&x<right)?bookTile:undefined;
- if(parcels.some(([left,right,,face])=>z===face&&x>left&&x<right))return STOREFRONT_GLASS_TILE;
+ if(parcels.some(([left,right,,face])=>z===face&&x>left&&x<right)||bridgeheadFrontages.some(([left,right,,face])=>z===face&&x>left&&x<right))return STOREFRONT_GLASS_TILE;
 }
 
 export function drawBookshopTile(ctx){
@@ -150,5 +157,5 @@ export function drawBookshopTile(ctx){
  }
  ctx.fillStyle='#3a312a';ctx.fillRect(x,y,1,16);ctx.fillRect(x+15,y,1,16);
 }
-export const jiujiangHankouLightSources=[...parcels,...bookshops].map(streetFrontageLight);
-export const jiujiangHankouLightBounds={...JIUJIANG_HANKOU_BOUNDS,minZ:88,maxZ:173,maxY:31};
+export const jiujiangHankouLightSources=[...parcels,...bookshops,...bridgeheadFrontages].map(streetFrontageLight);
+export const jiujiangHankouLightBounds={...JIUJIANG_HANKOU_BOUNDS,minZ:88,maxY:31};

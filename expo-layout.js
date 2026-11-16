@@ -46,16 +46,16 @@ export function expoChunk(cx,cz,size) {
 }
 
 export function addExpoLandmarkChunks(desired,point,size) {
- // Include the southern islands in waterfront views. Measure to the footprint
- // so a venue can never be requested only along the near edge of its roof.
- if(point.z<245)return;
+ // An observer can approach the waterfront from the bridge or either bank.
+ // Complete the footprint wherever part of the venue is already requested.
  for(const [venue,front,back] of [[EXPO.arena,15,17],[EXPO.palace,22,20]]){
   const minX=venue.x-venue.rx,maxX=venue.x+venue.rx,minZ=venue.z-front,maxZ=venue.z+back;
   const dx=Math.max(minX-point.x,point.x-maxX,0),dz=Math.max(minZ-point.z,point.z-maxZ,0);
-  if(dx*dx+dz*dz>130**2)continue;
+  const limit=point.y>=38?164:145,keys=[];
   for(let x=Math.floor(minX/size);x<=Math.floor(maxX/size);x++){
-   for(let z=Math.floor(minZ/size);z<=Math.floor(maxZ/size);z++)desired.add(x+','+z);
+   for(let z=Math.floor(minZ/size);z<=Math.floor(maxZ/size);z++)keys.push(x+','+z);
   }
+  if(dx*dx+dz*dz<=limit*limit||keys.some(key=>desired.has(key)))for(const key of keys)desired.add(key);
  }
 }
 

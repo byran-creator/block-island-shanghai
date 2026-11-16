@@ -10,5 +10,6 @@ export function createFramePacer(){
  let deadline=null;
  return {reset(){deadline=null;},skip(now,fps){if(!fps){deadline=null;return false;}const interval=1000/fps;if(deadline!==null&&now<deadline-.5)return true;deadline=deadline===null||now-deadline>interval?now+interval:deadline+interval;return false;}};
 }
-export function needsChunkPlan(previous,point,force=false,immediate=false){return force||immediate||!previous||Math.hypot(previous.x-point.x,previous.z-point.z)>=8;}
+const heightBand=y=>(y>=38?1:0)+(y>=60?1:0);
+export function needsChunkPlan(previous,point,force=false,immediate=false){return force||immediate||!previous||heightBand(previous.y)!==heightBand(point.y)||Math.hypot(previous.x-point.x,previous.z-point.z)>=8;}
 export const mobileChunkDistances={nearRadius:4,buildingRange:150,landmarkRange:240};

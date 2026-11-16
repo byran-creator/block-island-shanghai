@@ -209,7 +209,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   customer.startX=x;customer.startZ=z+side*1.25;customer.side=side;customer.cycleTime=20+(i*3)%10;
   tourists.push({...customer,kind:food?'eat':'shop',parcel,stationary:true,phase:i});
  }
- for(let i=0;i<40;i++){const p=person(i+13),bag=cube(p.root,['#fc869b','#50caca','#d4b572'][i%3],.35,.57,0,.3,.38,.2);tourists.push({...p,kind:'walk',bag,t:i*8.1,phase:i*.8});}
+ // Five of the original forty sightseeing slots are now in the old streets.
+ for(let i=0;i<35;i++){const p=person(i+13),bag=cube(p.root,['#fc869b','#50caca','#d4b572'][i%3],.35,.57,0,.3,.38,.2);tourists.push({...p,kind:'walk',bag,t:i*8.1,phase:i*.8});}
  // Last-mile delivery is on foot in the pedestrian street, matching the photographed P+W arrangement.
  for(let i=0;i<3;i++){const p=person(i+80,root,'delivery'),color=i%2?'#55acd4':'#f6c74b';cube(p.root,color,0,1.82,0,.39,.15,.37);cube(p.root,color,0,1.02,.3,.44,.45,.26);const bag=cube(p.root,'#f4eee1',.36,.63,-.05,.3,.4,.23);tourists.push({...p,kind:'delivery-walk',bag,t:75+i*66,phase:i*.8});}
  const bundWalkers=[];
