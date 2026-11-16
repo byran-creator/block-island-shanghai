@@ -32,7 +32,7 @@ export function createMetroNetwork(options){
   stations:line2Stations,ramps:EXPANDED_LINE2_RAMPS,interior:expandedLine2Interior,
   stationAt:expandedLine2StationAt,rampAt:expandedLine2RampAt,rampFloor:expandedLine2Floor,
   direction:direction(line2Stations,line2Terminals),
-  trainOptions:{articulated:true,destinationLabels:line2Terminals.map(s=>s.name).reverse()},pauseHiddenDynamics:true,flatTrainFloor:true,
+  trainOptions:{articulated:true,destinationLabels:line2Terminals.map(s=>s.name).reverse()},pauseHiddenDynamics:true,flatTrainFloor:true,batchStationDetails:true,
   undergroundVisible:p=>expandedLine2Interior(p)||transferInterior(p),
   signOptions:{routeNames:line2Stations.map(s=>s.name),routeEnglish:line2Stations.map(s=>s.english),routePair:line2Terminals.map(s=>s.name)}
  });
@@ -51,7 +51,7 @@ export function createMetroNetwork(options){
   wallOpenings:[...config10.wallOpenings,{station:'xintiandi',side:1,x:WEST_LINE10_STATIONS[0].x-22,width:6}],
   worldPos:getPos,worldPlace:place,worldExits:COMPLETE_LINE10_STATIONS.flatMap(s=>s.exits.map(e=>mirrorExit(s,e))),
   stationFrame:s=>westStationFrame(s)??oldFrame,rampFrame:r=>westRampFrame(r)??oldFrame,signFrame:oldFrame,
-  trainBounds:null,flatTrainFloor:true,pauseHiddenDynamics:true,undergroundVisible:p=>inLine10(p)||transferInterior(p)
+  trainBounds:null,flatTrainFloor:true,pauseHiddenDynamics:true,batchStationDetails:true,undergroundVisible:p=>inLine10(p)||transferInterior(p)
  });
  const ten=createMetro({...options,config:config10,getPos:()=>toLocal(getPos()),place:(p,r)=>place(toWorld(p,r)),setView:expanded?setView:(a,p)=>setView(a+LINE10_ROTATION,p),getYaw:expanded?getYaw:()=>getYaw()-LINE10_ROTATION,onEvent:e=>{if(e.type==='metro')onEvent({...e,type:'metro10',line:10,from:e.from==='nanjing10'?'nanjing':e.from,to:e.to==='nanjing10'?'nanjing':e.to});else if(e.type==='security')onEvent({...e,station:e.station==='nanjing10'?'nanjing':e.station,line:10});}});
  if(!expanded){ten.root.position.set(LINE10_ORIGIN.x,0,LINE10_ORIGIN.z);ten.root.rotation.y=LINE10_ROTATION;boundLine10TrainMeshes(ten);}
