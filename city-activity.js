@@ -3,6 +3,7 @@ import {createStreetSignArt} from './street-sign-art.js';
 import {createLujiazuiPeople,createLujiazuiFlow} from './lujiazui-life.js';
 import {createBusPassengers} from './bus-passengers.js';
 import {createStreetCrowd,moveShopper} from './street-crowd.js';
+import {createPedestrianVehicleIndex} from './pedestrian-traffic.js';
 import {styleNpc} from './npc-appearance.js';
 import {createProduct,SHOP_PRODUCTS,BRAND_PRODUCTS} from './city-products.js';
 import {signalPhase} from './city-traffic.js';
@@ -279,6 +280,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear});
  const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos});
  const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
+ const nearbyVehicles=createPedestrianVehicleIndex();
  const shopVisitors={tick(dt,vehicles){
   for(const p of tourists){
    if(p.stationary&&p.kind!=='bus-guest'){
@@ -313,14 +315,15 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
   busFlow?.tick(dt);
-  crowd.tick(dt,vehicles);
-  financialFlow.tick(dt,vehicles,dayClock);
+  nearbyVehicles.refresh(vehicles);
+  crowd.tick(dt,nearbyVehicles);
+  financialFlow.tick(dt,nearbyVehicles,dayClock);
   const crossingAdmission={};
-  bundFlow.tick(dt,clock,vehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
-  shopVisitors.tick(dt,vehicles);
+  bundFlow.tick(dt,clock,nearbyVehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
+  shopVisitors.tick(dt,nearbyVehicles);
   const v=nearestVendor(),port=landings.find(s=>Math.hypot(getPos().x-s.x,getPos().z-s.z)<3&&Math.abs(getPos().y-26)<2);$('city-prompt').hidden=!(v||port||ride);$('city-prompt').textContent=ride?'轮渡过江中 · 抵达自动下船':port?'V 搭乘轮渡 · '+port.name:v?'V '+(v.indoor?'店内购物':'逛摊位')+' · '+v.name:'';
  }
  const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons,shopLights));
  batchMeshes(root,staticMeshes(root,moving),'street-furniture');neons.splice(0,neons.length,...batchMeshes(root,neons,'street-neon'));
- tick(0);return {tick,profileSubjects:[[busFlow,'tick','city-bus-passengers'],[crowd,'tick','city-nanjing-walkers'],[financialFlow,'tick','city-lujiazui-walkers'],[bundFlow,'tick','city-bund-walkers'],[shopVisitors,'tick','city-shop-visitors']],use,close,signs,neons,vendors,tourists,bundWalkers,stalls,ferry,heli,landings,goods,isPanelOpen:()=>panel,isRiding:()=>!!ride,cancelRide:()=>{if(ride){teleport(landings[ride.from]);ride=null;}},safeSavePoint:()=>ride?{...landings[ride.from]}:null,serialize:()=>({cooldown,purchases,goods:{...goods},stock:Object.fromEntries(vendors.map(v=>[v.id,v.remaining]))}),restore:d=>{ride=null;for(const id of Object.keys(SHOP_PRODUCTS))goods[id]=Math.max(0,Math.min(99999,Math.floor(Number(d?.goods?.[id])||0)));for(const v of vendors){const count=d?.stock?.[v.id];v.remaining=Number.isFinite(count)?Math.max(0,Math.min(6,Math.floor(count))):6;showStock(v);}cooldown=Math.max(0,Math.min(30,Number(d?.cooldown)||0));purchases=Math.max(0,Math.floor(Number(d?.purchases)||0));},collides:(x,y,z)=>y<28.5&&y+1.75>26&&(stalls.some(s=>Math.abs(x-s.x)<s.rx&&Math.abs(z-s.z)<s.rz)||(Math.abs(x-(-35))<.65&&Math.abs(z-66)<1.85))||!heli.userData.piloted&&y<heli.position.y+2.5&&y+1.75>heli.position.y&&Math.abs(x-heli.position.x)<1.6&&Math.abs(z-heli.position.z)<2.1};
+ tick(0);return {tick,profileSubjects:[[nearbyVehicles,'refresh','city-vehicle-index'],[busFlow,'tick','city-bus-passengers'],[crowd,'tick','city-nanjing-walkers'],[financialFlow,'tick','city-lujiazui-walkers'],[bundFlow,'tick','city-bund-walkers'],[shopVisitors,'tick','city-shop-visitors']],use,close,signs,neons,vendors,tourists,bundWalkers,stalls,ferry,heli,landings,goods,isPanelOpen:()=>panel,isRiding:()=>!!ride,cancelRide:()=>{if(ride){teleport(landings[ride.from]);ride=null;}},safeSavePoint:()=>ride?{...landings[ride.from]}:null,serialize:()=>({cooldown,purchases,goods:{...goods},stock:Object.fromEntries(vendors.map(v=>[v.id,v.remaining]))}),restore:d=>{ride=null;for(const id of Object.keys(SHOP_PRODUCTS))goods[id]=Math.max(0,Math.min(99999,Math.floor(Number(d?.goods?.[id])||0)));for(const v of vendors){const count=d?.stock?.[v.id];v.remaining=Number.isFinite(count)?Math.max(0,Math.min(6,Math.floor(count))):6;showStock(v);}cooldown=Math.max(0,Math.min(30,Number(d?.cooldown)||0));purchases=Math.max(0,Math.floor(Number(d?.purchases)||0));},collides:(x,y,z)=>y<28.5&&y+1.75>26&&(stalls.some(s=>Math.abs(x-s.x)<s.rx&&Math.abs(z-s.z)<s.rz)||(Math.abs(x-(-35))<.65&&Math.abs(z-66)<1.85))||!heli.userData.piloted&&y<heli.position.y+2.5&&y+1.75>heli.position.y&&Math.abs(x-heli.position.x)<1.6&&Math.abs(z-heli.position.z)<2.1};
 }
