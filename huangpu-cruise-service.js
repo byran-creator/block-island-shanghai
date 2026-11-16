@@ -1,6 +1,6 @@
 import * as THREE from './three.module.js';
 import {createCruisePassengerLife} from './cruise-passenger-life.js';
-import {boatLocal,boatWorld,boatSupport} from './boat-support.js';
+import {boatLocal,boatWorld,createBoatSurfaceQueries} from './boat-support.js';
 import {cruisePose,tickHuangpuCruise,cruiseFloorAt,CRUISE_DWELL,CRUISE_CYCLE} from './huangpu-cruises.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
 import {styleNpc} from './npc-appearance.js';
@@ -19,9 +19,9 @@ export function createCruiseService({scene,ships,getPos=()=>({x:0,y:26,z:0}),pla
  if(typeof document!=='undefined'){const label=createWorldCaption('外滩观光码头 · 环线游览');label.position.set(42,28.4,d.z);root.add(label);}
  batchMeshes(root,staticMeshes(root),'cruise-pier');batchMeshes(bridge,staticMeshes(bridge),'cruise-gangway');
  const ports=[{root,deckSurfaces:surfaces.filter(s=>s.root===root).map(({root,...s})=>s)},{root:bridge,deckSurfaces:surfaces.filter(s=>s.root===bridge).map(({root,...s})=>s)}];
- const supportSurfaces=[...ships.flatMap(b=>b.deckSurfaces.map(s=>({...s,root:b.root}))),...surfaces];
+ const deckQueries=createBoatSurfaceQueries([...ships.flatMap(b=>b.deckSurfaces.map(s=>({...s,root:b.root}))),...surfaces]);
  const waiting=p=>({x:43,y:d.y,z:d.z+(p.slot?.62:-.62)}),onShip=p=>ships.find(b=>{const q=boatLocal(b.root,p.x,p.z);return Math.abs(q.x)<2.9&&q.z>-9.8&&q.z<9.1&&p.y>=b.root.position.y+.9&&p.y<b.root.position.y+10;});
- function floorAt(x,z,feet){for(const ship of ships){const h=cruiseFloorAt(ship,x,z,feet);if(h!==null)return h;}const s=boatSupport(supportSurfaces,x,feet+.5,z);return s&&Math.abs(feet-s.y)<.6?s.y:null;}
+ function floorAt(x,z,feet){for(const ship of ships){const h=cruiseFloorAt(ship,x,z,feet);if(h!==null)return h;}const s=deckQueries.support(x,feet+.5,z);return s&&Math.abs(feet-s.y)<.6?s.y:null;}
  function walk(p,target,dt){const at=p.root.position,dx=target.x-at.x,dz=target.z-at.z,n=Math.hypot(dx,dz);if(n<.035){at.y=target.y;return true;}const step=Math.min(n,dt*1.05),q={x:at.x+dx/n*step,y:at.y+(target.y-at.y)*Math.min(1,step/Math.max(.05,n)),z:at.z+dz/n*step};const player=getPos();if(Math.abs(player.y-q.y)<1.8&&Math.hypot(player.x-q.x,player.z-q.z)<.8||people.some(o=>o!==p&&Math.abs(o.root.position.y-q.y)<1.5&&Math.hypot(o.root.position.x-q.x,o.root.position.z-q.z)<.9))return false;at.set(q.x,q.y,q.z);p.root.rotation.y=Math.atan2(-dx,-dz);p.phase+=dt*5;for(let i=0;i<2;i++){p.legs[i].rotation.x=Math.sin(p.phase)*(i?-.22:.22);p.arms[i].rotation.x=-p.legs[i].rotation.x;}return false;}
  for(const p of boardingPeople){const q=waiting(p);p.root.position.set(q.x,q.y,q.z);}
  function tick(dt,{night=false}={}){

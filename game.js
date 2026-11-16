@@ -53,7 +53,7 @@ import {createYuyuan} from './yuyuan.js';
 import {createRiverWaterGeometry} from './yuyuan-water.js';
 import {GARDEN_PONDS,YUYUAN_SHIFT} from './yuyuan-layout.js';
 import {createMetroNetwork as createMetro} from './metro-network.js';
-import {boatSurfaces,boatSupport,boatSolid,boatWorld} from './boat-support.js';
+import {boatSurfaces,createBoatSurfaceQueries,boatWorld} from './boat-support.js';
 import {createPrivateSuites} from './private-suites.js';
 import {createBuildingResidents} from './building-residents.js';
 import {loadWorld,clearWorldCache} from './world-cache.js';
@@ -345,7 +345,7 @@ $('sound').setAttribute('aria-pressed',String(sound));
 const sceneAudio=createSceneAudio(getAudio,{getPeople:()=>npcGuides?.actors??[],surfaceAt:p=>world.get(Math.floor(p.x),Math.floor(p.y-.05),Math.floor(p.z))});
 let trafficHitUntil=0;
 const trafficFlash=document.createElement('div');trafficFlash.className='traffic-hit';document.body.appendChild(trafficFlash);
-let residents,privateSuites,towerInteriors,vesselSurfaces=[];
+let residents,privateSuites,towerInteriors,vesselQueries=createBoatSurfaceQueries([]);
 function refreshMusic(){for(const id of ['music-toggle']){$(id).setAttribute('aria-pressed',String(music.enabled));$(id).title=music.enabled?'关闭背景音乐':'开启背景音乐'}$('music-toggle').textContent='音乐：'+(music.enabled?'开':'关');$('music-quick').textContent='下一首配乐';$('music-volume').value=Math.round(music.volume*100);$('music-percent').textContent=Math.round(music.volume*100)+'%';$('music-choice').value=music.track.id;$('music-quick').title='下一首：当前 '+music.track.name;}
 $('music-toggle').onclick=()=>{music.setEnabled(!music.enabled);refreshMusic()};$('music-quick').onclick=()=>{music.nextTrack();refreshMusic();notify('BGM：'+music.track.name)};$('music-choice').value=music.track.id;$('music-choice').addEventListener('change',e=>{music.setTrack(e.target.value);refreshMusic()});$('music-volume').addEventListener('input',e=>{music.setVolume(Number(e.target.value)/100);refreshMusic()});refreshMusic();
 function refreshSceneAudio(){$('music-auto').textContent='区域配乐：'+(music.automatic?'开':'关');$('music-auto').setAttribute('aria-pressed',String(music.automatic));$('ambient-toggle').textContent='环境音：'+(sceneAudio.enabled?'开':'关');$('ambient-toggle').setAttribute('aria-pressed',String(sceneAudio.enabled));$('footsteps-toggle').textContent='玩家脚步：'+(sceneAudio.footstepsEnabled?'开':'关');$('footsteps-toggle').setAttribute('aria-pressed',String(sceneAudio.footstepsEnabled));}
@@ -449,8 +449,7 @@ $('touch-run').onclick=()=>{runLocked=!runLocked;notify(runLocked?'持续跑步�
 canvas.addEventListener('pointerdown',e=>{if(!touch||!active)return;lookPointer=e.pointerId;lastLook={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
 canvas.addEventListener('pointermove',e=>{if(e.pointerId===lookPointer&&lastLook){const isForced=document.body.classList.contains('force-landscape');const dx=isForced?(e.clientY-lastLook.y):(e.clientX-lastLook.x);const dy=isForced?-(e.clientX-lastLook.x):(e.clientY-lastLook.y);look(dx*1.6,dy*1.6);lastLook={x:e.clientX,y:e.clientY}}});
 for(const event of ['pointerup','pointercancel'])canvas.addEventListener(event,e=>{if(e.pointerId===lookPointer){lookPointer=null;lastLook=null}});
-const shipSurfaces=()=>vesselSurfaces;
-function staticCollides(x,y,z,ignoreFurniture=null){const h=metroRampFloor(x,z)??nanpuFloor(world,x,z)??yuyuan?.floorAt?.(x,z)??civil?.cruises?.floorAt(x,z,pos.y),slope=h!==null&&Math.abs(y-h)<1.5;return !!civil?.staticCollides(x,y,z)||boatSolid(shipSurfaces(),x,y,z)||!!metro?.collides(x,y,z)||slope&&y<h-.015||overlaps(world,x,slope?Math.max(y,Math.ceil(h)):y,z)||!!life?.collides(x,y,z,ignoreFurniture)||!!yuyuan?.collides(x,y,z)||!!story?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!privateSuites?.collides(x,y,z)||!!towerInteriors?.collides(x,y,z)||!!activity?.collides(x,y,z)||!!commute?.collides(x,y,z);}
+function staticCollides(x,y,z,ignoreFurniture=null){const h=metroRampFloor(x,z)??nanpuFloor(world,x,z)??yuyuan?.floorAt?.(x,z)??civil?.cruises?.floorAt(x,z,pos.y),slope=h!==null&&Math.abs(y-h)<1.5;return !!civil?.staticCollides(x,y,z)||vesselQueries.solid(x,y,z)||!!metro?.collides(x,y,z)||slope&&y<h-.015||overlaps(world,x,slope?Math.max(y,Math.ceil(h)):y,z)||!!life?.collides(x,y,z,ignoreFurniture)||!!yuyuan?.collides(x,y,z)||!!story?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!privateSuites?.collides(x,y,z)||!!towerInteriors?.collides(x,y,z)||!!activity?.collides(x,y,z)||!!commute?.collides(x,y,z);}
 function collides(x,y,z){return staticCollides(x,y,z)||!!civil?.collides(x,y,z);}
 function nearWaterExit(){return [[1.1,0],[-1.1,0],[0,1.1],[0,-1.1]].some(([dx,dz])=>{const x=Math.floor(pos.x+dx),z=Math.floor(pos.z+dz),y=world.get(x,23,z)?24:23;return !!world.get(x,y-1,z)&&!world.get(x,y,z)&&!world.get(x,y+1,z);});}
 function physics(dt){
@@ -475,7 +474,7 @@ function physics(dt){
  else{vy=swimVelocity({feet:pos.y,velocity:vy,space:inputKeys.has('Space'),down:shift,grounded,dt,dry:metroInterior(pos),shore:swimming&&inputKeys.has('Space')&&nearWaterExit()});if(inputKeys.has('Space')){grounded=false;footContact=false;}}
  if(metro?.tryBoard())return;
  const entryFloor=metro?.floorAt(pos.x,pos.z)??yuyuan?.floorAt?.(pos.x,pos.z)??civil?.cruises?.floorAt(pos.x,pos.z,pos.y);if(!flying&&!gliding&&vy<=0&&entryFloor!==null&&entryFloor!==undefined&&pos.y>=entryFloor-.55&&pos.y+vy*dt<=entryFloor){pos.y=entryFloor;vy=0;grounded=true;footContact=true;return;}
- const dy=vy*dt,deck=!flying&&!gliding&&vy<=0?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null;if(deck&&pos.y+dy<=deck.y){pos.y=deck.y;vy=0;grounded=true;footContact=true;}else if(!collides(pos.x,pos.y+dy,pos.z)){pos.y+=dy;grounded=false;}else{if(dy<0){grounded=true;footContact=true;if(!flying&&!gliding&&!swimming&&!adventure?.state.race&&vy<-13)life.state.hurt(Math.ceil((-vy-13)*.65));}vy=0;}
+ const dy=vy*dt,deck=!flying&&!gliding&&vy<=0?vesselQueries.support(pos.x,pos.y,pos.z):null;if(deck&&pos.y+dy<=deck.y){pos.y=deck.y;vy=0;grounded=true;footContact=true;}else if(!collides(pos.x,pos.y+dy,pos.z)){pos.y+=dy;grounded=false;}else{if(dy<0){grounded=true;footContact=true;if(!flying&&!gliding&&!swimming&&!adventure?.state.race&&vy<-13)life.state.hurt(Math.ceil((-vy-13)*.65));}vy=0;}
  if(swimming)gliding=false;
  if(pos.y>HEIGHT+12)pos.y=HEIGHT+12;
  if(pos.y<-5)respawn();
@@ -490,7 +489,7 @@ function frame(now){
  if(isMobile&&(active||story?.filming)&&mobilePacer.skip(now,mobileQuality==='clear'?60:30)){requestAnimationFrame(frame);return;}
  lastIdleFrame=now;const probeStart=performanceProbe?performance.now():0;performanceProbe?.beginFrame(active||story?.filming);
  footContact=grounded;const walkStartX=pos.x,walkStartZ=pos.z;let footTravel=0;
- const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?boatSupport(shipSurfaces(),pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
+ const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?vesselQueries.support(pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?inputKeys:new Set()});
  if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?2:3);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
   footTravel=Math.hypot(pos.x-walkStartX,pos.z-walkStartZ);
@@ -580,7 +579,7 @@ restaurant=createPeaceRestaurant({onEvent:recordCityEvent,scene,world,getPos:()=
 await loadingStage('正在准备南京路与地铁…');
 activity=createCityActivity({solidAt:civil.staticCollides,transit:civil.traffic,otherPeople:[...civil.pedestrians.filter(p=>p.kind!=='shop'),...civil.traffic.officers],extraCrowd:civil.pedestrians.filter(p=>p.kind==='shop'),onEvent:recordCityEvent,scene,world,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,teleport:p=>{Object.assign(pos,p);vy=0;},lookAt:lookTowards,notify,pause:pauseForPanel,resume:enter,onProgress:()=>saves?.save('auto'),getTrafficTime:()=>civil.traffic.time});
 metro=createMetro({renderer,expanded:true,canCullInteriors:()=>savedEdits.size===0&&!story?.filming&&!photo?.opened,getYaw:()=>yaw,turnView:a=>{yaw+=a;},onEvent:recordCityEvent,scene,getPos:()=>pos,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,getAudio,getSound:()=>sound&&sceneAudio.enabled,canCarry:()=>!flying&&!gliding&&!commute?.isRiding(),canBoard:()=>!commute?.isRiding()});
-vesselSurfaces=boatSurfaces(activity.ferry,[...civil.boats,...civil.cruisePorts]);
+vesselQueries=createBoatSurfaceQueries(boatSurfaces(activity.ferry,[...civil.boats,...civil.cruisePorts]));
 privateSuites=createPrivateSuites({scene,world,pause:pauseForPanel,resume:enter,place:p=>{placePlayer(p);setFlight(false);gliding=false;},getPos:()=>pos,getState:()=>life.state,teleport,lookAt:lookTowards,notify,setDay:()=>{dayClock=36;updateSky(0);},onProgress:()=>{life.refresh();saves?.save('auto');}});
 await loadingStage('正在构建豫园与老城商圈…');
 yuyuan=createYuyuan({scene,world,deferPondView:true,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
@@ -859,7 +858,7 @@ if(isMobile){
  }
  renderScene();
 }
-performanceProbe=createPerformanceProbe({renderer,profile:()=>renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}),bootMs:performance.now(),subjects:[[civil,'tick','bund'],[civil.traffic,'tick','traffic'],[activity,'tick','nanjing'],[metro,'tick','metro'],[yuyuan,'tick','garden'],[residents,'tick','residents'],[npcGuides,'tick','npc-ui'],[weather,'tick','weather'],[life,'tick','life'],[privateSuites,'tick','suites'],[towerInteriors,'tick','tower-interiors'],[chunkWork,'process','chunks'],[scene,'updateMatrixWorld','matrices'],[scene,'onBeforeRender','instances']]});
+performanceProbe=createPerformanceProbe({renderer,profile:()=>renderProfile({mobile:isMobile,mode:mobileQuality,dpr:devicePixelRatio,width:innerWidth,height:innerHeight}),bootMs:performance.now(),subjects:[[civil,'tick','bund'],[civil.traffic,'tick','traffic'],[activity,'tick','nanjing'],...activity.profileSubjects,[metro,'tick','metro'],[yuyuan,'tick','garden'],[residents,'tick','residents'],[npcGuides,'tick','npc-ui'],[weather,'tick','weather'],[life,'tick','life'],...life.profileSubjects,[privateSuites,'tick','suites'],[towerInteriors,'tick','tower-interiors'],[chunkWork,'process','chunks'],[scene,'updateMatrixWorld','matrices'],[scene,'onBeforeRender','instances']]});
 bootReady=true;
 document.documentElement.dataset.gameReady='true';document.dispatchEvent(new Event('block-island-ready'));
 $('play').disabled=false;$('play').innerHTML='进入我的小岛 · 开启旅程 <span>→</span>';
