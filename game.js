@@ -205,7 +205,7 @@ drawBookshopTile(ctx);
 const atlas=new THREE.CanvasTexture(atlasCanvas);atlas.magFilter=THREE.NearestFilter;atlas.minFilter=THREE.NearestFilter;atlas.colorSpace=THREE.SRGBColorSpace;
 const terrainMaterial=new THREE.MeshLambertMaterial({map:atlas,vertexColors:true});
 const chunks=new Map();
-const distantGround=createDistantGround({scene,world,chunks,chunk:CHUNK,minX:WORLD_MIN,minZ:WORLD_MIN_Z,max:WORLD_MAX,water:WATER_LEVEL,colors:BLOCKS.map(b=>b?.color),range:camera.far,tint:terrainMaterial.color});
+const distantGround=createDistantGround({scene,world,chunks,chunk:CHUNK,height:HEIGHT,minX:WORLD_MIN,minZ:WORLD_MIN_Z,max:WORLD_MAX,water:WATER_LEVEL,colors:BLOCKS.map(b=>b?.color),range:camera.far,tint:terrainMaterial.color});
 const jinganWash=createJinganUplighting();
 const beijingEastWash=createVertexLightBake({bounds:beijingEastLightBounds,sources:beijingEastLightSources,cap:.62,gain:6.2});
 const jiujiangHankouWash=createVertexLightBake({bounds:jiujiangHankouLightBounds,sources:jiujiangHankouLightSources,cap:.62,gain:6.2});

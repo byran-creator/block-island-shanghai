@@ -1,13 +1,15 @@
 import {BufferAttribute,BufferGeometry,Color,DynamicDrawUsage,Mesh,MeshLambertMaterial} from './three.module.js';
+import {createDistantBuildingMesher} from './distant-buildings.js';
 
-// Only the ground under unloaded detail chunks is drawn here. The same voxel
-// surface determines the shore, park lakes, land slope and player-made holes.
-export function createDistantGround({scene,world,chunks,chunk,minX,minZ,max,water,colors,range,tint}){
+// Draw ground and building shells together under unloaded detail chunks.
+// Both surfaces use the same voxel data as the detailed mesh.
+export function createDistantGround({scene,world,chunks,chunk,height,minX,minZ,max,water,colors,range,tint}){
  const material=new MeshLambertMaterial({vertexColors:true}),palette=colors.map(c=>c&&new Color(c).toArray().map(channel=>Math.round(channel*255)));
  if(tint)material.color=tint;
  const span=chunk*4,lookup=new Map(),sectors=[],pending=[];
  const offsets=[[1,0],[-1,0],[0,1],[0,-1]],width=chunk+2,columns=new Uint16Array(width*width),used=new Uint8Array(chunk*chunk);
  const ground=Math.floor(water)+1;
+ const buildings=createDistantBuildingMesher(chunk,height,water);
  let oldSectorX,oldSectorZ;
  for(let x=minX;x<max;x+=span)for(let z=minZ;z<max;z+=span){
   const sector={x,z,parts:[],mesh:null,dirty:true,inRange:false};
@@ -45,7 +47,8 @@ export function createDistantGround({scene,world,chunks,chunk,minX,minZ,max,wate
   for(let z=-1;z<=chunk;z++)for(let x=-1;x<=chunk;x++)columns[(z+1)*width+x+1]=sample(part.x+x,part.z+z);
   used.fill(0);
   const at=(x,z)=>columns[(z+1)*width+x+1];
-  function quad(c,nx,ny,nz,vertices){
+  function quad(id,nx,ny,nz,vertices){
+   const c=palette[id];
    const index=position.length/3;
    position.push(...vertices);
    for(let i=0;i<4;i++){normal.push(nx*127,ny*127,nz*127);color.push(...c);}
@@ -53,7 +56,7 @@ export function createDistantGround({scene,world,chunks,chunk,minX,minZ,max,wate
   }
   for(let z=0;z<chunk;z++)for(let x=0;x<chunk;x++){
    const value=at(x,z);if(!value)continue;
-   const xx=part.x+x,zz=part.z+z,yy=value>>4,c=palette[value&15];
+   const xx=part.x+x,zz=part.z+z,yy=value>>4;
    if(!used[z*chunk+x]){
     let endX=x+1,endZ=z+1;
     while(endX<chunk&&!used[z*chunk+endX]&&at(endX,z)===value)endX++;
@@ -63,15 +66,17 @@ export function createDistantGround({scene,world,chunks,chunk,minX,minZ,max,wate
     }
     for(let j=z;j<endZ;j++)used.fill(1,j*chunk+x,j*chunk+endX);
     const right=part.x+endX,back=part.z+endZ;
-    quad(c,0,1,0,[xx,yy,zz,xx,yy,back,right,yy,back,right,yy,zz]);
+    quad(value&15,0,1,0,[xx,yy,zz,xx,yy,back,right,yy,back,right,yy,zz]);
    }
    for(const [dx,dz] of offsets){
     const lower=Math.max(water-.02,at(x+dx,z+dz)>>4);if(lower>=yy)continue;
     const ax=xx+(dx>0||dz>0?1:0),az=zz+(dz>0||dx<0?1:0);
     const bx=ax-dz,bz=az+dx;
-    quad(palette[2],dx,0,dz,[ax,lower,az,ax,yy,az,bx,yy,bz,bx,lower,bz]);
+    quad(2,dx,0,dz,[ax,lower,az,ax,yy,az,bx,yy,bz,bx,lower,bz]);
    }
   }
+  part.hasGround=indices.length>part.start;
+  buildings.build(world,part.x,part.z,(x,z)=>at(x,z)>>4,quad);
   part.count=indices.length-part.start;
  }
  function updateIndices(sector){
@@ -114,7 +119,7 @@ export function createDistantGround({scene,world,chunks,chunk,minX,minZ,max,wate
   }
  }
  function update(key){const sector=lookup.get(key);if(sector&&!sector.dirty)updateIndices(sector);}
- function hasGroundAt(x,z){const key=Math.floor(x/chunk)+','+Math.floor(z/chunk),sector=lookup.get(key);return !!sector?.mesh&&!sector.dirty&&sector.parts.some(part=>part.key===key&&part.count);}
+ function hasGroundAt(x,z){const key=Math.floor(x/chunk)+','+Math.floor(z/chunk),sector=lookup.get(key);return !!sector?.mesh&&!sector.dirty&&sector.parts.some(part=>part.key===key&&part.hasGround);}
  function invalidate(key){
   const sector=lookup.get(key);if(!sector)return;
   sector.dirty=true;sector.build=null;
