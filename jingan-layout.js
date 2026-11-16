@@ -32,6 +32,16 @@ export const JINGAN_HALLS=[
  {x:-292,z:-5,rx:2,rz:4,roof:31,layers:2}
 ].map(hall=>({...hall,z:templeZ(hall.z)}));
 export const JINGAN_TOWER={x:-317,z:templeZ(-22),firstTier:32,tiers:6};
+export const JINGAN_ROOFS=[
+ ...JINGAN_HALLS.flatMap(({x,z,rx,rz,roof:y,layers,upper})=>[
+  {x,z,y,rx:rx+1,rz:rz+1},
+  ...(upper?[{x,z,y:y+layers+2,rx:rx-1,rz}]:[])
+ ]),
+ ...Array.from({length:JINGAN_TOWER.tiers},(_,i)=>{
+  const {x,z,firstTier}=JINGAN_TOWER,r=Math.max(1,3-Math.floor(i/2));
+  return {x,z,y:firstTier+i*3+2,rx:r,rz:r};
+ })
+];
 export const JINGAN_OFFICES=[
  {x:-312,z:-46,rx:7,rz:4,height:43,style:'ribbon'},
  {x:-271,z:2,rx:4,rz:6,height:10,style:'retail'},

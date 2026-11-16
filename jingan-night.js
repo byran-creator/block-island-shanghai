@@ -1,6 +1,6 @@
 import * as THREE from './three.module.js';
 import {batchMeshes} from './mesh-batch.js';
-import {JINGAN,JINGAN_HALLS,JINGAN_OFFICES,JINGAN_TOWER,JINGAN_AVENUE_TREES} from './jingan-layout.js';
+import {JINGAN,JINGAN_HALLS,JINGAN_ROOFS,JINGAN_OFFICES,JINGAN_TOWER,JINGAN_AVENUE_TREES} from './jingan-layout.js';
 import {jinganOfficeSection} from './jingan-office.js';
 import {nanjingWestCanopies} from './nanjing-west-layout.js';
 
@@ -70,16 +70,11 @@ export function createJinganNight(parent,world){
    for(const t of [-1,1])bar(x+.5+t*(rx-.2),y+1.46,z+.5+s*(rz+.55),1.25,.19,.105);
   }
  }
+ for(const {x,z,y,rx,rz} of JINGAN_ROOFS)eaves(x,z,y,rx,rz);
  for(const h of JINGAN_HALLS){
-  eaves(h.x,h.z,h.roof,h.rx+1,h.rz+1);
-  if(h.upper){
-   const y=h.roof+h.layers+2;
-   eaves(h.x,h.z,y,h.rx-1,h.rz);
-   bar(h.x+.5,y+3.01,h.z+.5,2*h.rx-3,.095,.18);
-  }
+  if(h.upper)bar(h.x+.5,h.roof+h.layers+5.01,h.z+.5,2*h.rx-3,.095,.18);
  }
  const {x,z,firstTier,tiers}=JINGAN_TOWER;
- for(let i=0;i<tiers;i++)eaves(x,z,firstTier+i*3+2,Math.max(1,3-Math.floor(i/2)),Math.max(1,3-Math.floor(i/2)));
  bar(x+.5,firstTier+tiers*3+2.5,z+1.05,.22,5,.07);
  for(const plot of JINGAN_OFFICES){
   const {x,z,rx,rz,height,style}=plot;

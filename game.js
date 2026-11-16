@@ -29,6 +29,7 @@ import {NANJING_WEST,nanjingWestChunk,nanjingWestShade,nanjingWestTile,drawNanji
 import {beijingEastChunk,beijingEastTile,beijingEastLightBounds,beijingEastLightSources} from './beijing-east-layout.js';
 import {jiujiangHankouChunk,jiujiangHankouTile,jiujiangHankouLightBounds,jiujiangHankouLightSources,drawBookshopTile,HISTORIC_STREET_SIGNS} from './jiujiang-hankou-layout.js';
 import {createJinganNight} from './jingan-night.js';
+import {addJinganEaves} from './jingan-eaves.js';
 import {createJinganOfficeTiles,drawJinganOfficeTiles} from './jingan-office.js';
 import {createJinganUplighting,jinganLightChunk} from './jingan-uplighting.js';
 import {addCenturyParkDetails} from './century-park-details.js';
@@ -242,6 +243,9 @@ function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',')
 let lastChunkPlan=null;
 const wukangShops=createWukangShopkeepers();
 function addJinganDetails(group){
+ const eaves=addJinganEaves(group);
+ eaves.updateWorldMatrix(true,false);
+ jinganWash.bakeMesh(eaves,{strength:.24});
  jinganNight=createJinganNight(group,world);
  jinganNight.visible=dayClock>=120;
 }

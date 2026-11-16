@@ -24,7 +24,7 @@ export function createVertexLightBake({sources,bounds,sample=windowSpill,cap=.28
  const {minX,maxX,minY,maxY,minZ,maxZ}=bounds;
  const stats={meshes:0,bytes:0},sphere=new THREE.Sphere(),point=new THREE.Vector3(),normal=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
  function apply(entry){const {colors,indices,original,energy}=entry;for(let j=0;j<indices.length;j++){const k=j*3,e=night?energy[j]/255*gain:0;colors.setXYZ(indices[j],original[k]+e,original[k+1]+e*green,original[k+2]+e*blue);}colors.needsUpdate=true;}
- function bakeMesh(mesh){
+ function bakeMesh(mesh,{strength=1}={}){
   const g=mesh.geometry,mat=mesh.material;
   if(!mesh.isMesh||mesh.isInstancedMesh||Array.isArray(mat)||(!mat?.isMeshLambertMaterial&&!mat?.isMeshPhongMaterial)||mat.transparent||!g?.attributes.normal||g.attributes.position.count<30||done.has(g))return false;
   if(!g.boundingSphere)g.computeBoundingSphere();sphere.copy(g.boundingSphere).applyMatrix4(mesh.matrixWorld);
@@ -35,7 +35,8 @@ export function createVertexLightBake({sources,bounds,sample=windowSpill,cap=.28
    if(point.x<minX||point.x>maxX||point.z<minZ||point.z>maxZ||point.y<minY||point.y>maxY)continue;
    normal.fromBufferAttribute(n,i).applyMatrix3(normalMatrix).normalize();let e=0;
    for(const s of sources)e+=sample(point,normal,s);
-   if(e>=1/255){indices.push(i);energy.push(Math.round(Math.min(cap,e)*255));}
+   e=Math.min(cap,e)*strength;
+   if(e>=1/255){indices.push(i);energy.push(Math.round(e*255));}
   }
   if(!indices.length)return false;
   const existing=g.attributes.color;if(existing&&!mat.vertexColors)return false;
