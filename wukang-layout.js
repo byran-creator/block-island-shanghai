@@ -3,9 +3,10 @@ import {PLANE_TREE_LEAVES_TILE,PLANE_TREE_BARK_TILE} from './plane-tree-tiles.js
 const mansionOffset={x:-3,z:13};
 const prowX=-293,sternX=-326;
 const mansionBow={x:prowX+mansionOffset.x,z:165+mansionOffset.z};
+const mansionBounds={minX:sternX-1+mansionOffset.x,maxX:prowX+1+mansionOffset.x,minZ:144+mansionOffset.z,maxZ:172+mansionOffset.z};
 export const WUKANG={
  bounds:{minX:-336,maxX:-273,minZ:43,maxZ:199},
- mansion:{x:-311+mansionOffset.x,z:162+mansionOffset.z,top:61,bow:mansionBow},
+ mansion:{x:-311+mansionOffset.x,z:162+mansionOffset.z,top:61,bow:mansionBow,bounds:mansionBounds},
  arrival:{x:-272.5,y:26,z:184.5,name:'武康大楼 · 街角广场',mapX:mansionBow.x,mapZ:mansionBow.z,viewTarget:{x:mansionBow.x,y:43.5,z:mansionBow.z}},
  road:[[-284,179],[-284,168],[-289,158],[-298,151],[-304,143],[-301,134],[-302,115],[-306,102],[-308,84],[-310,69],[-306,54],[-308,48]],
  signs:[[-280,29,172,'武康大楼 · 淮海中路'],[-297,29,137,'武康路 · 梧桐街区']]
