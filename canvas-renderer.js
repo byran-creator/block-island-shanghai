@@ -1,4 +1,19 @@
 import * as THREE from './three.module.js';
+
+// Keep the visible portion of a face as its far corner passes behind the eye.
+function clipNear(projected,ids,uv,image){
+ const vertices=projected.map((p,i)=>({p,u:image?uv.getX(ids[i]):0,v:image?uv.getY(ids[i]):0}));
+ const out=[];
+ for(let i=0;i<3;i++){
+  const a=vertices[i],b=vertices[(i+1)%3],da=a.p.z+a.p.w,db=b.p.z+b.p.w;
+  if(da>=0)out.push(a);
+  if((da<0)!==(db<0)){
+   const t=da/(da-db);
+   out.push({p:a.p.clone().lerp(b.p,t),u:a.u+(b.u-a.u)*t,v:a.v+(b.v-a.v)*t});
+  }
+ }
+ return out;
+}
 // A modest, real CPU fallback for devices with WebGL disabled. Same world and controls.
 export class CanvasRenderer {
  constructor({canvas}){this.domElement=canvas;this.ctx=canvas.getContext('2d');this.isSoftware=true;this.ratio=1;this.v=new THREE.Vector3();this.pv=new THREE.Matrix4();this.mvp=new THREE.Matrix4();this.normal=new THREE.Vector3();this.direction=new THREE.Vector3();this.color=new THREE.Color();this.textureColors=new WeakMap();this.instanceMatrix=new THREE.Matrix4();this.instanceWorld=new THREE.Matrix4();this.last=0;}
@@ -8,7 +23,8 @@ export class CanvasRenderer {
   const now=performance.now();if(now-this.last<65)return;this.last=now;
   const ctx=this.ctx,w=this.domElement.width,h=this.domElement.height;ctx.fillStyle=scene.background.getStyle();if(scene.userData.skyGradient){const sky=scene.userData.skyGradient,g=ctx.createLinearGradient(0,0,0,h*.75);g.addColorStop(0,sky.zenith);g.addColorStop(1,sky.horizon);ctx.fillStyle=g;}ctx.fillRect(0,0,w,h);
   scene.updateMatrixWorld();camera.updateMatrixWorld();scene.onBeforeRender?.(this,scene,camera);this.pv.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);camera.getWorldDirection(this.direction);
-  const polygons=[],sprites=[];const point=this.v,color=this.color;
+  const polygons=[],sprites=[];const point=this.v,color=this.color,projected=[new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4()];
+  const toScreen=p=>[(p.x/p.w+1)*w/2,(1-p.y/p.w)*h/2,p.z/p.w];
   scene.traverseVisible(obj=>{
    if(!obj.layers.test(camera.layers))return;
    if(obj.isSprite){const p=new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld),distance=p.distanceTo(camera.position);p.project(camera);if(p.z>0&&p.z<1&&distance<22)sprites.push({img:obj.material.map?.image,x:(p.x+1)*w/2,y:(1-p.y)*h/2,width:obj.scale.x*w/(distance*1.6),height:obj.scale.y*w/(distance*1.6),depth:distance});return;}
@@ -23,13 +39,26 @@ export class CanvasRenderer {
     point.fromBufferAttribute(pos,ids[0]).applyMatrix4(objectWorld);const dist=point.distanceTo(camera.position);if(dist>(obj.userData.range??65)&&obj!==scene.userData.water)continue;
     // Conservative clipping in compatibility mode, like the existing near-plane cull.
     if(this.localClippingEnabled&&mat.clippingPlanes?.length&&ids.some(id=>{point.fromBufferAttribute(pos,id).applyMatrix4(objectWorld);return mat.clippingPlanes.some(p=>p.distanceToPoint(point)<0);}))continue;
-    const screen=[];let invalid=false;for(const id of ids){point.fromBufferAttribute(pos,id).applyMatrix4(this.mvp);if(point.z<-.99||point.z>=1.001){invalid=true;break}screen.push([(point.x+1)*w/2,(1-point.y)*h/2,point.z])}if(invalid)continue;
-    const [a,b,c]=screen;const cross=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);if(cross>=0&&mat.side!==THREE.DoubleSide)continue;
+    let outsideNear=0,far=false;const image=obj.userData.panel?mat.map?.image:null;
+    for(let j=0;j<3;j++){
+     const id=ids[j],p=projected[j].set(pos.getX(id),pos.getY(id),pos.getZ(id),1).applyMatrix4(this.mvp);
+     if(p.z+p.w<0)outsideNear++;
+     else if(p.z>p.w*1.001){far=true;break;}
+    }
+    if(far||outsideNear===3)continue;
+    const clipped=outsideNear?clipNear(projected,ids,uv,image):null;
+    const screen=clipped?clipped.map(v=>toScreen(v.p)):projected.map(toScreen);
     if(screen.every(v=>v[0]<0)||screen.every(v=>v[0]>w)||screen.every(v=>v[1]<0)||screen.every(v=>v[1]>h))continue;
+    const [a,b,c]=screen;const cross=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);if(cross>=0&&mat.side!==THREE.DoubleSide)continue;
     color.copy(mat.color??new THREE.Color('white'));if(palette){const row=Math.min(palette.length/14-1,Math.floor((1-uv.getY(ids[0]))*palette.length/14));const tile=row*14+Math.min(13,Math.floor(uv.getX(ids[0])*14));color.multiply(palette[tile]);}
     let light=1;if(!mat.isMeshBasicMaterial){this.normal.fromBufferAttribute(norm,ids[0]).transformDirection(objectWorld);light=.68+Math.max(0,this.normal.y)*.28+Math.max(0,-this.normal.x)*.06;light*=scene.userData.softwareLight??1;}
     if(colors){if(obj.userData.rgbColors){color.r*=colors.getX(ids[0]);color.g*=colors.getY(ids[0]);color.b*=colors.getZ(ids[0]);}else light*=colors.getX(ids[0]);}color.multiplyScalar(light);const fog=mat.fog===false?0:Math.max(0,Math.min(1,(dist-scene.fog.near)/(scene.fog.far-scene.fog.near)));color.lerp(scene.fog.color,fog);
-    polygons.push({screen,depth:(a[2]+b[2]+c[2])/3,fill:color.getStyle(),alpha:mat.opacity??1,image:obj.userData.panel?mat.map?.image:null,tex:obj.userData.panel?ids.map(id=>[uv.getX(id)*mat.map.image.width,(1-uv.getY(id))*mat.map.image.height]):null});
+    const tex=image?(clipped?clipped.map(v=>[v.u*image.width,(1-v.v)*image.height]):ids.map(id=>[uv.getX(id)*image.width,(1-uv.getY(id))*image.height])):null;
+    const fill=color.getStyle(),alpha=mat.opacity??1;
+    for(let j=1;j+1<screen.length;j++){
+     const triangle=[screen[0],screen[j],screen[j+1]],depth=(triangle[0][2]+triangle[1][2]+triangle[2][2])/3;
+     polygons.push({screen:triangle,depth,fill,alpha,image,tex:tex?[tex[0],tex[j],tex[j+1]]:null});
+    }
    }
    }
   });

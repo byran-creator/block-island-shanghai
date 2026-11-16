@@ -4,7 +4,7 @@ import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_P
 
 // The floor, ticket leaves and collision-aware moon gates belong to the
 // district layout. This module supplies their local-coordinate finish.
-export function createYuyuanClassicAssets(root,{cube,mat,board}){
+export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batchMeshes}){
  const group=new THREE.Group();group.name='yuyuan-classic-inner-garden';root.add(group);
  const fixtures=[],box=new THREE.BoxGeometry(1,1,1),leaf=new THREE.SphereGeometry(1,8,5),pole=new THREE.CylinderGeometry(1,1,1,7),up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
  let seed=28679;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
@@ -494,6 +494,6 @@ export function createYuyuanClassicAssets(root,{cube,mat,board}){
   }
  }
 
- batchMeshes(group,staticMeshes(group),'yuyuan-classic-finish');
+ batchDetails(group,staticMeshes(group),'yuyuan-classic-finish');
  return {fixtures,dynamicRoots:new Set()};
 }

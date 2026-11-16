@@ -3,7 +3,7 @@ import {batchMeshes,staticMeshes} from './mesh-batch.js';
 import {GARDEN_BEDS,gardenBedContains,WATER_CORRIDOR,JIUQU_BRIDGE,gardenPathContains,INNER_GATES,GARDEN_PONDS,pathContains} from './yuyuan-layout.js';
 
 // Coordinates belong to the district, whose parent applies YUYUAN_SHIFT.
-export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
+export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=batchMeshes}){
  const fixtures=[],night=new THREE.Group(),garden=new THREE.Group(),animatedGarden=new THREE.Object3D();
  night.name='yuyuan-eaves-and-window-light';night.visible=false;
  garden.name='yuyuan-corridor-and-planting';animatedGarden.name='yuyuan-animated-garden';
@@ -488,7 +488,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings}){
   }
  }
 
- batchMeshes(garden,staticMeshes(garden),'yuyuan-garden-detail');batchMeshes(night,staticMeshes(night),'yuyuan-night-trim');
+ batchDetails(garden,staticMeshes(garden),'yuyuan-garden-detail');batchMeshes(night,staticMeshes(night),'yuyuan-night-trim');
  return {fixtures,dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;dropTimer+=dt;night.visible=lit;if(dropTimer>=0.028||dt===0){dropTimer=0;animate();}animateGarden(dt);}};
 }
 

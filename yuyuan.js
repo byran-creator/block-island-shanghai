@@ -17,7 +17,13 @@ export const YUYUAN_RIDDLES=[{question:'两岸不相连，走我能过河。猜�
 export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null,getSound=()=>true,getVolume=()=>.28,deferPondView=false}){
  const root=new THREE.Group();root.name='yuyuan-garden-and-malls';root.position.z=YUYUAN_SHIFT;scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),lights=[],lanterns=[],actors=[],fixtureBounds=[];let panel=false,elapsed=0,lastTea=-30,lastSnack=-30,solved=new Set(),orders=0,teas=0,stocks={buns:12,candy:8,souvenir:6,tea:6},collectibles={};
 
- const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
+ const solidPalette=new Set();
+ const batchDetails=(group,meshes,name)=>{
+  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette);
+  for(const mesh of batches)if(mesh.userData.rgbColors)mesh.userData.yuyuanColorBatch=true;
+  return batches;
+ };
+ const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));const material=mats.get(key);if(!glow)solidPalette.add(material);return material;};
  function cube(color,x,y,z,w,h,d,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;}
  const boardCache=new Map();
  function board(text,x,y,z,w=4,h=.8,yaw=0){
@@ -210,8 +216,8 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const setStocks=()=>{shopArt.setStocks(stocks);streetArt.setStocks(stocks);};
  const shopArt=createYuyuanShopAssets(root,{cube,mat,board});fixtureBounds.push(...shopArt.fixtures);for(const group of Object.values(shopArt.goods).flat())batchMeshes(group,staticMeshes(group),'yuyuan-stock-item');
  cube('#765236',-46,26.42,175,1.9,.84,.8);fixtureBounds.push({x:-46,z:175,rx:.95,rz:.4,y:26,h:.84});for(const x of [-46.5,-46,-45.5])cube('#d0dcc9',x,26.98,175,.16,.23,.16);
- const gardenArt=createYuyuanGardenAssets(root,{cube,mat,buildings:YUYUAN_BUILDINGS});fixtureBounds.push(...gardenArt.fixtures);
- const classicArt=createYuyuanClassicAssets(root,{cube,mat,board});fixtureBounds.push(...classicArt.fixtures);
+ const gardenArt=createYuyuanGardenAssets(root,{cube,mat,batchDetails,buildings:YUYUAN_BUILDINGS});fixtureBounds.push(...gardenArt.fixtures);
+ const classicArt=createYuyuanClassicAssets(root,{cube,mat,board,batchDetails});fixtureBounds.push(...classicArt.fixtures);
 
  // High-performance O(1) Spatial Hash Grid for fixture collisions (彻底消除每秒数百万次fixtureBounds.some线性迭代)
  const GRID_SIZE=8,fixtureGrid=new Map();
@@ -291,7 +297,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
 
  // Ultra-fast Static Mesh Batching (彻底消除卡顿与闪退：将700+发光体与宫灯全域合并为统一极速静态网格)
  const staticDynamic=new Set([...rickshaws.rickshaws.map(r=>r.group),...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(shopArt.goods).flat(),...lights,...lanterns]);
- batchMeshes(root,staticMeshes(root,staticDynamic),'yuyuan-static-details');
+ batchDetails(root,staticMeshes(root,staticDynamic),'yuyuan-static-details');
  const batchedLights=batchMeshes(root,lights,'yuyuan-night-glow');
  lights.splice(0,lights.length,...batchedLights);
  const batchedLanterns=batchMeshes(root,lanterns,'yuyuan-night-lanterns');
