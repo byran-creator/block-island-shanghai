@@ -10,7 +10,7 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
  const $=id=>document.getElementById(id),state=new CityQuestState();let lastReplayRevision=0,panel=false,clock=0,marker=null,selected=null,category='all',openedOnce=false;
  // Follow the real tracker height, including wrapping and manual dragging.
  // Observe layout changes rather than measuring during every game frame.
- const tracker=$('quest-tracker'),intro=createQuestIntro(tracker,document),syncCoordinates=()=>{
+ const tracker=$('quest-tracker'),intro=createQuestIntro(tracker,document,()=>onJourneyAction('intro-seen')),syncCoordinates=()=>{
   if(!tracker||tracker.hidden)return;
   document.documentElement.style.setProperty('--quest-coordinate-top',Math.min(tracker.getBoundingClientRect().bottom+12,innerHeight-28)+'px');
  };
@@ -70,12 +70,19 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
  function tick(dt,playing=true){
   const hud=$('quest-tracker');if(!playing){intro.pause();if(hud)hud.hidden=true;document.body.classList.remove('has-tracker');if(marker)marker.visible=false;return;}clock+=dt;if(clock<.2)return;const cueDt=clock;clock=0;if(state.tracked==='survival-intro'&&!state.done('survival-intro')&&getContext()?.life?.survival)changed(state.record({type:'survival-intro',survival:true}));
   const main=getStory(),q=main?.goal?{title:main.title,description:main.goal.instruction}:CITY_QUESTS.find(q=>q.id===state.tracked),goal=target(),context=getContext();if(hud){hud.hidden=!q;document.body.classList.toggle('has-tracker',!!q);if(q){$('tracked-title').textContent=q.title;const bearing=routeBearing(goal,context?.pos,getYaw()),touch=document.body.classList.contains('touch')||document.body.classList.contains('force-landscape');const instruction=bearing.near&&goal?.arrivalAction==='talk'?(touch?'就在这里，点右侧「互动 V」开始对话。':'就在这里，按 V 开始对话。'):goal?.instruction??q.description;$('tracked-step').textContent=controlInstruction(state.done(q.id)?'任务完成！按 I 领取奖励，然后继续下一项。':instruction,touch);$('tracked-place').textContent=goal?bearing.text+' · '+goal.label:q.id==='survival-intro'?'⚙ 设置切换生存模式':'I 领取奖励';if($('tracked-arrow'))$('tracked-arrow').style.transform=goal?'rotate('+bearing.angle+'deg)':'none';}}
-  const introJourney=getJourney();if(introJourney?.replayRevision!==undefined&&introJourney.replayRevision!==lastReplayRevision){lastReplayRevision=introJourney.replayRevision;if(introJourney.replaying&&introJourney.index===0)intro.reset();}if(!intro.finished){const journey=introJourney;if(journey&&journey.phase!=='new'&&journey.phase!=='opening')intro.tick(cueDt,{eligible:journey.phase==='journey'&&journey.index===0,playing:!!q&&!hud?.hidden,touch:document.body.classList.contains('touch')||document.body.classList.contains('force-landscape')});}
+  const journey=getJourney();
+  if(journey?.replayRevision!==undefined&&journey.replayRevision!==lastReplayRevision){
+   lastReplayRevision=journey.replayRevision;intro.reset();
+  }
+  if(!intro.finished&&journey&&journey.phase!=='new'&&journey.phase!=='opening'){
+   const eligible=journey.phase==='journey'&&journey.index===0&&(journey.replaying||!journey.introSeen||intro.started);
+   intro.tick(cueDt,{eligible,playing:!!main?.goal&&!hud?.hidden,touch:document.body.classList.contains('touch')||document.body.classList.contains('force-landscape')});
+  }
   if(marker){marker.visible=!!goal&&!goal.npcTarget&&!!context?.pos&&Math.hypot(goal.x-context.pos.x,goal.z-context.pos.z)<90;if(goal)marker.position.set(goal.x,goal.y+2.48,goal.z);}
  }
  function changed(ok){if(!ok)return;render();onProgress();}
  function close(){if(!panel)return;panel=false;$('tasks-dialog').close();resume();}
  function open(){intro.dismiss();if(panel){close();return;}if(!canOpen())return;if(!openedOnce&&getJourney()){selected='journey';category='all';}openedOnce=true;pause();panel=true;render();$('tasks-dialog').showModal();}
  $('task-open').onclick=open;if($('tracked-title')){$('tracked-title').style.cursor='pointer';$('tracked-title').title='点击打开任务与委托 (快捷键 I)';$('tracked-title').onclick=open;}if(document.querySelector('.quest-tracker-icon')){document.querySelector('.quest-tracker-icon').style.cursor='pointer';document.querySelector('.quest-tracker-icon').onclick=open;}$('tasks-close').onclick=close;$('tasks-dialog').addEventListener('cancel',e=>{e.preventDefault();close();});if($('quest-map'))$('quest-map').onclick=openMap;if($('quest-stop'))$('quest-stop').onclick=()=>track(null);render();
- return {refresh:()=>{if(panel)render();else updateLauncher();},state,open,close,track,tick,target,isPanelOpen:()=>panel,record:e=>changed(state.record(e)),setBuildCount:n=>changed(state.set('build',n)),serialize:()=>state.serialize(),restore:(d,legacy)=>{state.restore(d,legacy);render();}};
+ return {refresh:()=>{if(panel)render();else updateLauncher();},state,open,close,track,tick,target,isPanelOpen:()=>panel,record:e=>changed(state.record(e)),setBuildCount:n=>changed(state.set('build',n)),serialize:()=>state.serialize(),restore:(d,legacy)=>{intro.reset();state.restore(d,legacy);render();}};
 }

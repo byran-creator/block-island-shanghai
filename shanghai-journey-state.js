@@ -15,6 +15,7 @@ export const JOURNEY_CHAPTERS=[
 export const JOURNEY_SOUVENIR='沪上初游 · 旅行纪念卡';
 export class ShanghaiJourneyState{
  constructor(){this.trailEnabled=true;this.phase='new';this.index=0;this.tracked=true;this.seconds=0;this.gardenTalk=false;this.completedAt=null;this.memory='江风';this.pendingShopTalk=false;this.edition=3;this.encounters=[];this.officeErrand='new';this.touristPhoto='new';this.windowSeen=false;this.gallerySeen=false;this.bazaarSeen=false;this.journal=new TravelJournalState();}
+ introSeen=false;
  postcardIndex=null;
  postcardTracked=false;
  get chapter(){return JOURNEY_CHAPTERS[this.index]??null;}
@@ -65,11 +66,12 @@ export class ShanghaiJourneyState{
  }
  tick(dt){if(this.phase==='journey'&&Number.isFinite(dt)&&dt>0)this.seconds+=Math.min(dt,.25);}
  ended(){if(this.phase==='ending')this.phase='complete';}
- serialize(){return {version:1,trailEnabled:this.trailEnabled,edition:this.edition,officeErrand:this.officeErrand,touristPhoto:this.touristPhoto,phase:this.phase,index:this.index,tracked:this.tracked,seconds:this.seconds,gardenTalk:this.gardenTalk,completedAt:this.completedAt,memory:this.memory,pendingShopTalk:this.pendingShopTalk,encounters:this.encounters.map(p=>({...p})),windowSeen:this.windowSeen,gallerySeen:this.gallerySeen,bazaarSeen:this.bazaarSeen,journal:this.journal.serialize(),postcardIndex:this.postcardIndex,postcardTracked:this.postcardTracked};}
+ serialize(){return {version:1,introSeen:this.introSeen,trailEnabled:this.trailEnabled,edition:this.edition,officeErrand:this.officeErrand,touristPhoto:this.touristPhoto,phase:this.phase,index:this.index,tracked:this.tracked,seconds:this.seconds,gardenTalk:this.gardenTalk,completedAt:this.completedAt,memory:this.memory,pendingShopTalk:this.pendingShopTalk,encounters:this.encounters.map(p=>({...p})),windowSeen:this.windowSeen,gallerySeen:this.gallerySeen,bazaarSeen:this.bazaarSeen,journal:this.journal.serialize(),postcardIndex:this.postcardIndex,postcardTracked:this.postcardTracked};}
  restore(d){
   if(!d||d.version!==1){Object.assign(this,new ShanghaiJourneyState());this.tracked=false;return;}
   this.index=Number.isInteger(d.index)?Math.max(0,Math.min(JOURNEY_CHAPTERS.length,d.index)):0;
   this.phase=this.complete?'complete':d.phase==='new'?'new':'journey';
+  this.introSeen=typeof d.introSeen==='boolean'?d.introSeen:d.phase==='journey'||this.index>0;
   this.postcardIndex=this.complete&&Number.isInteger(d.postcardIndex)?Math.max(0,Math.min(POSTCARD_STOPS.length,d.postcardIndex)):null;
   this.postcardTracked=this.postcardIndex!==null&&!!this.postcardStop&&d.postcardTracked===true;
   this.trailEnabled=d.trailEnabled!==false;this.tracked=d.tracked!==false;this.seconds=Number.isFinite(d.seconds)?Math.max(0,Math.min(1e7,d.seconds)):0;
