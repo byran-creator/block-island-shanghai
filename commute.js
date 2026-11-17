@@ -9,23 +9,33 @@ import {nanpuFloor} from './bridge-road.js';
 import {EXPO} from './expo-layout.js';
 import {followCameraDistance} from './follow-camera.js';
 
+// Keep the bikes on broad sidewalks, away from storefronts and intersections.
+const PUXI_BICYCLES=[
+ [-279.5,185.5,Math.PI/2],[-275.5,185.5,-Math.PI/2],[-309.5,116.5,0],
+ [-195.5,179.5,Math.PI/2],[-191.5,179.5,-Math.PI/2],[-92.5,130.5,-Math.PI/2]
+];
+
 export function createCommute({scene,world,civil,activity,getPos,blocked,vehicleBlocked=null,fixtureBlocked=()=>false,exitBlocked=blocked,place,setView,turnView,notify,onExit=()=>{},allowed=()=>true,getActors=()=>[],onImpact=()=>{}}){
  const root=new THREE.Group();root.name='player-commuting';scene.add(root);const vehicles=[],box=new THREE.BoxGeometry(1,1,1);let ride=null;
  function cube(parent,color,x,y,z,sx,sy,sz){const m=new THREE.Mesh(box,new THREE.MeshLambertMaterial({color}));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=220;parent.add(m);return m;}
- function groundVehicle(kind,p){const group=new THREE.Group();group.name='rideable-'+kind;group.rotation.order='YXZ';group.position.set(p.x,p.y,p.z);root.add(group);const bicycle=kind==='bicycle',color=bicycle?'#62d3c1':'#e4af4f',wheels=[],steerRigs=[];
+ function groundVehicle(kind,p){const group=new THREE.Group();group.name='rideable-'+kind;group.rotation.order='YXZ';group.rotation.y=p.yaw;group.position.set(p.x,p.y,p.z);root.add(group);const bicycle=kind==='bicycle',color=bicycle?'#62d3c1':'#e4af4f',wheels=[],steerRigs=[];
   function wheel(x,z){const pivot=new THREE.Group();pivot.position.set(x,bicycle?.34:.28,z);group.add(pivot);const spin=new THREE.Group();pivot.add(spin);const tire=new THREE.Mesh(bicycle?new THREE.TorusGeometry(.32,.055,5,12):new THREE.CylinderGeometry(.28,.28,.2,10),new THREE.MeshLambertMaterial({color:'#263540'}));if(bicycle)tire.rotation.y=Math.PI/2;else tire.rotation.z=Math.PI/2;spin.add(tire);cube(spin,'#adbac0',0,0,0,bicycle?.055:.22,.05,bicycle?.54:.42);wheels.push(spin);if(z<0)steerRigs.push(pivot);return pivot;}
   if(bicycle){wheel(0,.65);const front=wheel(0,-.65);cube(group,color,0,.62,0,.1,.1,1.3);cube(group,color,0,.8,.2,.1,.5,.1);cube(group,'#243848',0,1.05,.2,.3,.08,.35);cube(front,color,0,.66,.07,.07,.75,.07);cube(front,'#435962',0,1.03,.05,.6,.07,.07);
   }else{cube(group,color,0,.5,0,1.6,.8,3.2);cube(group,'#769eaf',0,1.08,0,1.38,.65,1.65);cube(group,color,0,1.43,0,1.45,.12,1.8);for(const x of [-.83,.83])for(const z of [-1,1])wheel(x,z);for(const x of [-.5,.5])cube(group,'#fff0b4',x,.65,-1.63,.28,.2,.06);}
   let pilot,pedaling;if(bicycle){pilot=new THREE.Group();cube(pilot,'#f2dc97',0,1.48,.12,.42,.52,.28);cube(pilot,'#dfb28d',0,1.9,.06,.31,.31,.3);cube(pilot,'#eef1ed',0,2.08,.06,.38,.16,.36);const legs=[];for(const side of [-1,1]){legs.push(cube(pilot,'#40586b',side*.15,.96,.12,.16,.55,.2));const arm=cube(pilot,'#f2dc97',side*.22,1.47,-.2,.13,.47,.15);arm.rotation.x=-.8;}pedaling=createBicyclePedaling({legs,makePart:(...args)=>cube(pilot,...args)});group.add(pilot);pilot.visible=false;}
-  const v={kind,root:group,pilot,pedaling,wheels,steerRigs,speed:0,throttle:0,steering:0,steerAngle:0,gear:2,yaw:0,halfWidth:bicycle?.42:.88,halfLength:bicycle?.8:1.65,maxSpeed:bicycle?11:19};vehicles.push(v);return v;
+  const v={kind,root:group,pilot,pedaling,wheels,steerRigs,speed:0,throttle:0,steering:0,steerAngle:0,gear:2,yaw:p.yaw,halfWidth:bicycle?.42:.88,halfLength:bicycle?.8:1.65,maxSpeed:bicycle?11:19};vehicles.push(v);return v;
  }
- function parking(kind,x,z){const width=kind==='car'?.88:.42,length=kind==='car'?1.65:.8;return safeLanding(world,{x,y:26,z},(x,y,z)=>{
-  for(const dx of [-width,0,width])for(const dz of [-length,0,length])if(roadContains(x+dx,z+dz)||blocked(x+dx,y,z+dz)||!world.get(Math.floor(x+dx),25,Math.floor(z+dz)))return true;
-  return vehicles.some(v=>vehicleContact({root:{},halfWidth:width,halfLength:length},x,y,z,0,v));
+ function parking(kind,x,z,yaw=0){const width=kind==='car'?.88:.42,length=kind==='car'?1.65:.8,c=Math.cos(yaw),s=Math.sin(yaw);return safeLanding(world,{x,y:26,z,yaw},(x,y,z)=>{
+  for(const dx of [-width,0,width])for(const dz of [-length,0,length]){
+   const xx=x+dx*c+dz*s,zz=z-dx*s+dz*c;
+   if(roadContains(xx,zz)||blocked(xx,y,zz)||!world.get(Math.floor(xx),25,Math.floor(zz)))return true;
+  }
+  return vehicles.some(v=>vehicleContact({root:{},halfWidth:width,halfLength:length},x,y,z,yaw,v));
  });}
  for(const z of [99,162]){const p=parking('bicycle',promenadeX(z)-6,z+5);if(p)groundVehicle('bicycle',p);}
  for(const z of [99,192]){const p=parking('car',promenadeX(z)-12,z+9);if(p)groundVehicle('car',p);}
  for(const [kind,x,z]of [['bicycle',184,52],['car',224,37],['bicycle',EXPO.bicycle.x,EXPO.bicycle.z]]){const p=parking(kind,x,z);if(p)groundVehicle(kind,p);}
+ for(const [x,z,yaw]of PUXI_BICYCLES){const p=parking('bicycle',x,z,yaw);if(p)groundVehicle('bicycle',p);}
  const heli={kind:'helicopter',root:activity.heli,speed:0,yaw:0,halfWidth:1.15,halfLength:2.1,maxSpeed:24};vehicles.push(heli);const home=heli.root.position.clone();
  const takeover=createVehicleTakeover({scene,world,traffic:civil.traffic,cars:civil.cars??(civil.traffic.agents??[]).filter(c=>!['bus','delivery','bicycle'].includes(c.kind)),getPos,blocked,mount,vehicles,notify,canStart:()=>!ride&&allowed()});
  function exitPoint(){if(!ride)return null;const v=ride.vehicle,p=v.root.position,a=v.root.rotation.y,isHeli=ride.kind==='helicopter',bridge=nanpuFloor(world,p.x,p.z),base=bridge??Math.round(p.y),levels=isHeli?[base,base-1]:[base];

@@ -5,7 +5,7 @@ import {yuyuanReserved} from './yuyuan-layout.js';
 import {xintiandiReserved} from './xintiandi-layout.js';
 import {WUKANG,WUKANG_ROAD_WIDTH,wukangReserved} from './wukang-layout.js';
 import {westStreets,westRoadAt,westRoadPlot,buildWestStreets} from './west-streets.js';
-import {roundedRoad} from './road-geometry.js';
+import {roundedRoad,returningStreetLoop} from './road-geometry.js';
 import {WAIBAIDU,inSuzhou} from './waibaidu-layout.js';
 
 // East = +x, south = +z. Preserve geographic order, compress walking distances.
@@ -276,9 +276,13 @@ bridgeTraffic.splice(0,bridgeTraffic.length,...bridgeNext);bridgeTraffic.lengthM
 const expoDrive=[[313,226],[359,226],[359,275],[363,275],[363,306],[373,306],[373,311],[363,311],
  [363,275],[359,275],[359,271],[313,271],[313,226]];
 const puxiDrive=[[-249,209],[-151,209],[-151,253],[-249,253],[-249,209]];
+const wukangDrive=[...WUKANG.road.slice().reverse(),[-234,179]];
+const historicDrive=[[-211,178],[-211,145],[-121,145],[-121,126],[-19,126]];
 CAR_ROUTES.push(
  {id:'expo-local',samples:routeSamples(roundedRoad(expoDrive,2.8)),cars:4,lane:1,oneWay:true},
- {id:'puxi-local',samples:routeSamples(roundedRoad(puxiDrive,2.8)),cars:4,lane:1.05}
+ {id:'puxi-local',samples:routeSamples(roundedRoad(puxiDrive,2.8)),cars:4,lane:1.05},
+ {id:'wukang-local',samples:routeSamples(returningStreetLoop(wukangDrive)),cars:3,lane:0,oneWay:true},
+ {id:'historic-local',samples:routeSamples(returningStreetLoop(historicDrive,1.1)),cars:3,lane:0,oneWay:true}
 );
 const establishedRoads=ROADS.slice();
 ROADS.push(...WEST_ROADS,...EXPO_ROADS,{id:'wukang-road',name:'武康路',width:WUKANG_ROAD_WIDTH,samples:routeSamples(WUKANG.road),regionalVoxels:true});

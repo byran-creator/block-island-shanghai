@@ -11,3 +11,28 @@ export function roundedRoad(points,radius=6){
  }
  out.push(out[0]);return out;
 }
+
+// Offset the two lanes along an existing street and join them inside its
+// paved ends, without routing vehicles through the adjacent blocks.
+export function returningStreetLoop(points,lane=1.45){
+ const directions=points.slice(1).map(([x,z],i)=>{
+  const [startX,startZ]=points[i],dx=x-startX,dz=z-startZ,length=Math.hypot(dx,dz);
+  return [dx/length,dz/length];
+ });
+ function offset(side){
+  return points.map(([x,z],i)=>{
+   const [ax,az]=directions[Math.max(0,i-1)], [bx,bz]=directions[Math.min(i,directions.length-1)];
+   const distance=side*lane/(1+ax*bx+az*bz);
+   return [x+distance*(az+bz),z-distance*(ax+bx)];
+  });
+ }
+ function turn([x,z],[dx,dz],side,direction){
+  return Array.from({length:11},(_,i)=>{
+   const angle=(i+1)*Math.PI/12,c=Math.cos(angle)*side,s=Math.sin(angle)*direction;
+   return [x+lane*(dz*c+dx*s),z+lane*(-dx*c+dz*s)];
+  });
+ }
+ const outward=offset(-1),inward=offset(1).reverse();
+ return roundedRoad([...outward,...turn(points.at(-1),directions.at(-1),-1,1),...inward,
+  ...turn(points[0],directions[0],1,-1),outward[0]],2);
+}

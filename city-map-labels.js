@@ -3,6 +3,7 @@ import {CENTURY_PARK} from './century-park.js';
 import {LANDMARKS} from './world.js';
 import {TRAVEL_POINTS} from './map-travel.js';
 
+const bund=TRAVEL_POINTS.find(p=>p.id==='bund');
 const primary=[
  ['南京路步行街',-105,66.5],
  ['豫园',-46,238],
@@ -10,7 +11,7 @@ const primary=[
  ['武康大楼',LANDMARKS.wukang.mapX,LANDMARKS.wukang.mapZ],
  ['静安寺',LANDMARKS.jingan.x,LANDMARKS.jingan.z],
  ['四行仓库',LANDMARKS.sihang.mapX,LANDMARKS.sihang.mapZ],
- ['外滩',LANDMARKS.bund.x,LANDMARKS.bund.z],
+ ['外滩',bund.x,bund.z],
  ['陆家嘴',181,59],
  ['中华艺术宫',EXPO.palace.x,EXPO.palace.z],
  ['梅赛德斯-奔驰文化中心',EXPO.arena.x,EXPO.arena.z],
@@ -25,7 +26,7 @@ const shorter={
  helipad:'白玉兰停机坪',expoRiver:'世博滨江',puxiResidences:'衡复里',fuxingPark:'复兴公园'
 };
 const secondary=TRAVEL_POINTS.filter(p=>!hiddenTravelIds.has(p.id)&&!p.id.startsWith('metro-')&&!/(套房|私邸)/.test(p.name))
- .map(p=>[shorter[p.id]??p.name,p.x,p.z]);
+ .map(p=>[shorter[p.id]??p.name,p.mapX??p.x,p.mapZ??p.z]);
 for(const id of ['mountain','outer','survivalCamp']){
  const p=LANDMARKS[id];
  secondary.push([p.name,p.x,p.z]);
@@ -38,7 +39,7 @@ const offsets=[
 
 export function layoutCityMapLabels(ctx,toPixel,size,toZ=toPixel,heightLimit=size){
  const labels=[];
- const boxes=TRAVEL_POINTS.map(p=>({x:toPixel(p.x)-9,y:toZ(p.z)-9,w:18,h:18}));
+ const boxes=TRAVEL_POINTS.map(p=>({x:toPixel(p.mapX??p.x)-9,y:toZ(p.mapZ??p.z)-9,w:18,h:18}));
  for(const [group,font] of [[primary,25],[secondary,20]]){
   ctx.font=`700 ${font}px sans-serif`;
   for(const [name,x,z] of group){
