@@ -8,7 +8,7 @@ export const JOURNEY_CHAPTERS=[
  {id:'return-nanjing',title:'再见，江对岸的灯火',hint:'乘观光电梯回到地面，再坐2号线从陆家嘴返回南京东路。'},
  {id:'metro',title:'地下也有一条街',hint:'从南京东路乘10号线到豫园；到站下车后正常刷闸出站。'},
  {id:'garden',title:'园门里的慢时光',hint:'和园门旁的顾先生聊聊，再领票、检票进入内园。'},
- {id:'view',title:'把风景留在窗里',hint:'先在圆窗内停留两秒，再沿水上长廊发现锦鲤与倒影，按 V 记入手账。'},
+ {id:'view',title:'水廊桥上的豫园故事',hint:'跟随黄色标记走到水廊桥，靠近导游许棠按 V 或点「互动 V」，听完讲解。'},
  {id:'tea',title:'一杯茶的时间',hint:'离园逛一间商铺，按 V 看看柜台，再沿九曲桥到湖心亭品茶。'},
  {id:'keepsake',title:'这一次，记住上海',hint:'走近湖心亭旁的沈伯，领取专属旅行纪念卡。'}
 ];
@@ -36,7 +36,7 @@ export class ShanghaiJourneyState{
  }
  begin(){if(this.phase!=='new')return false;this.phase='opening';return true;}
  opened(){if(this.phase!=='opening')return false;this.phase='journey';return true;}
- advance(){const stamp={letter:'bund',taste:'nanjing','lujiazui-metro':'lujiazui','lujiazui-view':'sky',garden:'garden',view:'window',tea:'tea'}[this.chapter.id];if(stamp)this.journal.stamp(stamp);this.index++;if(this.complete)this.phase='ending';return true;}
+ advance(){const stamp={letter:'bund',taste:'nanjing','lujiazui-metro':'lujiazui','lujiazui-view':'sky',garden:'garden',view:'gallery',tea:'tea'}[this.chapter.id];if(stamp)this.journal.stamp(stamp);this.index++;if(this.complete)this.phase='ending';return true;}
  record(e){
   if(this.phase!=='journey'||!e)return false;
   switch(this.chapter.id){
@@ -58,8 +58,7 @@ export class ShanghaiJourneyState{
    case 'metro':return e.type==='metro10'&&e.from==='nanjing'&&e.to==='yuyuan'&&e.departed===true?this.advance():false;
    case 'garden':if(e.type==='journey-talk'&&e.npc==='gu'){this.gardenTalk=true;return true;}return this.gardenTalk&&e.type==='yuyuan-entry'?this.advance():false;
    case 'view':
-    if(e.type==='journey-view'&&e.visible===true&&e.seconds>=2||e.type==='yuyuan-riddle'&&e.solved===3){this.windowSeen=true;this.journal.stamp('window');return true;}
-    if(e.type==='journey-gallery'&&this.windowSeen){this.gallerySeen=true;this.journal.stamp('gallery');return this.advance();}return false;
+    if(e.type==='journey-talk'&&e.npc==='guide'){this.gallerySeen=true;return this.advance();}return false;
    case 'tea':if(e.type==='yuyuan-shop-visit'){if(this.bazaarSeen)return false;this.bazaarSeen=true;return true;}return e.type==='yuyuan-tea'&&this.bazaarSeen?this.advance():false;
    case 'keepsake':if(e.type!=='journey-claim')return false;this.memory=['江风','灯火','茶香'].includes(e.memory)?e.memory:'江风';this.completedAt=typeof e.at==='string'?e.at:new Date().toISOString();return this.advance();
   }return false;

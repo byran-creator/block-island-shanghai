@@ -96,6 +96,10 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   mesh.position.set(x,y,z);mesh.rotation.y=yaw;mesh.userData.panel=true;root.add(mesh);return mesh;
  }
  function roof(b,y,scale=1){const rx=(b.rx+1.2)*scale,rz=(b.rz+1.2)*scale,vertices=[];for(const side of [-1,1])for(let j=0;j<5;j++){const a=j/5,c=(j+1)/5,z1=b.z+side*rz*a,z2=b.z+side*rz*c,h=t=>y+2.3*(1-t)+.65*Math.pow(t,7);vertices.push(b.x-rx,h(a),z1,b.x+rx,h(a),z1,b.x-rx,h(c),z2,b.x-rx,h(c),z2,b.x+rx,h(a),z1,b.x+rx,h(c),z2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();const material=mat('#374543').clone();material.side=THREE.DoubleSide;const mesh=new THREE.Mesh(g,material);root.add(mesh);cube('#927b50',b.x,y+2.32,b.z,rx*2+.4,.14,.18);const eaveGlow=cube('#ffd75a',b.x,y+2.36,b.z,rx*2+.3,.06,.09,true);lights.push(eaveGlow);for(const side of [-1,1]){cube('#74644c',b.x,y+.66,b.z+side*rz,rx*2+.4,.12,.17);const sideEaveZ=cube('#ffc240',b.x,y+.7,b.z+side*rz,rx*2+.3,.06,.09,true);lights.push(sideEaveZ);const sideEaveX=cube('#ffc240',b.x+side*rx,y+.7,b.z,.09,.06,rz*2+.3,true);lights.push(sideEaveX);}for(const sx of [-1,1])for(const sz of [-1,1]){const cornerX=b.x+sx*rx,cornerZ=b.z+sz*rz,tipX=cornerX+sx*.55,tipZ=cornerZ+sz*.55,tipY=y+1.12;const wing=new THREE.Mesh(box,mat('#374543'));wing.position.set((cornerX+tipX)/2,(y+.66+tipY)/2,(cornerZ+tipZ)/2);wing.scale.set(.12,.16,.75);wing.rotation.y=Math.atan2(sz,sx);wing.rotation.z=sx*.28;root.add(wing);cube('#28332c',tipX,tipY+.12,tipZ,.15,.22,.15);const wingGlow=cube('#ffd75a',(cornerX+tipX)/2,(y+.72+tipY)/2,(cornerZ+tipZ)/2,.07,.07,.78,true);wingGlow.rotation.y=Math.atan2(sz,sx);wingGlow.rotation.z=sx*.28;lights.push(wingGlow);const cornerLantern=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.35,8),mat('#e83a28',true));cornerLantern.position.set(tipX,tipY-.28,tipZ);root.add(cornerLantern);lanterns.push(cornerLantern);const core=cube('#fff5b8',tipX,tipY-.28,tipZ,.08,.22,.08,true);lights.push(core);cube('#d42d22',tipX,tipY-.52,tipZ,.03,.16,.03);}}
+ function solidShopWall(color,x,y,z,w,h,d){
+  cube(color,x,y,z,w,h,d);
+  fixtureBounds.push({x,y:y-h/2,z,rx:w/2,rz:d/2,h});
+ }
   for(const b of YUYUAN_BUILDINGS){
    if(b.id==='huxinting'){
     // Single-tier delicate open classical lakeside tea pavilion on Nine-turn Bridge (开放式水榭茶亭)
@@ -180,17 +184,17 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
     const isDoorSide=([-107,8].includes(b.x)&&side===1)||([-86,25].includes(b.x)&&side===-1);
     if(isDoorSide){
      const flankLen=Math.max(0.4,b.rz-1.4);
-     for(const fz of [b.z-b.rz+flankLen/2,b.z+b.rz-flankLen/2])cube(wallCol,b.x+side*(b.rx+.025),27.5,fz,.04,3,flankLen);
+     for(const fz of [b.z-b.rz+flankLen/2,b.z+b.rz-flankLen/2])solidShopWall(wallCol,b.x+side*(b.rx+.025),27.5,fz,.04,3,flankLen);
      for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)if(Math.abs(z-b.z)>=1.4)cube('#5d432b',b.x+side*(b.rx+.035),27.5,z,.06,3,.12);
      if(b.levels>1){
-      cube(wallCol,b.x+side*(b.rx+.025),29+(b.levels-1)*2,b.z,.04,(b.levels-1)*4,b.rz*2);
+      solidShopWall(wallCol,b.x+side*(b.rx+.025),29+(b.levels-1)*2,b.z,.04,(b.levels-1)*4,b.rz*2);
       for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)cube('#5d432b',b.x+side*(b.rx+.035),29+(b.levels-1)*2,z,.06,(b.levels-1)*4,.12);
      }
     }else{
-     cube(wallCol,b.x+side*(b.rx+.025),26+b.levels*2,b.z,.04,b.levels*4,b.rz*2);
+     solidShopWall(wallCol,b.x+side*(b.rx+.025),26+b.levels*2,b.z,.04,b.levels*4,b.rz*2);
      for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)cube('#5d432b',b.x+side*(b.rx+.035),26+b.levels*2,z,.06,b.levels*4,.12);
     }
-   }for(const side of [-1,1]){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-'))){if(b.levels>1)cube(wallCol,b.x,30+(b.levels-1)*2,b.z-b.rz-.028,b.rx*2,(b.levels-1)*4,.035);continue;}for(const sign of [-1,1])cube(wallCol,b.x+sign*(b.rx+1.5)/2,26+b.levels*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx-1.5,b.levels*4,.035);if(b.levels>1)cube(wallCol,b.x,29.5+(b.levels-1)*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx*2,(b.levels-1)*4-1,.035);}for(let level=1;level<=b.levels;level++)roof(b,26+level*4,level===b.levels?.96:1.1);for(const side of [-1,1])for(let x=b.x-b.rx+.6;x<=b.x+b.rx-.4;x+=1.2){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-')))continue;cube('#62482f',x,27.5,b.z+side*(b.rz+.035)+(side>0?1:0),.11,3,.08);if(Math.abs(x-b.x)>1.5){cube('#593e2b',x,27.55,b.z+side*(b.rz+.08)+(side>0?1:0),.84,1.72,.06);const winGlow=cube('#ffba54',x,27.55,b.z+side*(b.rz+.07)+(side>0?1:0),.78,1.6,.02,true);lights.push(winGlow);for(const dx of [-.27,0,.27])cube('#d3ba77',x+dx,27.55,b.z+side*(b.rz+.12)+(side>0?1:0),.035,1.5,.025);for(const y of [27.05,27.55,28.05])cube('#d3ba77',x,y,b.z+side*(b.rz+.12)+(side>0?1:0),.78,.035,.025);}}if(b.levels>=2)for(const side of [-1,1]){cube('#8c5b32',b.x,30.05,b.z+side*(b.rz+.35),b.rx*2+.7,.12,.65);cube('#76502c',b.x,30.9,b.z+side*(b.rz+.6),b.rx*2+.7,.09,.09);for(let x=b.x-b.rx;x<=b.x+b.rx;x+=.6)cube('#76502c',x,30.5,b.z+side*(b.rz+.6),.05,.8,.06);const upperWin=cube('#ffba54',b.x,30.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(upperWin);}if(b.levels>=3)for(const side of [-1,1]){cube('#8c5b32',b.x,34.05,b.z+side*(b.rz+.35),b.rx*2+.5,.12,.65);const topWin=cube('#ffba54',b.x,34.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(topWin);}}
+   }for(const side of [-1,1]){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-'))){if(b.levels>1)solidShopWall(wallCol,b.x,30+(b.levels-1)*2,b.z-b.rz-.028,b.rx*2,(b.levels-1)*4,.035);continue;}for(const sign of [-1,1])solidShopWall(wallCol,b.x+sign*(b.rx+1.5)/2,26+b.levels*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx-1.5,b.levels*4,.035);if(b.levels>1)solidShopWall(wallCol,b.x,29.5+(b.levels-1)*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx*2,(b.levels-1)*4-1,.035);}for(let level=1;level<=b.levels;level++)roof(b,26+level*4,level===b.levels?.96:1.1);for(const side of [-1,1])for(let x=b.x-b.rx+.6;x<=b.x+b.rx-.4;x+=1.2){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-')))continue;cube('#62482f',x,27.5,b.z+side*(b.rz+.035)+(side>0?1:0),.11,3,.08);if(Math.abs(x-b.x)>1.5){cube('#593e2b',x,27.55,b.z+side*(b.rz+.08)+(side>0?1:0),.84,1.72,.06);const winGlow=cube('#ffba54',x,27.55,b.z+side*(b.rz+.07)+(side>0?1:0),.78,1.6,.02,true);lights.push(winGlow);for(const dx of [-.27,0,.27])cube('#d3ba77',x+dx,27.55,b.z+side*(b.rz+.12)+(side>0?1:0),.035,1.5,.025);for(const y of [27.05,27.55,28.05])cube('#d3ba77',x,y,b.z+side*(b.rz+.12)+(side>0?1:0),.78,.035,.025);}}if(b.levels>=2)for(const side of [-1,1]){cube('#8c5b32',b.x,30.05,b.z+side*(b.rz+.35),b.rx*2+.7,.12,.65);cube('#76502c',b.x,30.9,b.z+side*(b.rz+.6),b.rx*2+.7,.09,.09);for(let x=b.x-b.rx;x<=b.x+b.rx;x+=.6)cube('#76502c',x,30.5,b.z+side*(b.rz+.6),.05,.8,.06);const upperWin=cube('#ffba54',b.x,30.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(upperWin);}if(b.levels>=3)for(const side of [-1,1]){cube('#8c5b32',b.x,34.05,b.z+side*(b.rz+.35),b.rx*2+.5,.12,.65);const topWin=cube('#ffba54',b.x,34.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(topWin);}}
   board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,264.5,5.5,.9);board('江南手作',-62,30,264.5,5.5,.9);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);
  const wayfinding=createYuyuanWayfinding();wayfinding.position.set(-35,26,10);root.add(wayfinding);
  board('华宝楼 · 百年商厦',-86,37.2,165.8,5.5,.9);board('天裕楼 · 豫园名阁',8,37.2,166.8,5.5,.9);board('和丰楼 · 美食雅集',8,33,184.8,5.5,.9);
@@ -379,41 +383,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    const roofY = 26 + b.levels * 4 + 0.35;
    if(y >= roofY) continue;
    if(y >= roofY - 0.8 && Math.abs(dx) <= b.rx + 0.5 && Math.abs(dz) <= b.rz + 0.5) return true;
-   if(b.historic && y < roofY) return true;
-   // West Outer Row: front door on East (+x)
-   if(b.x === -107){
-    if(dx <= -b.rx + 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx >= b.rx - 0.45 && Math.abs(dz) > 1.35)) return true;
-    continue;
-   }
-   // West Inner Row: front door on West (-x)
-   if(b.x === -86){
-    if(dx >= b.rx - 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx <= -b.rx + 0.45 && Math.abs(dz) > 1.35)) return true;
-    continue;
-   }
-   // East Inner Row: front door on East (+x)
-   if(b.x === 8){
-    if(dx <= -b.rx + 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx >= b.rx - 0.45 && Math.abs(dz) > 1.35)) return true;
-    continue;
-   }
-   // East Outer Row: front door on West (-x)
-   if(b.x === 25){
-    if(dx >= b.rx - 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx <= -b.rx + 0.45 && Math.abs(dz) > 1.35)) return true;
-    continue;
-   }
-   // South Row: front door on North (-z)
-   if(b.z === 271){
-    if(dz >= b.rz - 0.45 || Math.abs(dx) >= b.rx - 0.45 || (dz <= -b.rz + 0.45 && Math.abs(dx) > 1.5)) return true;
-    continue;
-   }
-   if(b.id === 'lubolang'){
-    if(dx >= b.rx - 0.45 || Math.abs(dz) >= b.rz - 0.45 || (dx <= -b.rx + 0.45 && Math.abs(dz) > 1.5)) return true;
-    continue;
-   }
-   if(b.id === 'tea-gallery'){
-    if(dz <= -b.rz + 0.45 || Math.abs(dx) >= b.rx - 0.45 || (dz >= b.rz - 0.45 && Math.abs(dx) > 1.5)) return true;
-    continue;
-   }
-   if(y < roofY) return true;
+   if(b.historic)return true;
   }
   return false;
  }

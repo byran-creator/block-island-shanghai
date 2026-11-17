@@ -6,9 +6,14 @@ import {JIUQU_BRIDGE,INNER_GARDEN_PATH} from './yuyuan-layout.js';
 import {JOURNEY_ACTORS} from './shanghai-journey-content.js';
 import {LANDMARKS} from './world.js';
 const goal=(p,label,instruction,extra={})=>({...p,label,instruction,...extra});
-export const GALLERY_JOURNEY_ROUTE=[[-46,256.5],[-54,257.5],[-54,264],[-57.5,279.5],[-68,288.5],[-68,295],[-66,295],[-66,296],[-61.5,297.4],[-56.5,298.4],[-51,297.8]];
-export const GALLERY_EXIT_ROUTE=[...GALLERY_JOURNEY_ROUTE.slice(2).reverse(),[-60,264],[-68,265],[-77,265]];
-function followRoute(p,route,label,instruction){let best=Infinity,index=1;for(let i=1;i<route.length;i++){const a=route[i-1],b=route[i],dx=b[0]-a[0],dz=b[1]-a[1],u=Math.max(0,Math.min(1,((p.x-a[0])*dx+(p.z-a[1])*dz)/(dx*dx+dz*dz||1))),d=Math.hypot(p.x-a[0]-dx*u,p.z-a[1]-dz*u);if(d<best){best=d;index=i;}}if(Math.hypot(p.x-route[index][0],p.z-route[index][1])<.8)index=Math.min(index+1,route.length-1);return goal({x:route[index][0],y:26,z:route[index][1]},label,instruction);}
+const GALLERY_APPROACH=[[-54,264],[-57.5,279.5],[-68,288.5],[-68,295],[-66,295],[-66,296],[-61.5,297.4],[-56.5,298.4],[-51,297.8]];
+export const GALLERY_JOURNEY_ROUTE=[[-77,265],[-68,265],[-60,264],...GALLERY_APPROACH];
+const NORTH_GALLERY_ROUTE=[...INNER_GARDEN_PATH.slice(0,7).map(([x,z])=>[x,z+60]),...GALLERY_APPROACH.slice(1)];
+export const GALLERY_EXIT_ROUTE=[...GALLERY_JOURNEY_ROUTE].reverse();
+export const GARDEN_GUIDE_RADIUS=2.6;
+export function nearGardenGuide(p){const a=JOURNEY_ACTORS.guide;return Math.hypot(p.x-a.x,p.z-a.z)<GARDEN_GUIDE_RADIUS&&Math.abs(p.y-a.y)<1.4;}
+export function galleryRouteTarget(p){const route=p.x>-54&&p.z<264?NORTH_GALLERY_ROUTE:GALLERY_JOURNEY_ROUTE;return followRoute(p,route,'内园 · 前往水廊桥','沿园路从西侧走上水廊桥，跟随黄色标记找导游许棠。',.25);}
+function followRoute(p,route,label,instruction,waypointRadius=.8){let best=Infinity,index=1;for(let i=1;i<route.length;i++){const a=route[i-1],b=route[i],dx=b[0]-a[0],dz=b[1]-a[1],u=Math.max(0,Math.min(1,((p.x-a[0])*dx+(p.z-a[1])*dz)/(dx*dx+dz*dz||1))),d=Math.hypot(p.x-a[0]-dx*u,p.z-a[1]-dz*u);if(d<best){best=d;index=i;}}if(Math.hypot(p.x-route[index][0],p.z-route[index][1])<waypointRadius)index=Math.min(index+1,route.length-1);return goal({x:route[index][0],y:26,z:route[index][1]},label,instruction);}
 function leaveMetro(ctx){
  const p=ctx.pos,l=line10ToLocal(p),s=LINE10_STATIONS[1],flags=ctx.stations?.find(x=>x.id==='yuyuan')??{},r=line10RampAt(l.x,l.z);
  if(p.y>=25.5)return null;
@@ -53,11 +58,13 @@ export function shanghaiJourneyTarget(state,ctx){
  if(ctx.pos.y<25.5&&ctx.pos.x<-60)return leaveMetro(ctx);
  if(c.id==='garden')return state.gardenTalk?goal({x:-73.5,y:26,z:265},'内园西门 · 领票检票','V 打开月洞门旁检票界面，领体验票，再检票开闸走入内园。'):goal(JOURNEY_ACTORS.gu,'顾先生 · 园门向导','走近顾先生按 V，听听这座园子的故事。');
  if(c.id==='view'){
-  if(state.windowSeen){if(Math.hypot(ctx.pos.x+51,ctx.pos.z-297.8)<2.6)return goal({x:-51,y:26,z:297.8},'水上长廊 · 看锦鲤与倒影','停在廊中按 V，看完这段发现，盖下“水廊听鱼”印章。');return followRoute(ctx.pos,GALLERY_JOURNEY_ROUTE,'内园 · 水上长廊寻景','沿园路到西侧水廊入口，再沿弯廊走；不横穿池水。廊中 V 记下这一眼。');}
-  if(Math.hypot(ctx.pos.x+46,ctx.pos.z-256.5)>2.5)return followRoute(ctx.pos,[...INNER_GARDEN_PATH.slice(3).reverse().map(([x,z])=>[x,z+60]),[-46,256.5]],'内园 · 沿曲径去圆窗','沿现有园林曲径转弯，不穿过堂屋。到了北侧月洞窗，面对窗外停留两秒。');return goal({x:-46,y:26,z:256.5},'内园北侧 · 月洞窗内侧','站到窗内侧，面向北侧圆窗中的风景，停留两秒；也可答完三道灯谜。');
+  const p=ctx.pos;
+  if(p.x<-75)return goal({x:-73.5,y:26,z:265},'内园西门 · 领票检票','从西门按 V 领票、检票，然后走进内园。');
+  if(nearGardenGuide(p))return goal(JOURNEY_ACTORS.guide,'许棠 · 豫园导游',ctx.touch?'点「互动 V」听豫园故事。':'按 V 听豫园故事。',{arriveRadius:GARDEN_GUIDE_RADIUS,arrivalAction:'talk'});
+  return galleryRouteTarget(p);
  }
  if(c.id==='tea'){
-  if(!state.bazaarSeen){if(ctx.pos.x>-75&&ctx.pos.x<3&&ctx.pos.z>254&&ctx.pos.z<318)return followRoute(ctx.pos,GALLERY_EXIT_ROUTE,'内园 · 沿廊回西门','沿原长廊回西岸，从西门按 V 开闸离园，去商街看看柜台。');
+  if(!state.bazaarSeen){if(ctx.pos.x>-75&&ctx.pos.x<3&&ctx.pos.z>254&&ctx.pos.z<318)return followRoute(ctx.pos,GALLERY_EXIT_ROUTE,'内园 · 沿廊回西门','沿原长廊回西岸，从西门按 V 开闸离园，去商街看看柜台。',.25);
    const shops=(ctx.gardenShops??[]).filter(s=>s.x<-78),shop=shops.reduce((a,b)=>!a||Math.hypot(b.x-ctx.pos.x,b.z+60-ctx.pos.z)<Math.hypot(a.x-ctx.pos.x,a.z+60-ctx.pos.z)?b:a,null);
    return shop?goal({x:shop.insideX??shop.x,y:26,z:(shop.insideZ??shop.z)+60},shop.title+' · 看看柜台','走进店里，靠近柜台按 V 看看特色名品，不要求消费。随后去湖心亭品茶。'):goal({x:-100,y:26,z:264},'西侧商街 · 逛一间店','走进一家店，靠近柜台按 V 看看，不要求购买；然后前往湖心亭。');
   }return teaTarget(ctx);

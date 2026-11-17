@@ -47,7 +47,7 @@ export function createTravelJournal({getInfo,pause,resume,onProgress=()=>{},onRe
     for(const {place,note} of entries){const card=el('article',null,'travel-message');card.append(el('h4',place),el('p',note));content.append(card);}
     if(stop&&!info.replaying)button(content,started?'继续续篇 · '+stop.title:'开启续篇 · '+POSTCARD_TITLE,()=>{close(false);onPostcard();});
    }
-   content.append(el('h4','回看这一程'),el('p','重游已走到的章节，只改变临时引导；原主线、建造与奖励记录保留。第4章体验陆家嘴相遇；第8章重游豫园圆窗与水上长廊，第9章逛商铺、去湖心亭。原地开始，可用地图前往目标。'));
+   content.append(el('h4','回看这一程'),el('p','重游已走到的章节，只改变临时引导；原主线、建造与奖励记录保留。第4章体验陆家嘴相遇；第8章重游水廊桥，听许棠讲豫园故事，第9章逛商铺、去湖心亭。原地开始，可用地图前往目标。'));
    if(info.replayCount>0||info.complete)button(content,'重看开场短片',()=>{close(false);onFilm('opening');});
    if(info.complete)button(content,'重看终章短片',()=>{close(false);onFilm('ending');});
    if(info.replayCount>0||info.complete){const chapters=el('div',null,'travel-replays');for(const [i,c]of info.chapters.slice(0,info.replayCount??info.chapters.length).entries())button(chapters,`${i+1} · ${c.title}`,()=>{close(false);onReplay(i);});content.append(chapters);}
