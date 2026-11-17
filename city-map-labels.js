@@ -14,7 +14,7 @@ const primary=[
  ['外滩',bund.x,bund.z],
  ['陆家嘴',181,59],
  ['中华艺术宫',EXPO.palace.x,EXPO.palace.z],
- ['梅赛德斯-奔驰文化中心',EXPO.arena.x,EXPO.arena.z],
+ ['梅赛德斯-奔驰文化中心',EXPO.arena.x,EXPO.arena.z,21],
  ['世纪公园',CENTURY_PARK.lake.x+8,CENTURY_PARK.lake.z],
  ['南浦大桥',239,206.5],
  ['外白渡桥',LANDMARKS.waibaidu.x,LANDMARKS.waibaidu.z],
@@ -40,9 +40,9 @@ const offsets=[
 export function layoutCityMapLabels(ctx,toPixel,size,toZ=toPixel,heightLimit=size){
  const labels=[];
  const boxes=TRAVEL_POINTS.map(p=>({x:toPixel(p.mapX??p.x)-9,y:toZ(p.mapZ??p.z)-9,w:18,h:18}));
- for(const [group,font] of [[primary,25],[secondary,20]]){
-  ctx.font=`700 ${font}px sans-serif`;
-  for(const [name,x,z] of group){
+ for(const [group,defaultFont] of [[primary,25],[secondary,20]]){
+  for(const [name,x,z,font=defaultFont] of group){
+   ctx.font=`700 ${font}px sans-serif`;
    const width=(ctx.measureText?.(name)?.width??name.length*font)+6,height=font+4;
    const px=toPixel(x),pz=toZ(z);
    let position;
