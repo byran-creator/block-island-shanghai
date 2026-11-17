@@ -19,6 +19,8 @@ function riverLoop(start,end,inner,outer){
 }
 export const EXPO_RIVER_WALK=riverLoop(270,291,2,3);
 export const EXPO_RIVER_RUN=riverLoop(280,337,4,5);
+const STREET_VISIBILITY={enter:58,exit:70};
+const RIVER_VISIBILITY={enter:88,exit:102};
 const sample=points=>routeSamples(points.map(([x,z])=>[x+.5,z+.5]));
 const parkActors=[
  ['guide','唐晴 · 公园志愿者',[323,59],'欢迎来世纪公园。面前是世纪花钟，沿右手边的步道就能到镜天湖。','第一次来，怎么逛？','先到木平台看湖，再往东走过云帆桥。想跑步的话，可以沿南边的红色慢跑道绕一圈。'],
@@ -102,7 +104,7 @@ export function createParkLife({scene,world,getPos,getVehicles=()=>[],hasTerrain
   actor.root.position.set(pose.x,26,pose.z);
   actor.root.rotation.y=pose.yaw;
  }
- function region(items,isNear,district,districtRoutes,lazy=false){
+ function region(items,isNear,district,districtRoutes,lazy=false,visibility=null){
   const root=new THREE.Group();root.name=district+'-people';root.visible=false;scene.add(root);
   const people=items.map(([kind,npcRole,start,intro,question,answer,appearance,streetRoute],i)=>{
    const model=new THREE.Group();root.add(model);model.visible=false;
@@ -121,26 +123,27 @@ export function createParkLife({scene,world,getPos,getVehicles=()=>[],hasTerrain
    }
   }
   if(!lazy)mount();
-  return {root,isNear,people,mount:lazy?mount:null};
+  return {root,isNear,people,visibility,mount:lazy?mount:null};
  }
- const park=region(parkActors,parkNear,'century-park',routes),waterfront=region(expoActors,riverNear,'expo',river);
+ const park=region(parkActors,parkNear,'century-park',routes);
+ const waterfront=region(expoActors,riverNear,'expo',river,false,RIVER_VISIBILITY);
  const streets=HISTORIC_STREET_LIFE.map(({district,bounds:[left,right,back,front],actors})=>{
-  const near=p=>p.y>=23&&p.y<60&&p.x>=left-21&&p.x<=right+21&&p.z>=back-14&&p.z<=front+14;
+  const margin=STREET_VISIBILITY.exit;
+  const near=p=>p.y>=23&&p.x>=left-margin&&p.x<=right+margin&&p.z>=back-margin&&p.z<=front+margin;
   const items=actors.map(([path,start,role,name,intro,question,answer])=>['walk',name,start,intro,question,answer,role,routeSamples(path)]);
-  return region(items,near,district,{},true);
+  return region(items,near,district,{},true,STREET_VISIBILITY);
  });
  const areas=[park,waterfront,...streets];
  function tick(dt){
   const player=getPos();
   for(const area of areas){
    const near=area.isNear(player);
-   if(near&&area.mount){area.mount();area.mount=null;}
-   if(area===waterfront){
+   if(!near&&!area.root.visible)continue;
+   if(area.visibility){
     let visible=false;
     for(const actor of area.people){
-     const p=actor.root.position,dx=player.x-p.x,dy=player.y-p.y,dz=player.z-p.z;
-     const radius=actor.root.visible?102:88;
-     actor.root.visible=near&&dx*dx+dy*dy+dz*dz<radius*radius&&hasTerrainAt(p.x,p.z);
+     const p=actor.root.position,radius=actor.root.visible?area.visibility.exit:area.visibility.enter;
+     actor.root.visible=near&&p.distanceToSquared(player)<radius*radius&&hasTerrainAt(p.x,p.z);
      visible||=actor.root.visible;
     }
     area.root.visible=visible;
@@ -148,7 +151,9 @@ export function createParkLife({scene,world,getPos,getVehicles=()=>[],hasTerrain
     area.root.visible=near;
     for(const actor of area.people)actor.root.visible=near;
    }
-   if(!area.root.visible||!dt)continue;
+   if(!area.root.visible)continue;
+   if(area.mount){area.mount();area.mount=null;}
+   if(!dt)continue;
    const vehicles=getVehicles();
    for(const actor of area.people){
     if(!actor.root.visible||!actor.route)continue;
