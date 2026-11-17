@@ -10,8 +10,11 @@ const faces=[
 
 // Count exposed faces with a compact mask, then write final GPU arrays directly.
 // Both passes yield by column; no temporary JS vertex arrays or world copy.
-export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false,shade,atlasRows=1,tileOverride}){
+export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false,shade,atlasRows=1,tileOverride,compact=false}){
  const dense=world instanceof VoxelWorld&&world.get===VoxelWorld.prototype.get&&cx*chunk>=WORLD_MIN&&cz*chunk>=WORLD_MIN_Z&&(cx+1)*chunk<=WORLD_MAX&&(cz+1)*chunk<=WORLD_MAX,bytes=world.data,plane=SIZE*DEPTH;
+ // World coordinates are whole blocks and the face normals are axis-aligned.
+ const packed=compact&&[cx*chunk,cz*chunk,(cx+1)*chunk,(cz+1)*chunk,height].every(v=>Number.isInteger(v)&&v>=-32768&&v<=32767);
+ const Position=packed?Int16Array:Float32Array,Normal=packed?Int8Array:Float32Array,normalUnit=packed?127:1;
  const data={p:null,norm:null,uv:null,col:null,indices:null};
  const columns=chunk*chunk;let masks=new Uint8Array(columns*height),column=0,faceCount=0,writing=false,vertex=0,index=0,done=false;
  function step(count=8){
@@ -31,7 +34,7 @@ export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false,shade
      if(!(masks[at]&(1<<face)))continue;
      let tile=id-1;if(id===1)tile=f.d[1]===1?0:f.d[1]===-1?1:8;if(id===4&&f.d[1]!==0)tile=9;if(id>=9)tile=id+1;if(alternateTile!==undefined)tile=alternateTile;
      const tileRow=Math.floor(tile/14),tileColumn=tile%14;
-     const start=vertex,nx=f.d[0],ny=f.d[1],nz=f.d[2],lt=f.light;
+     const start=vertex,nx=f.d[0]*normalUnit,ny=f.d[1]*normalUnit,nz=f.d[2]*normalUnit,lt=f.light;
      const red=tint?lt*tint[0]:lt,green=tint?lt*tint[1]:lt,blue=tint?lt*tint[2]:lt;
      for(let i=0;i<4;i++,vertex++){
       const v=f.v[i],a=vertex*3,b=vertex*2;data.p[a]=x+v[0];data.p[a+1]=y+v[1];data.p[a+2]=z+v[2];data.norm[a]=nx;data.norm[a+1]=ny;data.norm[a+2]=nz;data.col[a]=red;data.col[a+1]=green;data.col[a+2]=blue;
@@ -42,7 +45,7 @@ export function createChunkMesher({world,cx,cz,chunk,height,skip=()=>false,shade
    }
   }
   if(column<columns)return false;
-  if(!writing){const vertices=faceCount*4;data.p=new Float32Array(vertices*3);data.norm=new Float32Array(vertices*3);data.uv=new Float32Array(vertices*2);data.col=new Float32Array(vertices*3);data.indices=vertices>=65536?new Uint32Array(faceCount*6):new Uint16Array(faceCount*6);writing=true;column=0;if(faceCount)return false;}
+  if(!writing){const vertices=faceCount*4;data.p=new Position(vertices*3);data.norm=new Normal(vertices*3);data.uv=new Float32Array(vertices*2);data.col=new Float32Array(vertices*3);data.indices=vertices>=65536?new Uint32Array(faceCount*6):new Uint16Array(faceCount*6);writing=true;column=0;if(faceCount)return false;}
   masks=null;done=true;return true;
  }
  return {step,data};

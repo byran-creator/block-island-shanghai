@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js';
 
 // Three's instance normal transform supports rotation and scale, but not shear.
-function supportedTransform(m){
+export function supportedTransform(m){
  const e=m.elements,a=e[0]*e[0]+e[1]*e[1]+e[2]*e[2],b=e[4]*e[4]+e[5]*e[5]+e[6]*e[6],c=e[8]*e[8]+e[9]*e[9]+e[10]*e[10],ab=e[0]*e[4]+e[1]*e[5]+e[2]*e[6],ac=e[0]*e[8]+e[1]*e[9]+e[2]*e[10],bc=e[4]*e[8]+e[5]*e[9]+e[6]*e[10];
  return m.determinant()>=0&&ab*ab<=1e-12*a*b&&ac*ac<=1e-12*a*c&&bc*bc<=1e-12*b*c;
 }

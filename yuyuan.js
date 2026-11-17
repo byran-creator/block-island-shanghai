@@ -14,12 +14,12 @@ import {styleNpc} from './npc-appearance.js';
 import {createYuyuanRickshaws} from './yuyuan-rickshaw.js';
 import {YUYUAN,YUYUAN_SHIFT,YUYUAN_BUILDINGS,WATER_CORRIDOR,GARDEN_PONDS,JIUQU_BRIDGE,WATER_GALLERY_BENDS,YUYUAN_WALKS,YUYUAN_STATION_WALK,YUYUAN_STATION_WALK_SOUTH,pathContains,gardenPathContains} from './yuyuan-layout.js';
 export const YUYUAN_RIDDLES=[{question:'两岸不相连，走我能过河。猜一物。',answers:['桥','茶壶','灯笼'],correct:0},{question:'有脚不走路，安睡好帮手。猜一物。',answers:['鱼竿','床','竹子'],correct:1},{question:'白天藏起来，夜里满天开。猜一物。',answers:['小笼包','茶叶','星星'],correct:2}];
-export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null,getSound=()=>true,getVolume=()=>.28,deferPondView=false}){
+export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null,getSound=()=>true,getVolume=()=>.28,deferPondView=false,packStatic=false}){
  const root=new THREE.Group();root.name='yuyuan-garden-and-malls';root.position.z=YUYUAN_SHIFT;scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),lights=[],lanterns=[],actors=[],fixtureBounds=[];let panel=false,elapsed=0,lastTea=-30,lastSnack=-30,solved=new Set(),orders=0,teas=0,stocks={buns:12,candy:8,souvenir:6,tea:6},collectibles={};
 
  const solidPalette=new Set();
  const batchDetails=(group,meshes,name)=>{
-  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette);
+  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette,packStatic);
   for(const mesh of batches)if(mesh.userData.rgbColors)mesh.userData.yuyuanColorBatch=true;
   return batches;
  };

@@ -14,6 +14,7 @@ import {createPhotoMode} from './photo-mode.js';
 import {createNanjingBakedLight,createVertexLightBake} from './nanjing-baked-light.js';
 import {createShanghaiJourney} from './shanghai-journey.js';
 import {createSceneInstances} from './scene-instancing.js';
+import {createStaticWallCull} from './voxel-wall-occlusion.js';
 import {createWorldBaseline} from './world-baseline.js';
 import {runPlayerInteraction} from './interaction-routing.js';
 import {blocksMetroClearance} from './metro-clearance.js';
@@ -227,7 +228,7 @@ function chunkTask(key){
  const tileOverride=jiujiangHankouChunk(cx,cz,CHUNK)?jiujiangHankouTile:beijingEastFacadeChunk(cx,cz)?beijingEastTile:cz===0&&nanjingWestChunk(cx,cz,CHUNK)?
   (x,y,z,id)=>nanjingWestTile(x,y,z,id)??officeTiles?.(x,y,z,id):
   officeTiles??(fuxingParkChunk(cx,cz,CHUNK)?fuxingParkTile:wukangChunk(cx,cz,CHUNK)?wukangTreeTile:undefined);
- return createChunkMesher({world,cx,cz,chunk:CHUNK,height:HEIGHT,shade:chunkShade(cx,cz),atlasRows:2,tileOverride,skip:(x,y,z,id)=>id===9&&nanpuDeckCell(x,y,z)});
+ return createChunkMesher({world,cx,cz,chunk:CHUNK,height:HEIGHT,shade:chunkShade(cx,cz),atlasRows:2,tileOverride,compact:true,skip:(x,y,z,id)=>id===9&&nanpuDeckCell(x,y,z)});
 }
 const chunkWork=createChunkQueue({has:key=>chunks.has(key),create:chunkTask,commit:(key,data)=>installChunk(key,data)});
 function rebuild(cx,cz){
@@ -236,7 +237,7 @@ function rebuild(cx,cz){
 }
 function installChunk(key,{p,norm,uv,col,indices}){
  const [cx,cz]=key.split(',').map(Number),old=chunks.get(key);
- const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(p,3));geo.setAttribute('normal',new THREE.BufferAttribute(norm,3));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(indices,1));geo.computeBoundingSphere();
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(p,3));geo.setAttribute('normal',new THREE.BufferAttribute(norm,3,norm instanceof Int8Array));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(indices,1));geo.computeBoundingSphere();
  const mesh=new THREE.Mesh(geo,terrainMaterial);
  if(beijingEastFacadeChunk(cx,cz))beijingEastWash.bakeMesh(mesh);
  if(jiujiangHankouChunk(cx,cz,CHUNK))jiujiangHankouWash.bakeMesh(mesh);
@@ -586,7 +587,7 @@ metro=createMetro({renderer,expanded:true,canCullInteriors:()=>savedEdits.size==
 vesselQueries=createBoatSurfaceQueries(boatSurfaces(activity.ferry,[...civil.boats,...civil.cruisePorts]));
 privateSuites=createPrivateSuites({scene,world,pause:pauseForPanel,resume:enter,place:p=>{placePlayer(p);setFlight(false);gliding=false;},getPos:()=>pos,getState:()=>life.state,teleport,lookAt:lookTowards,notify,setDay:()=>{dayClock=36;updateSky(0);},onProgress:()=>{life.refresh();saves?.save('auto');}});
 await loadingStage('正在构建豫园与老城商圈…');
-yuyuan=createYuyuan({scene,world,deferPondView:true,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
+yuyuan=createYuyuan({scene,world,deferPondView:true,packStatic:renderer.isWebGLRenderer,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])],getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
 residents=createBuildingResidents({scene,world,getPos:()=>pos,getVehicles:()=>[...civil.traffic.agents,...(commute?.vehicles??[])]});
 story=createShanghaiJourney({scene,camera,world,routeBlocked:(x,y,z)=>!!civil?.staticCollides(x,y,z)||!!metro?.collides(x,y,z)||!!life?.collides(x,y,z)||!!story?.collides(x,y,z)||!!activity?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!privateSuites?.collides(x,y,z)||!!towerInteriors?.collides(x,y,z),getAudio,getSound:()=>sound,getVolume:()=>music.volume,getContext:()=>({pos,touch:isMobile||touch,traffic:civil.traffic,rain:weather.state.rain,dayClock,life:life.state,people:activity?.tourists??[],gardenShops:yuyuan?.streetArt.extraShops??[],traveling:!!(commute?.ride||activity?.isRiding()),photoGuest:civil.pedestrians.find(p=>p.kind==='photo'&&p.point?.z===72),collectibles:{...yuyuan?.inventory,...activity?.goods,...quests?.state.collectibles()},vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],metroNetwork:metro}),pause:pauseForPanel,resume:enter,notify,prefetch:p=>ensureChunks(p),prepareShot:prepareJourneyShot,placeStart:a=>{teleport({x:a.x-1.5,y:a.y,z:a.z-2});setFlight(false);lookTowards({...a,y:a.y+1.5});},celebrate:()=>{if(adventure?.launch){adventure.launch(true);notify('外滩的灯光已经为你亮起，过去看看吧 · 随时按 K 放烟花');}},onProgress:()=>{quests?.refresh();saves?.save('auto');}});
 towerInteriors=createTowerInteriors({scene,world,people:activity.tourists,getPos:()=>pos,place:p=>{placePlayer(p);setFlight(false);gliding=false;},lookAt:lookTowards,pause:pauseForPanel,resume:enter,notify,onRead:({title,text})=>story?.record({type:'city-conversation',district:'duoyun',kind:'reading',name:'朵云书院',topic:title,text})});
@@ -848,6 +849,24 @@ streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);streetBounc
 photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,onCapture:meta=>{const pending=story?.state.chapter?.id==='lujiazui-view'&&story.state.edition>=3&&story.state.touristPhoto==='ready';story?.record({type:'travel-photo',...meta});if(pending)return story.state.touristPhoto==='thanks'?'拍到了 · 退出相机，听听游客的回应。感谢留言会自动收入手账。':'还没拍到目标游客 · 切换拍景，把游客放入画面后再拍即可。';},onKeepPhoto:photo=>story.keepPhoto(photo),onClose:()=>story?.afterPhoto()??false,beforeRender:()=>{outline.visible=false;yuyuan?.waterArt.prepareView(camera);}});
 $('photo-open').onclick=()=>photo.open();
 rainCrowd=createRainCrowd(npcGuides.actors.filter(p=>p.person&&!p.resident&&!p.metroRole),{world});
+if(renderer.isWebGLRenderer){
+ const occludableNames=new Set(['yuyuan-static-details','yuyuan-garden-detail','yuyuan-classic-finish','yuyuan-street-stock','yuyuan-stock-item','yuyuan-night-lanterns']);
+ const staticMeshes=[];
+ yuyuan.root.traverse(mesh=>{if(mesh.isMesh&&occludableNames.has(mesh.name))staticMeshes.push(mesh);});
+ const wallCull=createStaticWallCull(staticMeshes,(x,y,z)=>{
+  const block=world.get(x,y,z);
+  if(!block||block===9||world.get(x,y,z-1))return false;
+  // Chunk edits rebuild adjoining faces before the next render.
+  const mesh=chunks.get(Math.floor(x/CHUNK)+','+Math.floor(z/CHUNK));
+  return !!mesh?.visible&&mesh.material===terrainMaterial;
+ });
+ const beforeOcclusion=scene.onBeforeRender,afterOcclusion=scene.onAfterRender;
+ scene.onBeforeRender=function(renderer,scene,camera,target){
+  beforeOcclusion.call(this,renderer,scene,camera,target);
+  if(!renderer.clippingPlanes.length&&camera.layers.mask===1)wallCull.prepare(camera);
+ };
+ scene.onAfterRender=function(...args){wallCull.restore();afterOcclusion.apply(this,args);};
+}
 const sceneInstances=createSceneInstances(scene);
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming});
 if(isMobile){
