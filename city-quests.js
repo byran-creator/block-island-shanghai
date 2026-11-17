@@ -2,7 +2,7 @@ export const CITY_QUESTS=[
  {id:'hello',title:'认识岛上的朋友',description:'靠近奶龙，按 G 打招呼。',target:1,reward:{blocks:{7:8}}},
  {id:'build',title:'给新家添砖加瓦',description:'成功放置10块方块，受保护区域和失败放置不计数。',target:10,reward:{blocks:{4:8,7:16}}},
  {id:'security',title:'第一次地铁安检',description:'在南京东路、陆家嘴或豫园站放包，等待完整安检结束。',target:1,reward:{food:2}},
- {id:'metro',title:'2号线过江通勤',description:'乘车从南京东路到陆家嘴，或反方向完整到站下车。走入车厢或按 V 均可；传送不计。',target:1,reward:{blocks:{9:12},food:2}},
+ {id:'metro',title:'2号线过江通勤',description:'乘车从南京东路到陆家嘴，或反方向完整到站下车。列车开门后靠近车门按 V 上车；传送不计。',target:1,reward:{blocks:{9:12},food:2}},
  {id:'cruise',title:'浦江观光 · 江上慢游',description:'前往外滩观光码头登上豪华游轮，随船连续航行一段，欣赏两岸风景。游轮返回原码头。',target:1,reward:{pearls:1,collectibles:{'浦江巡游纪念船票':1}}},
  {id:'ferry',title:'黄浦江摆渡人',description:'在渡口登船，随轮渡航行并抵达另一岸。',target:1,reward:{blocks:{11:12},pearls:1}},
  {id:'shop',title:'南京路逛吃',description:'与南京路商贩交易，成功购买一份餐点或纪念品。',target:1,reward:{food:3}},

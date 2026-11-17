@@ -26,7 +26,7 @@ function line10Target({pos,stations,ride,metroNetwork}){
  if(pos.y<10&&!flags.paid)return point(line10ToWorld({x:s.x+6,y:6,z:3}),'10号线 · 返回B1','先沿扶梯返回站厅，完成安检和刷票。','return-hall');
  if(pos.y>12){if(s.sharedConcourse){if(!flags.paid)return point({x:-107,y:16,z:124},'南京东路 · 2号线站厅 / 出口','沿绿色2号线导向返回原站厅，从原闸机出站；这里没有独立安检或出口。','shared-exit');return point(line10ToWorld({x:s.x-12,y:16,z:3}),'10号线 · 下行扶梯','共享付费区，不重复安检；前往豫园下到10号线站台，出站跟绿色2号线导向。','platform-ramp');}if(!flags.checked)return point(line10ToWorld({x:s.x-22,y:16,z:-10.4}),'10号线 · 背包安检','在机器旁 V 放包，等3秒；付费区换乘无需重新安检。','security');if(flags.gatePass?.entering)return point(line10ToWorld({x:s.x-12.6,y:16,z:0}),'10号线 · 走过闸机','闸机已开，沿绿色箭头直行。','through-gate');if(!flags.paid)return point(line10ToWorld({x:s.x-15.4,y:16,z:0}),'10号线 · 闸机','V 刷票后走过闸机，再去下行扶梯。','gate');return point(line10ToWorld({x:s.x-12,y:16,z:3}),'10号线 · 下行扶梯','下到站台；往上海图书馆方向去豫园，往南京东路方向返回。','platform-ramp');}
  const direction=atNanjing?1:-1,t=boardingTrain(line,[],s,direction,atNanjing?0:1);
- return point(line10ToWorld({x:s.x-2,y:t?6.16:6,z:s.z-direction*(t?8:3.7)}),atNanjing?'10号线 · 豫园方向':'10号线 · 南京东路方向',t?'车门已开，走入车厢即可；V 为辅助上车。':'在安全线内等候正确方向的车，先下后上。','board');
+ return point(line10ToWorld({x:s.x-2,y:6,z:s.z-direction*3.7}),atNanjing?'10号线 · 豫园方向':'10号线 · 南京东路方向',t?'车门已开，靠近对准车门，按 V 上车（手机点互动）。':'在安全线内等候正确方向的车，先下后上。','board');
 }
 function transferTarget(pos){
  let nearest=Infinity,index=1;for(let i=1;i<TRANSFER_POINTS.length;i++){const a=TRANSFER_POINTS[i-1],b=TRANSFER_POINTS[i],dx=b[0]-a[0],dz=b[1]-a[1],u=Math.max(0,Math.min(1,((pos.x-a[0])*dx+(pos.z-a[1])*dz)/(dx*dx+dz*dz||1))),d=Math.hypot(pos.x-a[0]-dx*u,pos.z-a[1]-dz*u);if(d<nearest){nearest=d;index=i;}}
@@ -67,7 +67,7 @@ export function questTarget(id,{pos,npcs=[],vendors=[],stations=[],ride=null,tra
   if(pos.y>=10){const top={x:s.x-12,z:s.z+3};const close=distance(top,pos)<2.5;return point({x:top.x+(close?4:0),y:close?13.78:16,z:top.z},'下行扶梯 · B2站台','已进闸。沿扶梯直行下到 B2，不需要返回安检。','platform-ramp');}
   const index=METRO_STATIONS.indexOf(s),direction=index===0?1:-1,t=boardingTrain(line,trains,s,direction,index);
   if(Math.abs(pos.x-(s.x-2))>.35)return point({x:s.x-2,y:6,z:s.z+(index===0?-3.5:3.5)},'B2 · 对准车门','先走到这个候车点，对准车门，等绿灯亮后直行进入。','align-door');
-  return point({x:s.x-2,y:t?6.16:6,z:t?t.root.position.z:s.z-direction*3.5},'B2 · '+(index===0?'陆家嘴':'南京东路')+'方向',t?'绿灯已亮、车门已开。对准黄色标记走入车厢即可上车；V 是辅助方式。':'在安全线内等候这一方向列车，先下后上；门开后走进车厢。','board');
+  return point({x:s.x-2,y:6,z:s.z-direction*3.5},'B2 · '+(index===0?'陆家嘴':'南京东路')+'方向',t?'绿灯已亮、车门已开。站在黄色标记处按 V 上车（手机点互动）。':'在安全线内等候这一方向列车，门开后按 V 上车。','board');
  }
  if(id==='ferry'){if(ferryRiding)return point(pos,'轮渡 · 等待抵岸','已登船，随轮渡抵达另一岸，等待到岸提示；不要中途传送。','ferry-ride');const p=landings.reduce((a,b)=>!a||distance(b,pos)<distance(a,pos)?b:a,null);return p?point(p,p.name??'黄浦江轮渡码头','前往渡口等轮渡停稳，靠近船按 V 登船，完整抵达另一岸。','ferry'):null;}
  if(id==='shop'){

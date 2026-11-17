@@ -456,7 +456,7 @@ function staticCollides(x,y,z,ignoreFurniture=null){const h=metroRampFloor(x,z)?
 function collides(x,y,z){return staticCollides(x,y,z)||!!civil?.collides(x,y,z);}
 function nearWaterExit(){return [[1.1,0],[-1.1,0],[0,1.1],[0,-1.1]].some(([dx,dz])=>{const x=Math.floor(pos.x+dx),z=Math.floor(pos.z+dz),y=world.get(x,23,z)?24:23;return !!world.get(x,y-1,z)&&!world.get(x,y,z)&&!world.get(x,y+1,z);});}
 function physics(dt){
- if(metro?.isRiding()||metro?.tryBoard()||yuyuan?.isRiding())return;
+ if(metro?.isRiding()||yuyuan?.isRiding())return;
  const indoorSeat=privateSuites?.isSeated()?privateSuites:towerInteriors?.isSeated()?towerInteriors:null;if(indoorSeat){if(['KeyW','KeyA','KeyS','KeyD','Space'].some(k=>inputKeys.has(k)))indoorSeat.standUp();return;}
  if(civil?.isSeated?.()){
   if(inputKeys.has('KeyW')||inputKeys.has('KeyA')||inputKeys.has('KeyS')||inputKeys.has('KeyD')||inputKeys.has('Space'))civil.standUp();
@@ -475,7 +475,6 @@ function physics(dt){
  if(flying){vy=(Number(inputKeys.has('Space'))-Number(shift))*6;}
  else if(gliding&&!swimming&&!grounded){vy=shift?-5:-2.2;}
  else{vy=swimVelocity({feet:pos.y,velocity:vy,space:inputKeys.has('Space'),down:shift,grounded,dt,dry:metroInterior(pos),shore:swimming&&inputKeys.has('Space')&&nearWaterExit()});if(inputKeys.has('Space')){grounded=false;footContact=false;}}
- if(metro?.tryBoard())return;
  const entryFloor=metro?.floorAt(pos.x,pos.z)??yuyuan?.floorAt?.(pos.x,pos.z)??civil?.cruises?.floorAt(pos.x,pos.z,pos.y);if(!flying&&!gliding&&vy<=0&&entryFloor!==null&&entryFloor!==undefined&&pos.y>=entryFloor-.55&&pos.y+vy*dt<=entryFloor){pos.y=entryFloor;vy=0;grounded=true;footContact=true;return;}
  const dy=vy*dt,deck=!flying&&!gliding&&vy<=0?vesselQueries.support(pos.x,pos.y,pos.z):null;if(deck&&pos.y+dy<=deck.y){pos.y=deck.y;vy=0;grounded=true;footContact=true;}else if(!collides(pos.x,pos.y+dy,pos.z)){pos.y+=dy;grounded=false;}else{if(dy<0){grounded=true;footContact=true;if(!flying&&!gliding&&!swimming&&!adventure?.state.race&&vy<-13)life.state.hurt(Math.ceil((-vy-13)*.65));}vy=0;}
  if(swimming)gliding=false;
