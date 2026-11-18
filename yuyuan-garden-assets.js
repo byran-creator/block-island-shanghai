@@ -489,7 +489,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
  }
 
  batchDetails(garden,staticMeshes(garden),'yuyuan-garden-detail');batchMeshes(night,staticMeshes(night),'yuyuan-night-trim');
- return {fixtures,dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;dropTimer+=dt;night.visible=lit;if(dropTimer>=0.028||dt===0){dropTimer=0;animate();}animateGarden(dt);}};
+ return {fixtures,willowGroups:swayingWillows.map(({group})=>group),dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;dropTimer+=dt;night.visible=lit;if(dropTimer>=0.028||dt===0){dropTimer=0;animate();}animateGarden(dt);}};
 }
 
 export function moonBridgeFloor(x, z){

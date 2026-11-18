@@ -14,14 +14,18 @@ import {styleNpc} from './npc-appearance.js';
 import {createYuyuanRickshaws} from './yuyuan-rickshaw.js';
 import {YUYUAN,YUYUAN_SHIFT,YUYUAN_BUILDINGS,WATER_CORRIDOR,GARDEN_PONDS,JIUQU_BRIDGE,WATER_GALLERY_BENDS,YUYUAN_WALKS,YUYUAN_STATION_WALK,YUYUAN_STATION_WALK_SOUTH,pathContains,gardenPathContains} from './yuyuan-layout.js';
 export const YUYUAN_RIDDLES=[{question:'两岸不相连，走我能过河。猜一物。',answers:['桥','茶壶','灯笼'],correct:0},{question:'有脚不走路，安睡好帮手。猜一物。',answers:['鱼竿','床','竹子'],correct:1},{question:'白天藏起来，夜里满天开。猜一物。',answers:['小笼包','茶叶','星星'],correct:2}];
-export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null,getSound=()=>true,getVolume=()=>.28,deferPondView=false,packStatic=false}){
+export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getState,setView=()=>{},notify=()=>{},pause=()=>{},resume=()=>{},onProgress=()=>{},onEvent=()=>{},getAudio=null,getSound=()=>true,getVolume=()=>.28,deferPondView=false,packStatic=false,simulationInterest=null}){
  const root=new THREE.Group();root.name='yuyuan-garden-and-malls';root.position.z=YUYUAN_SHIFT;scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),lights=[],lanterns=[],actors=[],fixtureBounds=[];let panel=false,elapsed=0,lastTea=-30,lastSnack=-30,solved=new Set(),orders=0,teas=0,stocks={buns:12,candy:8,souvenir:6,tea:6},collectibles={};
 
  const solidPalette=new Set();
+ const registerWallTargets=meshes=>{
+  if(packStatic)for(const mesh of meshes)mesh.userData.yuyuanWallTarget=true;
+  return meshes;
+ };
  const batchDetails=(group,meshes,name)=>{
   const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette,packStatic);
   for(const mesh of batches)if(mesh.userData.rgbColors)mesh.userData.yuyuanColorBatch=true;
-  return batches;
+  return registerWallTargets(batches);
  };
  const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));const material=mats.get(key);if(!glow)solidPalette.add(material);return material;};
  function cube(color,x,y,z,w,h,d,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;}
@@ -216,11 +220,13 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  for(let i=1;i<JIUQU_BRIDGE.length;i++){const a=JIUQU_BRIDGE[i-1],b=JIUQU_BRIDGE[i],length=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/length,dz=(b[1]-a[1])/length;for(let d=0;d<=length;d+=1.5)for(const side of [-1,1]){const x=a[0]+dx*d+dz*side*1.3,z=a[1]+dz*d-dx*side*1.3;if(Math.abs(x-WATER_CORRIDOR.x)<WATER_CORRIDOR.width/2+.3&&z>=WATER_CORRIDOR.z1&&z<=WATER_CORRIDOR.z2||pathContains(x,z,JIUQU_BRIDGE,1.05)||Math.abs(x+46)<4.5&&Math.abs(z-178)<4.5)continue;cube('#806a48',x,26.4,z,.09,.8,.09);fixtureBounds.push({x,z,rx:.05,rz:.05,y:26,h:.8});}for(const side of [-1,1])for(let d=.25;d<length;d+=.5){const x=a[0]+dx*d+dz*side*1.3,z=a[1]+dz*d-dx*side*1.3;if(Math.abs(x-WATER_CORRIDOR.x)<WATER_CORRIDOR.width/2+.3&&z>=WATER_CORRIDOR.z1&&z<=WATER_CORRIDOR.z2||pathContains(x,z,JIUQU_BRIDGE,1.05)||Math.abs(x+46)<4.5&&Math.abs(z-178)<4.5)continue;const m=cube('#8e7855',x,26.77,z,.53,.065,.07);m.rotation.y=-Math.atan2(dz,dx);fixtureBounds.push({x,z,rx:dx?.265:.035,rz:dx?.035:.265,y:26.72,h:.1});}}
 
  const streetArt=createYuyuanStreetAssets(root,{cube,mat,board,getPos:localPos});fixtureBounds.push(...streetArt.fixtures);Object.assign(stocks,streetArt.stockCaps);const stockCaps={buns:12,candy:8,souvenir:6,tea:6,...streetArt.stockCaps};const collectibleNames=['江南手作纪念品','江南茶具套装','吹糖金龙','康熙通宝铜钱','老坑古玉扳指',...streetArt.shops.filter(s=>!s.food).map(s=>s.name)];
- for(const group of Object.values(streetArt.goods).flat())batchMeshes(group,staticMeshes(group),'yuyuan-street-stock');
+ for(const group of Object.values(streetArt.goods).flat())registerWallTargets(batchMeshes(group,staticMeshes(group),'yuyuan-street-stock'));
  const setStocks=()=>{shopArt.setStocks(stocks);streetArt.setStocks(stocks);};
- const shopArt=createYuyuanShopAssets(root,{cube,mat,board});fixtureBounds.push(...shopArt.fixtures);for(const group of Object.values(shopArt.goods).flat())batchMeshes(group,staticMeshes(group),'yuyuan-stock-item');
+ const shopArt=createYuyuanShopAssets(root,{cube,mat,board});fixtureBounds.push(...shopArt.fixtures);for(const group of Object.values(shopArt.goods).flat())registerWallTargets(batchMeshes(group,staticMeshes(group),'yuyuan-stock-item'));
  cube('#765236',-46,26.42,175,1.9,.84,.8);fixtureBounds.push({x:-46,z:175,rx:.95,rz:.4,y:26,h:.84});for(const x of [-46.5,-46,-45.5])cube('#d0dcc9',x,26.98,175,.16,.23,.16);
  const gardenArt=createYuyuanGardenAssets(root,{cube,mat,batchDetails,buildings:YUYUAN_BUILDINGS});fixtureBounds.push(...gardenArt.fixtures);
+ // Each willow has many leaves but the entire hanging branch moves rigidly.
+ registerWallTargets(gardenArt.willowGroups);
  const classicArt=createYuyuanClassicAssets(root,{cube,mat,board,batchDetails});fixtureBounds.push(...classicArt.fixtures);
 
  // High-performance O(1) Spatial Hash Grid for fixture collisions (彻底消除每秒数百万次fixtureBounds.some线性迭代)
@@ -304,12 +310,12 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  batchDetails(root,staticMeshes(root,staticDynamic),'yuyuan-static-details');
  const batchedLights=batchMeshes(root,lights,'yuyuan-night-glow');
  lights.splice(0,lights.length,...batchedLights);
- const batchedLanterns=batchMeshes(root,lanterns,'yuyuan-night-lanterns');
+ const batchedLanterns=registerWallTargets(batchMeshes(root,lanterns,'yuyuan-night-lanterns'));
  lanterns.splice(0,lanterns.length,...batchedLanterns);
  for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);}
 
  const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
- const crowd=world?createYuyuanCrowd({scene,world,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
+ const crowd=world?createYuyuanCrowd({scene,world,simulationInterest,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
  function close(){if(!panel)return;panel=false;$('yuyuan-dialog').close();document.body?.classList.remove('in-dialogue','in-conversation');resume();}
  const endTalk=document.createElement('button');endTalk.className='dialogue-continue';endTalk.textContent='结束对话';endTalk.setAttribute?.('aria-label','结束猜谜对话，继续游园');endTalk.title='继续游园';endTalk.hidden=true;endTalk.onclick=()=>close();$('yuyuan-dialog').appendChild(endTalk);
  function action(text,fn){const b=document.createElement('button');b.className='recipe-card';b.textContent=text;b.onclick=fn;$('yuyuan-actions').appendChild(b);return b;}

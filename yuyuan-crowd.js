@@ -3,10 +3,11 @@ import * as THREE from './three.module.js';
 import {styleNpc} from './npc-appearance.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
 import {YUYUAN_SHIFT,INNER_GARDEN_EAST_PATH} from './yuyuan-layout.js';
+import {createSimulationStep} from './simulation-interest.js';
 
 // One-way street circuits distribute visitors around the shops. The quiet
 // inner circuit stays behind the ticket walls and never walks through a gate.
-export function createYuyuanCrowd({scene,world,blocked}){
+export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null}){
  const people=[],cache=new Map(),geo=new THREE.BoxGeometry(1,1,1),mats=new Map();
  const mat=c=>{if(!mats.has(c))mats.set(c,new THREE.MeshLambertMaterial({color:c}));return mats.get(c);};
  const clear=(x,z)=>{const key=x+','+z;if(!cache.has(key))cache.set(key,!!world.get(Math.floor(x),25,Math.floor(z))&&!blocked(x,26,z));return cache.get(key);};
@@ -81,7 +82,16 @@ export function createYuyuanCrowd({scene,world,blocked}){
  }
  function reroute(a){try{cache.clear();const {start,connector}=routeStart(a),endD=(a.d+6)%a.length,q=a.pose(endD),end=nearest([q.x,q.z],a),route=[...connector,...path(start,end,a).slice(1)];a.detour={points:route,index:0,endD};}catch{}a.rerouteIn=5;}
  function escapeNewBlock(a,dt,volume){const p=a.root.position;for(let r=.4;r<=2;r+=.4)for(const [dx,dz]of [[-r,0],[r,0],[0,-r],[0,r]]){const gx=p.x+dx,gz=p.z+dz;if(!staticClear(gx,gz)||occupied(a,gx,gz))continue;const d=Math.hypot(dx,dz),step=Math.min(d,a.speed*dt),x=p.x+dx/d*step,z=p.z+dz/d*step;if(occupied(a,x,z)||penetration(x,z)>volume+1e-7)continue;a.travel+=step;p.set(x,26,z);a.root.rotation.y=Math.atan2(dx,dz)+Math.PI;if(penetration(x,z)<1e-7){a.detour=null;reroute(a);}return true;}return false;}
- return {people,get navigationError(){return navigationError;},tick(dt){if(dt<=0)return;for(const a of people){a.rerouteIn=Math.max(0,a.rerouteIn-dt);let moved=false;
+ const crowdBounds=new THREE.Box3(),stepOffscreen=createSimulationStep(.2,.1);
+ function simulationDelta(dt){
+  if(!simulationInterest||dt<=0||!people.length)return dt;
+  crowdBounds.makeEmpty();
+  for(const actor of people)crowdBounds.expandByPoint(actor.root.position);
+  // Cover the entire walking pose and allow for the upcoming movement step.
+  crowdBounds.expandByScalar(4);
+  return stepOffscreen(dt,simulationInterest.seesBox(crowdBounds));
+ }
+ return {people,get navigationError(){return navigationError;},tick(dt){dt=simulationDelta(dt);if(dt<=0)return;for(const a of people){a.rerouteIn=Math.max(0,a.rerouteIn-dt);let moved=false;
   const volume=staticClear(a.root.position.x,a.root.position.z)?0:penetration(a.root.position.x,a.root.position.z);
   // A player block can materialise around an existing NPC after save load or
   // construction. Walk out while reducing overlap, never erase it or teleport.

@@ -30,6 +30,17 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
 
  const root=new THREE.Group();root.name='shanghai-line-'+lineNumber;scene.add(root);
  const signArt=createMetroSignArt();
+ const surfaceOpenings=METRO_RAMPS.filter(r=>r.kind==='entrance').map(r=>{
+  const frame=config?.rampFrame?.(r),corners=[];
+  // The voxel builder clears three cells at the ends of the ramp. The
+  // rectangular opening includes the side clearance and the lower landing.
+  for(const step of [-4,r.length+4])for(const side of [-1,1]){
+   const p={x:r.x+step*r.dir,y:r.from,z:r.z+side*(r.width+2)};
+   corners.push(frame?projectMetroFrame(p,frame):p);
+  }
+  return {minX:Math.min(...corners.map(p=>p.x)),maxX:Math.max(...corners.map(p=>p.x)),
+   minZ:Math.min(...corners.map(p=>p.z)),maxZ:Math.max(...corners.map(p=>p.z))};
+ });
  const tileTexture=terrazzoTexture(),box=new THREE.BoxGeometry(1,1,1),mats=new Map(),slabMats=new Map(),stations=[],staff=[],trains=[];let clock=0,treadTimer=0,ride=null,scan=null,audioAllowed=false,ownSpeech=false,subtitleTime=0,sleeping=false;
  function frameNodes(first,frame){
   if(!frame)return;
@@ -348,7 +359,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   hud.textContent=ride?lineNumber+'号线 · '+(trains[ride.index].state.phase==='travel'?'下一站 '+METRO_STATIONS[trains[ride.index].state.next].name:'本站 '+METRO_STATIONS[trains[ride.index].state.station].name)+' · '+(ride.seated?'已坐下 · F 起身':'WASD 走动 · 靠近空座 F 坐下')+' · V 到站下车':s?lineNumber+'号线 '+s.name+' · '+(getPos().y>12?'B1站厅\n'+hall:(s.platformLabel??'B2')+'站台 · 开门后靠近车门按 V / 点互动上车'):lineNumber+'号线 · 自动扶梯';
  }
  function safeSavePoint(){if(!ride)return null;const t=trains[ride.index],s=METRO_STATIONS[t.state.phase==='dwell'?t.state.station:ride.from];return {x:s.x+3,y:6,z:s.z-3.5};}
- return {root,staff,stations,trains,addSign:(lines,p,w,h,options)=>{
+ return {root,staff,stations,trains,surfaceOpenings,addSign:(lines,p,w,h,options)=>{
   const index=root.children.length,sign=stationSign(lines,p.x,p.y,p.z,w,h,options);
   frameNodes(index,config?.signFrame);
   visuals.register(config?.signFrame?root.children.at(-1):sign.mesh);return sign;

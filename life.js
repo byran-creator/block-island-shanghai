@@ -4,8 +4,9 @@ import {SurvivalState,RECIPES,furnitureCollides,furnitureBounds} from './surviva
 import {WATER_LEVEL,WORLD_MIN,WORLD_MIN_Z,WORLD_MAX,LANDMARKS,BLOCKS,overlaps,trace} from './world.js';
 import {FISH_SECONDS,startCooking,collectCooking,cookingRemaining,fishingTarget,fishingValid} from './survival-camp.js';
 import {PADDOCK_ANIMALS,insidePaddockGrass,paddockSpawn} from './survival-paddock.js';
+import {createSimulationStep} from './simulation-interest.js';
 const $=id=>document.getElementById(id);
-export function createLife({scene,world,notify,pause,resume,getPos,getDirection,getYaw=()=>0,blocked=(x,y,z)=>overlaps(world,x,y,z),interactionBlocked=(x,y,z,ignore)=>blocked(x,y,z),isDry=()=>false,onMode,onHeld,onDeath,setDay,onProgress,onEvent=()=>{}}){
+export function createLife({scene,world,notify,pause,resume,getPos,getDirection,getYaw=()=>0,blocked=(x,y,z)=>overlaps(world,x,y,z),interactionBlocked=(x,y,z,ignore)=>blocked(x,y,z),isDry=()=>false,onMode,onHeld,onDeath,setDay,onProgress,onEvent=()=>{},simulationInterest=null}){
  const state=new SurvivalState(),furnMeshes=[],animals=[],marine=[],enemies=[],berries=[],treasureMeshes=new Map();let enemyClock=12,hudClock=0,panel=null,fishing=null,useTargetActive=false;
  const box=new THREE.BoxGeometry(1,1,1),materials=new Map();
  function mat(color,glow=false){const key=color+glow;if(!materials.has(key))materials.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return materials.get(key)}
@@ -36,7 +37,7 @@ export function createLife({scene,world,notify,pause,resume,getPos,getDirection,
   model.root.position.set(x,y,z);
   model.root.userData.range=70;
   scene.add(model.root);
-  animals.push({...model,type,paddock,hp:2,heading:i*1.9,timer:i*.2,cooldown:0,origin:{x,z}});
+  animals.push({...model,type,paddock,hp:2,heading:i*1.9,timer:i*.2,cooldown:0,origin:{x,z},step:createSimulationStep(.2,.2,i%8*.025)});
  }
  // Fish, turtles and luminous jellyfish inhabit the deep-water garden.
  for(let i=0;i<32;i++){const root=new THREE.Group(),type=i%8===0?'turtle':i%7===0?'jelly':'fish';if(type==='fish'){cube(root,['#ffd877','#f4a6b6','#78dadd'][i%3],0,0,0,.18,.25,.7);cube(root,'#fcf2bb',0,0,.45,.38,.33,.16);for(const x of [-.1,.1])cube(root,'#17333b',x,.05,-.2,.05,.05,.06);}if(type==='turtle'){cube(root,'#4b947b',0,0,0,.75,.3,.95);cube(root,'#8dd1a0',0,0,-.61,.3,.24,.36);for(const x of [-.5,.5])for(const z of [-.3,.3])cube(root,'#89bfa0',x,-.06,z,.43,.1,.3);}if(type==='jelly'){cube(root,'#9bc7fa',0,0,0,.5,.25,.5,true);for(const x of [-.16,.16])for(const z of [-.16,.16])cube(root,'#bbbeff',x,-.45,z,.05,.65,.05,true);}scene.add(root);marine.push({root,type,cx:263+i*7%26,cz:275+i*11%42,y:12+i%7,phase:i});}
@@ -94,12 +95,29 @@ C 制作 · G 采食 / 用床 · Z 进食 · Q 反击`;const counts=$('hotbar').
  function protectedPoint(p){return world.protected(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));}
  function spawnEnemy(){if(!state.survival||enemies.length>=2)return;const p=getPos();for(let trial=0;trial<12;trial++){const a=Math.random()*Math.PI*2,x=p.x+Math.sin(a)*(16+Math.random()*9),z=p.z+Math.cos(a)*(16+Math.random()*9),y=ground(x,z);if(x<WORLD_MIN+3||z<WORLD_MIN_Z+3||x>WORLD_MAX-3||z>WORLD_MAX-3||y<=WATER_LEVEL||world.protected(Math.floor(x),y,Math.floor(z))||creatureBlocked(blocked,x,y,z)||Math.hypot(x-LANDMARKS.village.x,z-LANDMARKS.village.z)<12||lit({x,y,z}))continue;const root=new THREE.Group();cube(root,'#42455d',0,.82,0,.65,1.2,.4);cube(root,'#60687e',0,1.62,0,.6,.6,.6);for(const x of [-.16,.16])cube(root,'#b0f0e5',x,1.68,-.31,.12,.12,.06,true);for(const x of [-.22,.22])cube(root,'#34374c',x,.2,0,.2,.4,.2);root.position.set(x,y,z);root.userData.range=70;scene.add(root);enemies.push({root,nightEnemy:true,hp:state.sword?2:3,cooldown:0});return;}}
  function moveCreature(c,dt,speed,heading){const moved=creatureStep(c.root.position,dt,speed,heading,{ground,blocked:(x,y,z)=>c.paddock&&!insidePaddockGrass(world,x,Math.floor(y),z)||blocked(x,y,z)||furnitureCollides(state.furniture,x,y,z)||c.nightEnemy&&protectedPoint({x,y,z}),bounds:{min:WORLD_MIN,minZ:WORLD_MIN_Z,max:WORLD_MAX},water:WATER_LEVEL});if(moved)c.root.rotation.y=heading;return moved;}
+ const marineCenter=new THREE.Vector3();
+ function setMarinePose(m){
+  const a=state.elapsed*.14+m.phase;
+  m.root.position.set(m.cx+Math.sin(a)*4,m.y+Math.sin(a*1.6)*.6,m.cz+Math.cos(a)*3);
+  m.root.rotation.y=-a;
+ }
+ for(const m of marine)setMarinePose(m);
  const motion={
   land(dt){
-  for(const a of animals){a.timer-=dt;a.cooldown=Math.max(0,a.cooldown-dt);if(a.timer<=0){a.heading+=(Math.random()-.5)*2.5;a.timer=1.5+Math.random()*4;}if(!moveCreature(a,dt,.55,a.heading)){a.heading+=Math.PI*.7;}for(const [i,leg] of a.legs.entries())leg.rotation.x=Math.sin(state.elapsed*5+i%2*Math.PI)*.24;}
+   for(const a of animals){
+    a.timer-=dt;a.cooldown=Math.max(0,a.cooldown-dt);
+    if(a.timer<=0){a.heading+=(Math.random()-.5)*2.5;a.timer=1.5+Math.random()*4;}
+    const step=simulationInterest?a.step(dt,simulationInterest.seesPoint(a.root.position,2)):dt;
+    if(!step)continue;
+    if(!moveCreature(a,step,.55,a.heading))a.heading+=Math.PI*.7;
+    for(const [i,leg] of a.legs.entries())leg.rotation.x=Math.sin(state.elapsed*5+i%2*Math.PI)*.24;
+   }
   },
   water(){
-  for(const m of marine){const a=state.elapsed*.14+m.phase;m.root.position.set(m.cx+Math.sin(a)*4,m.y+Math.sin(a*1.6)*.6,m.cz+Math.cos(a)*3);m.root.rotation.y=-a;}
+   for(const m of marine){
+    if(simulationInterest&&!simulationInterest.seesPoint(marineCenter.set(m.cx,m.y,m.cz),6))continue;
+    setMarinePose(m);
+   }
   }
  };
  let previousNight=false;function tick(dt,{night,moving,racing}){if(state.survival&&!racing){state.survivalSeconds+=dt;if(night)state.nightSeconds+=dt;if(previousNight&&!night){if(state.nightSeconds>=20){state.survivalGoals.nights++;notify('平安度过一夜！继续收集材料、种菜和建设你的家。');changed();}state.nightSeconds=0;}}previousNight=night;if(!racing&&state.tick(dt,{underwater:!isDry()&&getPos().y+1.62<WATER_LEVEL,moving})){state.revive();onDeath(state.home);changed();notify('体力耗尽，回到重生点。建筑和背包仍然保留。');}
