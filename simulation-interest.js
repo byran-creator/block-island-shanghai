@@ -35,7 +35,20 @@ export function createSimulationInterest(camera,getPlayer) {
   if(distSq>maxDistance*maxDistance)return false;
   return view().intersectsBox(bounds);
  }
- return {beginFrame,seesPoint,seesBox};
+ function animatesLimb(x,y,z,maxDistance=56) {
+  if(!player)return true;
+  const dx=x-player.x,dz=z-player.z,d2=dx*dx+dz*dz;
+  if(d2>maxDistance*maxDistance)return false;
+  if(d2<=324)return true; // Always animate within 18m regardless of heading
+  const planes=view().planes;
+  const py=y+1;
+  for(let i=0;i<6;i++){
+   const p=planes[i],n=p.normal;
+   if(n.x*x+n.y*py+n.z*z+p.constant<-3.5)return false;
+  }
+  return true;
+ }
+ return {beginFrame,seesPoint,seesBox,animatesLimb};
 }
 
 // A distant tick never creates a catch-up burst when the player approaches.

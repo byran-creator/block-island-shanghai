@@ -16,7 +16,7 @@ export function fireworksScore(){
  return score.sort((a,b)=>a.time-b.time);
 }
 export function createHarbourFireworks(scene){
- const root=new THREE.Group();root.name='choreographed-harbour-fireworks';scene.add(root);
+ const root=new THREE.Group();root.name='choreographed-harbour-fireworks';root.userData.sealedHiddenInstances=true;scene.add(root);
  const particles=[],shells=[],score=fireworksScore(),batches=[],capacity=900;let clock=0,cursor=0,running=false,seed=1729;
  const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  // Six reusable batches keep thousands of trails from becoming thousands of draw calls.

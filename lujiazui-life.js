@@ -32,9 +32,9 @@ export function createLujiazuiPeople({person,cube}){
  }
  return people;
 }
-export function createLujiazuiFlow(people,{world,others,getPos}){
+export function createLujiazuiFlow(people,{world,others,getPos,interest=null}){
  const clear=q=>schedulePavement(world,q);
- const flows=LUJIAZUI_FORECOURTS.map((area,i)=>createStreetCrowd(people.filter(p=>p.forecourt===area.id),{area,clear,others,seedOffset:500+i*41,active:p=>!p.journeyMeeting&&(!p.daily||p.daily.state==='outside'&&p.daily.target==='outside'&&!p.daily.justArrived)}));
+ const flows=LUJIAZUI_FORECOURTS.map((area,i)=>createStreetCrowd(people.filter(p=>p.forecourt===area.id),{area,clear,others,interest,seedOffset:500+i*41,active:p=>!p.journeyMeeting&&(!p.daily||p.daily.state==='outside'&&p.daily.target==='outside'&&!p.daily.justArrived)}));
  for(const flow of flows)flow.tick(0);
  const schedule=createLujiazuiSchedule(people,{world,others,getPos,areas:LUJIAZUI_FORECOURTS});
  return {tick(dt,vehicles=[],dayClock){

@@ -181,7 +181,7 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
  // -------------------------------------------------------------
  // LIVELY GARDEN WILDLIFE (鸳鸯戏水、石龟晒背、蜻蜓点水)
  // -------------------------------------------------------------
- const animalsGroup=new THREE.Group();animalsGroup.name='yuyuan-garden-wildlife';root.add(animalsGroup);dynamicRoots.add(animalsGroup);
+ const animalsGroup=new THREE.Group();animalsGroup.name='yuyuan-garden-wildlife';animalsGroup.userData.sealedHiddenInstances=true;{const update=animalsGroup.updateMatrixWorld;let skipped=false;animalsGroup.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}update.call(this,force||skipped);skipped=false;};}root.add(animalsGroup);dynamicRoots.add(animalsGroup);
 
  // 2 pairs of Mandarin Ducks (4 ducks)
  const duckData=[

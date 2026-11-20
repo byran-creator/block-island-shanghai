@@ -1,6 +1,6 @@
 // Spend only the GPU-independent preparation work during existing loading.
 // Three uploads each image on its ordinary first draw.
-const BYTE_BUDGET=24*1024*1024;
+const BYTE_BUDGET=48*1024*1024;
 const BATCH_SIZE=8;
 
 export async function prepareStreetTextureBitmaps(renderer,textures,loading){

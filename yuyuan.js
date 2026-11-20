@@ -331,6 +331,9 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  lanterns.splice(0,lanterns.length,...batchedLanterns);
  for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);a.root.updateMatrixWorld(true);for(const c of a.root.children)c.matrixAutoUpdate=false;}
  root.updateMatrixWorld(true);
+ for(const g of [...Object.values(streetArt.goods).flat(),...Object.values(shopArt.goods).flat()]){
+  g.traverse(o=>{o.matrixAutoUpdate=false;});
+ }
  const dynamicRoots=new Set([...rickshaws.rickshaws.map(r=>r.group),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots]);
  const keepAuto=n=>{if(dynamicRoots.has(n))return true;let k=false;for(const c of n.children)if(keepAuto(c))k=true;if(!k)n.matrixAutoUpdate=false;return k;};
  for(const c of root.children)keepAuto(c);

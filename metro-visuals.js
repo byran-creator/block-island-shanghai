@@ -3,7 +3,7 @@ import {Box3,Group} from './three.module.js';
 // Keep entrances/escalators visible. Only below-ground objects are omitted when
 // the player cannot see a station through one of its nearby street openings.
 export function createMetroVisuals(root,{getPos,exits,radius=45,canCull=()=>true,underground=p=>p.y<25}){
- const interior=new Group();interior.name='occluded-metro-interior';const box=new Box3();
+ const interior=new Group();interior.name='occluded-metro-interior';interior.userData.sealedHiddenInstances=true;const box=new Box3();
  root.updateWorldMatrix(true,true);
  function register(child){if(child.parent!==root)return false;root.updateWorldMatrix(true,false);box.setFromObject(child);if(box.isEmpty()||box.max.y>=24)return false;interior.add(child);return true;}
  for(const child of [...root.children])register(child);

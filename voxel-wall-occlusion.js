@@ -18,13 +18,14 @@ export function createVoxelWallOcclusion(isFace,{axis='z',width=40,height=16,dep
   if(axis==='y')return isFace(u,cell,y,u,neighbor,y);
   return axis==='z'?isFace(u,y,cell,u,neighbor):isFace(cell,y,u,neighbor,u);
  }
- const checked=new Uint8Array(width*height*depth);
- let eyeU,eyeY,eyeD,u0,y0,d0;
+ const checked=new Uint16Array(width*height*depth);
+ let eyeU,eyeY,eyeD,u0,y0,d0,stamp=0;
  function begin(cameraPosition,nearDistance=MIN_WALL_DISTANCE) {
   eyeU=cameraPosition[horizontalAxis];eyeY=cameraPosition[verticalAxis];eyeD=direction*cameraPosition[axis];
   u0=Math.floor(eyeU)-width/2;y0=Math.floor(eyeY)-height/2;
   d0=Math.ceil(eyeD+nearDistance);
-  checked.fill(0);
+  stamp+=2;
+  if(stamp>=65534){checked.fill(0);stamp=2;}
  }
  function occludes({min,max}) {
   const closest=direction===1?min[axis]:-max[axis],furthest=direction===1?max[axis]:-min[axis];
@@ -42,8 +43,9 @@ export function createVoxelWallOcclusion(isFace,{axis='z',width=40,height=16,dep
    let covered=true;
    for(let y=bottom;y<=top&&covered;y++)for(let u=left;u<=right;u++) {
     const i=((d-d0)*height+y-y0)*width+u-u0;
-    const face=checked[i]||(checked[i]=readFace(u,y,d)?2:1);
-    if(face===1){covered=false;break;}
+    let face=checked[i];
+    if(face<stamp||face>stamp+1){face=readFace(u,y,d)?stamp+1:stamp;checked[i]=face;}
+    if(face===stamp){covered=false;break;}
    }
    if(covered)return true;
   }
@@ -58,13 +60,20 @@ export function createStaticWallCull(meshes,isFace) {
  const eastWall=createVoxelWallOcclusion(isFace,{axis:'x'});
  let westWall=null;
  const eye=new Vector3(),projection=new Matrix4(),frustum=new Frustum(),nearMin=new Vector2(),nearMax=new Vector2();
+ const totalBounds=new Box3();
+ let hasDynamicTransform=false;
  const hidden=[],inverse=new Matrix4(),frustumBounds=new Box3(),entries=meshes.map(mesh=>{
   mesh.updateWorldMatrix(true,false);
   const matrix=mesh.matrixWorld.clone(),owner=mesh.isInstancedMesh?mesh:mesh.geometry;
   if(owner&&!owner.boundingBox)owner.computeBoundingBox();
   const local=owner?.boundingBox??new Box3().setFromObject(mesh).applyMatrix4(inverse.copy(matrix).invert());
   const geometry=mesh.geometry,position=geometry?.attributes.position,data=position?.data??position;
-  return {mesh,local,world:local.clone().applyMatrix4(matrix),matrix,geometry,position,data,
+  const world=local.clone().applyMatrix4(matrix);
+  totalBounds.union(world);
+  let staticChain=!mesh.matrixAutoUpdate;
+  for(let p=mesh.parent;p&&staticChain;p=p.parent)if(p.matrixAutoUpdate)staticChain=false;
+  if(!staticChain)hasDynamicTransform=true;
+  return {mesh,local,world,matrix,geometry,position,data,staticChain,
    positionVersion:data?.version,instanceVersion:mesh.instanceMatrix?.version};
  });
  function restore() {
@@ -73,29 +82,34 @@ export function createStaticWallCull(meshes,isFace) {
  }
  function prepare(camera) {
   restore();
-  if(!camera.isPerspectiveCamera)return;
+  if(!camera.isPerspectiveCamera||!entries.length)return;
   eye.setFromMatrixPosition(camera.matrixWorld);
   if(eye.y<15||eye.y>53)return;
   camera.getViewBounds(camera.near,nearMin,nearMax);
   if(Math.hypot(Math.max(Math.abs(nearMin.x),Math.abs(nearMax.x)),Math.max(Math.abs(nearMin.y),Math.abs(nearMax.y)),camera.near)>=MIN_WALL_DISTANCE)return;
   frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
+  if(!hasDynamicTransform&&!frustum.intersectsBox(totalBounds))return;
   const expanded=camera.userData.probeYuyuanExpandedCull===true;
   southWall.begin(eye);eastWall.begin(eye);
   if(expanded){
    westWall??=createVoxelWallOcclusion(isFace,{axis:'x',direction:-1,width:64,depth:42});
    westWall.begin(eye);
   }
-  for(const entry of entries) {
-   const {mesh,matrix,local,world}=entry;
-   if(!mesh.visible)continue;
+  const camMask=camera.layers.mask;
+  for(let i=0;i<entries.length;i++) {
+   const entry=entries[i],{mesh,matrix,local,world}=entry;
+   if(!mesh.visible||!(mesh.layers.mask&camMask))continue;
    const material=mesh.material;
-   if(material&&(!mesh.layers.test(camera.layers)||!material.depthTest||material.depthFunc!==LessEqualDepth||
+   if(material&&(!material.depthTest||material.depthFunc!==LessEqualDepth||
     material.polygonOffset||material.stencilWrite||material.isShaderMaterial||mesh.castShadow||
     mesh.onBeforeRender!==Object3D.prototype.onBeforeRender))continue;
    if(entry.geometry&&(mesh.geometry!==entry.geometry||entry.geometry.attributes.position!==entry.position||
     entry.data?.version!==entry.positionVersion||mesh.instanceMatrix?.version!==entry.instanceVersion||
     mesh.isSkinnedMesh||mesh.morphTargetInfluences||material?.displacementMap))continue;
-   if(!matrix.equals(mesh.matrixWorld))world.copy(local).applyMatrix4(matrix.copy(mesh.matrixWorld));
+   if((!entry.staticChain||mesh.matrixAutoUpdate)&&!matrix.equals(mesh.matrixWorld)){
+    world.copy(local).applyMatrix4(matrix.copy(mesh.matrixWorld));
+    hasDynamicTransform=true;
+   }
    const canTighten=expanded&&mesh.isMesh&&mesh.frustumCulled&&
     material?.onBeforeCompile===Material.prototype.onBeforeCompile;
    const canUseSouth=world.min.z>=eye.z+MIN_TARGET_DISTANCE,canUseEast=world.min.x>=eye.x+MIN_TARGET_DISTANCE;

@@ -21,13 +21,14 @@ function isPlainSolidMaterial(mat){
 }
 
 function isStaticChain(o,scene){
+ if(o.userData?.dynamicColor)return false;
  for(let p=o;p&&p!==scene;p=p.parent)if(p.matrixAutoUpdate)return false;
  return true;
 }
 
 function fastSkipOwner(o,scene){
  for(let p=o.parent;p&&p!==scene;p=p.parent){
-  if(p.userData?.skipHiddenMatrices||p.name==='occluded-metro-interior'||p.name==='drone-show'||p.name==='lujiazui-searchlight-beams'||p.name==='choreographed-harbour-fireworks'||p.name==='yuyuan-eaves-and-window-light')return p;
+  if(p.userData?.sealedHiddenInstances||p.userData?.skipHiddenMatrices||p.name==='occluded-metro-interior'||p.name==='drone-show'||p.name==='lujiazui-searchlight-beams'||p.name==='choreographed-harbour-fireworks'||p.name==='yuyuan-eaves-and-window-light')return p;
  }
  return null;
 }
@@ -57,9 +58,10 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
    const cellSuffix=sc==='S'?(':'+Math.floor(o.matrixWorld.elements[12]/64)+':'+Math.floor(o.matrixWorld.elements[14]/64)):'';
    key=['pal',geoKey,o.material.type,o.material.side,!!o.material.flatShading,!!o.material.fog,o.material.blending,o.material.toneMapped?1:0,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,!!o.userData.panel,sc].join(':')+cellSuffix;
   }else if(mergeSolidColors){
+   const geoKey=isUnitBox(o.geometry)?'unit-box':o.geometry.uuid;
    const sc=isStaticChain(o,scene)?'S':'D';
    const cellSuffix=sc==='S'?(':'+Math.floor(o.matrixWorld.elements[12]/64)+':'+Math.floor(o.matrixWorld.elements[14]/64)):'';
-   key=[o.geometry.uuid,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,!!o.userData.panel,sc].join(':')+cellSuffix;
+   key=[geoKey,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,!!o.userData.panel,sc].join(':')+cellSuffix;
   }else{
    key=[o.geometry.uuid,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,o.userData.range??65,!!o.userData.panel].join(':');
   }
@@ -68,10 +70,12 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
  for(const sources of candidates.values()){
   if(sources.length<3)continue;
   const first=sources[0];
+  const firstUnitBox=isUnitBox(first.geometry);
   let sameGeoMat=true;
   if(mergeSolidColors){
    for(let i=1;i<sources.length;i++){
-    if(sources[i].geometry!==first.geometry||sources[i].material!==first.material){sameGeoMat=false;break;}
+    const gMatch=sources[i].geometry===first.geometry||(firstUnitBox&&isUnitBox(sources[i].geometry));
+    if(!gMatch||sources[i].material!==first.material){sameGeoMat=false;break;}
    }
   }
   let batchMat=first.material,paletteMat=null,useColor=false;
@@ -102,7 +106,45 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
    for(let i=0;i<sources.length;i++){
     const s=sources[i],fs=fastSkipOwner(s,scene),owner=fs||s.parent||scene,last=ownerRuns[ownerRuns.length-1];
     if(last&&last.owner===owner)last.end=i+1;
-    else ownerRuns.push({owner,start:i,end:i+1,fastSkip:!!fs});
+    else ownerRuns.push({owner,start:i,end:i+1,fastSkip:!!fs,sealed:!!owner.userData?.sealedHiddenInstances,hiddenSynced:false,rigid:false,rcx:0,rcy:0,rcz:0,rr:0});
+   }
+   const invOwner=new THREE.Matrix4(),relMat=new THREE.Matrix4(),centers=[];
+   const gbs=first.geometry.boundingSphere,gbx=gbs.center.x,gby=gbs.center.y,gbz=gbs.center.z,gbr=gbs.radius;
+   for(let r=0;r<ownerRuns.length;r++){
+    const run=ownerRuns[r],{owner,start,end}=run;
+    if(owner===scene||end-start<2||owner.matrixWorld.determinant()===0)continue;
+    let rigid=true;
+    for(let i=start;i<end&&rigid;i++){
+     const s=entries[i].source;
+     if(!s.frustumCulled)rigid=false;
+     for(let p=s;p&&p!==owner;p=p.parent)if(p.matrixAutoUpdate){rigid=false;break;}
+    }
+    if(!rigid)continue;
+    invOwner.copy(owner.matrixWorld).invert();
+    centers.length=0;
+    let cxSum=0,cySum=0,czSum=0;
+    for(let i=start;i<end;i++){
+     const e=entries[i],s=e.source;
+     e.cachedParent=s.parent;
+     relMat.multiplyMatrices(invOwner,s.matrixWorld);
+     const re=relMat.elements;
+     const lx=re[0]*gbx+re[4]*gby+re[8]*gbz+re[12];
+     const ly=re[1]*gbx+re[5]*gby+re[9]*gbz+re[13];
+     const lz=re[2]*gbx+re[6]*gby+re[10]*gbz+re[14];
+     const sx2=re[0]*re[0]+re[1]*re[1]+re[2]*re[2],sy2=re[4]*re[4]+re[5]*re[5]+re[6]*re[6],sz2=re[8]*re[8]+re[9]*re[9]+re[10]*re[10];
+     const lr=gbr*Math.sqrt(sx2>=sy2?(sx2>=sz2?sx2:sz2):(sy2>=sz2?sy2:sz2));
+     centers.push(lx,ly,lz,lr);
+     cxSum+=lx;cySum+=ly;czSum+=lz;
+    }
+    const cnt=end-start,rcx=cxSum/cnt,rcy=cySum/cnt,rcz=czSum/cnt;
+    let rr=0;
+    for(let k=0;k<centers.length;k+=4){
+     const d=Math.hypot(centers[k]-rcx,centers[k+1]-rcy,centers[k+2]-rcz)+centers[k+3];
+     if(d>rr)rr=d;
+    }
+    if(rr>0&&rr<=20){
+     run.rigid=true;run.rcx=rcx;run.rcy=rcy;run.rcz=rcz;run.rr=rr+1e-4;
+    }
    }
   }
   const batch={mesh,entries,ownerRuns,useColor,paletteMat,isStatic:isStaticBatch,staticReady:false,staticCount:0,hasUnculled:false,cellSphere:new THREE.Sphere(),uploaded:false,gpuSyncedCount:0,dirtyCount:0,pendingUploadCount:0,gpuSyncedColorCount:0,dirtyColorCount:0,pendingColorUploadCount:0};
@@ -250,26 +292,59 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
    for(let r=0;r<runs.length;r++){
     const run=runs[r],owner=run.owner;
     const ownerFlags=owner===scene?sceneVis:owner.parent===scene?((sceneVis&1)|((sceneVis&2)&&owner.visible?2:0)):owner._siFrame===frame?owner._siFlags:hierarchy(owner);
-    // Even a hidden owner's sources may have moved or changed their draw path.
+    const ownerHiddenAttached=(ownerFlags&3)===1;
+    if(ownerHiddenAttached&&run.sealed&&run.hiddenSynced)continue;
+    if(!ownerHiddenAttached)run.hiddenSynced=false;
+    let runAllInside=false;
+    if(run.rigid&&(ownerFlags&3)===3){
+     let stillRigid=true;
+     for(let i=run.start;i<run.end;i++){
+      const e=entries[i],s=e.source,m=e.origMat;
+      if(s.parent!==e.cachedParent||s.matrixAutoUpdate||!s.frustumCulled||s.geometry!==e.origGeo||s.material!==m||m.transparent||m.opacity!==1){stillRigid=false;break;}
+      if(useColor&&m.emissive&&(m.emissive.r!==0||m.emissive.g!==0||m.emissive.b!==0)){stillRigid=false;break;}
+     }
+     if(!stillRigid){
+      run.rigid=false;
+     }else{
+      const oe=owner.matrixWorld.elements;
+      const wx=oe[0]*run.rcx+oe[4]*run.rcy+oe[8]*run.rcz+oe[12];
+      const wy=oe[1]*run.rcx+oe[5]*run.rcy+oe[9]*run.rcz+oe[13];
+      const wz=oe[2]*run.rcx+oe[6]*run.rcy+oe[10]*run.rcz+oe[14];
+      const osx=oe[0]*oe[0]+oe[1]*oe[1]+oe[2]*oe[2],osy=oe[4]*oe[4]+oe[5]*oe[5]+oe[6]*oe[6],osz=oe[8]*oe[8]+oe[9]*oe[9]+oe[10]*oe[10];
+      const wr=run.rr*Math.sqrt(osx>=osy?(osx>=osz?osx:osz):(osy>=osz?osy:osz));
+      const d0=wx*p0nx+wy*p0ny+wz*p0nz+p0c;if(d0<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
+      const d1=wx*p1nx+wy*p1ny+wz*p1nz+p1c;if(d1<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
+      const d2=wx*p2nx+wy*p2ny+wz*p2nz+p2c;if(d2<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
+      const d3=wx*p3nx+wy*p3ny+wz*p3nz+p3c;if(d3<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
+      const d4=wx*p4nx+wy*p4ny+wz*p4nz+p4c;if(d4<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
+      const d5=wx*p5nx+wy*p5ny+wz*p5nz+p5c;if(d5<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
+      runAllInside=d0>=wr&&d1>=wr&&d2>=wr&&d3>=wr&&d4>=wr&&d5>=wr;
+     }
+    }
+    // Unsealed or newly hidden runs still validate detachment, reparenting and
+    // material/geometry replacements in the same frame.
+    let allHiddenInRun=ownerHiddenAttached,prevParent=null,prevFlags=0;
     for(let i=run.start;i<run.end;i++){
      const entry=entries[i],{source,mask,origGeo,origMat}=entry;
      const parent=source.parent;
      let flags;
      if(parent===owner)flags=ownerFlags;
+     else if(parent===prevParent)flags=prevFlags;
      else if(!parent)flags=0;
      else if(parent===scene)flags=sceneVis;
      else if(parent.parent===scene)flags=(sceneVis&1)|((sceneVis&2)&&parent.visible?2:0);
-     else flags=parent._siFrame===frame?parent._siFlags:hierarchy(parent);
+     else{flags=parent._siFrame===frame?parent._siFlags:hierarchy(parent);prevParent=parent;prevFlags=flags;}
      const attached=!!(flags&1),visible=!!(flags&2)&&source.visible;
      const matMatch=useColor
       ?(source.geometry===origGeo&&source.material===origMat&&!origMat.transparent&&origMat.opacity===1&&(!origMat.emissive||(origMat.emissive.r===0&&origMat.emissive.g===0&&origMat.emissive.b===0)))
       :(source.geometry===origGeo&&source.material===origMat&&!origMat.transparent&&origMat.opacity===1);
-     if(attached&&!visible&&matMatch){source.layers.mask=mask&~1;continue;}
+     if(attached&&!visible&&matMatch){if(source.layers.mask!==(mask&~1))source.layers.mask=mask&~1;continue;}
+     allHiddenInRun=false;
      if(!attached||!matMatch){source.layers.mask=mask;continue;}
      source.layers.mask=mask&~1;
      if(!visible||!(mask&camMask))continue;
      const e=source.matrixWorld.elements;
-     if(source.frustumCulled){
+     if(!runAllInside&&source.frustumCulled){
       const wx=centerZero?e[12]:(e[0]*bscx+e[4]*bscy+e[8]*bscz+e[12]),wy=centerZero?e[13]:(e[1]*bscx+e[5]*bscy+e[9]*bscz+e[13]),wz=centerZero?e[14]:(e[2]*bscx+e[6]*bscy+e[10]*bscz+e[14]);
       const sx2=e[0]*e[0]+e[1]*e[1]+e[2]*e[2],sy2=e[4]*e[4]+e[5]*e[5]+e[6]*e[6],sz2=e[8]*e[8]+e[9]*e[9]+e[10]*e[10];
       const negR=-bsr*Math.sqrt(sx2>=sy2?(sx2>=sz2?sx2:sz2):(sy2>=sz2?sy2:sz2));
@@ -299,6 +374,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
       else{const cr=Math.fround(col.r),cg=Math.fround(col.g),cb=Math.fround(col.b);if(cArr[coff]!==cr||cArr[coff+1]!==cg||cArr[coff+2]!==cb){colorDirty=true;cArr[coff]=cr;cArr[coff+1]=cg;cArr[coff+2]=cb;}}
      }
     }
+    if(ownerHiddenAttached)run.hiddenSynced=allHiddenInRun;
    }
    if(!initialPopulate&&!dirty&&count>batch.gpuSyncedCount)dirty=true;
    if(useColor&&!initialPopulate&&!colorDirty&&count>batch.gpuSyncedColorCount)colorDirty=true;

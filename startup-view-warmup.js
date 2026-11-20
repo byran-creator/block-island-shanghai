@@ -24,14 +24,16 @@ async function waitForUploads(gl,deadline,isLoading){
  }finally{gl.deleteSync(fence);}
 }
 
-const BUND_TEXTURE_LIMIT=36*1024*1024;
-const BUND_TEXTURE_SLICE=3*1024*1024;
-const BUND_GEOMETRY_LIMIT=24*1024*1024;
-const BUND_GEOMETRY_SLICE=5*1024*1024;
+const BUND_TEXTURE_LIMIT=56*1024*1024;
+const BUND_TEXTURE_SLICE=4*1024*1024;
+const BUND_TEXTURE_MAX_ITEM=9*1024*1024;
+const BUND_GEOMETRY_LIMIT=42*1024*1024;
+const BUND_GEOMETRY_SLICE=6*1024*1024;
 const BUND_PREPARE_MS=900;
 // West and southwest include the street frontage first revealed when the
 // player turns away from the river.
 const BUND_STREET_YAWS=[2.35,1.15];
+const BUND_FULL_YAWS=[2.35,1.57,-.85,-2.35];
 
 function drawStartupSlice(renderer,scene,camera){
  const scissor=renderer.getScissor(new Vector4()),test=renderer.getScissorTest();
@@ -78,8 +80,22 @@ function bindStartupGeometry(renderer,scene,view,slice,lights){
  }
 }
 
-export async function warmBundStreet(renderer,scene,camera,foot,roots,streetMaps,isLoading){
- const gl=renderer.getContext(),started=performance.now(),deadline=started+BUND_PREPARE_MS;
+function geometryByteSize(geo,seenArrays){
+ const attributes=[geo.index,...Object.values(geo.attributes)];
+ let bytes=0;
+ for(let i=0;i<attributes.length;i++){
+  const attr=attributes[i];
+  if(!attr)continue;
+  const arr=attr.array??attr.data?.array;
+  if(arr&&!seenArrays.has(arr)){seenArrays.add(arr);bytes+=arr.byteLength;}
+ }
+ return bytes;
+}
+
+export async function warmBundStreet(renderer,scene,camera,foot,roots,streetMaps,isLoading,options={}){
+ const budgetMs=options.budgetMs??BUND_PREPARE_MS;
+ const yaws=options.fullCircle?BUND_FULL_YAWS:BUND_STREET_YAWS;
+ const gl=renderer.getContext(),started=performance.now(),deadline=started+budgetMs;
  const available=()=>isLoading()&&!gl.isContextLost()&&!renderer.getRenderTarget()&&performance.now()<deadline;
  const stats={textureBytes:0,textures:0,geometryBytes:0,geometry:0,passes:0,ready:false,elapsed:0};
  if(!available())return stats;
@@ -88,7 +104,7 @@ export async function warmBundStreet(renderer,scene,camera,foot,roots,streetMaps
   stats.elapsed=performance.now()-started;
   return stats;
  }
- const views=BUND_STREET_YAWS.map(yaw=>{
+ const views=yaws.map(yaw=>{
   const view=camera.clone();
   view.position.set(foot.x,foot.y+1.62,foot.z);
   view.rotation.set(0,yaw,0,'YXZ');
@@ -96,32 +112,43 @@ export async function warmBundStreet(renderer,scene,camera,foot,roots,streetMaps
   const frustum=new Frustum().setFromProjectionMatrix(new Matrix4().multiplyMatrices(view.projectionMatrix,view.matrixWorldInverse));
   return {view,frustum,geometry:[]};
  });
- const textures=new Map(),lights=[];
+ const textures=new Map(),lights=[],seenArrays=new Set(),queuedMeshes=new Set();
  scene.traverseVisible(object=>{if(object.isLight&&object.layers.test(camera.layers))lights.push(object);});
  let geometryBytes=0;
- for(const root of roots)root?.traverseVisible(object=>{
+ const allowedNames=new Set(['street-furniture','nanjing-sign-batch','yuyuan-sign-batch']);
+ function collectObject(object,allowStaticMesh){
   if(!object.isMesh||!object.layers.test(camera.layers)||!object.material?.visible)return;
   const match=views.find(({frustum})=>frustum.intersectsObject(object));
   if(!match)return;
   const sign=streetMaps.get(object);
   const texture=sign??object.material.map,image=texture?.image;
   const size=image?.width*image?.height*4;
-  if(texture?.isCanvasTexture&&size>0&&size<=BUND_TEXTURE_SLICE){
+  if((texture?.isCanvasTexture||texture?.userData?.opaqueStreetArt)&&size>0&&size<=BUND_TEXTURE_MAX_ITEM){
    const parent=object.parent?.name;
-   const priority=sign||parent?.startsWith('metro-entrance-')||parent==='shanghai-bus-stop-sign'?0:1;
+   const priority=sign||object.name==='nanjing-sign-batch'||parent?.startsWith('metro-entrance-')||parent==='shanghai-bus-stop-sign'?0:1;
    if(!textures.has(texture)||priority<textures.get(texture).priority)textures.set(texture,{size,priority});
   }
-  if(object.name!=='street-furniture')return;
-  const attributes=[object.geometry.index,...Object.values(object.geometry.attributes)];
-  const arrays=new Set(attributes.filter(Boolean).map(attr=>attr.array??attr.data.array));
-  const bytes=[...arrays].reduce((total,array)=>total+array.byteLength,0);
+  const wantGeo=allowedNames.has(object.name)||(allowStaticMesh&&!object.isInstancedMesh&&!object.matrixAutoUpdate);
+  if(!wantGeo||queuedMeshes.has(object))return;
+  const bytes=geometryByteSize(object.geometry,seenArrays);
   if(geometryBytes+bytes>BUND_GEOMETRY_LIMIT)return;
+  queuedMeshes.add(object);
   geometryBytes+=bytes;
   match.geometry.push([object,bytes]);
+ }
+ for(const root of roots)root?.traverseVisible(object=>{
+  collectObject(object,false);
  });
+ if(options.includeSceneMeshes){
+  for(const child of scene.children){
+   if(!child.visible)continue;
+   if(child.isMesh)collectObject(child,true);
+  }
+ }
 
  // Bind the measured heavy street batches before other uploads can consume
  // the loading budget. These batches use untextured palette materials.
+ const pipeline=!!options.pipeline;
  for(const {view,geometry} of views){
   for(let index=0;index<geometry.length&&available();){
    const slice=[];
@@ -135,30 +162,71 @@ export async function warmBundStreet(renderer,scene,camera,foot,roots,streetMaps
    stats.geometry+=slice.length;
    stats.geometryBytes+=bytes;
    stats.passes++;
-   if(!await waitForUploads(gl,deadline,isLoading))return finish(false);
+   if(pipeline){
+    gl.flush();
+    await yieldTask();
+   }else if(!await waitForUploads(gl,deadline,isLoading)){
+    return finish(false);
+   }
   }
  }
  const uploads=[...textures].sort(([,a],[,b])=>a.priority-b.priority);
- let next=0,pendingSlices=0;
+ let next=0,pendingSlices=pipeline&&stats.passes>0?1:0;
  while(next<uploads.length&&available()){
   let bytes=0;
   while(next<uploads.length&&available()){
    const [texture,{size}]=uploads[next];
-   if(bytes+size>BUND_TEXTURE_SLICE)break;
+   if(bytes>0&&bytes+size>BUND_TEXTURE_SLICE)break;
    next++;
    if(stats.textureBytes+size>BUND_TEXTURE_LIMIT||renderer.properties.get(texture).__version===texture.version)continue;
    renderer.initTexture(texture);
    stats.textures++;
    stats.textureBytes+=size;
    bytes+=size;
+   if(bytes>=BUND_TEXTURE_SLICE)break;
   }
   if(bytes===0)continue;
-  if(++pendingSlices===3){
+  if(!pipeline&&++pendingSlices===3){
    if(!await waitForUploads(gl,deadline,isLoading))return finish(false);
    pendingSlices=0;
   }else{
+   if(pipeline)pendingSlices++;
    gl.flush();
    await yieldTask();
+  }
+ }
+ if(options.getTerrainChunks&&available()&&geometryBytes<BUND_GEOMETRY_LIMIT){
+  const chunkSlice=[];
+  let chunkBytes=0,chunkView=views[0].view;
+  for(const mesh of options.getTerrainChunks()){
+   if(!mesh?.isMesh||!mesh.visible||queuedMeshes.has(mesh))continue;
+   const bs=mesh.geometry.boundingSphere;
+   if(bs&&(bs.center.x-foot.x)**2+(bs.center.z-foot.z)**2>165*165)continue;
+   const match=views.find(({frustum})=>frustum.intersectsObject(mesh));
+   if(!match)continue;
+   const bytes=geometryByteSize(mesh.geometry,seenArrays);
+   if(geometryBytes+bytes>BUND_GEOMETRY_LIMIT)break;
+   queuedMeshes.add(mesh);
+   geometryBytes+=bytes;
+   chunkView=match.view;
+   chunkSlice.push(mesh);
+   chunkBytes+=bytes;
+   if(chunkBytes>=BUND_GEOMETRY_SLICE&&available()){
+    bindStartupGeometry(renderer,scene,chunkView,chunkSlice,lights);
+    stats.geometry+=chunkSlice.length;
+    stats.geometryBytes+=chunkBytes;
+    stats.passes++;
+    chunkSlice.length=0;chunkBytes=0;
+    gl.flush();
+    await yieldTask();
+   }
+  }
+  if(chunkSlice.length>0&&available()){
+   bindStartupGeometry(renderer,scene,chunkView,chunkSlice,lights);
+   stats.geometry+=chunkSlice.length;
+   stats.geometryBytes+=chunkBytes;
+   stats.passes++;
+   pendingSlices=Math.max(pendingSlices,1);
   }
  }
  if(pendingSlices>0&&available()&&!await waitForUploads(gl,deadline,isLoading))return finish(false);

@@ -31,6 +31,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function skipHiddenMatrices(obj){
   if(!obj||obj.userData.skipHiddenMatrices)return obj;
   obj.userData.skipHiddenMatrices=true;
+  obj.userData.sealedHiddenInstances=true;
   const update=obj.updateMatrixWorld;let skipped=false;
   obj.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}update.call(this,force||skipped);skipped=false;};
   return obj;

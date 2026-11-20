@@ -23,7 +23,7 @@ export const FERRY_STOPS=[{name:'金陵东路渡口',x:riverWestEdge(185)-11,z:1
 export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:0,u:0};if(t<47)return {port:null,u:(t-12)/35};if(t<59)return {port:1,u:1};return {port:null,u:1-(t-59)/35};}
 export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestEdge(185)+7,z:185},b={x:riverEastEdge(136)-13,z:136};return {...phase,x:a.x+(b.x-a.x)*phase.u,z:a.z+(b.z-a.z)*phase.u,y:22.3,yaw:Math.atan2(b.x-a.x,b.z-a.z)+(time%94<59?Math.PI:0)};}
 
-export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null,solidAt=()=>false}){
+export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null,solidAt=()=>false,simulationInterest=null}){
  const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),signArt=createStreetSignArt();let clock=0,ride=null,panel=false,cooldown=0,purchases=0,lastSignNight=null,lastLightNight=null;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  const windowGlassMat=new THREE.MeshLambertMaterial({color:'#e4f5f8',transparent:true,opacity:.22,depthWrite:false}),caseGlassMat=new THREE.MeshLambertMaterial({color:'#d2eef2',transparent:true,opacity:.16,depthWrite:false}),caseLidMat=new THREE.MeshLambertMaterial({color:'#d2eef2',transparent:true,opacity:.12,depthWrite:false}),awningMats=new Map();
@@ -202,7 +202,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    let awningMat=awningMats.get(brand.color);if(!awningMat){awningMat=new THREE.MeshLambertMaterial({map:getStripedAwningTexture(brand.color,'#fefcf5')});awningMats.set(brand.color,awningMat);}const awning=cube(stall,brand.color,0,2.5,0,2.6,.16,1.5);awning.material=awningMat;
    for(const dx of [-1.1,1.1])cube(stall,'#7b8e99',dx,1.7,.6,.07,1.5,.07);
   }
-  const stock=[];for(let j=0;j<6;j++){const unit=createProduct(product,{batch:false});unit.scale.setScalar(.52);unit.position.set((j%3-1)*.7,1.01,(Math.floor(j/3)-.5)*.5);stall.add(unit);stock.push(unit);}
+  const stock=[];for(let j=0;j<6;j++){const unit=createProduct(product,{batch:false});unit.scale.setScalar(.52);unit.position.set((j%3-1)*.7,1.01,(Math.floor(j/3)-.5)*.5);unit.updateMatrixWorld(true);unit.traverse(o=>{o.matrixAutoUpdate=false;});stall.add(unit);stock.push(unit);}
   stalls.push({x,z,rx:1.5,rz:.9});
   const vendor=person(i,root,'vendor');vendor.root.position.set(x,26,z-side*.95);vendor.root.rotation.y=side>0?Math.PI:0;
   vendors.push({id:b.id,x,z,name:indoor?brand.name+' · '+bp.name:(i%2===0?'老上海生煎摊':'泰康鲜肉月饼摊'),food,product,indoor,building:b,stock,remaining:6,root:vendor.root});
@@ -281,13 +281,32 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
  const shopperClear=p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
  const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
- const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear});
- const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos});
- const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople});
+ const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear,interest:simulationInterest});
+ const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos,interest:simulationInterest});
+ const bundFlow=createBundWalkers(bundWalkers,{clear:p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z),people:()=>streetPeople,interest:simulationInterest});
  const nearbyVehicles=createPedestrianVehicleIndex();
  const shopVisitors={tick(dt,vehicles){
   for(const p of tourists){
    if(p.stationary&&p.kind!=='bus-guest'){
+    const pos=p.root.position;
+    const limbVisible=!simulationInterest||dt<=0||simulationInterest.animatesLimb(pos.x,pos.y,pos.z,48);
+    if(!limbVisible){
+     if(p._limbActive!==false){
+      p._limbActive=false;
+      for(let j=0;j<2;j++){p.arms[j].matrixAutoUpdate=false;p.legs[j].matrixAutoUpdate=false;}
+     }
+     if((p.kind==='eat'||p.kind==='shop')&&p.startX!==undefined){
+      const cycle=p.cycleTime||22,t=((clock+p.phase*3.7)%cycle);
+      if(t<5.5){moveShopper(p,{x:p.startX,z:p.startZ},dt,{clear:shopperClear,people:streetPeople,vehicles});if(p.parcel)p.parcel.visible=t>3;}
+      else if(t<cycle-2){const walkT=t-5.5,prog=walkT/(cycle-7.5);moveShopper(p,{x:p.startX-1.2*Math.sin(prog*Math.PI),z:p.startZ+Math.sin(prog*Math.PI*2)*0.25},dt,{clear:shopperClear,people:streetPeople,vehicles});if(p.parcel)p.parcel.visible=true;}
+      else{if(p.parcel)p.parcel.visible=false;moveShopper(p,{x:p.startX,z:p.startZ},dt,{clear:shopperClear,people:streetPeople,vehicles});}
+     }
+     continue;
+    }
+    if(p._limbActive===false){
+     p._limbActive=true;
+     for(let j=0;j<2;j++){p.arms[j].matrixAutoUpdate=true;p.legs[j].matrixAutoUpdate=true;}
+    }
     if(p.browse){
      p.arms[0].rotation.x=-.4+Math.sin(clock*1.2+p.phase)*.15;p.arms[1].rotation.x=-.2;
      p.root.rotation.y=(p.side>0?0:Math.PI)+Math.sin(clock*0.8+p.phase)*0.25;

@@ -5,7 +5,7 @@ import {GARDEN_BEDS,gardenBedContains,WATER_CORRIDOR,JIUQU_BRIDGE,gardenPathCont
 // Coordinates belong to the district, whose parent applies YUYUAN_SHIFT.
 export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=batchMeshes,simulationInterest=null}){
  const fixtures=[],night=new THREE.Group(),garden=new THREE.Group(),animatedGarden=new THREE.Object3D();
- night.name='yuyuan-eaves-and-window-light';night.visible=false;
+ night.name='yuyuan-eaves-and-window-light';night.userData.sealedHiddenInstances=true;night.visible=false;
  garden.name='yuyuan-corridor-and-planting';animatedGarden.name='yuyuan-animated-garden';
  root.add(garden,night,animatedGarden);
  const unitBox=new THREE.BoxGeometry(1,1,1),leafGeometry=new THREE.SphereGeometry(1,8,5),stemGeometry=new THREE.CylinderGeometry(1,1,1,6),discGeometry=new THREE.CylinderGeometry(1,1,0.1,12);

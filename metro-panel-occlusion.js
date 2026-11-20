@@ -29,7 +29,8 @@ function usesOpaqueSignMaterial(material){
 }
 
 export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],hasWallFace,hasFloorOrCeilingFace){
- const panels=[],hidden=[],materials=[],faces=new Uint8Array(SURFACES.length*GRID_WIDTH**2);
+ const panels=[],hidden=[],materials=[],faces=new Uint16Array(SURFACES.length*GRID_WIDTH**2);
+ let faceStamp=0;
  const fogOnly=new MeshBasicMaterial();
  const walls=hasWallFace?['x','z'].flatMap(axis=>[1,-1].map(direction=>
   createVoxelWallOcclusion(hasWallFace,{axis,direction,width:64,depth:26}))):[];
@@ -44,7 +45,11 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],ha
   if(!geometry.boundingBox)geometry.computeBoundingBox();
   const matrix=mesh.matrixWorld.clone(),bounds=geometry.boundingBox.clone().applyMatrix4(matrix);
   const plane=geometry.type==='PlaneGeometry'&&geometry.boundingBox.min.z===0&&geometry.boundingBox.max.z===0;
-  panels.push({mesh,geometry,matrix,bounds,plane,surface:bounds.max.y>=24});
+  let visOwner=null;
+  for(let p=mesh.parent;p;p=p.parent){
+   if(p.userData?.skipHiddenMatrices||p.name==='occluded-metro-interior'){visOwner=p;break;}
+  }
+  panels.push({mesh,geometry,matrix,bounds,plane,surface:bounds.max.y>=24,visOwner});
  });
  function restore(){
   for(const entry of materials){
@@ -77,18 +82,23 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],ha
   if(undergroundWalls)for(const wall of walls)wall.begin(eye,nearRadius+.001);
   if(undergroundFloors)for(const floor of floors)floor.begin(eye,nearRadius+.001);
   const baseX=Math.floor(eye.x)-GRID_WIDTH/2,baseZ=Math.floor(eye.z)-GRID_WIDTH/2;
-  faces.fill(0);
-  for(const entry of panels){
-   const {mesh,geometry,matrix,bounds,plane,surface}=entry;
+  faceStamp+=2;
+  if(faceStamp>=65534){faces.fill(0);faceStamp=2;}
+  const camMask=camera.layers.mask;
+  for(let pIdx=0;pIdx<panels.length;pIdx++){
+   const entry=panels[pIdx],{mesh,geometry,matrix,bounds,plane,surface,visOwner}=entry;
    if(surface&&!surfaceEnabled)continue;
-   if(!mesh.visible||mesh.geometry!==geometry||!mesh.frustumCulled||!mesh.layers.test(camera.layers))continue;
+   if(visOwner&&!visOwner.visible)continue;
+   if(!mesh.visible||mesh.geometry!==geometry||!mesh.frustumCulled||!(mesh.layers.mask&camMask))continue;
    const material=mesh.material;
    if(!material?.map||!material.depthTest||material.depthFunc!==LessEqualDepth||material.polygonOffset||
     material.stencilWrite||material.isShaderMaterial||mesh.castShadow||mesh.onBeforeRender!==Object3D.prototype.onBeforeRender)continue;
    let parent=mesh.parent;
    while(parent?.visible)parent=parent.parent;
    if(parent)continue;
-   if(!matrix.equals(mesh.matrixWorld))bounds.copy(geometry.boundingBox).applyMatrix4(matrix.copy(mesh.matrixWorld));
+   if((mesh.matrixAutoUpdate||mesh.matrixWorld.elements[12]!==matrix.elements[12]||mesh.matrixWorld.elements[13]!==matrix.elements[13]||mesh.matrixWorld.elements[14]!==matrix.elements[14])&&!matrix.equals(mesh.matrixWorld)){
+    bounds.copy(geometry.boundingBox).applyMatrix4(matrix.copy(mesh.matrixWorld));
+   }
    if(!surface&&bounds.max.y>=24)continue;
    // Three uses a bounding sphere for its mesh cull and still initializes
    // textures for back-facing triangles. The tighter box and original plane
@@ -133,8 +143,9 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],ha
     let covered=true;
     for(let z=front;z<=back&&covered;z++)for(let x=left;x<=right;x++){
      const cell=(index*GRID_WIDTH+z-baseZ)*GRID_WIDTH+x-baseX;
-     const face=faces[cell]||(faces[cell]=hasTopFace(x,y-1,z)?2:1);
-     if(face===1){covered=false;break;}
+     let face=faces[cell];
+     if(face<faceStamp||face>faceStamp+1){face=hasTopFace(x,y-1,z)?faceStamp+1:faceStamp;faces[cell]=face;}
+     if(face===faceStamp){covered=false;break;}
     }
     if(covered){mesh.visible=false;hidden.push(mesh);break;}
    }

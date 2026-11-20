@@ -10,7 +10,8 @@ function project(bound,eye,near,far,offset,lower){
 }
 
 export function createMetroRoofOcclusion(roots,hasBottomFace,hasWallFace){
- const entries=[],hidden=[],faces=new Uint8Array(ROOF_LEVELS.length*GRID_SIDE**2);
+ const entries=[],hidden=[],faces=new Uint16Array(ROOF_LEVELS.length*GRID_SIDE**2);
+ let faceStamp=0;
  const walls=hasWallFace?['x','z'].flatMap(axis=>[1,-1].map(direction=>
   createVoxelWallOcclusion(hasWallFace,{axis,direction,width:64,depth:26}))):[];
  const eye=new Vector3(),nearMin=new Vector2(),nearMax=new Vector2();
@@ -39,7 +40,8 @@ export function createMetroRoofOcclusion(roots,hasBottomFace,hasWallFace){
   for(const wall of walls)wall.begin(eye,nearRadius+.001);
   frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
   const x0=Math.floor(eye.x)-GRID_SIDE/2,z0=Math.floor(eye.z)-GRID_SIDE/2;
-  faces.fill(0);
+  faceStamp+=2;
+  if(faceStamp>=65534){faces.fill(0);faceStamp=2;}
   for(const {mesh,root,geometry,positions,positionData,version,matrix,bounds} of entries){
    if(!root.visible||!mesh.visible||mesh.geometry!==geometry||positions!==geometry.attributes.position||
     positionData.version!==version||!mesh.frustumCulled||mesh.castShadow||
@@ -63,8 +65,9 @@ export function createMetroRoofOcclusion(roots,hasBottomFace,hasWallFace){
     let covered=true;
     for(let z=front;z<=back&&covered;z++)for(let x=left;x<=right;x++){
      const index=(level*GRID_SIDE+z-z0)*GRID_SIDE+x-x0;
-     const face=faces[index]||(faces[index]=hasBottomFace(x,y,z)?2:1);
-     if(face===1){covered=false;break;}
+     let face=faces[index];
+     if(face<faceStamp||face>faceStamp+1){face=hasBottomFace(x,y,z)?faceStamp+1:faceStamp;faces[index]=face;}
+     if(face===faceStamp){covered=false;break;}
     }
     if(covered){mesh.visible=false;hidden.push(mesh);break;}
    }

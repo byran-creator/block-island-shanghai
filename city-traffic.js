@@ -66,7 +66,7 @@ export function findSignalPost(signal,axis,side,world,occupied=[]){
  }return null;
 }
 export const trafficSeed=(index,salt=0)=>{let n=Math.imul(index+1,2654435761)^Math.imul(salt+7,1597334677);n=Math.imul(n^(n>>>16),2246822507);return ((n^(n>>>13))>>>0)/4294967296;};
-export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null,getObstacles=()=>[]}){
+export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null,getObstacles=()=>[],interest=null}){
  const root=new THREE.Group();root.name='city-traffic-details';scene.add(root);const box=new THREE.BoxGeometry(1,1,1),vLampGeo=new THREE.CylinderGeometry(.17,.17,.07,12),pLampGeo=new THREE.CylinderGeometry(.14,.14,.06,12),scooterWheelGeo=new THREE.CylinderGeometry(.29,.29,.22,12).rotateX(Math.PI/2),bikeWheelGeo=new THREE.TorusGeometry(.32,.055,5,12),mats=new Map(),buses=[],riders=[],officers=[],stops=[],cycleMarkings=[];
  const mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=285;parent.add(m);return m;}
@@ -296,7 +296,23 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    // A lane offset travels a longer arc than the centreline on tight bends.
    // Limit the rider's actual displacement instead of jumping around that arc.
    if(['delivery','bicycle'].includes(c.kind)&&travel>0){const p=c.root.position,budget=c.currentSpeed*step*1.15;if(Math.hypot(at.x-p.x,at.z-p.z)>budget){let low=0,high=travel;for(let k=0;k<10;k++){const mid=(low+high)/2,q=pose(c,c.t+c.dir*mid);if(Math.hypot(q.x-p.x,q.z-p.z)<=budget)low=mid;else high=mid;}travel=low;t=(c.t+c.dir*travel+c.route.lengthMeters)%c.route.lengthMeters;at=pose(c,t);}}
-   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,obstacles,includePlayer))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;c.pedaling?.advance(travel);for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
+   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,obstacles,includePlayer))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;
+   if(c.wheels||c.pedaling){
+    const rp=c.root.position;
+    if(interest&&!interest.animatesLimb(rp.x,rp.y,rp.z,64)){
+     if(c._wheelActive!==false){
+      c._wheelActive=false;
+      for(const wheel of c.wheels??[])wheel.matrixAutoUpdate=false;
+     }
+    }else{
+     if(c._wheelActive===false){
+      c._wheelActive=true;
+      for(const wheel of c.wheels??[])wheel.matrixAutoUpdate=true;
+     }
+     c.pedaling?.advance(travel);
+     for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
+    }
+   }
   }first=(first+1)%agents.length;
  }
  function tick(dt,{night=false,rain=0}={}){

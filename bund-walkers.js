@@ -4,12 +4,21 @@ import {PEDESTRIAN_CROSSINGS} from './pedestrian-crossings.js';
 
 // All state changes retain physical position. Never snap a walker into a queue
 // or back from sightseeing; the return leg is part of the route.
-export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers}={}){
+export function createBundWalkers(walkers,{clear=()=>true,people=()=>walkers,interest=null}={}){
  let first=0;
  walkers.forEach((p,i)=>{p.nanjingEnd=-92+(i%6)*5;p.bundEnd=promenadeX(p.baseZ)-5+(i%3)*.7;});
  const corridor=(p,x)=>p.baseZ+(x>=-41&&x<=-29?(p.isNorth?-2.55:2.45)*Math.sin((x+41)/12*Math.PI):0);
  const turn=(p,yaw,dt)=>{const d=Math.atan2(Math.sin(yaw-p.root.rotation.y),Math.cos(yaw-p.root.rotation.y));p.root.rotation.y+=Math.sign(d)*Math.min(Math.abs(d),dt*4);return Math.abs(d)<Math.PI/3;};
- function animate(p,distance,dt){p.phase+=distance*5;p.walkBlend=(p.walkBlend??0)+((distance>1e-6?1:0)-(p.walkBlend??0))*(1-Math.exp(-dt*8));const gait=Math.sin(p.phase)*.3*p.walkBlend;for(let i=0;i<2;i++){p.legs[i].rotation.x=i?-gait:gait;p.arms[i].rotation.x=i?gait:-gait;}}
+ function animate(p,distance,dt){
+  p.phase+=distance*5;p.walkBlend=(p.walkBlend??0)+((distance>1e-6?1:0)-(p.walkBlend??0))*(1-Math.exp(-dt*8));
+  const at=p.root.position;
+  if(interest&&dt>0&&!interest.animatesLimb(at.x,at.y,at.z,56)){
+   if(p._limbActive!==false){p._limbActive=false;for(let i=0;i<2;i++){p.legs[i].matrixAutoUpdate=false;p.arms[i].matrixAutoUpdate=false;}}
+   return;
+  }
+  if(p._limbActive===false){p._limbActive=true;for(let i=0;i<2;i++){p.legs[i].matrixAutoUpdate=true;p.arms[i].matrixAutoUpdate=true;}}
+  const gait=Math.sin(p.phase)*.3*p.walkBlend;for(let i=0;i<2;i++){p.legs[i].rotation.x=i?-gait:gait;p.arms[i].rotation.x=i?gait:-gait;}
+ }
  function advance(dt,clock,vehicles,canCross){
   const neighbours=people();
   function available(p,q){const at=p.root.position;

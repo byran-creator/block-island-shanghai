@@ -26,7 +26,7 @@ export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
  }
  at.set(q.x,q.y,q.z);return true;
 }
-export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0,active=()=>true}={}){
+export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0,active=()=>true,interest=null}={}){
  const walkers=people.filter(p=>!p.stationary);let first=0;
  let neighbours=people.concat(typeof others==='function'?others():others);
  const cells=new Map(),locations=new Map(),cellPool=[],rowPool=[],usedCells=[],combinedNeighbours=[],cellSize=4,queryRadius=CROWD_SEPARATION+1e-9;let indexed=false;
@@ -111,6 +111,17 @@ export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,p
    state.state=moving?'walk':state.wait?'browse':'yield';state.phase+=distanceMoved*4.5;
    const delta=Math.atan2(Math.sin((state.targetYaw??p.root.rotation.y)-p.root.rotation.y),Math.cos((state.targetYaw??p.root.rotation.y)-p.root.rotation.y));p.root.rotation.y+=Math.sign(delta)*Math.min(Math.abs(delta),dt*3.5);
    const blend=1-Math.exp(-dt*7);state.gait=(state.gait??0)+((moving?1:0)-(state.gait??0))*blend;
+   if(interest&&dt>0&&!interest.animatesLimb(at.x,at.y,at.z,56)){
+    if(p._limbActive!==false){
+     p._limbActive=false;
+     for(let j=0;j<2;j++){p.legs[j].matrixAutoUpdate=false;p.arms[j].matrixAutoUpdate=false;}
+    }
+    continue;
+   }
+   if(p._limbActive===false){
+    p._limbActive=true;
+    for(let j=0;j<2;j++){p.legs[j].matrixAutoUpdate=true;p.arms[j].matrixAutoUpdate=true;}
+   }
    for(let j=0;j<2;j++){p.legs[j].rotation.x=Math.sin(state.phase+p.phase)*(j?-.25:.25)*state.gait;p.arms[j].rotation.x=-p.legs[j].rotation.x+Math.sin(state.phase*.35+p.phase)*.04*(1-state.gait);}
   }
   first=(first+1)%Math.max(1,walkers.length);
