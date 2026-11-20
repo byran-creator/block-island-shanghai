@@ -17,7 +17,10 @@ export function createPerformanceProbe({renderer,profile,bootMs,subjects=[]}){
  const lost=()=>{pauseMeter();runtime.contextLost();},restored=()=>runtime.contextRestored();renderer.domElement.addEventListener('webglcontextlost',lost);renderer.domElement.addEventListener('webglcontextrestored',restored);
  try{observer=new PerformanceObserver(list=>{for(const e of list.getEntries()){longTasks.push({at:e.startTime,ms:e.duration});if(longTasks.length>100)longTasks.shift();}});observer.observe({type:'longtask',buffered:true});}catch{}
  const panel=document.createElement('aside'),text=document.createElement('div'),reset=document.createElement('button'),copy=document.createElement('button'),hide=document.createElement('button');
- panel.style.cssText='position:fixed;right:8px;bottom:8px;z-index:9999;max-width:300px;background:#112d36eb;color:#fff;padding:10px;border:1px solid #d6c995;font:12px/1.6 sans-serif;white-space:pre-line';
+ const compact=typeof navigator!=='undefined'&&(navigator.maxTouchPoints>0||typeof matchMedia==='function'&&matchMedia('(pointer:coarse)').matches);
+ panel.style.cssText=compact
+  ?'position:fixed;top:38px;left:50%;transform:translateX(-50%);z-index:9999;max-width:250px;background:#112d36eb;color:#fff;padding:6px 8px;border:1px solid #d6c995;font:11px/1.35 sans-serif;white-space:pre-line'
+  :'position:fixed;right:8px;bottom:8px;z-index:9999;max-width:300px;background:#112d36eb;color:#fff;padding:10px;border:1px solid #d6c995;font:12px/1.6 sans-serif;white-space:pre-line';
  reset.textContent='重新采样';copy.textContent='复制报告';hide.textContent='收起';panel.append(text,reset,copy,hide);document.body.append(panel);
  const report=()=>({version:2,device:navigator.userAgent,viewport:[innerWidth,innerHeight],quality:profile(),canvas:[renderer.domElement.width,renderer.domElement.height],antialias:renderer.getContext?.().getContextAttributes?.()?.antialias??null,bootMilliseconds:bootMs,...meter.report(),drawCalls:renderer.info?.render.calls,triangles:renderer.info?.render.triangles,resources:{...renderer.info?.memory,programs:renderer.info?.programs?.length},runtime:runtime.report(),longTasks:[...longTasks]});
  reset.onclick=()=>{meter.reset();runtime.reset();longTasks.length=0;text.textContent='正在采样 · 请移动并转动视角';};hide.onclick=()=>{panel.hidden=true;pauseMeter();};
