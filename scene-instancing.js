@@ -250,7 +250,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
    for(let r=0;r<runs.length;r++){
     const run=runs[r],owner=run.owner;
     const ownerFlags=owner===scene?sceneVis:owner.parent===scene?((sceneVis&1)|((sceneVis&2)&&owner.visible?2:0)):owner._siFrame===frame?owner._siFlags:hierarchy(owner);
-    if((ownerFlags&3)===1&&!entries[run.start].origMat.transparent)continue;
+    // Even a hidden owner's sources may have moved or changed their draw path.
     for(let i=run.start;i<run.end;i++){
      const entry=entries[i],{source,mask,origGeo,origMat}=entry;
      const parent=source.parent;
