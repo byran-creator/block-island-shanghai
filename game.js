@@ -18,7 +18,7 @@ import {createStaticWallCull} from './voxel-wall-occlusion.js';
 import {createMetroPanelOcclusion} from './metro-panel-occlusion.js';
 import {prepareStreetTextureBitmaps} from './street-texture-bitmaps.js';
 import {holdRestoredEntryPhoto,stageStartupHud,warmBundStreet,warmStartupTextures,warmStartupViews} from './startup-view-warmup.js';
-import {batchDualMaterialSigns,batchSingleMaterialSigns} from './street-sign-batch.js';
+import {batchDualMaterialSigns,batchSingleMaterialSigns,batchWorldStaticPanels} from './street-sign-batch.js';
 import {updateHudHidden,updateHudText} from './hud-text.js';
 import {createMetroRoofOcclusion} from './metro-roof-occlusion.js';
 import {createSimulationInterest} from './simulation-interest.js';
@@ -216,6 +216,81 @@ drawBookshopTile(ctx);
 const atlas=new THREE.CanvasTexture(atlasCanvas);atlas.magFilter=THREE.NearestFilter;atlas.minFilter=THREE.NearestFilter;atlas.colorSpace=THREE.SRGBColorSpace;
 const terrainMaterial=new THREE.MeshLambertMaterial({map:atlas,vertexColors:true});
 const chunks=new Map(),chunksByNum=new Map(),chunkNum=(cx,cz)=>(cx+4096)*8192+(cz+4096);
+const SUPER_GRID=3,superChunks=new Map(),dirtySuperGroups=new Set(),editedSuperGroups=new Set();
+const superGroupKey=(cx,cz)=>Math.floor(cx/SUPER_GRID)+','+Math.floor(cz/SUPER_GRID);
+function dissolveSuperGroup(sgKey){
+ const prev=superChunks.get(sgKey);
+ if(!prev)return;
+ for(const m of prev.members)if(chunks.get(m.userData.chunkKey)===m)m.layers.mask=1;
+ scene.remove(prev.mesh);prev.mesh.geometry.dispose();
+ superChunks.delete(sgKey);
+}
+function buildSuperGroup(sgKey){
+ dissolveSuperGroup(sgKey);
+ if(editedSuperGroups.has(sgKey))return;
+ const [gx,gz]=sgKey.split(',').map(Number),members=[];
+ for(let dx=0;dx<SUPER_GRID;dx++)for(let dz=0;dz<SUPER_GRID;dz++){
+  const ck=(gx*SUPER_GRID+dx)+','+(gz*SUPER_GRID+dz),m=chunks.get(ck);
+  if(m&&m.visible&&m.material===terrainMaterial)members.push(m);
+ }
+ if(members.length<2)return;
+ let totalVerts=0,totalIdx=0,allInt16=true,allInt8=true,maxRange=130,anyRgb=false;
+ for(const m of members){
+  const g=m.geometry,vc=g.attributes.position.count;
+  if(!vc)continue;
+  totalVerts+=vc;totalIdx+=g.index.count;
+  if(!(g.attributes.position.array instanceof Int16Array))allInt16=false;
+  if(!(g.attributes.normal.array instanceof Int8Array))allInt8=false;
+  if((m.userData.range??130)>maxRange)maxRange=m.userData.range;
+  if(m.userData.rgbColors)anyRgb=true;
+ }
+ if(!totalVerts){return;}
+ const PosArr=allInt16?Int16Array:Float32Array,NormArr=allInt8?Int8Array:Float32Array;
+ const pOut=new PosArr(totalVerts*3),nOut=new NormArr(totalVerts*3),uvOut=new Float32Array(totalVerts*2),colOut=new Float32Array(totalVerts*3);
+ const idxOut=totalVerts>=65535?new Uint32Array(totalIdx):new Uint16Array(totalIdx);
+ let vOff=0,iOff=0;
+ for(const m of members){
+  const g=m.geometry,pa=g.attributes.position.array,na=g.attributes.normal.array,uva=g.attributes.uv.array,ca=g.attributes.color.array,ia=g.index.array,vc=pa.length/3;
+  if(!vc)continue;
+  pOut.set(pa,vOff*3);
+  if(allInt8===(na instanceof Int8Array))nOut.set(na,vOff*3);
+  else for(let i=0;i<na.length;i++)nOut[vOff*3+i]=na instanceof Int8Array?na[i]/127:na[i];
+  uvOut.set(uva,vOff*2);colOut.set(ca,vOff*3);
+  for(let i=0;i<ia.length;i++)idxOut[iOff+i]=ia[i]+vOff;
+  vOff+=vc;iOff+=ia.length;
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.BufferAttribute(pOut,3));
+ geo.setAttribute('normal',new THREE.BufferAttribute(nOut,3,allInt8));
+ geo.setAttribute('uv',new THREE.BufferAttribute(uvOut,2));
+ geo.setAttribute('color',new THREE.BufferAttribute(colOut,3));
+ geo.setIndex(new THREE.BufferAttribute(idxOut,1));
+ geo.computeBoundingSphere();
+ const superMesh=new THREE.Mesh(geo,terrainMaterial);
+ superMesh.name='terrain-super-chunk';
+ superMesh.matrixAutoUpdate=false;
+ superMesh.userData.range=maxRange;
+ if(anyRgb)superMesh.userData.rgbColors=true;
+ for(let dx=0;dx<SUPER_GRID;dx++)for(let dz=0;dz<SUPER_GRID;dz++){
+  const cx=gx*SUPER_GRID+dx,cz=gz*SUPER_GRID+dz;
+  if(beijingEastFacadeChunk(cx,cz))beijingEastWash.bakeMesh(superMesh);
+  if(jiujiangHankouChunk(cx,cz,CHUNK))jiujiangHankouWash.bakeMesh(superMesh);
+  if(jinganLightChunk(cx,cz,CHUNK))jinganWash.bakeMesh(superMesh);
+ }
+ streetBounce?.bakeMesh(superMesh);
+ for(const m of members)m.layers.mask=0;
+ scene.add(superMesh);
+ superChunks.set(sgKey,{mesh:superMesh,members});
+}
+function flushSuperGroups(maxCount=2){
+ if(!dirtySuperGroups.size)return;
+ let n=0;
+ for(const sgKey of dirtySuperGroups){
+  dirtySuperGroups.delete(sgKey);
+  buildSuperGroup(sgKey);
+  if(++n>=maxCount)break;
+ }
+}
 function skipHiddenMatrices(obj){if(!obj||obj.userData.skipHiddenMatrices)return obj;obj.userData.skipHiddenMatrices=true;const update=obj.updateMatrixWorld;let skipped=false;obj.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}update.call(this,force||skipped);skipped=false;};return obj;}
 const distantGround=createDistantGround({scene,world,chunks,chunk:CHUNK,height:HEIGHT,minX:WORLD_MIN,minZ:WORLD_MIN_Z,max:WORLD_MAX,water:WATER_LEVEL,colors:BLOCKS.map(b=>b?.color),range:camera.far,tint:terrainMaterial.color});
 const jinganWash=createJinganUplighting();
@@ -250,9 +325,10 @@ function installChunk(key,{p,norm,uv,col,indices}){
  const [cx,cz]=key.split(',').map(Number),old=chunks.get(key);
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(p,3));geo.setAttribute('normal',new THREE.BufferAttribute(norm,3,norm instanceof Int8Array));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(indices,1));geo.computeBoundingSphere();
  const mesh=new THREE.Mesh(geo,terrainMaterial);
+ mesh.userData.chunkKey=key;
  if(beijingEastFacadeChunk(cx,cz))beijingEastWash.bakeMesh(mesh);
  if(jiujiangHankouChunk(cx,cz,CHUNK))jiujiangHankouWash.bakeMesh(mesh);
- if(chunkShade(cx,cz))mesh.userData.rgbColors=true;streetBounce?.bakeMesh(mesh);if(jinganLightChunk(cx,cz,CHUNK))jinganWash.bakeMesh(mesh);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;mesh.matrixAutoUpdate=false;if(old){scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);chunksByNum.set(chunkNum(cx,cz),mesh);distantGround.update(key);
+ if(chunkShade(cx,cz))mesh.userData.rgbColors=true;streetBounce?.bakeMesh(mesh);if(jinganLightChunk(cx,cz,CHUNK))jinganWash.bakeMesh(mesh);mesh.userData.range=(cz*CHUNK>=-160&&cz*CHUNK<=242)||Object.values(CITY).some(p=>Math.abs((cx+.5)*CHUNK-p.x)<28&&Math.abs((cz+.5)*CHUNK-p.z)<28)||ALL_BUILDINGS.some(b=>Math.abs((cx+.5)*CHUNK-b.x)<24&&Math.abs((cz+.5)*CHUNK-b.z)<24)?280:130;mesh.matrixAutoUpdate=false;const sgKey=superGroupKey(cx,cz);if(old){dissolveSuperGroup(sgKey);scene.remove(old);old.geometry.dispose();}scene.add(mesh);chunks.set(key,mesh);chunksByNum.set(chunkNum(cx,cz),mesh);distantGround.update(key);if(!editedSuperGroups.has(sgKey))dirtySuperGroups.add(sgKey);
 }
 function retainChunk(key,point,cx,cz,nearbyBuildings){const [x,z]=key.split(',').map(Number);const maxRetain=isMobile?4:6;if(Math.abs(x-cx)<=maxRetain&&Math.abs(z-cz)<=maxRetain)return true;if(isMobile)return false;if(!isMobile&&x>=7&&x<=18&&z>=1&&z<=14)return true;const chunkX=(x+.5)*CHUNK,chunkZ=(z+.5)*CHUNK;const buildings=nearbyBuildings||ALL_BUILDINGS;if(buildings.some(b=>Math.abs(chunkX-b.x)<24&&Math.abs(chunkZ-b.z)<24&&(!nearbyBuildings||Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?220:315))))return true;if(Object.values(CITY).some(p=>Math.abs(chunkX-p.x)<28&&Math.abs(chunkZ-p.z)<28&&Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?260:380)))return true;return false;}
 let lastChunkPlan=null;
@@ -297,17 +373,17 @@ function updateRegionalSigns(point){
   if(entry.group&&entry.group.visible!==near){entry.group.visible=near;entry.setNear?.(near);}
  }
 }
-function ensureChunks(point,force=false,immediate=false){if(isMobile&&!needsChunkPlan(lastChunkPlan,point,force,immediate))return;lastChunkPlan={x:point.x,y:point.y,z:point.z};updateRegionalSigns(point);const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();const lookRadius=isMobile?mobileChunkDistances.nearRadius:5,maxDist=isMobile?mobileChunkDistances.buildingRange:360;for(let x=cx-lookRadius;x<=cx+lookRadius;x++)for(let z=cz-lookRadius;z<=cz+lookRadius;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN_Z/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?mobileChunkDistances.landmarkRange:maxDist))for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<(isMobile?240:340))for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<(isMobile&&b.id==='pudong-infill-southeast-2'?260:maxDist))for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<maxDist){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN_Z/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}addExpoLandmarkChunks(needed,point,CHUNK);addCenturyParkApproachChunks(needed,point,CHUNK,lookRadius);addJinganBackdropChunks(needed,point,CHUNK,lookRadius);const scenicPriority=point.y>=60?new Set():null;addScenicLandmarkChunks(needed,point,CHUNK,scenicPriority);const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?260:380));for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);const [dx,dz]=key.split(',').map(Number);chunksByNum.delete(chunkNum(dx,dz));distantGround.update(key);}chunkWork.setDesired(needed,point,CHUNK,force);
+function ensureChunks(point,force=false,immediate=false){if(isMobile&&!needsChunkPlan(lastChunkPlan,point,force,immediate))return;lastChunkPlan={x:point.x,y:point.y,z:point.z};updateRegionalSigns(point);const cx=Math.floor(point.x/CHUNK),cz=Math.floor(point.z/CHUNK),needed=new Set();const lookRadius=isMobile?mobileChunkDistances.nearRadius:5,maxDist=isMobile?mobileChunkDistances.buildingRange:360;for(let x=cx-lookRadius;x<=cx+lookRadius;x++)for(let z=cz-lookRadius;z<=cz+lookRadius;z++)if(x>=WORLD_MIN/CHUNK&&z>=WORLD_MIN_Z/CHUNK&&x<WORLD_MAX/CHUNK&&z<WORLD_MAX/CHUNK)needed.add(x+','+z);for(const p of Object.values(CITY))if(Math.hypot(point.x-p.x,point.z-p.z)<(isMobile?mobileChunkDistances.landmarkRange:maxDist))for(let x=Math.floor((p.x-14)/CHUNK);x<=Math.floor((p.x+14)/CHUNK);x++)for(let z=Math.floor((p.z-14)/CHUNK);z<=Math.floor((p.z+14)/CHUNK);z++)needed.add(x+','+z);if(Math.hypot(point.x-LANDMARKS.tower.x,point.z-42)<(isMobile?240:340))for(let x=7;x<=8;x++)for(let z=1;z<=4;z++)needed.add(x+','+z);for(const b of ALL_BUILDINGS)if(Math.hypot(point.x-b.x,point.z-b.z)<(isMobile&&b.id==='pudong-infill-southeast-2'?260:maxDist))for(let x=Math.floor((b.x-9)/CHUNK);x<=Math.floor((b.x+9)/CHUNK);x++)for(let z=Math.floor((b.z-8)/CHUNK);z<=Math.floor((b.z+8)/CHUNK);z++)needed.add(x+','+z);for(let z=-144;z<=240;z+=16)for(const x of [riverWestEdge(z)-12,riverEastEdge(z)+12])if(Math.hypot(point.x-x,point.z-z)<maxDist){const sx=Math.floor(x/CHUNK),sz=Math.floor(z/CHUNK);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(sx+dx>=WORLD_MIN/CHUNK&&sx+dx<WORLD_MAX/CHUNK&&sz+dz>=WORLD_MIN_Z/CHUNK&&sz+dz<WORLD_MAX/CHUNK)needed.add((sx+dx)+','+(sz+dz));}addExpoLandmarkChunks(needed,point,CHUNK);addCenturyParkApproachChunks(needed,point,CHUNK,lookRadius);addJinganBackdropChunks(needed,point,CHUNK,lookRadius);const scenicPriority=point.y>=60?new Set():null;addScenicLandmarkChunks(needed,point,CHUNK,scenicPriority);const nearbyBuildings=ALL_BUILDINGS.filter(b=>Math.hypot(point.x-b.x,point.z-b.z)<(isMobile?260:380));for(const [key,mesh] of chunks)if(!needed.has(key)&&!retainChunk(key,point,cx,cz,nearbyBuildings)){const [dx,dz]=key.split(',').map(Number),sgKey=superGroupKey(dx,dz);dissolveSuperGroup(sgKey);scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);chunksByNum.delete(chunkNum(dx,dz));distantGround.update(key);if(!editedSuperGroups.has(sgKey))dirtySuperGroups.add(sgKey);}chunkWork.setDesired(needed,point,CHUNK,force);
  if(scenicPriority?.size&&[...scenicPriority].some(key=>!chunks.has(key))){
   for(let x=cx-1;x<=cx+1;x++)for(let z=cz-1;z<=cz+1;z++)scenicPriority.add(x+','+z);
   chunkWork.prioritize(scenicPriority);
  }
- const isSkylineChunk=(x,z)=>(x>=7&&x<=18&&z>=1&&z<=14)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate)for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);const maxImmediate=isMobile?1:3;if(!force&&(Math.abs(x-cx)>maxImmediate||Math.abs(z-cz)>maxImmediate)&&(isMobile||!isSkylineChunk(x,z)))continue;rebuild(x,z);}}
+ const isSkylineChunk=(x,z)=>(x>=7&&x<=18&&z>=1&&z<=14)||Object.values(CITY).some(p=>Math.abs((x+.5)*CHUNK-p.x)<=24&&Math.abs((z+.5)*CHUNK-p.z)<=24)||(x>=7&&x<=8&&z>=1&&z<=4);if(immediate){for(const key of needed)if(force||!chunks.has(key)){const [x,z]=key.split(',').map(Number);const maxImmediate=isMobile?1:3;if(!force&&(Math.abs(x-cx)>maxImmediate||Math.abs(z-cz)>maxImmediate)&&(isMobile||!isSkylineChunk(x,z)))continue;rebuild(x,z);}flushSuperGroups(256);}}
 
 await Promise.race([new Promise(requestAnimationFrame),new Promise(r=>setTimeout(r,60))]);
 if($('play'))$('play').textContent='正在加载地貌与建筑…';
 ensureChunks(LANDMARKS.bund,false,true);
-function updateBlock(x,y,z,id){world.set(x,y,z,id);savedEdits.set(`${x},${y},${z}`,id);const affected=new Set([[x,z],[x-1,z],[x+1,z],[x,z-1],[x,z+1]].map(([a,b])=>Math.floor(a/CHUNK)+','+Math.floor(b/CHUNK)));for(const key of affected){distantGround.invalidate(key);chunkWork.invalidate(key);if(chunks.has(key))rebuild(...key.split(',').map(Number));}}
+function updateBlock(x,y,z,id){world.set(x,y,z,id);savedEdits.set(`${x},${y},${z}`,id);const affected=new Set([[x,z],[x-1,z],[x+1,z],[x,z-1],[x,z+1]].map(([a,b])=>Math.floor(a/CHUNK)+','+Math.floor(b/CHUNK)));for(const key of affected){const [ax,az]=key.split(',').map(Number),sgKey=superGroupKey(ax,az);editedSuperGroups.add(sgKey);dirtySuperGroups.delete(sgKey);dissolveSuperGroup(sgKey);distantGround.invalidate(key);chunkWork.invalidate(key);if(chunks.has(key))rebuild(ax,az);}}
 const water=new THREE.Mesh(createRiverWaterGeometry({size:SIZE*1.4,centerX:(WORLD_MIN+WORLD_MAX)/2,centerZ:(WORLD_MIN_Z+WORLD_MAX)/2,ponds:GARDEN_PONDS,shift:YUYUAN_SHIFT}),new THREE.MeshPhongMaterial({color:'#3daabe',transparent:true,opacity:.67,shininess:90,depthWrite:false,side:THREE.DoubleSide}));water.rotation.x=-Math.PI/2;water.position.set((WORLD_MIN+WORLD_MAX)/2,WATER_LEVEL,(WORLD_MIN_Z+WORLD_MAX)/2);water.updateMatrix();water.matrixAutoUpdate=false;scene.add(water);scene.userData.water=water;
 const {clouds,cloudMat,bellyMat}=createClouds(camera);clouds.visible=!renderer.isSoftware;scene.add(clouds);
 const sunBlock=new THREE.Mesh(new THREE.SphereGeometry(7,32,20),new THREE.MeshBasicMaterial({color:'#fff8ce'}));sunBlock.position.set(-12,43,-20);scene.add(sunBlock);
@@ -532,13 +608,13 @@ function frame(now){
  footContact=grounded;const walkStartX=pos.x,walkStartZ=pos.z;let footTravel=0;
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?vesselQueries.support(pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}if(active||story?.filming){camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();simulationInterest.beginFrame();}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?inputKeys:new Set()});
- if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?2:3);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
+ if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?2:3);if(!chunkWork.pending)flushSuperGroups(1);stepDistrictTextureWarmup();saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
   footTravel=Math.hypot(pos.x-walkStartX,pos.z-walkStartZ);
   camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);outline.visible=!!target;if(target)outline.position.set(target.x+.5,target.y+.5,target.z+.5);
   if((mouseHeld!==-1||inputKeys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
   hudTime+=dt;if(hudTime>.15){hudText('coordinates',`X ${(pos.x-40).toFixed(1)} · Y ${pos.y.toFixed(1)} · Z ${(pos.z-40).toFixed(1)}`);hudText('target',target?BLOCKS[target.id].name:'');const nearby=life?.hasUseTarget()?null:companions.nearest(pos,camera),npcVis=!!nearby;if(npcVis!==lastNpcPrompt){(hudEls.npcPrompt??$('npc-prompt'))?.classList.toggle('visible',npcVis);lastNpcPrompt=npcVis;}hudText('npc-prompt',nearby?`奶龙 · G 打招呼 / 跳舞 · H ${nearby.follow?'停止跟随':'一起散步'}`:'');hudTime=0;}
   updateHudHidden(hudEls.glideStatus??$('glide-status'),!gliding);hudText('glide-status',grounded?'滑翔伞准备好了 · 走向边缘起飞':'滑翔中 · WASD 转向 · Shift 下降 · P 收伞');simulationInterest.beginFrame();life.tick(dt,{night:dayClock>=120,moving:inputKeys.has('KeyW')||inputKeys.has('KeyA')||inputKeys.has('KeyS')||inputKeys.has('KeyD'),racing:!!adventure.state.race});companions.update(dt,pos,camera,elapsed);const effect=adventure.tick(dt,pos,elapsed,dayClock>=120);if(effect?.bounce&&!flying){vy=effect.bounce;grounded=false;beep(1);}
- }else if(!started){chunkWork.process(isMobile?2:3);camera.position.set(32+Math.sin(elapsed*.03)*1.5,29.8,68+Math.cos(elapsed*.025)*1.0);camera.lookAt(126,52,42);outline.visible=false;}
+ }else if(!started){chunkWork.process(isMobile?2:3);if(!chunkWork.pending)flushSuperGroups(2);camera.position.set(32+Math.sin(elapsed*.03)*1.5,29.8,68+Math.cos(elapsed*.025)*1.0);camera.lookAt(126,52,42);outline.visible=false;}
  const area=soundScene(pos,dayClock>=120);
  music.update({playing:active||story?.filming,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden,sceneTrack:area.track,dt});
  hudText('music-track',music.track.name+' · '+(music.automatic?area.name:adventure?.isShowActive()?'明珠夜游变奏':'手选曲目'));const mc=hudEls.musicChoice??$('music-choice');if(mc&&mc.value!==music.track.id)mc.value=music.track.id;
@@ -640,11 +716,14 @@ privateSuites=createPrivateSuites({scene,world,pause:pauseForPanel,resume:enter,
 await loadingStage('正在构建豫园与老城商圈…');
 yuyuan=createYuyuan({scene,world,simulationInterest,deferPondView:true,packStatic:renderer.isWebGLRenderer,getVehicles:getSharedVehicles,getPos:()=>pos,getState:()=>life.state,setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;},notify,pause:pauseForPanel,resume:enter,onProgress:()=>{life.refresh();saves?.save('auto');},onEvent:recordCityEvent,getAudio,getSound:()=>sound&&sceneAudio.enabled&&!document.hidden,getVolume:()=>music.volume});
 const yuyuanSignBatch=renderer.isWebGLRenderer?batchSingleMaterialSigns(yuyuan.root,{wallTarget:true}):null;
+const surfacePanelBatch=renderer.isWebGLRenderer?batchWorldStaticPanels(scene,[metro.root,...Object.values(metro.lines).map(l=>l.root),scene.getObjectByName('city-traffic-details')]):null;
+const districtWarmupTextures=[];let districtWarmupCursor=0;
 if(renderer.isWebGLRenderer){
  const roadArt=[];
  const startNight=(saves?.startupView?.(MAP_REVISION)?.dayClock??dayClock)>=120;
  if(nanjingSignBatch){
   roadArt.push(...nanjingSignBatch.activeTextures(startNight));
+  districtWarmupTextures.push(...nanjingSignBatch.dayTextures,...nanjingSignBatch.nightTextures);
   for(const sign of activity.signs){
    if(!sign.mesh.layers.isEnabled(0))continue;
    for(const key of ['day','night']){if(sign[key].map?.userData.opaqueStreetArt)roadArt.push(sign[key].map);}
@@ -655,12 +734,25 @@ if(renderer.isWebGLRenderer){
    if(map.userData.opaqueStreetArt)roadArt.push(map);
   }
  }
- if(yuyuanSignBatch)roadArt.push(...yuyuanSignBatch.textures);
- for(const {root} of civil.traffic.stops)root.traverse(mesh=>{
-  const map=mesh.material?.map;
-  if(map?.userData.opaqueStreetArt)roadArt.push(map);
- });
+ if(yuyuanSignBatch){roadArt.push(...yuyuanSignBatch.textures);districtWarmupTextures.push(...yuyuanSignBatch.textures);}
+ if(surfacePanelBatch){roadArt.push(...surfacePanelBatch.textures);districtWarmupTextures.push(...surfacePanelBatch.textures);}
+ else{
+  for(const {root} of civil.traffic.stops)root.traverse(mesh=>{
+   const map=mesh.material?.map;
+   if(map?.userData.opaqueStreetArt)roadArt.push(map);
+  });
+ }
  void prepareStreetTextureBitmaps(renderer,roadArt,()=>!active&&!document.hidden);
+}
+function stepDistrictTextureWarmup(){
+ if(!renderer.isWebGLRenderer||districtWarmupCursor>=districtWarmupTextures.length)return;
+ if(pos.x<-210||pos.x>290||pos.z<10||pos.z>185)return;
+ while(districtWarmupCursor<districtWarmupTextures.length){
+  const tex=districtWarmupTextures[districtWarmupCursor++];
+  if(!tex||renderer.properties.get(tex).__version===tex.version)continue;
+  renderer.initTexture(tex);
+  break;
+ }
 }
 residents=createBuildingResidents({scene,world,getPos:()=>pos,getVehicles:getSharedVehicles});
 story=createShanghaiJourney({scene,camera,world,routeBlocked:(x,y,z)=>!!civil?.staticCollides(x,y,z)||!!metro?.collides(x,y,z)||!!life?.collides(x,y,z)||!!story?.collides(x,y,z)||!!activity?.collides(x,y,z)||!!restaurant?.collides(x,y,z)||!!privateSuites?.collides(x,y,z)||!!towerInteriors?.collides(x,y,z),getAudio,getSound:()=>sound,getVolume:()=>music.volume,getContext:()=>({pos,touch:isMobile||touch,traffic:civil.traffic,rain:weather.state.rain,dayClock,life:life.state,people:activity?.tourists??[],gardenShops:yuyuan?.streetArt.extraShops??[],traveling:!!(commute?.ride||activity?.isRiding()),photoGuest:civil.pedestrians.find(p=>p.kind==='photo'&&p.point?.z===72),collectibles:{...yuyuan?.inventory,...activity?.goods,...quests?.state.collectibles()},vendors:activity?.vendors??[],stations:metro?.stations??[],ride:metro?.ride,trains:metro?.trains??[],metroNetwork:metro}),pause:pauseForPanel,resume:enter,notify,prefetch:p=>ensureChunks(p),prepareShot:prepareJourneyShot,placeStart:a=>{teleport({x:a.x-1.5,y:a.y,z:a.z-2});setFlight(false);lookTowards({...a,y:a.y+1.5});},celebrate:()=>{if(adventure?.launch){adventure.launch(true);notify('外滩的灯光已经为你亮起，过去看看吧 · 随时按 K 放烟花');}},onProgress:()=>{quests?.refresh();saves?.save('auto');}});
@@ -717,7 +809,10 @@ if(p&&data.mapRevision===5)migrateBundPoint(p);
 if(p){const y=snapMetroFloor(world,p,0,{flying:data.flying,gliding:data.gliding},(x,z)=>metro?.floorAt(x,z));if(y!==null)p.y=y;}
 if(!data.flying&&!data.gliding&&oldPearlLanding(p))Object.assign(p,PEARL_DECK.arrival);
 if(p&&!data.flying&&!data.gliding&&[44,70].includes(Math.round(p.y))&&Math.abs(p.x-PEARL.x)<12&&Math.abs(p.z-PEARL.z)<12&&!overlaps(world,p.x,p.y-.1,p.z)){const safe=safeLanding(world,p);if(safe)Object.assign(p,safe);}
-if(p&&[p.x,p.y,p.z].every(Number.isFinite)&&p.y<HEIGHT+12&&!overlaps(world,p.x,p.y,p.z))Object.assign(pos,p);else Object.assign(pos,LANDMARKS.village);for(const key of changedEditChunks(previousEdits,savedEdits,CHUNK)){distantGround.invalidate(key);chunkWork.cancel(key);const mesh=chunks.get(key);if(mesh){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);const [dx,dz]=key.split(',').map(Number);chunksByNum.delete(chunkNum(dx,dz));distantGround.update(key);}}lastChunkPlan=null;ensureChunks(pos,false,true);
+editedSuperGroups.clear();
+for(const editKey of savedEdits.keys()){const [ex,,ez]=editKey.split(',').map(Number);editedSuperGroups.add(superGroupKey(Math.floor(ex/CHUNK),Math.floor(ez/CHUNK)));}
+for(const sgKey of [...superChunks.keys()])if(editedSuperGroups.has(sgKey))dissolveSuperGroup(sgKey);
+if(p&&[p.x,p.y,p.z].every(Number.isFinite)&&p.y<HEIGHT+12&&!overlaps(world,p.x,p.y,p.z))Object.assign(pos,p);else Object.assign(pos,LANDMARKS.village);for(const key of changedEditChunks(previousEdits,savedEdits,CHUNK)){const [dx,dz]=key.split(',').map(Number),sgKey=superGroupKey(dx,dz);dissolveSuperGroup(sgKey);distantGround.invalidate(key);chunkWork.cancel(key);const mesh=chunks.get(key);if(mesh){scene.remove(mesh);mesh.geometry.dispose();chunks.delete(key);chunksByNum.delete(chunkNum(dx,dz));distantGround.update(key);}if(!editedSuperGroups.has(sgKey))dirtySuperGroups.add(sgKey);}lastChunkPlan=null;ensureChunks(pos,false,true);
  yaw=Number.isFinite(data.yaw)?data.yaw:0;pitch=Number.isFinite(data.pitch)?Math.max(-1.52,Math.min(1.52,data.pitch)):-.08;select(Number.isInteger(data.selected)&&data.selected>0&&data.selected<BLOCKS.length?data.selected:1,false);life.restore(data.version===6?data.life:null);if(data.mapRevision===5){const migrated=life.serialize();for(const f of migrated.furniture)migrateBundPoint(f);if(migrated.home)migrateBundPoint(migrated.home);life.restore(migrated);}if((data.mapRevision||0)<5){const migrated=life.serialize();for(const f of migrated.furniture)movePersonal(f);if(migrated.home)movePersonal(migrated.home);life.restore(migrated);}if((data.mapRevision||0)<4){for(const f of life.state.furniture)if(f.x<=115&&f.z>138&&f.y>=25){const x=Math.floor(f.x),z=Math.floor(f.z),y=Math.floor(f.y)-1;for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)if(!world.get(x+dx,y,z+dz))updateBlock(x+dx,y,z+dz,7);}}if(collides(pos.x,pos.y,pos.z)){const nearby=[{x:pos.x+1.5,y:pos.y,z:pos.z},{x:pos.x-1.5,y:pos.y,z:pos.z},{x:pos.x,y:pos.y+2,z:pos.z}].find(p=>!collides(p.x,p.y,p.z));teleport(nearby||LANDMARKS.village);}setFlight(!!data.flying);gliding=!!data.gliding&&life.state.glider&&!flying;yuyuan.restore(data.yuyuan);restaurant.restore(data.restaurant);privateSuites.restore(data.suites);activity.restore(data.activity);skyline.restore(data.skyline);weather.restore(data.weather);$('weather-choice').value=weather.state.mode;$('weather-pace').value=weather.state.cycleSeconds;$('weather-pace').disabled=weather.state.mode!=='auto';timeOptions=clockOptions(data.timeOptions);dayClock=Number.isFinite(data.dayClock)?Math.max(0,data.dayClock)%240:36;mined=Math.max(0,Number(data.mined)||0);placed=Math.max(0,Number(data.placed)||0);adventure.restore(data.adventure);talkDone=!!data.talkDone;followDone=!!data.followDone;celebrated=!!data.celebrated;story?.restore(data.journey);quests.restore(data.quests,{talkDone,placed});if(adventure.state.race){gliding=false;teleport(courseById(adventure.state.race.course).platforms[adventure.state.race.checkpoint]);setFlight(false)}updateTasks();started=true;enter();notify(shift?'旧存档已迁移到新群岛，你的建筑仍然保留。':'已读取存档，欢迎回到你的小岛。');
  }catch{notify('未能读取存档，当前游戏仍然可以继续。');throw new Error('存档格式不正确');}}
 function lookTowards(point){const dx=point.x-pos.x,dz=point.z-pos.z; yaw=Math.atan2(-dx,-dz);pitch=Math.atan2(point.y-pos.y-1.62,Math.hypot(dx,dz));camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();}
@@ -919,7 +1014,7 @@ makeDraggable($('survival-goal'),'pos_survival_goal');
 saves=createCloudSaves({capture:captureSave,apply:applySave,hasStarted:()=>started,pause:()=>{const was=active;pauseForPanel();return was},resume:enter,notify});
 await loadingStage('正在整理画面，即将进入…');
 const wayfindingLabels=scene.children.filter(o=>o.isSprite&&o.userData.wayfinding);
-streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);streetBounce.setNight(dayClock>=120);
+streetBounce=createNanjingBakedLight();streetBounce.bakeScene(scene);for(const {mesh} of superChunks.values())streetBounce.bakeMesh(mesh);streetBounce.setNight(dayClock>=120);
 photo=createPhotoMode({scene,camera,renderer,canvas,world,getPos:()=>pos,getYaw:()=>yaw,pause:pauseForPanel,resume:enter,canOpen:()=>started&&active&&!story?.filming&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()&&!activity?.isRiding()&&!gliding,notify,onCapture:meta=>{const pending=story?.state.chapter?.id==='lujiazui-view'&&story.state.edition>=3&&story.state.touristPhoto==='ready';story?.record({type:'travel-photo',...meta});if(pending)return story.state.touristPhoto==='thanks'?'拍到了 · 退出相机，听听游客的回应。感谢留言会自动收入手账。':'还没拍到目标游客 · 切换拍景，把游客放入画面后再拍即可。';},onKeepPhoto:photo=>story.keepPhoto(photo),onClose:()=>story?.afterPhoto()??false,beforeRender:()=>{outline.visible=false;yuyuan?.waterArt.prepareView(camera);}});
 $('photo-open').onclick=()=>photo.open();
 rainCrowd=createRainCrowd(npcGuides.actors.filter(p=>p.person&&!p.resident&&!p.metroRole),{world});
@@ -956,6 +1051,7 @@ if(renderer.isWebGLRenderer){
   beforeOcclusion.call(this,renderer,scene,camera,target);
   nanjingSignBatch?.sync();
   yuyuanSignBatch?.sync();
+  surfacePanelBatch?.sync();
   if(!renderer.clippingPlanes.length&&camera.layers.mask===1){
    wallCull.prepare(camera);
    if(!savedEdits.size&&!story?.filming&&!photo?.opened){
@@ -1027,6 +1123,7 @@ if(isMobile){
   chunkWork.process(6);
   await new Promise(resolve=>setTimeout(resolve,0));
  }
+  flushSuperGroups(256);
  if(!replaceMenuDraw)renderScene();
 }else if(renderer.isWebGLRenderer&&!document.hidden){
  camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
@@ -1037,6 +1134,7 @@ if(isMobile){
   chunkWork.process(10);
   await new Promise(resolve=>setTimeout(resolve,0));
  }
+  flushSuperGroups(256);
  if(!replaceMenuDraw)renderScene();
 }
 if(renderer.isWebGLRenderer&&bundWarmFoot&&!document.hidden){
@@ -1069,6 +1167,9 @@ if(renderer.isWebGLRenderer&&bundWarmFoot&&!document.hidden){
   const atlasPages=nanjingSignBatch.activeTextures(night);
   for(const mesh of nanjingSignBatch.meshes)signMaps.set(mesh,atlasPages[mesh.userData.atlasPage]);
  }
+  if(surfacePanelBatch){
+   for(const mesh of surfacePanelBatch.meshes)signMaps.set(mesh,mesh.material.map);
+  }
  const roots=[scene.getObjectByName('nanjing-street-life'),yuyuan.root,scene.getObjectByName('city-traffic-details'),
   scene.getObjectByName('lujiazui-skyline'),...Object.values(metro.lines).map(line=>line.root)];
  try{
@@ -1077,7 +1178,7 @@ if(renderer.isWebGLRenderer&&bundWarmFoot&&!document.hidden){
    pipeline:true,
    fullCircle:!isMobile||night,
    includeSceneMeshes:true,
-   getTerrainChunks:()=>chunks.values()
+    getTerrainChunks:()=>[...superChunks.values()].map(s=>s.mesh).concat([...chunks.values()].filter(m=>m.layers.mask!==0))
   });
   if(startupParams.get('test')==='1')document.dispatchEvent(new CustomEvent('block-island-bund-prepared',{detail}));
  }catch(error){

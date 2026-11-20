@@ -442,3 +442,103 @@ export function batchSingleMaterialSigns(parent,{cellSize=96,name='yuyuan-sign-b
   }
  };
 }
+
+// World-space atlas batcher for static surface metro entrance signs & bus stop plates.
+export function batchWorldStaticPanels(parent,roots,{cellSize=128,name='surface-panel-batch',pad=8,makeCanvas=defaultMakeCanvas}={}){
+ if(!parent||!roots?.length)return null;
+ const probe=makeCanvas(16,16);
+ if(!probe)return null;
+ parent.updateMatrixWorld(true);
+ const candidates=[];
+ for(const root of roots){
+  if(!root)continue;
+  root.traverse(mesh=>{
+   if(!mesh?.isMesh||mesh.isInstancedMesh||!mesh.visible||mesh.layers.mask!==1||!mesh.userData.panel)return;
+   for(let p=mesh;p&&p!==parent;p=p.parent){
+    if(!p.visible||p.matrixAutoUpdate||p.name==='occluded-metro-interior'||p.userData?.skipHiddenMatrices)return;
+    if(p.userData?.stationSign||p.userData?.exitSign)return;
+   }
+   const mat=mesh.material;
+   if(!mat?.isMeshBasicMaterial||mat.side!==THREE.FrontSide||mat.transparent||mat.opacity!==1||mat.polygonOffset)return;
+   const img=mat.map?.image;
+   if(!img?.width||!img?.height||img.width>1024||img.height>1024||!validUnitPlaneUv(mesh.geometry))return;
+   if(mesh.matrixWorld.elements[13]<24.5)return;
+   candidates.push({mesh,mat,img});
+  });
+ }
+ if(candidates.length<4)return null;
+ candidates.sort((a,b)=>(a.mesh.matrixWorld.elements[12]-b.mesh.matrixWorld.elements[12])||(a.mesh.matrixWorld.elements[14]-b.mesh.matrixWorld.elements[14]));
+ const texMap=new Map(),uniqueItems=[],eligible=[];
+ for(let i=0;i<candidates.length;i++){
+  const {mesh,mat,img}=candidates[i];
+  let key=texMap.get(mat.map);
+  if(key===undefined){
+   key=uniqueItems.length;
+   texMap.set(mat.map,key);
+   uniqueItems.push({key,img,w:img.width,h:img.height});
+  }
+  eligible.push({mesh,origGeo:mesh.geometry,origMat:mat,origMask:mesh.layers.mask,key});
+ }
+ const packed=packSignAtlasPages(uniqueItems,pad);
+ if(!packed)return null;
+ const pageResources=[];
+ const itemsByPage=packed.pages.map(()=>[]);
+ for(let i=0;i<uniqueItems.length;i++){
+  const it=uniqueItems[i];
+  itemsByPage[packed.itemPage.get(it.key)].push(it);
+ }
+ for(let pIdx=0;pIdx<packed.pages.length;pIdx++){
+  const pg=packed.pages[pIdx];
+  const surface=makeCanvas(pg.atlasW,pg.atlasH);
+  if(!surface)return null;
+  for(const it of itemsByPage[pIdx]){
+   const slot=pg.placements.get(it.key);
+   blitWithExtrude(surface.ctx,it.img,slot.dx,slot.dy,it.w,it.h,pad);
+  }
+  const texture=configureAtlasTexture(surface.canvas,8);
+  const material=new THREE.MeshBasicMaterial({map:texture});
+  pageResources.push({pg,texture,material});
+ }
+ const cells=new Map();
+ for(let i=0;i<eligible.length;i++){
+  const e=eligible[i],mw=e.mesh.matrixWorld.elements,pIdx=packed.itemPage.get(e.key);
+  const ck=`${pIdx}:${Math.floor(mw[12]/cellSize)}:${Math.floor(mw[14]/cellSize)}`;
+  let list=cells.get(ck);
+  if(!list){list={pIdx,records:[]};cells.set(ck,list);}
+  const proxy={geometry:e.mesh.geometry,matrix:e.mesh.matrixWorld};
+  list.records.push({...e,sourceMesh:e.mesh,mesh:proxy,slot:packed.pages[pIdx].placements.get(e.key)});
+ }
+ const meshes=[],batchedEntries=[];
+ for(const {pIdx,records} of cells.values()){
+  const res=pageResources[pIdx];
+  const geo=buildCellGeometry(records,res.pg.atlasW,res.pg.atlasH);
+  if(!geo)continue;
+  const batchMesh=new THREE.Mesh(geo,res.material);
+  batchMesh.name=name;
+  batchMesh.userData.range=180;
+  batchMesh.userData.skipLightBake=true;
+  batchMesh.matrixAutoUpdate=false;
+  parent.add(batchMesh);
+  meshes.push(batchMesh);
+  for(let i=0;i<records.length;i++){
+   const item=records[i];
+   item.sourceMesh.layers.mask=item.origMask&~1;
+   batchedEntries.push(item);
+  }
+ }
+ let fallenBack=false;
+ function fallbackToSources(){
+  if(fallenBack)return;
+  fallenBack=true;
+  for(let i=0;i<meshes.length;i++)meshes[i].visible=false;
+  for(let i=0;i<batchedEntries.length;i++)batchedEntries[i].sourceMesh.layers.mask=batchedEntries[i].origMask;
+ }
+ function sync(){
+  if(fallenBack||!batchedEntries.length)return;
+  for(let i=0;i<batchedEntries.length;i++){
+   const e=batchedEntries[i],m=e.sourceMesh;
+   if(!m.visible||m.geometry!==e.origGeo||m.material!==e.origMat){fallbackToSources();return;}
+  }
+ }
+ return {meshes,textures:pageResources.map(r=>r.texture),batchedCount:batchedEntries.length,sync,dispose(){fallbackToSources();for(const m of meshes){m.removeFromParent();m.geometry.dispose();}for(const r of pageResources){r.texture.dispose();r.material.dispose();}}};
+}

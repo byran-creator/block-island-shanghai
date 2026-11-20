@@ -24,7 +24,7 @@ export function ferryPhase(time){const t=((time%94)+94)%94;if(t<12)return {port:
 export function ferryPosition(time){const phase=ferryPhase(time),a={x:riverWestEdge(185)+7,z:185},b={x:riverEastEdge(136)-13,z:136};return {...phase,x:a.x+(b.x-a.x)*phase.u,z:a.z+(b.z-a.z)*phase.u,y:22.3,yaw:Math.atan2(b.x-a.x,b.z-a.z)+(time%94<59?Math.PI:0)};}
 
 export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=()=>{},notify,pause,resume,onProgress,getVehicles=()=>[],onEvent=()=>{},extraCrowd=[],otherPeople=[],getTrafficTime=null,transit=null,solidAt=()=>false,simulationInterest=null}){
- const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[],shopLights=[];root.name='nanjing-street-life';scene.add(root);
+ const $=id=>document.getElementById(id),root=new THREE.Group(),signs=[],neons=[],vendors=[],tourists=[],stalls=[];root.name='nanjing-street-life';scene.add(root);
  const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),signArt=createStreetSignArt();let clock=0,ride=null,panel=false,cooldown=0,purchases=0,lastSignNight=null,lastLightNight=null;const goods=Object.fromEntries(Object.keys(SHOP_PRODUCTS).map(k=>[k,0]));
  const windowGlassMat=new THREE.MeshLambertMaterial({color:'#e4f5f8',transparent:true,opacity:.22,depthWrite:false}),caseGlassMat=new THREE.MeshLambertMaterial({color:'#d2eef2',transparent:true,opacity:.16,depthWrite:false}),caseLidMat=new THREE.MeshLambertMaterial({color:'#d2eef2',transparent:true,opacity:.12,depthWrite:false}),awningMats=new Map();
  let showcaseBaseMat=null;
@@ -104,10 +104,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   cube(root,'#fff8dd',b.x,28.95,b.z,1.25,.16,1.25,true);
   cube(root,'#fff3c7',b.x,28.75,b.z,.8,.2,.8,true);
   cube(root,'#ffea9f',b.x,28.55,b.z,.32,.16,.32,true);
-  // Put the shared light toward the window, with reach into the shop and street.
-  // Keep it inside so browsing displays retain their illumination.
-  const chandelierLight=new THREE.PointLight('#ffe7bf',4.2,16,1.4);
-  chandelierLight.position.set(front.x,28.9,(b.z+front.z)/2);root.add(chandelierLight);shopLights.push(chandelierLight);
+  // Window and chandelier warmth are prebaked into local vertex colors so moving
+  // along Nanjing Road never triggers scene-wide NUM_POINT_LIGHTS recompiles.
   // Back-wall luxury illuminated display vitrines
   const backZ=b.z-side*3.6;
   cube(root,'#2e1f14',b.x-0.6,27.6,backZ,5.6,3.1,.55);
@@ -178,7 +176,6 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    board(name,NEON_COLORS[(i+1)%5],crown.x,signY,roofZ,signW,1.4,crown.angle,false,i,'horizontal');
   }
   for(let level=1;level<Math.min(b.h,13);level++)for(const dx of [-b.rx+1,b.rx-1]){const a=shopSignAnchor(b,26+level,dx);neons.push(cube(root,color,a.x,a.y,a.z,.09,.95,.06,true));}
-  if(i%4===0){const light=new THREE.PointLight(color,7,12,1.5);light.position.set(b.x+.5,29,front.z+side*2);root.add(light);shopLights.push(light);}
  }
  function person(i,parent=root,role='visitor'){const r=new THREE.Group(),shirt=['#6cd9de','#d66c8e','#eee5d4','#8f9fc9','#dfad5b'][i%5];cube(r,shirt,0,1,0,.45,.64,.28);cube(r,'#dcb08d',0,1.52,0,.34,.35,.33);cube(r,'#40352e',0,1.72,0,.36,.08,.35);const arms=[],legs=[];for(const side of [-1,1]){const arm=cube(r,shirt,side*.29,1.02,0,.15,.55,.18);arms.push(arm);legs.push(cube(r,'#43516b',side*.13,.36,0,.17,.7,.2));}styleNpc({root:r,torso:r.children[0],head:r.children[1],hair:r.children[2],arms,legs},i,role);r.updateMatrixWorld(true);const movingLimbs=new Set([...arms,...legs]);for(const c of r.children)if(!movingLimbs.has(c))c.traverse(o=>{o.matrixAutoUpdate=false;});parent.add(r);return {root:r,arms,legs};}
  for(const [index,b]of fronts.entries()){const i=b.streetIndex??index;if(i%3!==0)continue;const side=b.entranceSide,indoor=i%12!==0,x=b.x+2.4,z=indoor?b.z:side>0?63.1:69.9;
@@ -262,9 +259,6 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    const lamp=cube(parent,'#ffe49e',sx+dx,26.06,sz+dz,.16,.02,.16,true);
    neons.push(lamp);
   }
-  const steleLight=new THREE.PointLight('#ffe18c',3.2,7.5,1.5);
-  steleLight.position.set(sx,27.2,sz);parent.add(steleLight);shopLights.push(steleLight);
-
  }
  createNanjingStele(root);
  function close(){if(!panel)return;panel=false;$('city-dialog').close();resume();}
@@ -332,21 +326,26 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  }};
  function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);if(night!==lastSignNight){lastSignNight=night;for(const s of signs)s.mesh.material=night?s.night:s.day;}if(night!==lastLightNight){lastLightNight=night;for(const m of neons)m.visible=night;for(const m of ferryLamps)m.visible=night;}
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
-
-  if(getPos){const p=getPos();for(const l of shopLights)l.userData.distSq=(l.position.x-p.x)**2+(l.position.z-p.z)**2;shopLights.sort((a,b)=>a.userData.distSq-b.userData.distSq);for(let idx=0;idx<shopLights.length;idx++)shopLights[idx].visible=night&&idx<4&&shopLights[idx].userData.distSq<1600;}else{for(const m of shopLights)m.visible=night;}
   const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
   const vehicles=getVehicles();
   busFlow?.tick(dt);
-  nearbyVehicles.refresh(vehicles);
-  crowd.tick(dt,nearbyVehicles);
-  financialFlow.tick(dt,nearbyVehicles,dayClock);
+  const viewer=getPos?.();
+  const nanjingDistSq=viewer?(Math.max(-182-viewer.x,viewer.x-15,0)**2+Math.max(50-viewer.z,viewer.z-82,0)**2):0;
+  const lujiazuiDistSq=viewer?(Math.max(165-viewer.x,viewer.x-220,0)**2+Math.max(32-viewer.z,viewer.z-126,0)**2):0;
+  const bundDistSq=viewer?(Math.max(-110-viewer.x,viewer.x-55,0)**2+Math.max(45-viewer.z,viewer.z-90,0)**2):0;
+  const nanjingActive=!viewer||dt<=0||nanjingDistSq<=22500||simulationInterest?.seesPoint({x:Math.max(-180,Math.min(0,viewer.x)),y:26,z:66.5},28,240);
+  const lujiazuiActive=!viewer||dt<=0||lujiazuiDistSq<=22500||simulationInterest?.seesPoint({x:190,y:26,z:85},38,240);
+  const bundActive=!viewer||dt<=0||bundDistSq<=22500||simulationInterest?.seesPoint({x:0,y:26,z:66.5},36,240);
+  if(nanjingActive||lujiazuiActive||bundActive)nearbyVehicles.refresh(vehicles);
+  if(nanjingActive)crowd.tick(dt,nearbyVehicles);
+  if(lujiazuiActive)financialFlow.tick(dt,nearbyVehicles,dayClock);
   const crossingAdmission={};
-  bundFlow.tick(dt,clock,nearbyVehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
-  shopVisitors.tick(dt,nearbyVehicles);
+  if(bundActive)bundFlow.tick(dt,clock,nearbyVehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
+  if(nanjingActive)shopVisitors.tick(dt,nearbyVehicles);
   const v=nearestVendor(),port=landings.find(s=>Math.hypot(getPos().x-s.x,getPos().z-s.z)<3&&Math.abs(getPos().y-26)<2),cityPrompt=$('city-prompt');updateHudHidden(cityPrompt,!(v||port||ride));updateHudText(cityPrompt,ride?'轮渡过江中 · 抵达自动下船':port?'V 搭乘轮渡 · '+port.name:v?'V '+(v.indoor?'店内购物':'逛摊位')+' · '+v.name:'');
  }
- const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons,shopLights));
+ const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons));
  const furniture=staticMeshes(root,moving),solidPalette=new Set();
  for(const m of furniture){const mat=m.material;if(mat&&!mat.transparent&&mat.opacity===1&&!mat.map&&!mat.vertexColors&&(mat.isMeshBasicMaterial||(mat.isMeshLambertMaterial&&mat.emissive.r===0&&mat.emissive.g===0&&mat.emissive.b===0)))solidPalette.add(mat);}
  const furnitureBatches=batchMeshes(root,furniture,'street-furniture',solidPalette,false,48);

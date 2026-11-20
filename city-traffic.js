@@ -70,7 +70,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
  const root=new THREE.Group();root.name='city-traffic-details';scene.add(root);const box=new THREE.BoxGeometry(1,1,1),vLampGeo=new THREE.CylinderGeometry(.17,.17,.07,12),pLampGeo=new THREE.CylinderGeometry(.14,.14,.06,12),scooterWheelGeo=new THREE.CylinderGeometry(.29,.29,.22,12).rotateX(Math.PI/2),bikeWheelGeo=new THREE.TorusGeometry(.32,.055,5,12),mats=new Map(),buses=[],riders=[],officers=[],stops=[],cycleMarkings=[];
  const mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=285;parent.add(m);return m;}
- function board(parent,text,x,y,z,w,h,angle=0){const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle='#9cf1da';ctx.font='bold 29px sans-serif';ctx.textAlign='center';ctx.fillText(text,128,43);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;m.userData.panel=true;parent.add(m);return {mesh:m,canvas:c,ctx,texture};}
+ const staticBoards=new Map();
+ function board(parent,text,x,y,z,w,h,angle=0,shared=false,range=95){let entry=shared?staticBoards.get(text):null;if(!entry){const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle='#9cf1da';ctx.font='bold 29px sans-serif';ctx.textAlign='center';ctx.fillText(text,128,43);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;entry={canvas:c,ctx,texture,material:new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide})};if(shared)staticBoards.set(text,entry);}const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),entry.material);m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=range;m.userData.panel=true;parent.add(m);return {mesh:m,canvas:entry.canvas,ctx:entry.ctx,texture:entry.texture};}
  function clearPoint(x,z){return !world.get(Math.floor(x),26,Math.floor(z))&&!world.get(Math.floor(x),27,Math.floor(z))&&!!world.get(Math.floor(x),25,Math.floor(z));}
  const signals=[66,99,162].map((z,i)=>({x:roadX(z),z,offset:i*5,id:'bund-'+z})).concat(
   {x:westSpine(66),z:66,offset:0,id:'stele-66'},
@@ -178,7 +179,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    const fairing=cube(r,color,0,.94,-.62,.55,.74,.25);fairing.rotation.x=-.17;cube(r,'#f0e8d2',0,1.16,-.79,.34,.15,.04,true);
    cube(r,'#536572',0,1.32,-.64,.07,.46,.07);cube(r,'#344350',0,1.48,-.62,.72,.08,.1);
    for(const side of [-1,1]){cube(r,'#53646b',side*.4,1.62,-.62,.045,.26,.045);cube(r,'#91b2bb',side*.4,1.76,-.62,.2,.12,.06);cube(r,'#344350',side*.21,.67,-.29,.2,.13,.46);}
-   cube(r,color,0,1.17,.7,.7,.63,.65);cube(r,'#f4eee1',0,1.19,1.03,.5,.18,.026);board(r,'配送',0,1.2,1.049,.4,.14,Math.PI);
+   cube(r,color,0,1.17,.7,.7,.63,.65);cube(r,'#f4eee1',0,1.19,1.03,.5,.18,.026);board(r,'配送',0,1.2,1.049,.4,.14,Math.PI,true,85);
   }else{
    cube(r,color,0,.6,0,.12,.1,1.3);cube(r,color,0,.8,.22,.1,.6,.13);cube(r,'#273740',0,1.07,.15,.28,.08,.38);cube(r,'#546977',0,1.02,-.57,.06,.75,.07);cube(r,'#374957',0,1.37,-.6,.62,.07,.08);
   }
@@ -266,6 +267,32 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    const crosswalkOccupied=signal=>occupied.has(signal.id);
   const includePlayer=hasPlayerContact&&!playerRiding;
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
+   if(playerPos&&interest&&!c.yielding&&!c.detour){
+    const rp0=c.root.position,dx0=rp0.x-playerPos.x,dz0=rp0.z-playerPos.z;
+    if(dx0*dx0+dz0*dz0>22500&&!interest.seesPoint(rp0,4,250)){
+     let fastTravel=c.speed*step;
+     for(const crossing of c.crossings??[]){
+      if(signalPhase(clock,crossing.signal.offset)[crossing.axis]!=='green'){
+       const ahead=forwardDistance(c.t,crossing.d,c.route.lengthMeters,c.dir),stop=6+(c.halfLength??1.25);
+       if(ahead>=stop-.05&&ahead<stop+fastTravel+2)fastTravel=Math.min(fastTravel,Math.max(0,ahead-stop));
+      }
+     }
+     for(let j=0;j<agents.length;j++){
+      const o=agents[j];if(o===c||o.route!==c.route||o.dir!==c.dir||Math.abs(o.lane-c.lane)>.5)continue;
+      const gap=forwardDistance(c.t,o.t,c.route.lengthMeters,c.dir);
+      if(gap<c.route.lengthMeters/2)fastTravel=Math.min(fastTravel,Math.max(0,gap-(c.halfLength??1.25)-(o.halfLength??1.25)-Math.max(2.8,c.speed*1.7)));
+     }
+     if(c.kind==='bus'){c.stopCooldown=Math.max(0,c.stopCooldown-step);if(c.dwell>0){c.dwell=Math.max(0,c.dwell-step);fastTravel=0;}}
+     if(c.kind==='delivery'){c.deliveryCooldown=Math.max(0,c.deliveryCooldown-step);if(c.deliveryDwell>0){c.deliveryDwell=Math.max(0,c.deliveryDwell-step);fastTravel=0;}}
+     if(fastTravel>0){
+      const nt=(c.t+c.dir*fastTravel+c.route.lengthMeters)%c.route.lengthMeters,nat=pose(c,nt);
+      if(junctions.permits(c,nat)){c.t=nt;setPose(c,nat);}else fastTravel=0;
+     }
+     c.currentSpeed=fastTravel/step;c.travelSpeed=c.currentSpeed;
+     if(c._wheelActive!==false){c._wheelActive=false;for(const wheel of c.wheels??[])wheel.matrixAutoUpdate=false;}
+     continue;
+    }
+   }
    if(c.yielding){reverseYield(c,step,obstacles);continue;}
    // If two different turns have already met, one driver backs up physically
    // and hands over its junction ticket. Collision guards still apply while
@@ -336,7 +363,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    }finally{contactGrid=null;}
    for(let i=0;i<agents.length;i++)agents[i].travelSpeed=travelled[i]/dt;
   }
-  for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];if(head.lastStatus!==status){head.lastStatus=status;const idx=SIGNAL_INDEX[status];for(let i=0;i<head.lamps.length;i++)head.lamps[i].material=mat(i===idx?SIGNAL_COLORS[i]:'#263638',true);}const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
+ const sigPos=getPos?.();
+ for(const s of signals){const phase=signalPhase(clock,s.offset),nearSig=!sigPos||(s.x-sigPos.x)**2+(s.z-sigPos.z)**2<=11025;for(const head of s.heads){const status=phase[head.axis];if(head.lastStatus!==status){head.lastStatus=status;const idx=SIGNAL_INDEX[status];for(let i=0;i<head.lamps.length;i++)head.lamps[i].material=mat(i===idx?SIGNAL_COLORS[i]:'#263638',true);}if(!nearSig)continue;const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
   const lightsOn=night||rain>.2;if(lightsOn!==lastTrafficLights){lastTrafficLights=lightsOn;for(const c of agents)for(const light of c.lights??[])light.visible=lightsOn;}
   for(const o of officers){o.arm.rotation.x=signalPhase(clock,o.signal.offset).ns==='green'?-Math.PI/2:-.15;o.root.rotation.y=Math.PI/2;}
  }

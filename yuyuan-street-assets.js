@@ -4,7 +4,7 @@ import {YUYUAN_BUILDINGS,GARDEN_PONDS} from './yuyuan-layout.js';
 // Geometry stays in district-local coordinates; the district root supplies Z+60.
 export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simulationInterest=null}){
  const fixtures=[],dynamicRoots=new Set(),shops=[],extraShops=[],goods={},stockCaps={};
- const vendors=[],swayingObjects=[],flickeringLights=[],shopLights=[];
+ const vendors=[],swayingObjects=[],flickeringLights=[];
  
  const specs=[
   ['yuyuan-street-0','宁波汤团店','street-cakes','传统手工汤团礼盒','pastry',2,'#852f36'],
@@ -490,13 +490,6 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   box(chG, '#d42d22', 0, -1.14, 0, .06, .3, .06);
   swayingObjects.push({group: chG, phase: x*2+z*3, speed: 1.2, maxAngleZ: 0.04, maxAngleX: 0.03, type: 'chandelier'});
   flickeringLights.push({mat: chMat, baseColor: new THREE.Color('#ffc966'), phase: x*3+z*2});
-
-  const shopLight = new THREE.PointLight('#ffdb94', 1.8, 8.5, 1.4);
-  shopLight.visible = false;
-  shopLight.position.set(x, 28.4, z);
-  root.add(shopLight);
-  shopLights.push(shopLight);
-
   // -------------------------------------------------------------
   // 7. UPGRADED SIGNAGE (对标南京路：3D黑漆重檐挑檐瓦当名匾 + 雀替牛腿 + 侧悬旗招)
   // -------------------------------------------------------------
@@ -847,18 +840,10 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
  setStocks();
 
  // Animation tick: smooth harmonic swaying in the wind + soft hazy breathing glow (30Hz节流避免逐帧CPU占用)
- root.updateWorldMatrix(true,true);const swayBounds=new THREE.Box3(),swayPos=new THREE.Vector3();for(let i=0;i<swayingObjects.length;i++){swayingObjects[i].group.getWorldPosition(swayPos);swayBounds.expandByPoint(swayPos);}if(!swayBounds.isEmpty())swayBounds.expandByScalar(2.5);let clock = 0, animTimer = 0, districtNear = false, swaySkipped = false;
+ root.updateWorldMatrix(true,true);const swayBounds=new THREE.Box3(),swayPos=new THREE.Vector3();for(let i=0;i<swayingObjects.length;i++){swayingObjects[i].group.getWorldPosition(swayPos);swayBounds.expandByPoint(swayPos);}if(!swayBounds.isEmpty())swayBounds.expandByScalar(2.5);let clock = 0, animTimer = 0, swaySkipped = false;
  function tick(dt, {night=false}={}){
   clock += dt;
   animTimer += dt;
-  // Point lights enter every lit shader even when their district is off screen.
-  // Keep all local lights together; the wider exit radius prevents edge flicker.
-  if(getPos){
-   const p=getPos(),radius=districtNear?80:64;
-   districtNear=shopLights.some(l=>(l.position.x-p.x)**2+(l.position.y-p.y)**2+(l.position.z-p.z)**2<radius*radius);
-  }else districtNear=true;
-  // Visibility must update while paused or before the animation throttle yields.
-  for(const sl of shopLights)sl.visible=night&&districtNear;
   if(dt>0&&simulationInterest&&!swayBounds.isEmpty()&&!simulationInterest.seesBox(swayBounds,95)){swaySkipped=true;return;}if(!swaySkipped&&animTimer < 0.033) return;swaySkipped = false;
   animTimer = 0;
   const t = clock;
@@ -878,9 +863,6 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
    if(item?.mat?.color){
     item.mat.color.setRGB(item.baseColor.r * breathe, item.baseColor.g * breathe, item.baseColor.b * breathe);
    }
-  }
-  for(const sl of shopLights){
-   if(night) sl.intensity = 1.4 + 0.25 * Math.sin(t * 2.0);
   }
  }
 

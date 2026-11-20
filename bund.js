@@ -425,9 +425,12 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   if(festival||showWasActive)for(const m of showColumns){const level=festival?bundShowLevel(showTime,m.userData.showBand):1,material=m.material;if(material.transparent)material.opacity=m.userData.showOpacity*level;else material.color.copy(m.userData.showColor).multiplyScalar(level);if(festival)m.visible=true;}showWasActive=festival;
   waibaidu.tick(night);traffic.tick(dt,{night,rain});cruises.tick(dt,{night});
   for(const car of cars){const at=car.root.position;if(at.z>=195&&at.z<=220&&at.x>=90&&at.x<=320){const a=car.root.rotation.y,front=nanpuFloor(world,at.x-Math.sin(a),at.z-Math.cos(a)),back=nanpuFloor(world,at.x+Math.sin(a),at.z+Math.cos(a));car.root.rotation.x=front!==null&&back!==null?Math.atan2(front-back,2):0;}else if(car.root.rotation.x!==0)car.root.rotation.x=0;}
-  flowVehicles.length=0;for(const a of traffic.agents)flowVehicles.push(a);for(const o of getObstacles())if(!o.person)flowVehicles.push(o);
-  bundVehicles.refresh(flowVehicles);
-  promenadeFlow.tick(dt,bundVehicles);
+  const nearPromenade=!p||dt<=0||(Math.max(18-p.x,p.x-150,0)**2+Math.max(18-p.z,p.z-208,0)**2)<=22500||simulationInterest?.seesPoint({x:85,y:26,z:Math.max(24,Math.min(200,p.z))},42,240);
+  if(nearPromenade){
+   flowVehicles.length=0;for(const a of traffic.agents)flowVehicles.push(a);for(const o of getObstacles())if(!o.person)flowVehicles.push(o);
+   bundVehicles.refresh(flowVehicles);
+   promenadeFlow.tick(dt,bundVehicles);
+  }
    for(const person of pedestrians){if(person.crowdManaged)continue;if(person.point?.photoTarget&&(p.x-person.point.x)**2+(p.y-26)**2+(p.z-person.point.z)**2>62**2){person.root.visible=false;continue;}const close=Math.hypot(p.x-person.root.position.x,p.z-person.root.position.z)<1.1&&Math.abs(p.y-26)<2;if(person.route){const next=close?person.t:(person.t+dt*person.speed)%person.route.lengthMeters,at=routePose(person.route,next);if(pedestrianStepClear(person.root.position,{x:at.x,y:26,z:at.z},bundVehicles)){person.t=next;person.root.position.set(at.x,26,at.z);person.root.rotation.y=at.yaw;}const posP=person.root.position;if(!simulationInterest||dt<=0||simulationInterest.animatesLimb(posP.x,26,posP.z,56)){if(person._limbActive===false){person._limbActive=true;for(const limb of person.limbs){limb.leg.matrixAutoUpdate=true;limb.arm.matrixAutoUpdate=true;}}for(const limb of person.limbs){limb.leg.rotation.x=Math.sin(clock*4+person.phase)*.34*limb.side;limb.arm.rotation.x=-limb.leg.rotation.x*.6;}}else if(person._limbActive!==false){person._limbActive=false;for(const limb of person.limbs){limb.leg.matrixAutoUpdate=false;limb.arm.matrixAutoUpdate=false;}}}else{person.root.position.set(person.point.x,26,person.point.z);const target=person.point.photoTarget??CITY.shanghai,baseYaw=Math.atan2(target.x-person.point.x,target.z-person.point.z)+Math.PI;if(!simulationInterest||dt<=0||simulationInterest.animatesLimb(person.point.x,26,person.point.z,56)){const lArm=person.lArm,rArm=person.rArm;if(person.kind==='photo'){posePhotographer(person,clock,dt,baseYaw);}else{const cycleTime=16,t=((clock*.75+person.phase)%cycleTime);let tTorsoX=0,headTurn=Math.sin(clock*.6+person.phase)*.16;if(t>=4.0&&t<=8.5){if(rArm)rArm.rotation.set(-1.4,.22,-.15);if(lArm)lArm.rotation.set(-.15,0,-.05);headTurn=.24;}else{tTorsoX=.08;if(lArm)lArm.rotation.set(-.76,0,-.12);if(rArm)rArm.rotation.set(-.76,0,.12);}if(person.torso)person.torso.rotation.x=tTorsoX;if(person.head)person.head.rotation.y=headTurn;person.root.rotation.y=baseYaw+headTurn*.3;}}}person.root.visible=!pedestrianBlocked(person.root.position,bundVehicles)&&(Math.hypot(p.x-person.root.position.x,p.z-person.root.position.z)>1||Math.abs(p.y-26)>2);}
   for(const boat of boats){if(boat.kind==='luxury-cruise'){continue;}tickWorkboat(boat,clock);}
  }
@@ -452,8 +455,10 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    b.sources.reduce((count,source)=>count+source.geometry.attributes.position.count,0)>=32768;
   const canSplitNightFacade=b.kind==='facade'&&b.band===undefined&&!b.material.transparent&&b.material.opacity===1&&
    b.sources.reduce((count,source)=>count+source.geometry.attributes.position.count,0)>=65536;
+   const canSplitWash=b.kind==='wash'&&b.band===undefined&&b.material?.name!=='nanjing-facade-wash'&&b.sources.length>=16;
   const groups=canSplit?partitionBundStaticSources(b.sources,staticBatchCell)
-   :canSplitNightFacade?partitionBundStaticSources(b.sources,128):[b.sources];
+    :canSplitNightFacade?partitionBundStaticSources(b.sources,128)
+    :canSplitWash?partitionBundStaticSources(b.sources,96):[b.sources];
   if(canSplit&&groups.length>1){
    const cells=groups.map(sources=>addStaticBatch(sources,b.material));
    if(batchVariants){
@@ -462,12 +467,14 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    }
   }else if(canSplitNightFacade&&groups.length>1){
    for(const sources of groups)facadeLights.push(addStaticBatch(sources,b.material));
+   }else if(canSplitWash&&groups.length>1){
+    for(const sources of groups){const m=addStaticBatch(sources,b.material);m.userData.range=165;goldSurfaces.push(m);}
   }else{
    const m=addStaticBatch(b.sources,b.material);
    if(b.band!==undefined){m.userData.showBand=b.band;m.userData.showColor=m.material.color.clone();m.userData.showOpacity=m.material.opacity;showColumns.push(m);}
    if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}
    else if(b.kind==='facade')facadeLights.push(m);
-   else if(b.kind==='wash')goldSurfaces.push(m);
+    else if(b.kind==='wash'){if(b.material?.name==='nanjing-facade-wash')m.userData.range=165;goldSurfaces.push(m);}
    else if(b.kind==='skyline-led')skylineLEDs.push(m);
   }
   for(const source of b.sources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();

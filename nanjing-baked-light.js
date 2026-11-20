@@ -8,6 +8,12 @@ import {shopSignAnchor} from './shop-sign-layout.js';
 export function createNanjingBakedLight(){
  const sources=DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-')).map(b=>{const a=shopSignAnchor(b,28);return {x:a.x,y:28,z:a.z+b.entranceSide*.55};});
  sources.push(...NANJING_CONNECTOR_LAMPS.map(p=>({x:p.x,y:29,z:p.z,radiusSq:81,strength:.34})));
+ for(const [index,b]of DENSE_BUILDINGS.filter(b=>b.id.startsWith('nanjing-')).entries()){
+  const i=b.streetIndex??index,side=b.entranceSide??1,frontZ=b.z+side*b.rz;
+  if([2,5,9,13,17,21].includes(i))sources.push({x:b.x+.5,y:28.9,z:(b.z+frontZ)/2,radiusSq:169,strength:.42});
+  if(i%4===0)sources.push({x:b.x+.5,y:29,z:frontZ+side*2,radiusSq:110,strength:.38});
+ }
+ sources.push({x:-35,y:27.2,z:66,radiusSq:64,strength:.36});
  return createVertexLightBake({sources,bounds:{minX:-200,maxX:12,minY:25.8,maxY:31.5,minZ:49,maxZ:84}});
 }
 
