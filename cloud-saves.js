@@ -72,5 +72,5 @@ export function createCloudSaves({capture,apply,hasStarted,pause,resume,notify})
    draft.edits.length||draft.adventure.state.race)return null;
   return {pos:{...draft.pos},yaw:draft.yaw,pitch:draft.pitch,dayClock:draft.dayClock,weather:draft.weather};
  }
- return {save,tick,open,continueLatest,startupView,get busy(){return busy}};
+ return {save,tick,open,continueLatest,startupView,get freshBrowserEntry(){return browserOnly&&!draft;},get busy(){return busy}};
 }

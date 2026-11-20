@@ -17,7 +17,7 @@ import {createSceneInstances} from './scene-instancing.js';
 import {createStaticWallCull} from './voxel-wall-occlusion.js';
 import {createMetroPanelOcclusion} from './metro-panel-occlusion.js';
 import {prepareStreetTextureBitmaps} from './street-texture-bitmaps.js';
-import {holdRestoredEntryPhoto,stageStartupHud,warmStartupTextures,warmStartupViews} from './startup-view-warmup.js';
+import {holdRestoredEntryPhoto,stageStartupHud,warmBundStreet,warmStartupTextures,warmStartupViews} from './startup-view-warmup.js';
 import {updateHudHidden,updateHudText} from './hud-text.js';
 import {createMetroRoofOcclusion} from './metro-roof-occlusion.js';
 import {createSimulationInterest} from './simulation-interest.js';
@@ -970,6 +970,25 @@ const diagonalSweep=startupParams.get('sweepWarmup')==='3';
 const extendedSweep=diagonalSweep||startupParams.get('sweepWarmup')==='2';
 const waitBetweenViews=extendedSweep||startupParams.get('sweepWarmup')==='1';
 const replaceMenuDraw=testWarmup&&initialView&&(headingOnly||waitBetweenViews||startupParams.get('textureWarmup')==='replace')&&document.documentElement.dataset.entryRequested==='true';
+let bundPreparation;
+if(renderer.isWebGLRenderer&&!testWarmup&&!document.hidden&&document.documentElement.dataset.entryRequested==='true'&&
+ !(startupParams.get('test')==='1'&&startupParams.get('bundWarmup')==='0')){
+ const savedView=saves.startupView(MAP_REVISION);
+ const foot=savedView?.pos??(saves.freshBrowserEntry?LANDMARKS.bund:null);
+ if(foot&&foot.y>=25&&foot.y<=29&&Math.hypot(foot.x-LANDMARKS.bund.x,foot.z-LANDMARKS.bund.z)<=36){
+  const savedTime=savedView?.dayClock;
+  const night=(Number.isFinite(savedTime)?Math.max(0,savedTime)%240:dayClock)>=120;
+  const signMaps=new Map(activity.signs.map(({mesh,day,night:afterDark})=>[mesh,(night?afterDark:day).map]));
+  const roots=[scene.getObjectByName('nanjing-street-life'),yuyuan.root,scene.getObjectByName('city-traffic-details'),
+   ...Object.values(metro.lines).map(line=>line.root)];
+  bundPreparation=warmBundStreet(renderer,scene,camera,foot,roots,signMaps,()=>!document.hidden&&!bootReady)
+   .then(detail=>{
+    if(startupParams.get('test')==='1')document.dispatchEvent(new CustomEvent('block-island-bund-prepared',{detail}));
+   },error=>{
+    if(startupParams.get('test')==='1')document.dispatchEvent(new CustomEvent('block-island-bund-prepared',{detail:{error:String(error)}}));
+   });
+ }
+}
 if(isMobile){
  camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
  const previewCamera=camera.clone();previewCamera.aspect=Math.max(camera.aspect,3);previewCamera.updateProjectionMatrix();previewCamera.updateMatrixWorld(true);
@@ -982,6 +1001,7 @@ if(isMobile){
  }
  if(!replaceMenuDraw)renderScene();
 }
+if(bundPreparation)await bundPreparation;
 if(testWarmup&&!document.hidden){
  const view=initialView;
  startupPreviewFoot=view?.pos??LANDMARKS.bund;
