@@ -37,24 +37,40 @@ function instanceStaticParts(parent,group,name,inverse,paletteMaterial,result){
 }
 
 // Merge only explicitly selected static meshes; callers retain animated controls.
-export function batchMeshes(parent,meshes,name='static-detail',coloredLambert=null,packStatic=false){
+export function batchMeshes(parent,meshes,name='static-detail',coloredLambert=null,packStatic=false,cellSize=24){
  parent.updateWorldMatrix(true,true);
  const inverse=parent.matrixWorld.clone().invert(),groups=new Map(),p=new THREE.Vector3(),n=new THREE.Vector3(),matrix=new THREE.Matrix4(),normalMatrix=new THREE.Matrix3();
- let coloredMaterial;
- const paletteMaterial=packStatic&&coloredLambert?new THREE.MeshLambertMaterial():null;
+ const coloredMaterials=new Map(),instPaletteMaterials=new Map();
  for(const mesh of meshes){if(!mesh.isMesh||mesh.isInstancedMesh||Array.isArray(mesh.material))continue;const g=mesh.geometry,a=g.attributes.position;if(!a)continue;
-  const useColor=coloredLambert?.has(mesh.material)&&!g.attributes.color&&!mesh.userData.panel&&mesh.renderOrder===0&&mesh.layers.mask===1&&!mesh.castShadow&&!mesh.receiveShadow&&!mesh.material.transparent&&!mesh.material.clippingPlanes;
-  let key=mesh.material.uuid+':'+mesh.visible,material=mesh.material;
+  const mat=mesh.material;
+  const isPaletteBasic=mat.isMeshBasicMaterial&&(!mat.emissive||mat.emissive.getHex?.()===0);
+  const isPaletteLambert=mat.isMeshLambertMaterial&&(!mat.emissive||mat.emissive.getHex?.()===0);
+  const useColor=coloredLambert?.has(mat)&&(isPaletteLambert||isPaletteBasic)&&!mat.map&&!mat.vertexColors&&!g.attributes.color&&!mesh.userData.panel&&mesh.renderOrder===0&&mesh.layers.mask===1&&!mesh.castShadow&&!mesh.receiveShadow&&!mat.transparent&&mat.opacity===1&&!mat.clippingPlanes?.length;
+  let key=mat.uuid+':'+mesh.visible,material=mat,instMat=null;
   if(useColor){
-   material=coloredMaterial??=new THREE.MeshLambertMaterial({vertexColors:true});
+   const bKey=`${isPaletteBasic?'b':'l'}:${mat.side}:${mat.polygonOffset?1:0}:${mat.polygonOffsetFactor}:${mat.polygonOffsetUnits}:${mat.fog?1:0}`;
+   material=coloredMaterials.get(bKey);
+   if(!material){
+    const Ctor=isPaletteBasic?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial;
+    material=new Ctor({vertexColors:true,side:mat.side,polygonOffset:mat.polygonOffset,polygonOffsetFactor:mat.polygonOffsetFactor,polygonOffsetUnits:mat.polygonOffsetUnits,fog:mat.fog});
+    coloredMaterials.set(bKey,material);
+   }
+   if(packStatic){
+    instMat=instPaletteMaterials.get(bKey);
+    if(!instMat){
+     const Ctor=isPaletteBasic?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial;
+     instMat=new Ctor({side:mat.side,polygonOffset:mat.polygonOffset,polygonOffsetFactor:mat.polygonOffsetFactor,polygonOffsetUnits:mat.polygonOffsetUnits,fog:mat.fog});
+     instPaletteMaterials.set(bKey,instMat);
+    }
+   }
    if(!g.boundingSphere)g.computeBoundingSphere();
    p.copy(g.boundingSphere.center).applyMatrix4(mesh.matrixWorld).applyMatrix4(inverse);
-   key='colored:'+Math.floor(p.x/24)+':'+Math.floor(p.z/24)+':'+(mesh.userData.range??180)+':'+mesh.visible;
+   key='colored:'+bKey+':'+Math.floor(p.x/cellSize)+':'+Math.floor(p.z/cellSize)+':'+(mesh.userData.range??180)+':'+mesh.visible;
   }
-  let group=groups.get(key);if(!group){group={material,visible:mesh.visible,sources:[],useColor};groups.set(key,group);}group.sources.push(mesh);
+  let group=groups.get(key);if(!group){group={material,instMaterial:instMat,visible:mesh.visible,sources:[],useColor};groups.set(key,group);}group.sources.push(mesh);
  }
  const result=[];for(const group of groups.values()){
-  const sources=packStatic?instanceStaticParts(parent,group,name,inverse,paletteMaterial,result):group.sources;
+  const sources=packStatic?instanceStaticParts(parent,group,name,inverse,group.instMaterial,result):group.sources;
   if(sources.length===0)continue;
   if(sources.length===1){result.push(sources[0]);continue;}
   let vertices=0,indexCount=0;
@@ -95,6 +111,59 @@ export function batchMeshes(parent,meshes,name='static-detail',coloredLambert=nu
   mesh.matrixAutoUpdate=false;
   if(group.useColor)mesh.userData.rgbColors=true;
  }return result;
+}
+export function batchStockSeries(parent,groups,name,coloredPalette){
+ if(!groups?.length)return null;
+ parent.updateWorldMatrix(true,true);
+ const inverse=parent.matrixWorld.clone().invert(),p=new THREE.Vector3(),n=new THREE.Vector3(),matrix=new THREE.Matrix4(),normalMatrix=new THREE.Matrix3();
+ const perGroup=[],indexEnds=[0];
+ let vertices=0,indexCount=0,range=-Infinity;
+ for(const group of groups){
+  const list=[];
+  for(const mesh of staticMeshes(group)){
+   const g=mesh.geometry,a=g?.attributes.position,mat=mesh.material;
+   if(!a||!coloredPalette?.has(mat)||!mat.isMeshLambertMaterial||mat.map||mat.vertexColors||g.attributes.color||mesh.userData.panel||mesh.renderOrder!==0||mesh.layers.mask!==1||mesh.castShadow||mesh.receiveShadow||mat.transparent||mat.opacity!==1||mat.clippingPlanes?.length)continue;
+   list.push(mesh);
+   vertices+=a.count;
+   indexCount+=g.index?.count??a.count;
+   range=Math.max(range,mesh.userData.range??180);
+  }
+  perGroup.push(list);
+  indexEnds.push(indexCount);
+ }
+ if(!vertices)return null;
+ const stride=9,shared=new Float32Array(vertices*stride);
+ const indices=vertices>65535?new Uint32Array(indexCount):new Uint16Array(indexCount);
+ let offset=0,index=0;
+ for(const list of perGroup){
+  for(const mesh of list){
+   const g=mesh.geometry,a=g.attributes.position,tint=mesh.material.color;
+   matrix.multiplyMatrices(inverse,mesh.matrixWorld);normalMatrix.getNormalMatrix(matrix);
+   for(let i=0;i<a.count;i++){
+    const v=(offset+i)*stride;
+    p.fromBufferAttribute(a,i).applyMatrix4(matrix);shared[v]=p.x;shared[v+1]=p.y;shared[v+2]=p.z;
+    g.attributes.normal?n.fromBufferAttribute(g.attributes.normal,i):n.set(0,1,0);n.applyMatrix3(normalMatrix).normalize();shared[v+3]=n.x;shared[v+4]=n.y;shared[v+5]=n.z;
+    shared[v+6]=tint.r;shared[v+7]=tint.g;shared[v+8]=tint.b;
+   }
+   for(let i=0;i<(g.index?.count??a.count);i++)indices[index++]=offset+(g.index?g.index.getX(i):i);
+   offset+=a.count;
+   mesh.removeFromParent();
+  }
+ }
+ for(const group of groups){group.matrixAutoUpdate=false;}
+ const g=new THREE.BufferGeometry();
+ const buffer=new THREE.InterleavedBuffer(shared,stride);
+ g.setAttribute('position',new THREE.InterleavedBufferAttribute(buffer,3,0));
+ g.setAttribute('normal',new THREE.InterleavedBufferAttribute(buffer,3,3));
+ g.setAttribute('color',new THREE.InterleavedBufferAttribute(buffer,3,6));
+ g.setIndex(new THREE.BufferAttribute(indices,1));
+ g.computeBoundingSphere();
+ const mesh=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true}));
+ mesh.name=name;mesh.matrixAutoUpdate=false;mesh.userData.range=range;mesh.userData.rgbColors=true;
+ parent.add(mesh);
+ const setCount=k=>{const c=Math.max(0,Math.min(groups.length,k));const end=indexEnds[c];g.setDrawRange(0,end);mesh.visible=end>0;};
+ setCount(groups.length);
+ return {mesh,setCount};
 }
 export function staticMeshes(root,excluded=new Set()){
  const result=[];function visit(o){if(excluded.has(o))return;if(o.isMesh&&!o.isInstancedMesh)result.push(o);for(const c of o.children)visit(c);}visit(root);return result;

@@ -67,5 +67,10 @@ export function createCloudSaves({capture,apply,hasStarted,pause,resume,notify})
  const exportButton=$('export-save'),importButton=$('import-save'),fileInput=$('import-save-file');
  if(exportButton)exportButton.onclick=async()=>{await initialized;let data=hasStarted()?capture():draft;if(!data&&records[0])try{data=await api('/'+encodeURIComponent(records[0].id));}catch(error){tell(error.message);return;}if(!valid(data)){tell('当前还没有可导出的完整存档。');return;}const url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='上海小岛-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  if(importButton&&fileInput){importButton.onclick=()=>fileInput.click();fileInput.onchange=async()=>{const file=fileInput.files?.[0];if(!file)return;try{if(file.size>3000000)throw new Error('存档文件过大。');const data=JSON.parse(await file.text());if(!valid(data))throw new Error('请选择从小岛导出的完整存档文件。');const previous=hasStarted()?capture():draft;if(valid(previous)){try{localStorage.setItem(BACKUP_KEY,JSON.stringify(previous));importBackup=previous;}catch{throw new Error('无法保留导入前备份，请先导出现有进度并释放本机存档空间。');}}close(false);apply(data);sessionResolved=true;const durable=cache(data);render();status(durable?'已导入本机进度 · 可继续游玩或手动保存':'已导入 · 本机空间不足，请保留原文件');}catch(error){tell(error.message);}finally{fileInput.value='';}};}
- return {save,tick,open,continueLatest,get busy(){return busy}};
+ function startupView(mapRevision){
+  if(!draft||draft.version!==6||draft.mapRevision!==mapRevision||draft.flying||draft.gliding||
+   draft.edits.length||draft.adventure.state.race)return null;
+  return {pos:{...draft.pos},yaw:draft.yaw,pitch:draft.pitch,dayClock:draft.dayClock,weather:draft.weather};
+ }
+ return {save,tick,open,continueLatest,startupView,get busy(){return busy}};
 }

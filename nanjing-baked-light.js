@@ -26,7 +26,7 @@ export function createVertexLightBake({sources,bounds,sample=windowSpill,cap=.28
  function apply(entry){const {colors,indices,original,energy}=entry;for(let j=0;j<indices.length;j++){const k=j*3,e=night?energy[j]/255*gain:0;colors.setXYZ(indices[j],original[k]+e,original[k+1]+e*green,original[k+2]+e*blue);}colors.needsUpdate=true;}
  function bakeMesh(mesh,{strength=1}={}){
   const g=mesh.geometry,mat=mesh.material;
-  if(!mesh.isMesh||mesh.isInstancedMesh||Array.isArray(mat)||(!mat?.isMeshLambertMaterial&&!mat?.isMeshPhongMaterial)||mat.transparent||!g?.attributes.normal||g.attributes.position.count<30||done.has(g))return false;
+  if(!mesh.isMesh||mesh.isInstancedMesh||mesh.userData.skipLightBake||Array.isArray(mat)||(!mat?.isMeshLambertMaterial&&!mat?.isMeshPhongMaterial)||mat.transparent||!g?.attributes.normal||g.attributes.position.count<30||done.has(g))return false;
   if(!g.boundingSphere)g.computeBoundingSphere();sphere.copy(g.boundingSphere).applyMatrix4(mesh.matrixWorld);
   if(sphere.center.x+sphere.radius<minX||sphere.center.x-sphere.radius>maxX||sphere.center.z+sphere.radius<minZ||sphere.center.z-sphere.radius>maxZ||sphere.center.y-sphere.radius>maxY||sphere.center.y+sphere.radius<minY)return false;
   const p=g.attributes.position,n=g.attributes.normal,indices=[],energy=[];normalMatrix.getNormalMatrix(mesh.matrixWorld);

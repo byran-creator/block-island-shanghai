@@ -1,8 +1,9 @@
 import {createMetroSounds} from './metro-sounds.js';
+import {updateHudHidden,updateHudText} from './hud-text.js';
 import {createMetroVisuals} from './metro-visuals.js';
 import {createMetroAlighting} from './metro-alighting.js';
 import {makeMetroSeats,METRO_SEATS as BASE_SEATS,cabinBlocked as baseCabinBlocked,nearbyCabinSeat} from './metro-cabin.js';
-import {createMetroEntrance,metroEntranceLayout} from './metro-entrance.js';
+import {createMetroEntrance} from './metro-entrance.js';
 import {metroPlatformDirection as basePlatformDirection,metroBackOptions} from './metro-directions.js';
 import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
 import {metroSignCanvasSize} from './metro-sign-paint.js';
@@ -27,9 +28,25 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  const worldPos=config?.worldPos??getPos,cycle=service?.cycle??METRO_CYCLE,halfCycle=cycle/2;
  const isTerminal=st=>st.terminal??st.station!==st.origin;
  const frameYaw=f=>Math.atan2(-f.dz,f.dx);
+ function skipHiddenMatrices(obj){
+  if(!obj||obj.userData.skipHiddenMatrices)return obj;
+  obj.userData.skipHiddenMatrices=true;
+  const update=obj.updateMatrixWorld;let skipped=false;
+  obj.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}update.call(this,force||skipped);skipped=false;};
+  return obj;
+ }
+ function staticMeshesFrom(nodes,excluded){
+  const result=[];
+  function visit(o){if(excluded.has(o))return;if(o.isMesh&&!o.isInstancedMesh)result.push(o);for(const c of o.children)visit(c);}
+  for(const n of nodes)visit(n);
+  return result;
+ }
 
  const root=new THREE.Group();root.name='shanghai-line-'+lineNumber;scene.add(root);
  const signArt=createMetroSignArt();
+ // Street entrances are static in the line's coordinate frame. Keep a
+ // conservative row index so surface collisions rarely test even one entrance.
+ const entranceRows=new Map(),entranceRow=z=>Math.floor(z/8);
  const surfaceOpenings=METRO_RAMPS.filter(r=>r.kind==='entrance').map(r=>{
   const frame=config?.rampFrame?.(r),corners=[];
   // The voxel builder clears three cells at the ends of the ramp. The
@@ -104,7 +121,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   state.bag=cube(root,'#cfb064',s.x-24,17.28,s.z-8,.6,.6,.5);state.bag.visible=false;
   stationSign(['安全检查','Security check'],s.x-22,20.25,s.z-8,4.8,.7,{line2:false,arrow:'↓',pictogram:'bag'});
   const localGuide=s.localGuide??['去外滩或东方明珠怎么走？',s.id==='nanjing'?'出站后沿南京路向东走到外滩；乘浦东方向列车可到陆家嘴。':'1号方向出站后去东方明珠；乘市区方向列车到南京东路，再往东走到外滩。'];
-  const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐'+lineNumber+'号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],localGuide,['广告上的演唱会能买票吗？','墙上展示的是玩家提供的华晨宇演唱会图片，不代表真实场次，站内也不提供售票。']]}};staff.push(employee);
+  const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐'+lineNumber+'号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],localGuide,['广告上的演唱会能买票吗？','墙上展示的是玩家提供的华晨宇演唱会图片，不代表真实场次，站内也不提供售票。']]}};staff.push(employee);state.staffRoot=employee.root;
   const gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
   for(const b of metroFarePartitions(s))cube(root,'#a7b4bc',b.x,17.75,b.z,b.w,3.5,b.d,.42);
   for(const z of [gz-2,gz+2]){cube(root,'#b9c3c6',gx,16.6,z,2,1.2,.48);cube(root,'#28403e',gx,17.22,z,.8,.05,.35);}
@@ -133,32 +150,67 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
    const gx=s.x+METRO_HALL.gateX;let self=null;
    const clear=(x,y,z)=>!(y===16&&x>s.x-27&&x<s.x-10&&z<s.z-4&&z>s.z-13)&&!fixtureCollision(state.fixtures,x,y,z,.38,1.92)&&Math.abs(x-gx)>1.4&&!METRO_RAMPS.some(r=>Math.abs(r.z-z)<r.width+.4&&Math.abs(y-(metroRampFloor(x,z)??-100))<2)&&!state.people.some(p=>p!==self&&Math.abs(p.y-y)<2&&Math.abs(p.z-z)<.7&&Math.abs(p.x-x)<2);
    const spot=passengerSpot(s,x,z,y,clear);if(!spot)continue;const p=person(root,i,spot.x,y,spot.z);self={root:p,...spot,phase:i*2.173,speed:.28+(i%7)*.055,clear};state.people.push(self);}
-  frameNodes(firstNode,config?.stationFrame?.(s));
+  const frame=config?.stationFrame?.(s);
+  frameNodes(firstNode,frame);
+  state.rawNodes=root.children.slice(firstNode);
+  state.worldCenter=frame?projectMetroFrame({x:s.x,y:16,z:s.z},frame):{x:s.x,y:16,z:s.z};
+  state.worldExits=config?.stationWorldExits?.(s)??s.exits;
+  state.visible=true;
+  state.visualNodes=[];
   for(const e of s.exits){
    const firstExitNode=root.children.length;
-   createMetroEntrance(root,s,e,{cube,board});const exitSign={...metroExitSign(e),y:(metroRampFloor(e.x+e.dir*16,e.z)??16)+3.1};const exitBoard=stationSign(['出口','EXIT'],exitSign.x,exitSign.y,exitSign.z,exitSign.width,exitSign.height,{line2:false,exit:e.number,arrow:'↑',yaw:Math.PI/2});exitBoard.mesh.userData.exitSign={...exitSign};
+   const entrance=createMetroEntrance(root,s,e,{cube,board});
+   const railHalf=(e.width??1.5)+.08,padding=Math.max(entrance.width/2,railHalf)+1;
+   const collision={...entrance,dir:e.dir,railHalf};
+   for(let row=entranceRow(entrance.z-padding);row<=entranceRow(entrance.z+padding);row++){
+    let entrances=entranceRows.get(row);
+    if(!entrances)entranceRows.set(row,entrances=[]);
+    entrances.push(collision);
+   }
+   const exitSign={...metroExitSign(e),y:(metroRampFloor(e.x+e.dir*16,e.z)??16)+3.1};const exitBoard=stationSign(['出口','EXIT'],exitSign.x,exitSign.y,exitSign.z,exitSign.width,exitSign.height,{line2:false,exit:e.number,arrow:'↑',yaw:Math.PI/2});exitBoard.mesh.userData.exitSign={...exitSign};
    frameNodes(firstExitNode,config?.rampFrame?.({...e,station:s.id}));
   }
  }
  // Sloped escalator support is analytic; treads move while the walking surface stays smooth.
- const treads=[],treadBatch=new THREE.InstancedMesh(box,mat('#98a4ac'),METRO_RAMPS.length*72),treadPose=new THREE.Object3D();treadBatch.frustumCulled=false;root.add(treadBatch);
+ const treadRamps=[],treadBatch=new THREE.InstancedMesh(box,mat('#98a4ac'),METRO_RAMPS.length*72),treadPose=new THREE.Object3D(),treadScratch={x:0,y:0,z:0};treadBatch.frustumCulled=false;treadBatch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);let treadInitialUploaded=false;treadBatch.instanceMatrix.onUpload(()=>{treadInitialUploaded=true;treadBatch.instanceMatrix.clearUpdateRanges();});root.add(treadBatch);
  for(const r of METRO_RAMPS){const firstNode=root.children.length,frame=config?.rampFrame?.(r),angle=Math.atan2(r.to-r.from,r.length),len=Math.hypot(r.length,r.to-r.from),x=r.x+r.dir*r.length/2,y=(r.from+r.to)/2;
   cube(root,'#788892',r.x-r.dir*.7,r.from+.01,r.z,1.4,.06,r.width*2);cube(root,'#d4af37',r.x-r.dir*.1,r.from+.025,r.z,.6,.05,r.width*2);
   cube(root,'#788892',r.x+r.dir*(r.length+.7),r.to+.01,r.z,1.4,.06,r.width*2);cube(root,'#d4af37',r.x+r.dir*r.length,r.to+.02,r.z,.25,.04,r.width*2);
   const bed=cube(root,'#4b5965',x,y-.12,r.z,len,.2,r.width*2);bed.rotation.z=angle*r.dir;
   for(const side of [-1,1]){const rail=cube(root,'#151e28',x,y+.82,r.z+side*r.width,len,.1,.1);rail.rotation.z=angle*r.dir;const glass=cube(root,'#8fb9c5',x,y+.35,r.z+side*r.width,len,.7,.06,.35);glass.rotation.z=angle*r.dir;}
-  for(const side of [-1,1])for(let i=0;i<36;i++)treads.push({r,i,side,frame});
+  const mid=frame?projectMetroFrame({x,y,z:r.z},frame):{x,y,z:r.z};
+  treadRamps.push({r,frame,stationIdx:stations.findIndex(s=>s.id===r.station),startIdx:treadRamps.length*72,yaw:frame?frameYaw(frame):0,worldX:mid.x,worldZ:mid.z});
   frameNodes(firstNode,frame);
  }
- function updateTreads(){
-  for(const [index,{r,i,side,frame}]of treads.entries()){
-   const u=((i/36+clock*.026*side)%1+1)%1,hidden=u<.025||u>.975;
-   const x=r.x+r.dir*r.length*u,dip=u<.06?(.06-u)*2.5:u>.94?(u-.94)*2.5:0;
-   const p={x,y:r.from+(r.to-r.from)*u+.015-dip,z:r.z+side*r.width*.5},q=frame?projectMetroFrame(p,frame):p;
-   treadPose.position.set(q.x,q.y,q.z);treadPose.rotation.y=frame?frameYaw(frame):0;
-   treadPose.scale.set(hidden?0:r.length/36,hidden?0:.035,hidden?0:r.width*.91);treadPose.updateMatrix();treadBatch.setMatrixAt(index,treadPose.matrix);
+ function updateTreads(onlyActive=false,playerWorld=null,underground=false,canCull=false){
+  const useRange=onlyActive&&treadInitialUploaded;
+  treadBatch.instanceMatrix.clearUpdateRanges();
+  let updated=false;
+  for(let ri=0;ri<treadRamps.length;ri++){
+   const {r,frame,stationIdx,startIdx,yaw,worldX,worldZ}=treadRamps[ri];
+   if(onlyActive&&config?.pauseHiddenDynamics){
+    if(stationIdx>=0&&!stations[stationIdx].visible)continue;
+    if(r.kind==='platform'&&canCull&&!underground)continue;
+    if(r.kind==='entrance'&&canCull&&!underground&&playerWorld&&(playerWorld.x-worldX)**2+(playerWorld.z-worldZ)**2>=38*38)continue;
+   }
+   treadPose.rotation.y=yaw;
+   const sxFull=r.length/36,szFull=r.width*.91;
+   for(let sIdx=0;sIdx<2;sIdx++){
+    const side=sIdx===0?-1:1;
+    for(let i=0;i<36;i++){
+     const u=((i/36+clock*.026*side)%1+1)%1,hidden=u<.025||u>.975;
+     const dip=u<.06?(.06-u)*2.5:u>.94?(u-.94)*2.5:0;
+     treadScratch.x=r.x+r.dir*r.length*u;treadScratch.y=r.from+(r.to-r.from)*u+.015-dip;treadScratch.z=r.z+side*r.width*.5;
+     const q=frame?projectMetroFrame(treadScratch,frame):treadScratch;
+     treadPose.position.set(q.x,q.y,q.z);
+     treadPose.scale.set(hidden?0:sxFull,hidden?0:.035,hidden?0:szFull);treadPose.updateMatrix();
+     treadBatch.setMatrixAt(startIdx+sIdx*36+i,treadPose.matrix);
+    }
+   }
+   if(useRange)treadBatch.instanceMatrix.addUpdateRange(startIdx*16,72*16);
+   updated=true;
   }
-  treadBatch.instanceMatrix.needsUpdate=true;
+  if(updated)treadBatch.instanceMatrix.needsUpdate=true;
  }
  if(config?.pauseHiddenDynamics)updateTreads();
  function buildTrain(direction,parent){
@@ -188,11 +240,43 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   return nearest;
  }
  const dynamic=new Set([...trains.filter(t=>t.root).flatMap(t=>[t.root,...t.exchanges]),...staff.map(s=>s.root),...stations.flatMap(s=>[s.gateMesh,s.bag,...s.people.map(p=>p.root),...s.doors.flatMap(d=>d.leaves.map(l=>l.mesh)),...s.routes])]);
- if(!config?.pauseHiddenDynamics)batchMeshes(root,staticMeshes(root,dynamic),'station-interior');
+ const paletteFor=meshes=>new Set(meshes.map(m=>m.material).filter(m=>m&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors&&m.color?.getHexString()!=='303537'&&(m.isMeshBasicMaterial||(m.isMeshLambertMaterial&&m.emissive.r===0&&m.emissive.g===0&&m.emissive.b===0))));
+ const batchSolid=(parent,meshes,name)=>batchMeshes(parent,meshes,name,config?.batchStationDetails===false?null:paletteFor(meshes),false,config?.batchStationDetails===false?24:64);
+ if(!config?.pauseHiddenDynamics)batchSolid(root,staticMeshes(root,dynamic),'station-interior');
  const visuals=createMetroVisuals(root,{getPos:worldPos,exits:config?.worldExits??METRO_STATIONS.flatMap(s=>s.exits),canCull:canCullInteriors,underground:config?.undergroundVisible});
  if(config?.pauseHiddenDynamics){
-  batchMeshes(visuals.interior,staticMeshes(visuals.interior,dynamic),'station-interior');
-  batchMeshes(root,staticMeshes(root,new Set([...dynamic,visuals.interior])),'station-entrances');
+  const excludeShared=new Set(dynamic);
+  for(const s of stations){
+   const interiorNodes=s.rawNodes.filter(n=>n.parent===visuals.interior);
+   const batches=batchSolid(visuals.interior,staticMeshesFrom(interiorNodes,dynamic),'station-interior');
+   const batchSet=new Set(batches);
+   for(const b of batches)excludeShared.add(b);
+   const remaining=interiorNodes.filter(n=>n.parent===visuals.interior&&n!==s.staffRoot&&!batchSet.has(n));
+   if(remaining.length===1&&remaining[0].isGroup&&!remaining[0].userData.signFaces){
+    skipHiddenMatrices(remaining[0]);
+    excludeShared.add(remaining[0]);
+    s.visualNodes=[...batches,remaining[0]];
+   }else{
+    const dynGroup=new THREE.Group();dynGroup.name='station-dynamic-'+s.id;visuals.interior.add(dynGroup);
+    for(const n of remaining)dynGroup.add(n);
+    skipHiddenMatrices(dynGroup);
+    excludeShared.add(dynGroup);
+    s.visualNodes=[...batches,dynGroup];
+   }
+   if(s.staffRoot){skipHiddenMatrices(s.staffRoot);excludeShared.add(s.staffRoot);}
+  }
+  batchSolid(visuals.interior,staticMeshes(visuals.interior,excludeShared),'station-interior');
+  batchSolid(root,staticMeshes(root,new Set([...dynamic,visuals.interior])),'station-entrances');
+  for(const t of trains)if(t.root)skipHiddenMatrices(t.root);
+ }
+ root.updateMatrixWorld(true);
+ const keepSet=new Set([...dynamic,...trains.filter(t=>t.root).map(t=>t.root),...stations.flatMap(s=>[s.staffRoot,...s.screens.map(x=>x.screen?.mesh)].filter(Boolean)),treadBatch]);
+ const keepAuto=n=>{if(keepSet.has(n))return true;let k=false;for(const c of n.children)if(keepAuto(c))k=true;if(!k)n.matrixAutoUpdate=false;return k;};
+ for(const c of root.children)keepAuto(c);
+ if(config?.pauseHiddenDynamics){
+  root.matrixAutoUpdate=false;
+  visuals.interior.matrixAutoUpdate=false;
+  for(const s of stations)for(const n of s.visualNodes)if(n.isGroup&&n.name.startsWith('station-dynamic-'))n.matrixAutoUpdate=false;
  }
  const alighting=createMetroAlighting({parent:visuals.interior,stations,ramps:METRO_RAMPS,nearestDoor:nearestMetroDoor,stationFrame:config?.stationFrame,person});
  function timeSinceArrival(station,direction){
@@ -222,6 +306,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
     t.model={...buildTrain(t.direction,mount),mount};
    }
   }
+  if(render&&t.model?.root)skipHiddenMatrices(t.model.root);
   if(!render){t.model.mount.removeFromParent();return false;}
   if(t.model.mount.parent)return false;
   visuals.interior.add(t.model.mount);
@@ -280,13 +365,13 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   if(distance>5.15&&distance<7.4&&y>=5.4&&y<10)return true;
   if(fixtureCollision(s.fixtures,x,y,z))return true;
  }
- if(y>=24.5&&y<=31.5){for(const s of METRO_STATIONS)for(const e of s.exits){
-   const a=metroEntranceLayout(e),dx=(x-a.x)*e.dir,dz=Math.abs(z-a.z);
+  const entrances=y>=24.5&&y<=31.5?entranceRows.get(entranceRow(z)):null;
+  if(entrances)for(const a of entrances){
+   const dx=(x-a.x)*a.dir,dz=Math.abs(z-a.z);
    if(dx>=-a.length/2-.2&&dx<=a.length/2+.2&&Math.abs(dz-a.width/2)<=.35)return true;
-   const railHalf=(e.width??1.5)+.08;
-   if(dx>a.length/2-.2&&dx<=a.length/2+4.8&&Math.abs(dz-railHalf)<=.35)return true;
+   if(dx>a.length/2-.2&&dx<=a.length/2+4.8&&Math.abs(dz-a.railHalf)<=.35)return true;
    if(y>=a.roofY-.4&&y<=a.roofY+.5&&Math.abs(x-a.x)<=a.length/2+.38&&dz<=a.width/2+.38)return true;
-  }}
+  }
   return false;}
  function exchangePassengers(t,st){const station=METRO_STATIONS[st.station],part=METRO_DWELL-st.remaining;
   for(const [i,p]of t.exchanges.entries()){const u=(part-5-i*.35)/2.5,doorX=nearestMetroDoor((i+2)*4),side=-t.direction;
@@ -316,11 +401,32 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   const observer=service&&playerWorld.y<=18&&(config.undergroundVisible?.(playerWorld)||!canCullInteriors())?playerWorld:null;
   const playerLocal=getPos(),observerStation=metroStationAt(playerLocal),observerIndex=observerStation?stationIndex(observerStation):-1;
   const canSeeTracks=observer&&(observer.y<=11.5||metroRampAt(playerLocal.x,playerLocal.z)?.kind==='platform'||!canCullInteriors());
+  const cullStations=!!config?.pauseHiddenDynamics&&canCullInteriors();
+  const rideTrainState=ride?trains[ride.index].state:null;
+  const metroNearUnderground=playerWorld.y<25||!!config?.undergroundVisible?.(playerWorld);
+  for(let idx=0;idx<stations.length;idx++){
+   const s=stations[idx];
+   let vis=true;
+   if(cullStations){
+    const dx=playerWorld.x-s.worldCenter.x,dz=playerWorld.z-s.worldCenter.z,d2=dx*dx+dz*dz;
+    if(rideTrainState)vis=rideTrainState.station===idx||rideTrainState.next===idx||d2<160*160;
+    else if(metroNearUnderground)vis=observerIndex===idx||d2<82*82;
+    else vis=s.worldExits.some(e=>(playerWorld.x-e.x)**2+(playerWorld.z-e.z)**2<45*45);
+   }
+   s.visible=vis;
+   for(const n of s.visualNodes)n.visible=vis;
+   if(s.staffRoot)s.staffRoot.visible=vis;
+  }
   for(const t of trains){
    const previous=t.state,st=nextState(clock,t.offset,t.direction),riding=ride?.index===t.index;
    t.state=st;
    if(riding&&st.phase==='travel'&&(service||st.origin===ride.from))ride.departed=true;
-   const pose=t.extra?nearbyExtraPose(t,st,observer,riding):trainPose(st),render=!t.extra||riding||canSeeTracks;
+   const pose=t.extra?nearbyExtraPose(t,st,observer,riding):trainPose(st);
+   let render=!t.extra||riding||canSeeTracks;
+   if(!t.extra&&cullStations&&!riding){
+    if(!observer)render=false;
+    else if(service&&(pose.x-observer.x)**2+(pose.z-observer.z)**2>=120*120)render=false;
+   }
    const mounted=t.extra&&prepareExtra(t,pose,render),q=render?pose:null,part=METRO_DWELL-st.remaining;
    t.doorAmount=q&&st.open?Math.min(1,(part-1.2)/.45,(METRO_DWELL-2-part)/.45):0;
    if(q){
@@ -331,10 +437,13 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
     exchangePassengers(t,st);
     const crowd=trainCrowd(st,t.index);
     t.passengers.forEach((p,i)=>p.visible=(crowd.crowded||i<8)&&!(st.open&&i<6&&part>2+i*.25)&&!(riding&&ride.seated&&p.userData.seatId===ride.seatId));
+   }else if(!t.extra&&t.root){
+    t.root.visible=false;
+    for(const p of t.exchanges)p.visible=false;
    }
    const near=observerIndex===st.station,event=st.cycle+':'+st.station+':'+(st.phase==='dwell'?(st.open?'open':st.remaining<=3?'close':'arriving'):st.phase);
    if(dt>0&&previous?.phase==='dwell'&&st.phase!=='dwell'&&previous.cycle===st.cycle&&(near||ride?.index===t.index))sounds.play('departure');
-   if(q&&(mounted||event!==t.lastEvent))t.route.queuePaint([METRO_STATIONS[st.station].name,st.phase==='travel'||!isTerminal(st)?METRO_STATIONS[st.next].name:metroPlatformDirection(METRO_STATIONS[st.station],t.direction).next,String(t.direction),st.phase==='dwell'?'本站 '+METRO_STATIONS[st.station].name+' · 下一站':'下一站']);
+   if(t.model&&(mounted||event!==t.lastEvent))t.route.queuePaint([METRO_STATIONS[st.station].name,st.phase==='travel'||!isTerminal(st)?METRO_STATIONS[st.next].name:metroPlatformDirection(METRO_STATIONS[st.station],t.direction).next,String(t.direction),st.phase==='dwell'?'本站 '+METRO_STATIONS[st.station].name+' · 下一站':'下一站']);
    if(event!==t.lastEvent){if(dt>0&&(near||ride?.index===t.index)){if(st.phase==='dwell'&&st.open)announce('列车到站，'+METRO_STATIONS[st.station].name+'。右侧车门已打开。请先下后上，注意站台间隙。','This is '+METRO_STATIONS[st.station].english+'. Doors are open on the right. Please let passengers off first and mind the gap.');else if(st.phase==='dwell'&&st.remaining<=3)announce('车门即将关闭，请勿抢上抢下。','Doors are closing. Please stand clear of the doors.');else if(st.phase==='travel'&&ride?.index===t.index)announce('下一站，'+METRO_STATIONS[st.next].name+'。右侧车门将会打开。','Next station, '+METRO_STATIONS[st.next].english+'. Doors will open on the right.');}t.lastEvent=event;}
    if(q)t.route.flushPaint();
    if(!service&&ride?.index===t.index&&ride.from!==st.origin&&st.remaining<2.6){end(true);notify('本车驶出体验区域 · 已安全回到站台，请到对面乘坐返程列车。');}
@@ -346,23 +455,31 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   treadTimer+=dt;
   if(treadTimer>=0.033||dt===0){
    treadTimer=0;
-   updateTreads();
+   updateTreads(dt>0&&!!config?.pauseHiddenDynamics,playerWorld,metroNearUnderground,cullStations);
   }
-  for(const s of stations){tickGate(s,dt);s.routes.forEach((r,i)=>r.visible=i===(s.paid?2:s.checked?1:0));if(s.gateMesh)s.gateMesh.visible=!s.gatePass;const index=stationIndex(s);for(const d of s.doors)d.set(trainAtPlatform(index,-d.side)?.doorAmount??0);
+  const second=Math.floor(clock);
+  for(let index=0;index<stations.length;index++){
+   const s=stations[index];
+   tickGate(s,dt);
+   if(second!==s.lastSecond){s.lastSecond=second;for(const {screen,dir}of s.screens){const t=trainAtPlatform(index,dir),n=Math.ceil(nextPlatformArrival(index,dir));screen.queuePaint([metroPlatformDirection(s,dir).zh,t?(t.state.open?'列车已到站 · 请先下后上':'列车已到站 · 请留意车门'):'下一班 '+Math.floor(n/60)+'分 '+n%60+'秒']);if(dt>0&&n===5&&observerStation?.id===s.id)announce('列车即将进站，请站在黄色安全线以内。','A train is approaching. Please stand behind the yellow line.',{cue:'arrival'});}}
+   if(config?.pauseHiddenDynamics&&!s.visible)continue;
+   s.routes.forEach((r,i)=>r.visible=i===(s.paid?2:s.checked?1:0));if(s.gateMesh)s.gateMesh.visible=!s.gatePass;
+   for(const d of s.doors)d.set(trainAtPlatform(index,-d.side)?.doorAmount??0);
    s.people.forEach(p=>{const x=p.x+Math.sin(clock*p.speed+p.phase)*.65;if(p.clear(x,p.y,p.z))p.root.position.x=x;p.root.rotation.y=Math.sin(clock*.12+p.phase);});
-   const second=Math.floor(clock);if(second!==s.lastSecond){s.lastSecond=second;for(const {screen,dir}of s.screens){const t=trainAtPlatform(index,dir),n=Math.ceil(nextPlatformArrival(index,dir));screen.queuePaint([metroPlatformDirection(s,dir).zh,t?(t.state.open?'列车已到站 · 请先下后上':'列车已到站 · 请留意车门'):'下一班 '+Math.floor(n/60)+'分 '+n%60+'秒']);if(dt>0&&n===5&&observerStation?.id===s.id)announce('列车即将进站，请站在黄色安全线以内。','A train is approaching. Please stand behind the yellow line.',{cue:'arrival'});}}
    for(const {screen}of s.screens)screen.flushPaint();
   }
-  subtitleTime=Math.max(0,subtitleTime-dt);caption.hidden=!playing||subtitleTime===0;
-  const s=metroStationAt(getPos()),state=s&&stations[stationIndex(s)];hud.hidden=!playing||!metroInterior(getPos());document.body.classList?.toggle('in-metro',!hud.hidden);
-  const hall=state&&(state.sharedConcourse?'换乘站厅 · 沿绿色2号线 / 黄色出口牌返回原站厅，刷出站闸机后上地面；这里没有独立出站闸机':scan?.s===state?'背包正在安检，请等 3 秒':state.gatePass?'闸机已开 · 沿绿色箭头走过通道':metroPaidHall(state,getPos().x,getPos().z)?'付费区 · 下扶梯去 '+(state.platformLabel??'B2')+'；出站先到闸机按 V 刷出站票':!state.checked?'① 非付费区 · 到「背包安检」机器旁 V 放包':!state.paid?'② 沿青色地面线到绿色箭头闸机 · V 刷票':'沿绿色箭头通道进闸，再下扶梯去 B2');
-  hud.textContent=ride?lineNumber+'号线 · '+(trains[ride.index].state.phase==='travel'?'下一站 '+METRO_STATIONS[trains[ride.index].state.next].name:'本站 '+METRO_STATIONS[trains[ride.index].state.station].name)+' · '+(ride.seated?'已坐下 · F 起身':'WASD 走动 · 靠近空座 F 坐下')+' · V 到站下车':s?lineNumber+'号线 '+s.name+' · '+(getPos().y>12?'B1站厅\n'+hall:(s.platformLabel??'B2')+'站台 · 开门后靠近车门按 V / 点互动上车'):lineNumber+'号线 · 自动扶梯';
+  subtitleTime=Math.max(0,subtitleTime-dt);updateHudHidden(caption,!playing||subtitleTime===0);
+  const pos=getPos(),s=metroStationAt(pos),state=s&&stations[stationIndex(s)];updateHudHidden(hud,!playing||!metroInterior(pos));document.body.classList?.toggle('in-metro',!hud.hidden);
+  const hall=state&&(state.sharedConcourse?'换乘站厅 · 沿绿色2号线 / 黄色出口牌返回原站厅，刷出站闸机后上地面；这里没有独立出站闸机':scan?.s===state?'背包正在安检，请等 3 秒':state.gatePass?'闸机已开 · 沿绿色箭头走过通道':metroPaidHall(state,pos.x,pos.z)?'付费区 · 下扶梯去 '+(state.platformLabel??'B2')+'；出站先到闸机按 V 刷出站票':!state.checked?'① 非付费区 · 到「背包安检」机器旁 V 放包':!state.paid?'② 沿青色地面线到绿色箭头闸机 · V 刷票':'沿绿色箭头通道进闸，再下扶梯去 B2');
+  updateHudText(hud,ride?lineNumber+'号线 · '+(trains[ride.index].state.phase==='travel'?'下一站 '+METRO_STATIONS[trains[ride.index].state.next].name:'本站 '+METRO_STATIONS[trains[ride.index].state.station].name)+' · '+(ride.seated?'已坐下 · F 起身':'WASD 走动 · 靠近空座 F 坐下')+' · V 到站下车':s?lineNumber+'号线 '+s.name+' · '+(pos.y>12?'B1站厅\n'+hall:(s.platformLabel??'B2')+'站台 · 开门后靠近车门按 V / 点互动上车'):lineNumber+'号线 · 自动扶梯');
  }
  function safeSavePoint(){if(!ride)return null;const t=trains[ride.index],s=METRO_STATIONS[t.state.phase==='dwell'?t.state.station:ride.from];return {x:s.x+3,y:6,z:s.z-3.5};}
  return {root,staff,stations,trains,surfaceOpenings,addSign:(lines,p,w,h,options)=>{
   const index=root.children.length,sign=stationSign(lines,p.x,p.y,p.z,w,h,options);
   frameNodes(index,config?.signFrame);
-  visuals.register(config?.signFrame?root.children.at(-1):sign.mesh);return sign;
+  const node=config?.signFrame?root.children.at(-1):sign.mesh;
+  if(node){node.updateMatrixWorld(true);node.traverse(o=>{o.matrixAutoUpdate=false;});}
+  visuals.register(node);return sign;
  },tick,use,seat,collides,floorAt,trainAtPlatform,suspend,end,isRiding:()=>!!ride,get ride(){return ride;},get clock(){return clock;},safeSavePoint,serialize:()=>({stations:stations.map(s=>({id:s.id,checked:s.checked,paid:s.paid}))}),restore(d){scan=null;ride=null;stations.forEach(s=>{const old=d?.stations?.find(a=>a.id===s.id);s.checked=!!old?.checked;s.paid=s.checked&&!!old?.paid;s.gate=0;s.gatePass=null;if(s.bag)s.bag.visible=false;});}};
 }
 

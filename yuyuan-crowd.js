@@ -29,7 +29,7 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
    styleNpc({root,torso,head,hair,arms,legs},id,'visitor');
    const lateral=firstId>=400?(((id%3)-1)*.12):(((id%5)-2)*.28);
    body.position.x=lateral;body.scale.setScalar(.94+(id%4)*.04);
-   batchMeshes(body,staticMeshes(body,new Set([...arms,...legs])),'yuyuan-street-person');
+   const limbSet=new Set([...arms,...legs]);batchMeshes(body,staticMeshes(body,limbSet),'yuyuan-street-person');body.updateMatrixWorld(true);for(const c of body.children)if(!limbSet.has(c))c.traverse(o=>{o.matrixAutoUpdate=false;});
    const d=(i+.15+(id*29%17)/24)*length/count,q=pose(d);root.position.set(q.x,26,q.z);root.rotation.y=q.yaw;people.push({root,body,person:true,d,pose,length,speed:.72+(id*13%7)*.07,travel:0,wait:0,pause:0,offset:0,phase:id*2.173,stride:4.1+(id%5)*.17,browseIn:12+(id*19%37),browseCount:0,detour:null,rerouteIn:0,arms,legs,inner:firstId>=400,npcRole:i%5===0?'逛老城的游客':undefined,guide:{intro:'外侧商街很热闹，内园安静些。月洞门旁领取游戏体验票，再检票进去看假山和锦鲤。',choices:[['哪里可以逛店？','东侧连续的木窗店面和南侧老城商街都能进去，靠近柜台按 V。']]}});
   }
  }
@@ -44,19 +44,28 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
  addCircuit([[-35,198],[-31,202],[-31,208],[-35,208],[-35,198]],1,400);
  addCircuit([[-60,246],[-50,246],[-50,254],[-60,254],[-60,246]],1,410);
  addCircuit([[-70,202],[-64,202],[-64,211],[-70,211],[-70,202]],1,420);
+ const CELL=2.5,grid=new Map();
+ const gridKey=(gx,gz)=>(gx+4096)*8192+(gz+4096);
+ const syncGrid=a=>{
+  const gx=Math.floor(a.root.position.x/CELL),gz=Math.floor(a.root.position.z/CELL),k=gridKey(gx,gz);
+  if(a.gridKey===k)return;
+  if(a.gridBucket){const list=a.gridBucket,idx=list.indexOf(a);if(idx>=0){list[idx]=list[list.length-1];list.pop();}}
+  let bucket=grid.get(k);if(!bucket)grid.set(k,bucket=[]);
+  bucket.push(a);a.gridKey=k;a.gridBucket=bucket;
+ };
+ for(let i=0;i<people.length;i++){people[i].crowdIndex=i;syncGrid(people[i]);}
  function staticClear(x,z){return !!world.get(Math.floor(x),25,Math.floor(z))&&!blocked(x,26,z);}
  function penetration(x,z){let volume=0;for(let ix=Math.floor(x-.29);ix<=Math.floor(x+.29);ix++)for(let iz=Math.floor(z-.29);iz<=Math.floor(z+.29);iz++)for(let iy=26;iy<=27;iy++)if(world.get(ix,iy,iz))volume+=Math.max(0,Math.min(x+.29,ix+1)-Math.max(x-.29,ix))*Math.max(0,Math.min(z+.29,iz+1)-Math.max(z-.29,iz))*(iy===26?1:.75);return volume;}
  function occupied(a,x,z){
-  const r2=.52*.52;
-  for(let i=0;i<people.length;i++){
-   const b=people[i];
-   if(b===a)continue;
-   const bp=b.root.position;
-   const dx=x-bp.x;
-   if(dx>.52||dx<-.52)continue;
-   const dz=z-bp.z;
-   if(dz>.52||dz<-.52)continue;
-   if(dx*dx+dz*dz<r2)return true;
+  const gx=Math.floor(x/CELL),gz=Math.floor(z/CELL),r2=.52*.52;
+  for(let ix=gx-1;ix<=gx+1;ix++)for(let iz=gz-1;iz<=gz+1;iz++){
+   const bucket=grid.get(gridKey(ix,iz));if(!bucket)continue;
+   for(let j=0;j<bucket.length;j++){
+    const b=bucket[j];if(b===a)continue;
+    const bp=b.root.position,dx=x-bp.x;if(dx>.52||dx<-.52)continue;
+    const dz=z-bp.z;if(dz>.52||dz<-.52)continue;
+    if(dx*dx+dz*dz<r2)return true;
+   }
   }
   return false;
  }
@@ -69,7 +78,7 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
   if(!staticClear(x,z)||occupied(a,x,z))return false;
   const movedDist=Math.hypot(x-p.x,z-p.z);
   a.travel+=movedDist;
-  p.set(x,26,z);
+  p.set(x,26,z);syncGrid(a);
   const angle=Math.atan2(Math.sin(q.yaw-a.root.rotation.y),Math.cos(q.yaw-a.root.rotation.y));
   a.root.rotation.y+=angle*(1-Math.exp(-4*dt));
   return true;
@@ -81,7 +90,7 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
   throw Error('No clear pedestrian detour connector');
  }
  function reroute(a){try{cache.clear();const {start,connector}=routeStart(a),endD=(a.d+6)%a.length,q=a.pose(endD),end=nearest([q.x,q.z],a),route=[...connector,...path(start,end,a).slice(1)];a.detour={points:route,index:0,endD};}catch{}a.rerouteIn=5;}
- function escapeNewBlock(a,dt,volume){const p=a.root.position;for(let r=.4;r<=2;r+=.4)for(const [dx,dz]of [[-r,0],[r,0],[0,-r],[0,r]]){const gx=p.x+dx,gz=p.z+dz;if(!staticClear(gx,gz)||occupied(a,gx,gz))continue;const d=Math.hypot(dx,dz),step=Math.min(d,a.speed*dt),x=p.x+dx/d*step,z=p.z+dz/d*step;if(occupied(a,x,z)||penetration(x,z)>volume+1e-7)continue;a.travel+=step;p.set(x,26,z);a.root.rotation.y=Math.atan2(dx,dz)+Math.PI;if(penetration(x,z)<1e-7){a.detour=null;reroute(a);}return true;}return false;}
+ function escapeNewBlock(a,dt,volume){const p=a.root.position;for(let r=.4;r<=2;r+=.4)for(const [dx,dz]of [[-r,0],[r,0],[0,-r],[0,r]]){const gx=p.x+dx,gz=p.z+dz;if(!staticClear(gx,gz)||occupied(a,gx,gz))continue;const d=Math.hypot(dx,dz),step=Math.min(d,a.speed*dt),x=p.x+dx/d*step,z=p.z+dz/d*step;if(occupied(a,x,z)||penetration(x,z)>volume+1e-7)continue;a.travel+=step;p.set(x,26,z);syncGrid(a);a.root.rotation.y=Math.atan2(dx,dz)+Math.PI;if(penetration(x,z)<1e-7){a.detour=null;reroute(a);}return true;}return false;}
  const crowdBounds=new THREE.Box3(),stepOffscreen=createSimulationStep(.2,.1);
  function simulationDelta(dt){
   if(!simulationInterest||dt<=0||!people.length)return dt;
@@ -89,9 +98,9 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
   for(const actor of people)crowdBounds.expandByPoint(actor.root.position);
   // Cover the entire walking pose and allow for the upcoming movement step.
   crowdBounds.expandByScalar(4);
-  return stepOffscreen(dt,simulationInterest.seesBox(crowdBounds));
+  return stepOffscreen(dt,simulationInterest.seesBox(crowdBounds,85));
  }
- return {people,get navigationError(){return navigationError;},tick(dt){dt=simulationDelta(dt);if(dt<=0)return;for(const a of people){a.rerouteIn=Math.max(0,a.rerouteIn-dt);let moved=false;
+ return {people,get navigationError(){return navigationError;},tick(dt){dt=simulationDelta(dt);if(dt<=0)return;for(let i=0;i<people.length;i++)syncGrid(people[i]);for(const a of people){a.rerouteIn=Math.max(0,a.rerouteIn-dt);let moved=false;
   const volume=staticClear(a.root.position.x,a.root.position.z)?0:penetration(a.root.position.x,a.root.position.z);
   // A player block can materialise around an existing NPC after save load or
   // construction. Walk out while reducing overlap, never erase it or teleport.
@@ -99,19 +108,18 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
   else if(a.pause>0)a.pause=Math.max(0,a.pause-dt);
   else if(a.detour){const detour=a.detour,target=detour.points[detour.index],p=a.root.position,q={x:target[0],z:target[1],yaw:Math.atan2(target[0]-p.x,target[1]-p.z)+Math.PI};moved=stepTo(a,q,dt);if(Math.hypot(p.x-q.x,p.z-q.z)<.06){detour.index++;if(detour.index>=detour.points.length){a.d=detour.endD;a.detour=null;}}else if(!moved&&a.wait>3&&!a.rerouteIn)reroute(a);}
   else {
-   let lead=null;
-   const ax=a.root.position.x,az=a.root.position.z,ayaw=a.root.rotation.y;
-   for(let i=0;i<people.length;i++){
-    const b=people[i];
-    if(b===a)continue;
-    const bp=b.root.position;
-    const dx=bp.x-ax;
-    if(dx>1.2||dx<-1.2)continue;
-    const dz=bp.z-az;
-    if(dz>1.2||dz<-1.2)continue;
-    if(dx*dx+dz*dz<1.44){
-     const diff=Math.atan2(Math.sin(b.root.rotation.y-ayaw),Math.cos(b.root.rotation.y-ayaw));
-     if(Math.abs(diff)<1.2){lead=b;break;}
+   let lead=null,leadIdx=Infinity;
+   const ax=a.root.position.x,az=a.root.position.z,ayaw=a.root.rotation.y,gx=Math.floor(ax/CELL),gz=Math.floor(az/CELL);
+   for(let ix=gx-1;ix<=gx+1;ix++)for(let iz=gz-1;iz<=gz+1;iz++){
+    const bucket=grid.get(gridKey(ix,iz));if(!bucket)continue;
+    for(let j=0;j<bucket.length;j++){
+     const b=bucket[j];if(b===a||b.crowdIndex>=leadIdx)continue;
+     const bp=b.root.position,dx=bp.x-ax;if(dx>1.2||dx<-1.2)continue;
+     const dz=bp.z-az;if(dz>1.2||dz<-1.2)continue;
+     if(dx*dx+dz*dz<1.44){
+      const diff=Math.atan2(Math.sin(b.root.rotation.y-ayaw),Math.cos(b.root.rotation.y-ayaw));
+      if(Math.abs(diff)<1.2){lead=b;leadIdx=b.crowdIndex;}
+     }
     }
    }
    let currentSpeed=a.speed;
@@ -127,16 +135,15 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
    a.wait=0;a.browseIn-=dt;
    if(a.browseIn<=0){
     let crowded=false;
-    const ax=a.root.position.x,az=a.root.position.z;
-    for(let i=0;i<people.length;i++){
-     const b=people[i];
-     if(b===a)continue;
-     const bp=b.root.position;
-     const dx=ax-bp.x;
-     if(dx>2.2||dx<-2.2)continue;
-     const dz=az-bp.z;
-     if(dz>2.2||dz<-2.2)continue;
-     if(dx*dx+dz*dz<4.84){crowded=true;break;}
+    const ax=a.root.position.x,az=a.root.position.z,gx=Math.floor(ax/CELL),gz=Math.floor(az/CELL);
+    for(let ix=gx-1;ix<=gx+1&&!crowded;ix++)for(let iz=gz-1;iz<=gz+1&&!crowded;iz++){
+     const bucket=grid.get(gridKey(ix,iz));if(!bucket)continue;
+     for(let j=0;j<bucket.length;j++){
+      const b=bucket[j];if(b===a)continue;
+      const bp=b.root.position,dx=ax-bp.x;if(dx>2.2||dx<-2.2)continue;
+      const dz=az-bp.z;if(dz>2.2||dz<-2.2)continue;
+      if(dx*dx+dz*dz<4.84){crowded=true;break;}
+     }
     }
     if(!crowded){a.pause=.8+(a.phase%1.9);a.browseCount++;a.browseIn=18+(a.phase*7%31);}
    }

@@ -1,4 +1,5 @@
-import {FrontSide,Frustum,LessEqualDepth,Matrix4,Object3D,Vector2,Vector3} from './three.module.js';
+import {FrontSide,Frustum,LessEqualDepth,Material,Matrix4,MeshBasicMaterial,NormalBlending,Object3D,Vector2,Vector3} from './three.module.js';
+import {createVoxelWallOcclusion} from './voxel-wall-occlusion.js';
 
 // Only a complete rectangle of rendered top faces can hide a panel. Check
 // both street paving and the lower roofs of the station and transfer passage.
@@ -11,8 +12,29 @@ function project(bound,eye,near,far,offset,lower){
  return Math.floor(eye+offset*delta/denominator+(lower?-.001:.001));
 }
 
-export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[]){
- const panels=[],hidden=[],faces=new Uint8Array(SURFACES.length*GRID_WIDTH**2);
+function fogCovers(bounds,camera,fogFar){
+ const m=camera.matrixWorldInverse.elements;
+ const nearestDepth=-(m[2]*(m[2]>0?bounds.max.x:bounds.min.x)+
+  m[6]*(m[6]>0?bounds.max.y:bounds.min.y)+m[10]*(m[10]>0?bounds.max.z:bounds.min.z)+m[14]);
+ return nearestDepth>fogFar+.05;
+}
+
+function usesOpaqueSignMaterial(material){
+ return material.isMeshBasicMaterial&&material.fog&&material.side===FrontSide&&
+  material.colorWrite&&material.depthWrite&&material.blending===NormalBlending&&!material.transparent&&material.opacity===1&&
+  !material.alphaToCoverage&&!material.alphaMap&&!material.alphaTest&&!material.alphaHash&&
+  !material.clippingPlanes?.length&&!material.wireframe&&!material.dithering&&
+  material.onBeforeCompile===Material.prototype.onBeforeCompile&&
+  material.customProgramCacheKey===Material.prototype.customProgramCacheKey;
+}
+
+export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],hasWallFace,hasFloorOrCeilingFace){
+ const panels=[],hidden=[],materials=[],faces=new Uint8Array(SURFACES.length*GRID_WIDTH**2);
+ const fogOnly=new MeshBasicMaterial();
+ const walls=hasWallFace?['x','z'].flatMap(axis=>[1,-1].map(direction=>
+  createVoxelWallOcclusion(hasWallFace,{axis,direction,width:64,depth:26}))):[];
+ const floors=hasFloorOrCeilingFace?[1,-1].map(direction=>
+  createVoxelWallOcclusion(hasFloorOrCeilingFace,{axis:'y',direction,width:48,height:48,depth:16})):[];
  const eye=new Vector3(),localEye=new Vector3(),nearMin=new Vector2(),nearMax=new Vector2();
  const frustum=new Frustum(),projection=new Matrix4(),inverse=new Matrix4();
  for(const root of roots)root.traverse(mesh=>{
@@ -22,13 +44,25 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[]){
   if(!geometry.boundingBox)geometry.computeBoundingBox();
   const matrix=mesh.matrixWorld.clone(),bounds=geometry.boundingBox.clone().applyMatrix4(matrix);
   const plane=geometry.type==='PlaneGeometry'&&geometry.boundingBox.min.z===0&&geometry.boundingBox.max.z===0;
-  if(bounds.max.y<24)panels.push({mesh,geometry,matrix,bounds,plane});
+  panels.push({mesh,geometry,matrix,bounds,plane,surface:bounds.max.y>=24});
  });
  function restore(){
+  for(const entry of materials){
+   entry.mesh.material=entry.replacedMaterial;
+   entry.replacedMaterial=null;
+  }
+  materials.length=0;
   for(const mesh of hidden)mesh.visible=true;
   hidden.length=0;
  }
- function prepare(camera){
+ function useFogMaterial(entry,material){
+  // The fog shader supplies every color channel. Keep the same opaque
+  // depth and coverage while avoiding the otherwise unused texture bind.
+  entry.replacedMaterial=material;
+  materials.push(entry);
+  entry.mesh.material=fogOnly;
+ }
+ function prepare(camera,fog){
   restore();
   if(!camera.isPerspectiveCamera)return;
   eye.setFromMatrixPosition(camera.matrixWorld);
@@ -36,9 +70,17 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[]){
   camera.getViewBounds(camera.near,nearMin,nearMax);
   const nearRadius=Math.hypot(camera.near,Math.max(Math.abs(nearMin.x),Math.abs(nearMax.x)),Math.max(Math.abs(nearMin.y),Math.abs(nearMax.y)));
   frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
+  const undergroundWalls=eye.y<24&&camera.userData.probeMetroPanelWalls!==false;
+  const undergroundFloors=eye.y<24&&camera.userData.probeMetroPanelFloors!==false;
+  const undergroundFog=eye.y<24&&fog?.isFog&&camera.userData.probeMetroPanelFog!==false;
+  const surfaceEnabled=camera.userData.probeSurfaceMetroPanels!==false;
+  if(undergroundWalls)for(const wall of walls)wall.begin(eye,nearRadius+.001);
+  if(undergroundFloors)for(const floor of floors)floor.begin(eye,nearRadius+.001);
   const baseX=Math.floor(eye.x)-GRID_WIDTH/2,baseZ=Math.floor(eye.z)-GRID_WIDTH/2;
   faces.fill(0);
-  for(const {mesh,geometry,matrix,bounds,plane} of panels){
+  for(const entry of panels){
+   const {mesh,geometry,matrix,bounds,plane,surface}=entry;
+   if(surface&&!surfaceEnabled)continue;
    if(!mesh.visible||mesh.geometry!==geometry||!mesh.frustumCulled||!mesh.layers.test(camera.layers))continue;
    const material=mesh.material;
    if(!material?.map||!material.depthTest||material.depthFunc!==LessEqualDepth||material.polygonOffset||
@@ -47,7 +89,7 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[]){
    while(parent?.visible)parent=parent.parent;
    if(parent)continue;
    if(!matrix.equals(mesh.matrixWorld))bounds.copy(geometry.boundingBox).applyMatrix4(matrix.copy(mesh.matrixWorld));
-   if(bounds.max.y>=24)continue;
+   if(!surface&&bounds.max.y>=24)continue;
    // Three uses a bounding sphere for its mesh cull and still initializes
    // textures for back-facing triangles. The tighter box and original plane
    // can reject these draws before any resource is submitted.
@@ -55,7 +97,19 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[]){
     localEye.copy(eye).applyMatrix4(inverse.copy(matrix).invert()).z<-.001){
     mesh.visible=false;hidden.push(mesh);continue;
    }
-   if(eye.y<24)continue;
+   if(surface){
+    if(fog?.isFog&&fogCovers(bounds,camera,fog.far)&&usesOpaqueSignMaterial(material))useFogMaterial(entry,material);
+    continue;
+   }
+   if(eye.y<24){
+    if(undergroundWalls&&walls.some(wall=>wall.occludes(bounds))||
+     undergroundFloors&&floors.some(floor=>floor.occludes(bounds))){
+     mesh.visible=false;hidden.push(mesh);
+    }else if(undergroundFog&&fogCovers(bounds,camera,fog.far)&&usesOpaqueSignMaterial(material)){
+     useFogMaterial(entry,material);
+    }
+    continue;
+   }
    const near=eye.y-bounds.max.y,far=eye.y-bounds.min.y;
    // A street view of a sealed room must pass through the paving and the
    // roof. Test both levels against every entrance, including connected lines.

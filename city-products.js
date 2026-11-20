@@ -41,7 +41,7 @@ export const BRAND_PRODUCTS={
 };
 
 // Individually removable servings. Merge inside each item, never across stock units.
-export function createProduct(kind,{meal=false}={}){
+export function createProduct(kind,{meal=false,batch=true}={}){
  const root=new THREE.Group();root.name='product-'+kind;root.userData.product=kind;
  const part=(geometry,c,x,y,z,w,h,d)=>{const m=new THREE.Mesh(geometry,material(c));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;};
  const cube=(...a)=>part(box,...a),round=(...a)=>part(disc,...a),sphere=(...a)=>part(ball,...a);
@@ -123,5 +123,5 @@ export function createProduct(kind,{meal=false}={}){
   round('#e8f2f4',0,.43,0,.14,.16,.14);round('#caa54f',0,.52,0,.19,.03,.19);
  }
  if(meal){for(const z of [.49,.55])cube('#3c2b22',.1,.035,z,1.03,.024,.025);cube('#eee6d1',-.66,.06,0,.25,.1,.32);}
- batchMeshes(root,staticMeshes(root),'product-detail');return root;
+ if(batch){const palette=new Set(mats.values());for(const m of batchMeshes(root,staticMeshes(root),'product-detail',palette,false,64))m.userData.skipLightBake=true;}return root;
 }

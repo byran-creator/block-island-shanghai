@@ -3,7 +3,7 @@ import {batchMeshes,staticMeshes} from './mesh-batch.js';
 import {GARDEN_BEDS,gardenBedContains,WATER_CORRIDOR,JIUQU_BRIDGE,gardenPathContains,INNER_GATES,GARDEN_PONDS,pathContains} from './yuyuan-layout.js';
 
 // Coordinates belong to the district, whose parent applies YUYUAN_SHIFT.
-export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=batchMeshes}){
+export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=batchMeshes,simulationInterest=null}){
  const fixtures=[],night=new THREE.Group(),garden=new THREE.Group(),animatedGarden=new THREE.Object3D();
  night.name='yuyuan-eaves-and-window-light';night.visible=false;
  garden.name='yuyuan-corridor-and-planting';animatedGarden.name='yuyuan-animated-garden';
@@ -362,9 +362,8 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
    const wing=new THREE.Mesh(leafGeometry,mat('#1e293b'));wing.position.set(side*.18,.02,0);wing.scale.set(.24,.018,.12);rootObj.add(wing);
    wings.push(wing);
   }
-  if(type==='perched'){
-   rootObj.position.set(cx,cy,cz);
-  }else{
+  rootObj.position.set(cx,cy,cz);
+  if(type!=='perched'){
    animatedSwallows.push({root:rootObj,wings,cx,cy,cz,radius,speed,phase:cx+cz});
   }
  }
@@ -488,8 +487,26 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
   }
  }
 
- batchDetails(garden,staticMeshes(garden),'yuyuan-garden-detail');batchMeshes(night,staticMeshes(night),'yuyuan-night-trim');
- return {fixtures,willowGroups:swayingWillows.map(({group})=>group),dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;dropTimer+=dt;night.visible=lit;if(dropTimer>=0.028||dt===0){dropTimer=0;animate();}animateGarden(dt);}};
+ batchDetails(garden,staticMeshes(garden),'yuyuan-garden-detail');
+ const nightMeshes=staticMeshes(night),nightPalette=new Set(nightMeshes.map(m=>m.material).filter(m=>m?.isMeshBasicMaterial&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors));
+ batchMeshes(night,nightMeshes,'yuyuan-night-trim',nightPalette,false,64);
+ night.updateMatrixWorld(true);night.traverse(o=>{o.matrixAutoUpdate=false;});
+ garden.matrixAutoUpdate=false;
+ animateGarden(0);
+ root.updateWorldMatrix(true,true);
+ const keepAnim=new Set();
+ for(const w of swayingWillows)keepAnim.add(w.group);
+ for(const eg of animatedEgrets){keepAnim.add(eg.root);keepAnim.add(eg.neck);}
+ for(const sw of animatedSwans){keepAnim.add(sw.root);keepAnim.add(sw.neck);for(const wing of sw.wings)keepAnim.add(wing);}
+ for(const sw of animatedSwallows){keepAnim.add(sw.root);for(const wing of sw.wings)keepAnim.add(wing);}
+ animatedGarden.traverse(o=>{if(!keepAnim.has(o))o.matrixAutoUpdate=false;});
+ const animBounds=new THREE.Box3(),animPos=new THREE.Vector3();
+ animatedGarden.traverse(o=>{if(o.isMesh){o.getWorldPosition(animPos);animBounds.expandByPoint(animPos);}});
+ for(const {group}of swayingWillows){group.getWorldPosition(animPos);animBounds.expandByPoint(animPos);}
+ for(const [fx,fz]of fountains){animPos.set(fx,23,fz).applyMatrix4(root.matrixWorld);animBounds.expandByPoint(animPos);}
+ if(!animBounds.isEmpty())animBounds.expandByScalar(8);
+ let animSkipped=false;
+ return {fixtures,willowGroups:swayingWillows.map(({group})=>group),dynamicRoots:new Set([night,drops,animatedGarden]),tick(dt,{night:lit=false}={}){elapsed+=dt;dropTimer+=dt;night.visible=lit;if(dt>0&&simulationInterest&&!animBounds.isEmpty()&&!simulationInterest.seesBox(animBounds,95)){animSkipped=true;return;}if(animSkipped||dropTimer>=0.028||dt===0){dropTimer=0;animate();}animSkipped=false;animateGarden(dt);}};
 }
 
 export function moonBridgeFloor(x, z){

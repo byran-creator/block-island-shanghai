@@ -3,6 +3,11 @@ import {createSkyGradient} from './sky-gradient.js';
 export const WEATHER_CYCLE_SECONDS=1200;
 export const DAY_CYCLE_SECONDS=1200;
 export const WEATHER_TYPES={clear:{name:'晴天',humidity:48,rain:0,fog:0},cloudy:{name:'多云',humidity:73,rain:0,fog:.2},rain:{name:'雨天',humidity:89,rain:1,fog:.48},fog:{name:'江雾',humidity:86,rain:0,fog:1}};
+export function setOutdoorFogRange(fog,{fog:amount,rain}){
+ fog.near=48*(1-amount)+26*amount;
+ fog.far=440*(1-amount)+185*amount;
+ fog.far-=rain*12;
+}
 export class WeatherState{
  constructor(){this.mode='auto';this.type='clear';this.elapsed=0;this.cycleSeconds=WEATHER_CYCLE_SECONDS;this.rain=0;this.fog=0;this.cloud=0;this.humidity=48;}
  setMode(mode){if(!['auto','clear','cloudy','rain','fog'].includes(mode))return false;this.mode=mode;if(mode!=='auto')this.type=mode;return true;}
@@ -103,7 +108,7 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,belly
   flareMesh=new THREE.Mesh(new THREE.PlaneGeometry(108,108),flareMat);flareMesh.userData.range=280;sunBlock.add(flareMesh);
  }
 
- const stars=new THREE.Group();for(let i=0;i<38;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.32,.32,.32),new THREE.MeshBasicMaterial({color:'#d9e9ff',fog:false}));const a=i*2.399,y=30+(i*37%115),r=Math.sqrt(180*180-y*y);m.position.set(Math.cos(a)*r,y,Math.sin(a)*r);m.userData.range=280;stars.add(m);}scene.add(stars);
+ const starGeo=new THREE.BoxGeometry(.32,.32,.32),starMat=new THREE.MeshBasicMaterial({color:'#d9e9ff',fog:false}),stars=new THREE.Group();for(let i=0;i<38;i++){const m=new THREE.Mesh(starGeo,starMat);const a=i*2.399,y=30+(i*37%115),r=Math.sqrt(180*180-y*y);m.position.set(Math.cos(a)*r,y,Math.sin(a)*r);m.userData.range=280;m.updateMatrix();m.matrixAutoUpdate=false;stars.add(m);}{const u=stars.updateMatrixWorld;let sk=false;stars.updateMatrixWorld=function(f){if(!this.visible){sk=true;return;}u.call(this,f||sk);sk=false;};}scene.add(stars);
  const count=180,positions=new Float32Array(count*18),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));const rainMat=new THREE.MeshBasicMaterial({color:'#c7e6ed',transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});const rainMesh=new THREE.Mesh(geometry,rainMat);rainMesh.frustumCulled=false;rainMesh.userData.range=50;scene.add(rainMesh);
  let seed=1731;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};const drops=Array.from({length:count},()=>({x:0,y:-100,z:0,roof:0}));
  function reset(d){d.x=camera.position.x+(rand()-.5)*38;d.z=camera.position.z+(rand()-.5)*38;d.y=camera.position.y+5+rand()*18;d.roof=world.ground(Math.floor(d.x),Math.floor(d.z));}
@@ -178,7 +183,7 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,belly
    const sunsetMist=new THREE.Color(isFierySunset?'#f76a4a':'#f28260');
    const mist=new THREE.Color(night?'#3b4a59':'#b5c5cc').lerp(sunsetMist,duskFactor*0.85);
    scene.background.copy(skyGradient.horizon).lerp(mist,info.fog*.32+info.rain*.13);
-   scene.fog.color.copy(scene.background);scene.fog.near=48*(1-info.fog)+26*info.fog;scene.fog.far=440*(1-info.fog)+185*info.fog;scene.fog.far-=info.rain*12;
+   scene.fog.color.copy(scene.background);setOutdoorFogRange(scene.fog,info);
   }
   terrainMaterial.color.setScalar(1-info.rain*.16);
   const dayWater=new THREE.Color('#173e5a').lerp(new THREE.Color('#3d9bab'),THREE.MathUtils.smoothstep(Math.sin(phase),-.12,.45));

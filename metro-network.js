@@ -49,7 +49,7 @@ export function createMetroNetwork(options){
   signOptions:{...config10.signOptions,routeNames:COMPLETE_LINE10_STATIONS.map(s=>s.name),
    routeEnglish:COMPLETE_LINE10_STATIONS.map(s=>s.english),routePair:['南京东路','上海图书馆']},
   wallOpenings:[...config10.wallOpenings,{station:'xintiandi',side:1,x:WEST_LINE10_STATIONS[0].x-22,width:6}],
-  worldPos:getPos,worldPlace:place,worldExits:COMPLETE_LINE10_STATIONS.flatMap(s=>s.exits.map(e=>mirrorExit(s,e))),
+  worldPos:getPos,worldPlace:place,worldExits:COMPLETE_LINE10_STATIONS.flatMap(s=>s.exits.map(e=>mirrorExit(s,e))),stationWorldExits:s=>s.exits.map(e=>mirrorExit(s,e)),
   stationFrame:s=>westStationFrame(s)??oldFrame,rampFrame:r=>westRampFrame(r)??oldFrame,signFrame:oldFrame,
   trainBounds:null,flatTrainFloor:true,pauseHiddenDynamics:true,batchStationDetails:true,undergroundVisible:p=>inLine10(p)||transferInterior(p)
  });

@@ -19,17 +19,21 @@ export function createSimulationInterest(camera,getPlayer) {
   }
   return frustum;
  }
- function seesPoint(point,radius=1) {
-  const dx=point.x-player.x,dz=point.z-player.z,near=ACTIVE_RADIUS+radius;
-  if(dx*dx+dz*dz<=near*near)return true;
+ function seesPoint(point,radius=1,maxDistance=Infinity) {
+  const dx=point.x-player.x,dz=point.z-player.z,d2=dx*dx+dz*dz,near=ACTIVE_RADIUS+radius;
+  if(d2<=near*near)return true;
+  if(maxDistance<Infinity){const far=maxDistance+radius;if(d2>far*far)return false;}
   sphere.center.copy(point);
   sphere.radius=radius+VIEW_BUFFER;
   return view().intersectsSphere(sphere);
  }
- function seesBox(bounds) {
+ function seesBox(bounds,maxDistance=Infinity) {
   const dx=Math.max(bounds.min.x-player.x,player.x-bounds.max.x,0);
   const dz=Math.max(bounds.min.z-player.z,player.z-bounds.max.z,0);
-  return dx*dx+dz*dz<=ACTIVE_RADIUS*ACTIVE_RADIUS||view().intersectsBox(bounds);
+  const distSq=dx*dx+dz*dz;
+  if(distSq<=ACTIVE_RADIUS*ACTIVE_RADIUS)return true;
+  if(distSq>maxDistance*maxDistance)return false;
+  return view().intersectsBox(bounds);
  }
  return {beginFrame,seesPoint,seesBox};
 }

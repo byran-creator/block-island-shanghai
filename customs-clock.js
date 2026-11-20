@@ -1,4 +1,5 @@
 import * as THREE from './three.module.js';
+import {batchMeshes} from './mesh-batch.js';
 
 // Original clock artwork observed from the Shanghai tourism office's close-up.
 export function customsClockAngles(dayClock){const hour=((dayClock/240*24+6)%24+24)%24;return {hour:-(hour%12)/12*Math.PI*2,minute:-(hour%1)*Math.PI*2};}
@@ -21,19 +22,24 @@ export function createCustomsClock(scene,building){
  const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;drawCustomsDial(canvas.getContext('2d'));
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;
  const glass=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}),metal=new THREE.MeshBasicMaterial({color:'#262c28'}),dialGeometry=new THREE.PlaneGeometry(5.6,5.6),rimGeometry=new THREE.TorusGeometry(2.66,.095,6,64);
- const faces=[],hands=[];
+ const faces=[],hands=[],staticMetal=[];
  for(const [x,z,yaw]of [[building.x+4.06,building.z+.5,Math.PI/2],[building.x-3.06,building.z+.5,-Math.PI/2],[building.x+.5,building.z+4.06,0],[building.x+.5,building.z-3.06,Math.PI]]){
   const face=new THREE.Group();face.position.set(x,building.h+34,z);face.rotation.y=yaw;root.add(face);
   const dial=new THREE.Mesh(dialGeometry,glass);dial.position.z=.035;face.add(dial);faces.push(dial);
-  const rim=new THREE.Mesh(rimGeometry,metal);rim.position.z=.075;face.add(rim);
+  const rim=new THREE.Mesh(rimGeometry,metal);rim.position.z=.075;face.add(rim);staticMetal.push(rim);
   const pair=[];
   for(const [index,length]of [1.56,2.13].entries()){
    const shape=new THREE.Shape(),w=index?.052:.095;shape.moveTo(-w,-.28);shape.lineTo(-w,.4);shape.lineTo(-w*2,length*.68);shape.lineTo(0,length);shape.lineTo(w*2,length*.68);shape.lineTo(w,.4);shape.lineTo(w,-.28);shape.closePath();
    const pivot=new THREE.Group(),hand=new THREE.Mesh(new THREE.ShapeGeometry(shape),metal);pivot.position.z=.1+index*.025;pivot.add(hand);face.add(pivot);pair.push(pivot);
   }
-  const hub=new THREE.Mesh(new THREE.CircleGeometry(.12,20),metal);hub.position.z=.16;face.add(hub);hands.push(pair);
+  const hub=new THREE.Mesh(new THREE.CircleGeometry(.12,20),metal);hub.position.z=.16;face.add(hub);staticMetal.push(hub);hands.push(pair);
  }
+ batchMeshes(root,staticMetal,'customs-clock-metal',null,false,64);
  root.traverse(o=>{o.userData.range=285;});
  function tick(dayClock,night){const angles=customsClockAngles(dayClock);for(const pair of hands){pair[0].rotation.z=angles.hour;pair[1].rotation.z=angles.minute;}glass.color.set(night?'#fff0c4':'#ffffff');}
- tick(36,false);return {root,faces,hands,texture,tick};
+ tick(36,false);
+ root.updateMatrixWorld(true);
+ const pivotSet=new Set(hands.flat());
+ root.traverse(o=>{if(!pivotSet.has(o))o.matrixAutoUpdate=false;});
+ return {root,faces,hands,texture,tick};
 }

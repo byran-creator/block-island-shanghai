@@ -21,7 +21,7 @@ export function createBusStopSign({name,code,line,stations,yaw=0}){
  c.fillStyle='#24594e';c.fillRect(0,787,512,237);
  text(stations.length>1?'环线循环停靠':'陆家嘴区内循环',256,838,30,'#fff','center');
  text('请在路边候车',256,891,32,'#fff','center');text('停稳后靠近车门 · V 上车',256,941,26,'#e1e9de','center');text('小岛观光接驳',256,988,21,'#c3d6ca','center');
- const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.userData.opaqueStreetArt=true;
  const plate=new THREE.MeshBasicMaterial({map:texture}),metal=new THREE.MeshLambertMaterial({color:'#8c9992'}),dark=new THREE.MeshLambertMaterial({color:'#254b42'}),box=new THREE.BoxGeometry(1,1,1);
  const part=(material,x,y,z,sx,sy,sz)=>{const m=new THREE.Mesh(box,material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=100;root.add(m);};
  part(dark,0,.075,0,.48,.15,.42);part(metal,0,1.8,0,.12,3.6,.12);

@@ -6,7 +6,7 @@ import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_P
 // district layout. This module supplies their local-coordinate finish.
 export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batchMeshes}){
  const group=new THREE.Group();group.name='yuyuan-classic-inner-garden';root.add(group);
- const fixtures=[],box=new THREE.BoxGeometry(1,1,1),leaf=new THREE.SphereGeometry(1,8,5),pole=new THREE.CylinderGeometry(1,1,1,7),up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
+ const fixtures=[],box=new THREE.BoxGeometry(1,1,1),leaf=new THREE.SphereGeometry(1,8,5),pole=new THREE.CylinderGeometry(1,1,1,7),lRingGeo=new THREE.TorusGeometry(.045,.012,4,8),lCoreGeo=new THREE.SphereGeometry(.18,8,6),lSkinGeo=new THREE.SphereGeometry(.28,10,8),lSkinMat=new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#d84315',transparent:true,opacity:.58,depthWrite:false}),up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
  let seed=28679;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  function block(color,x,y,z,w,h,d){const mesh=cube(color,x,y,z,w,h,d);group.add(mesh);return mesh;}
  function addFixture(mesh){mesh.geometry.computeBoundingBox();mesh.updateMatrix();const b=mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);fixtures.push({x:(b.min.x+b.max.x)/2,z:(b.min.z+b.max.z)/2,rx:(b.max.x-b.min.x)/2,rz:(b.max.z-b.min.z)/2,y:b.min.y,h:b.max.y-b.min.y});}
@@ -344,10 +344,10 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
    }
    // Vertical suspension drop wire connecting from roof ridge to lantern top cap
    const lWire=new THREE.Mesh(box,mat('#2e2118'));lWire.position.set(0,2.6,d);lWire.scale.set(.022,.7,.022);bGroup.add(lWire);
-   const lRing=new THREE.Mesh(new THREE.TorusGeometry(.045,.012,4,8),mat('#e5a93b',true));lRing.position.set(0,2.38,d);bGroup.add(lRing);
+   const lRing=new THREE.Mesh(lRingGeo,mat('#e5a93b',true));lRing.position.set(0,2.38,d);bGroup.add(lRing);
    // Hanging translucent warm palace lantern ("红里透黄"灯笼)
-   const lCore=new THREE.Mesh(new THREE.SphereGeometry(.18,8,6),mat('#ffe066',true));lCore.position.set(0,2.25,d);bGroup.add(lCore);
-   const lSkin=new THREE.Mesh(new THREE.SphereGeometry(.28,10,8),new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#d84315',transparent:true,opacity:.58,depthWrite:false}));lSkin.position.set(0,2.25,d);lSkin.scale.y=1.25;bGroup.add(lSkin);
+   const lCore=new THREE.Mesh(lCoreGeo,mat('#ffe066',true));lCore.position.set(0,2.25,d);bGroup.add(lCore);
+   const lSkin=new THREE.Mesh(lSkinGeo,lSkinMat);lSkin.position.set(0,2.25,d);lSkin.scale.y=1.25;bGroup.add(lSkin);
   }
   // Covered bridge roof with black tiles, eaves and flying rafters
   const roof=new THREE.Mesh(box,mat('#364440'));roof.position.set(0,2.95,0);roof.scale.set(width+1.1,.26,len+.6);bGroup.add(roof);

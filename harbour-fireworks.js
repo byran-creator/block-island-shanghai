@@ -23,9 +23,10 @@ export function createHarbourFireworks(scene){
  for(const color of FIREWORK_COLORS){const vertices=capacity*12,positions=new Float32Array(vertices*3),colors=new Float32Array(vertices*3),indices=[];
   for(let i=0;i<vertices;i+=4)indices.push(i,i+1,i+2,i,i+2,i+3);
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));geometry.setAttribute('color',new THREE.BufferAttribute(colors,3).setUsage(THREE.DynamicDrawUsage));geometry.setIndex(indices);geometry.setDrawRange(0,0);
-  const material=new THREE.MeshBasicMaterial({color,vertexColors:true,transparent:true,opacity:.94,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}),mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.userData.range=450;root.add(mesh);batches.push({mesh,geometry,positions,colors,count:0});
+  const material=new THREE.MeshBasicMaterial({color,vertexColors:true,transparent:true,opacity:.94,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}),mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.visible=false;mesh.matrixAutoUpdate=false;mesh.userData.range=450;root.add(mesh);batches.push({mesh,geometry,positions,colors,count:0});
  }
- const barges=FIREWORK_BARGES.map(p=>{const hull=new THREE.Mesh(new THREE.BoxGeometry(5,.6,9),new THREE.MeshLambertMaterial({color:'#394f59'}));hull.position.set(p.x,p.y-.1,p.z);hull.userData.range=350;root.add(hull);return hull;});
+ const bargeGeo=new THREE.BoxGeometry(5,.6,9),bargeMat=new THREE.MeshLambertMaterial({color:'#394f59'});
+ const barges=FIREWORK_BARGES.map(p=>{const hull=new THREE.Mesh(bargeGeo,bargeMat);hull.position.set(p.x,p.y-.1,p.z);hull.userData.range=350;hull.updateMatrix();hull.matrixAutoUpdate=false;root.add(hull);return hull;});
  function particle(p){if(particles.length>=4200)return;particles.push({...p,age:0,max:p.life});}
  function burst(s){const kind=s.kind,n=kind==='willow'?168:kind==='ring'?100:128;
   for(let i=0;i<n;i++){const a=i*2.399963,polar=Math.acos(1-2*(i+.5)/n),ring=kind==='ring',palm=kind==='willow',speed=(palm?13:15)*s.size*(.8+rand()*.25),angle=ring?i/n*Math.PI*2:a;

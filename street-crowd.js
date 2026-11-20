@@ -7,6 +7,7 @@ export function crowdProfile(index){
 const bounds={x1:-179,x2:-38,z1:64.4,z2:68.45};
 // Shopping bags extend about .5m from the centre; include neighbouring arms.
 export const CROWD_SEPARATION=.9;
+const SEPARATION_SQUARED=CROWD_SEPARATION**2;
 // Counter customers also move physically: their shopping animation must not
 // overwrite a walker that has already yielded or passed in front of the shop.
 export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
@@ -28,32 +29,39 @@ export function moveShopper(p,target,dt,{clear,people,vehicles=[],speed=.45}){
 export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,pickGoal=null,spawnPoint=null,seedOffset=0,active=()=>true}={}){
  const walkers=people.filter(p=>!p.stationary);let first=0;
  let neighbours=people.concat(typeof others==='function'?others():others);
- const cells=new Map(),locations=new Map(),cellSize=4,queryRadius=CROWD_SEPARATION+1e-9;let indexed=false;
- const cellKey=(x,z)=>x+','+z;
+ const cells=new Map(),locations=new Map(),cellPool=[],rowPool=[],usedCells=[],combinedNeighbours=[],cellSize=4,queryRadius=CROWD_SEPARATION+1e-9;let indexed=false;
+ const cellKey=(x,z)=>(x+4096)*8192+(z+4096);
+ function acquireCell(key){let cell=cells.get(key);if(!cell){cell=cellPool.length?cellPool.pop():[];cells.set(key,cell);usedCells.push(cell);}return cell;}
+ function clearIndex(){if(!indexed&&!usedCells.length)return;for(let i=0;i<usedCells.length;i++){const c=usedCells[i];c.length=0;cellPool.push(c);}usedCells.length=0;cells.clear();locations.forEach(r=>{r.person=null;if(r.aliases)r.aliases.length=0;rowPool.push(r);});locations.clear();}
  function indexNeighbours(){
   // Short scans cost less than building an index for small or mostly idle groups.
-  if(walkers.length<64||neighbours.length<128){cells.clear();locations.clear();indexed=false;return;}
-  cells.clear();locations.clear();indexed=true;
-  for(const o of neighbours){const root=o.root,p=root.position;if(!Number.isFinite(p.x)||!Number.isFinite(p.z)){indexed=false;continue;}const previous=locations.get(root);if(previous){(previous.aliases??=[]).push(o);continue;}const x=Math.floor(p.x/cellSize),z=Math.floor(p.z/cellSize),key=cellKey(x,z),row={person:o,x,z,key};let cell=cells.get(key);if(!cell){cell=new Set();cells.set(key,cell);}cell.add(row);locations.set(root,row);}
+  if(walkers.length<16||neighbours.length<32){clearIndex();indexed=false;return;}
+  clearIndex();indexed=true;
+  for(const o of neighbours){const root=o.root,p=root.position;if(!Number.isFinite(p.x)||!Number.isFinite(p.z)){clearIndex();indexed=false;return;}const previous=locations.get(root);if(previous){(previous.aliases??=[]).push(o);continue;}const x=Math.floor(p.x/cellSize),z=Math.floor(p.z/cellSize),key=cellKey(x,z);let row=rowPool.length?rowPool.pop():{person:o,x,z,key,aliases:null};row.person=o;row.x=x;row.z=z;row.key=key;if(row.aliases)row.aliases.length=0;acquireCell(key).push(row);locations.set(root,row);}
  }
  function moved(p){
-  const row=locations.get(p.root);if(!row)return;const at=p.root.position,x=Math.floor(at.x/cellSize),z=Math.floor(at.z/cellSize);if(x===row.x&&z===row.z)return;cells.get(row.key).delete(row);row.x=x;row.z=z;row.key=cellKey(x,z);let cell=cells.get(row.key);if(!cell){cell=new Set();cells.set(row.key,cell);}cell.add(row);
+  const row=locations.get(p.root);if(!row)return;const at=p.root.position,x=Math.floor(at.x/cellSize),z=Math.floor(at.z/cellSize);if(x===row.x&&z===row.z)return;const oldCell=cells.get(row.key);if(oldCell){const idx=oldCell.indexOf(row);if(idx>=0){const last=oldCell.pop();if(idx<oldCell.length)oldCell[idx]=last;}}row.x=x;row.z=z;row.key=cellKey(x,z);acquireCell(row.key).push(row);
  }
  function blocks(o,p,at,q){
-  if(o.root===p.root||!o.stationary&&o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)return false;
-  const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
-  return !(d>=CROWD_SEPARATION**2||(old<CROWD_SEPARATION**2&&d>old+1e-8));
+  const root=o.root,b=root.position;
+  if(root===p.root||!o.stationary&&o.ready===false||root.visible===false||Math.abs(b.y-q.y)>2)return false;
+  const d=(b.x-q.x)**2+(b.z-q.z)**2;
+  if(d>=SEPARATION_SQUARED)return false;
+  const old=(b.x-at.x)**2+(b.z-at.z)**2;
+  return !(old<SEPARATION_SQUARED&&d>old+1e-8);
  }
  const othersClear=(p,q)=>{
   const at=p.root.position;
-  if(!indexed||!Number.isFinite(q.x)||!Number.isFinite(q.z))return neighbours.every(o=>{
-   if(o.root===p.root||!o.stationary&&o.ready===false||o.root.visible===false||Math.abs(o.root.position.y-q.y)>2)return true;
-   const b=o.root.position,d=(b.x-q.x)**2+(b.z-q.z)**2,old=(b.x-at.x)**2+(b.z-at.z)**2;
-   return d>=CROWD_SEPARATION**2||(old<CROWD_SEPARATION**2&&d>old+1e-8);
-  });
+  if(!indexed||!Number.isFinite(q.x)||!Number.isFinite(q.z))return neighbours.every(o=>!blocks(o,p,at,q));
   // Only neighbours within the unchanged separation radius can reject a step.
   // Every accepted move updates the grid before the next walker is considered.
-  for(let x=Math.floor((q.x-queryRadius)/cellSize);x<=Math.floor((q.x+queryRadius)/cellSize);x++)for(let z=Math.floor((q.z-queryRadius)/cellSize);z<=Math.floor((q.z+queryRadius)/cellSize);z++)for(const row of cells.get(cellKey(x,z))??[]){if(blocks(row.person,p,at,q)||row.aliases?.some(o=>blocks(o,p,at,q)))return false;}
+  for(let x=Math.floor((q.x-queryRadius)/cellSize);x<=Math.floor((q.x+queryRadius)/cellSize);x++){
+   for(let z=Math.floor((q.z-queryRadius)/cellSize);z<=Math.floor((q.z+queryRadius)/cellSize);z++){
+    const cell=cells.get(cellKey(x,z));
+    if(!cell)continue;
+    for(let i=0;i<cell.length;i++){const row=cell[i];if(blocks(row.person,p,at,q))return false;if(row.aliases&&row.aliases.length){for(let j=0;j<row.aliases.length;j++)if(blocks(row.aliases[j],p,at,q))return false;}}
+   }
+  }
   return true;
  };
  const inside=q=>q.x>=area.x1&&q.x<=area.x2&&q.z>=area.z1&&q.z<=area.z2;
@@ -64,7 +72,7 @@ export function createStreetCrowd(people,{clear=()=>true,others=[],area=bounds,p
  }
  for(const [i,p]of walkers.entries()){p.crowd=crowdProfile(i+seedOffset);p.speed=p.crowd.speed;p.phase=p.crowd.phase;p.crowd.blocked=0;p.ready=false;goal(p);}
  function advance(dt,vehicles){
-  if(typeof others==='function')neighbours=people.concat(others());
+  if(typeof others==='function'){combinedNeighbours.length=0;for(let i=0;i<people.length;i++)combinedNeighbours.push(people[i]);const extra=others();for(let i=0;i<extra.length;i++)combinedNeighbours.push(extra[i]);neighbours=combinedNeighbours;}
   indexNeighbours();
   for(let i=0;i<walkers.length;i++){
    const p=walkers[(i+first)%walkers.length],state=p.crowd;let moving=false,turning=false,distanceMoved=0;

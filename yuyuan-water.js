@@ -300,8 +300,10 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
   if(!deferView)return;
   camera.updateWorldMatrix(true,false);
   root.updateWorldMatrix(true,false);
-  frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse),camera.coordinateSystem);
-  const inView=frustum.intersectsBox(worldBounds.copy(bounds).applyMatrix4(root.matrixWorld));
+  worldBounds.copy(bounds).applyMatrix4(root.matrixWorld);
+  const cp=camera.position,dx=Math.max(worldBounds.min.x-cp.x,cp.x-worldBounds.max.x,0),dz=Math.max(worldBounds.min.z-cp.z,cp.z-worldBounds.max.z,0);
+  let inView=cp.y>42||dx*dx+dz*dz<=95*95;
+  if(inView){frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse),camera.coordinateSystem);inView=frustum.intersectsBox(worldBounds);}
   if(visible!==inView){
    visible=inView;
    for(const object of animatedRoots)object.visible=inView;

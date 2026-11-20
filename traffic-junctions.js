@@ -11,8 +11,15 @@ export function createJunctionControl(points=JUNCTION_POINTS,{getPose}={}){
  // Overlapping reservations share one admission set; a vehicle cannot hold
  // one lock while waiting for another lock in the same connecting bend.
  for(const zone of zones){const touching=groups.filter(g=>g.zones.some(j=>Math.hypot(j.x-zone.x,j.z-zone.z)<Math.max(j.range+zone.stop,zone.range+j.stop)));const group={zones:[zone,...touching.flatMap(g=>g.zones)],owner:null,holders:new Set()};for(const g of touching)groups.splice(groups.indexOf(g),1);groups.push(group);}
- const margin=(p,g,field)=>Math.min(...g.zones.map(j=>Math.hypot(p.x-j.x,p.z-j.z)-j[field]));
- const nearest=(a,g)=>Math.min(...g.zones.map(j=>Math.hypot(a.root.position.x-j.x,a.root.position.z-j.z)));
+ function margin(p,g,field){
+  let minimum=Infinity;
+  for(const zone of g.zones){
+   const distance=Math.hypot(p.x-zone.x,p.z-zone.z);
+   minimum=Math.min(minimum,field===undefined?distance:distance-zone[field]);
+  }
+  return minimum;
+ }
+ const nearest=(a,g)=>margin(a.root.position,g);
  const paths=new WeakMap(),comparisons=new WeakMap(),pathIndexes=new WeakMap();
  function indexPath(points){let index=pathIndexes.get(points);if(index)return index;let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;for(const p of points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minZ=Math.min(minZ,p.z);maxZ=Math.max(maxZ,p.z);}const axis=maxX-minX>maxZ-minZ?'x':'z';index={axis,points:[...points].sort((a,b)=>a[axis]-b[axis])};pathIndexes.set(points,index);return index;}
  function path(a,g){let cache=paths.get(a);if(!cache){cache=new Map();paths.set(a,cache);}const key=(a.detour?Math.floor(a.root.position.x*2)+','+Math.floor(a.root.position.z*2):Math.floor(a.t*2))+':'+a.lane,old=cache.get(g);if(old?.key===key&&old.detour===a.detour)return old.points;const horizon=2*Math.max(...g.zones.map(j=>j.range))+Math.max(...g.zones.flatMap(j=>g.zones.map(k=>Math.hypot(j.x-k.x,j.z-k.z))))+12,points=[];for(let d=-(a.halfLength??1.32);d<=horizon;d+=1.25){const p=getPose(a,d);if(d>0&&margin(p,g,'range')>4&&points.length)break;points.push(p);}cache.set(g,{key,detour:a.detour,points});return points;}
@@ -53,7 +60,14 @@ export function createJunctionControl(points=JUNCTION_POINTS,{getPose}={}){
   for(const a of arrivals)if([...g.holders].every(b=>compatible(a,b,g)))g.holders.add(a);
   g.owner=g.holders.values().next().value??null;for(const j of g.zones)j.owner=g.owner;
  }}
- function permits(a,p){return groups.every(g=>!g.holders.size||g.holders.has(a)||rider(a)&&g.zones.every(j=>j.x<160)||margin(p,g,'stop')>=0||margin(p,g,'stop')>margin(a.root.position,g,'stop')+.001);}
+ function permits(a,p){
+  for(const group of groups){
+   if(!group.holders.size||group.holders.has(a)||rider(a)&&group.zones.every(j=>j.x<160))continue;
+   const destinationMargin=margin(p,group,'stop');
+   if(!(destinationMargin>=0||destinationMargin>margin(a.root.position,group,'stop')+.001))return false;
+  }
+  return true;
+ }
  const spawnClear=(p,a)=>a&&rider(a)||zones.every(j=>Math.hypot(p.x-j.x,p.z-j.z)>j.range+1);
  function yieldTo(a,b){for(const g of groups)if(g.holders.has(a)){g.holders.delete(a);if(margin(b.root.position,g,'range')<0&&(!(g.zones.length>1&&g.zones.every(j=>j.x<160))||[...g.holders].every(o=>compatible(b,o,g))))g.holders.add(b);g.owner=g.holders.values().next().value??null;for(const j of g.zones)j.owner=g.owner;}}
  return {update,permits,spawnClear,yieldTo,zones,groups};

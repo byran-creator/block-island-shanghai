@@ -1,4 +1,5 @@
 import {createQuestIntro} from './quest-intro.js';
+import {updateHudHidden,updateHudText} from './hud-text.js';
 import {routeBearing,controlInstruction} from './quest-route-hint.js';
 import {itemImage,collectibleKey} from './item-catalog.js';
 import {CITY_QUESTS,CityQuestState} from './city-quests.js';
@@ -12,10 +13,14 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
  // Observe layout changes rather than measuring during every game frame.
  const tracker=$('quest-tracker'),intro=createQuestIntro(tracker,document,()=>onJourneyAction('intro-seen')),syncCoordinates=()=>{
   if(!tracker||tracker.hidden)return;
-  document.documentElement.style.setProperty('--quest-coordinate-top',Math.min(tracker.getBoundingClientRect().bottom+12,innerHeight-28)+'px');
+  const style=document.documentElement.style,top=Math.min(tracker.getBoundingClientRect().bottom+12,innerHeight-28)+'px';
+  if(style.getPropertyValue('--quest-coordinate-top')!==top)style.setProperty('--quest-coordinate-top',top);
  };
- if(tracker&&typeof ResizeObserver!=='undefined')new ResizeObserver(syncCoordinates).observe(tracker);
- if(tracker&&typeof MutationObserver!=='undefined')new MutationObserver(syncCoordinates).observe(tracker,{attributes:true,attributeFilter:['style','hidden']});
+ const observesSize=typeof ResizeObserver!=='undefined';
+ // Showing the tracker changes its observed size. Measure it after the
+ // browser lays it out. Keep the style observer for position-only dragging.
+ if(tracker&&observesSize)new ResizeObserver(syncCoordinates).observe(tracker);
+ if(tracker&&typeof MutationObserver!=='undefined')new MutationObserver(syncCoordinates).observe(tracker,{attributes:true,attributeFilter:observesSize?['style']:['style','hidden']});
  if(typeof window!=='undefined')window.addEventListener('resize',syncCoordinates);
  if(scene){
   const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');
@@ -68,8 +73,21 @@ export function createQuestJournal({pause,resume,grant,notify,onProgress=()=>{},
 
  function track(id){const main=getStory();if(!state.track(id)&&!main)return;onTrack(id);render();onProgress();if(id)notify('已追踪「'+CITY_QUESTS.find(q=>q.id===id).title+'」 · M 地图看黄色目标');}
  function tick(dt,playing=true){
-  const hud=$('quest-tracker');if(!playing){intro.pause();if(hud)hud.hidden=true;document.body.classList.remove('has-tracker');if(marker)marker.visible=false;return;}clock+=dt;if(clock<.2)return;const cueDt=clock;clock=0;if(state.tracked==='survival-intro'&&!state.done('survival-intro')&&getContext()?.life?.survival)changed(state.record({type:'survival-intro',survival:true}));
-  const main=getStory(),q=main?.goal?{title:main.title,description:main.goal.instruction}:CITY_QUESTS.find(q=>q.id===state.tracked),goal=target(),context=getContext();if(hud){hud.hidden=!q;document.body.classList.toggle('has-tracker',!!q);if(q){$('tracked-title').textContent=q.title;const bearing=routeBearing(goal,context?.pos,getYaw()),touch=document.body.classList.contains('touch')||document.body.classList.contains('force-landscape');const instruction=bearing.near&&goal?.arrivalAction==='talk'?(touch?'就在这里，点右侧「互动 V」开始对话。':'就在这里，按 V 开始对话。'):goal?.instruction??q.description;$('tracked-step').textContent=controlInstruction(state.done(q.id)?'任务完成！按 I 领取奖励，然后继续下一项。':instruction,touch);$('tracked-place').textContent=goal?bearing.text+' · '+goal.label:q.id==='survival-intro'?'⚙ 设置切换生存模式':'I 领取奖励';if($('tracked-arrow'))$('tracked-arrow').style.transform=goal?'rotate('+bearing.angle+'deg)':'none';}}
+  const hud=$('quest-tracker');if(!playing){intro.pause();updateHudHidden(hud,true);document.body.classList.remove('has-tracker');if(marker)marker.visible=false;return;}clock+=dt;if(clock<.2)return;const cueDt=clock;clock=0;if(state.tracked==='survival-intro'&&!state.done('survival-intro')&&getContext()?.life?.survival)changed(state.record({type:'survival-intro',survival:true}));
+  const main=getStory(),q=main?.goal?{title:main.title,description:main.goal.instruction}:CITY_QUESTS.find(q=>q.id===state.tracked),goal=target(),context=getContext();
+  if(hud){
+   updateHudHidden(hud,!q);
+   document.body.classList.toggle('has-tracker',!!q);
+   if(q){
+    updateHudText($('tracked-title'),q.title);
+    const bearing=routeBearing(goal,context?.pos,getYaw()),touch=document.body.classList.contains('touch')||document.body.classList.contains('force-landscape');
+    const instruction=bearing.near&&goal?.arrivalAction==='talk'?(touch?'就在这里，点右侧「互动 V」开始对话。':'就在这里，按 V 开始对话。'):goal?.instruction??q.description;
+    updateHudText($('tracked-step'),controlInstruction(state.done(q.id)?'任务完成！按 I 领取奖励，然后继续下一项。':instruction,touch));
+    updateHudText($('tracked-place'),goal?bearing.text+' · '+goal.label:q.id==='survival-intro'?'⚙ 设置切换生存模式':'I 领取奖励');
+    const arrow=$('tracked-arrow'),rotation=goal?'rotate('+bearing.angle+'deg)':'none';
+    if(arrow&&arrow.style.transform!==rotation)arrow.style.transform=rotation;
+   }
+  }
   const journey=getJourney();
   if(journey?.replayRevision!==undefined&&journey.replayRevision!==lastReplayRevision){
    lastReplayRevision=journey.replayRevision;intro.reset();

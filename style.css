@@ -293,8 +293,8 @@ body:has(#loading-music-credit:not([hidden])) #menu{padding-bottom:calc(100px + 
 /* Lightweight Shanghai photo before start; the city loads after the click. */
 #entry-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;background:#18333a linear-gradient(90deg,#102b37a6,#102b3726);background-size:cover;background-position:center}
 html[data-boot-phase="welcome"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/welcome-shanghai-photo.jpg')}
-html[data-boot-phase="loading"] #entry-backdrop{background-image:linear-gradient(145deg,#172634,#25384a 55%,#182c34)}
-html[data-boot-phase="loading"][data-loading-backdrop="ready"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-ed37c8107235.jpg')}
+html[data-boot-phase="loading"] #entry-backdrop,html[data-startup-entry-photo="true"] #entry-backdrop{background-image:linear-gradient(145deg,#172634,#25384a 55%,#182c34)}
+html[data-boot-phase="loading"][data-loading-backdrop="ready"] #entry-backdrop,html[data-startup-entry-photo="true"][data-loading-backdrop="ready"] #entry-backdrop{background-image:linear-gradient(180deg,#102b3700 55%,#102b3733),url('./assets/loading-lujiazui-hd-ed37c8107235.jpg')}
 
 /* A brief chapter-one cue, anchored to the existing tracker on both layouts. */
 .quest-tracker.quest-intro-highlight::after{content:"";position:absolute;inset:-8px -10px;border:1px solid #edd494b8;border-radius:9px;box-shadow:0 0 0 3px #edd4940c,0 0 18px #f4d28524;pointer-events:none;animation:quest-intro-glow 2.4s ease-in-out infinite}
@@ -303,9 +303,17 @@ html[data-boot-phase="loading"][data-loading-backdrop="ready"] #entry-backdrop{b
 @keyframes quest-intro-glow{50%{border-color:#fff0bddb;box-shadow:0 0 0 3px #edd49414,0 0 20px #f4d28538}}
 @media(prefers-reduced-motion:reduce){.quest-tracker.quest-intro-highlight::after{animation:none}}
 html[data-boot-phase="ready"] #entry-backdrop{display:none}
+html[data-startup-entry-photo="true"] #entry-backdrop{display:block}
 html:is([data-boot-phase="welcome"],[data-boot-phase="loading"]) #world{visibility:hidden}
 html:not([data-game-started="true"]) :is(.top-actions,.menu .mode-entry,.teleport-pills,.menu-secondary,.instructions,.island-caption){display:none}
 html:not([data-game-started="true"]) .hud:not(.topbar){visibility:hidden!important}
+/* The loading photo stays in front while the browser prepares the play HUD. */
+html:is([data-startup-hud-stage="true"],[data-startup-entry-photo="true"]) #entry-backdrop{z-index:110;opacity:.998;pointer-events:auto}
+html:is([data-startup-hud-stage="true"],[data-startup-entry-photo="true"]) #menu{z-index:111}
+html[data-startup-hud-stage="true"] #world,
+html[data-startup-hud-stage="true"] .hud:not(.topbar){visibility:visible!important}
+html[data-startup-hud-stage="true"] .top-actions{display:flex!important}
+html[data-startup-hud-stage="true"] .brand-mark{display:grid!important}
 html:not([data-game-started="true"]) .menu-card{padding:18px 24px;overflow:visible;max-height:none}
 html:not([data-game-started="true"]) .menu h1{font-size:clamp(26px,min(4.6vw,8dvh),43px);line-height:1.2;margin:12px 0}
 html:not([data-game-started="true"]) .menu p{font-size:13px;line-height:1.6;margin-bottom:14px}

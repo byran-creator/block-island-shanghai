@@ -1,5 +1,19 @@
 import * as THREE from './three.module.js';
 
+export function partitionBundStaticSources(sources,cellSize){
+ const cells=new Map();
+ const center=new THREE.Vector3();
+ for(const source of sources){
+  const geometry=source.geometry;
+  if(!geometry.boundingSphere)geometry.computeBoundingSphere();
+  center.copy(geometry.boundingSphere.center).applyMatrix4(source.matrixWorld);
+  const key=Math.floor(center.x/cellSize)+','+Math.floor(center.z/cellSize);
+  if(!cells.has(key))cells.set(key,[]);
+  cells.get(key).push(source);
+ }
+ return [...cells.values()];
+}
+
 // Write the final static facade buffers directly. Keep source order and world
 // transforms identical to the previous number-array/push implementation.
 export function bundStaticGeometry(sources){

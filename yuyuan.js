@@ -8,7 +8,7 @@ import {createYuyuanGates,insideGarden} from './yuyuan-gates.js';
 import {createYuyuanCrowd} from './yuyuan-crowd.js';
 import {createYuyuanVisitors} from './yuyuan-visitors.js';
 import * as THREE from './three.module.js';
-import {batchMeshes,staticMeshes} from './mesh-batch.js';
+import {batchMeshes,batchStockSeries,staticMeshes} from './mesh-batch.js';
 import {overlaps} from './world.js';
 import {styleNpc} from './npc-appearance.js';
 import {createYuyuanRickshaws} from './yuyuan-rickshaw.js';
@@ -23,11 +23,11 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   return meshes;
  };
  const batchDetails=(group,meshes,name)=>{
-  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette,packStatic);
+  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette,packStatic,48);
   for(const mesh of batches)if(mesh.userData.rgbColors)mesh.userData.yuyuanColorBatch=true;
   return registerWallTargets(batches);
  };
- const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));const material=mats.get(key);if(!glow)solidPalette.add(material);return material;};
+ const $=id=>document.getElementById(id),mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));const material=mats.get(key);if((!glow||color!=='#ffc107')&&!material.transparent&&material.opacity===1&&!material.map&&!material.vertexColors)solidPalette.add(material);return material;};
  function cube(color,x,y,z,w,h,d,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;}
  const boardCache=new Map();
  function board(text,x,y,z,w=4,h=.8,yaw=0){
@@ -97,9 +97,10 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    boardCache.set(cacheKey,material);
   }
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
-  mesh.position.set(x,y,z);mesh.rotation.y=yaw;mesh.userData.panel=true;root.add(mesh);return mesh;
+  mesh.position.set(x,y,z);mesh.rotation.y=yaw;mesh.userData.panel=true;root.add(mesh);registerWallTargets([mesh]);return mesh;
  }
- function roof(b,y,scale=1){const rx=(b.rx+1.2)*scale,rz=(b.rz+1.2)*scale,vertices=[];for(const side of [-1,1])for(let j=0;j<5;j++){const a=j/5,c=(j+1)/5,z1=b.z+side*rz*a,z2=b.z+side*rz*c,h=t=>y+2.3*(1-t)+.65*Math.pow(t,7);vertices.push(b.x-rx,h(a),z1,b.x+rx,h(a),z1,b.x-rx,h(c),z2,b.x-rx,h(c),z2,b.x+rx,h(a),z1,b.x+rx,h(c),z2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();const material=mat('#374543').clone();material.side=THREE.DoubleSide;const mesh=new THREE.Mesh(g,material);root.add(mesh);cube('#927b50',b.x,y+2.32,b.z,rx*2+.4,.14,.18);const eaveGlow=cube('#ffd75a',b.x,y+2.36,b.z,rx*2+.3,.06,.09,true);lights.push(eaveGlow);for(const side of [-1,1]){cube('#74644c',b.x,y+.66,b.z+side*rz,rx*2+.4,.12,.17);const sideEaveZ=cube('#ffc240',b.x,y+.7,b.z+side*rz,rx*2+.3,.06,.09,true);lights.push(sideEaveZ);const sideEaveX=cube('#ffc240',b.x+side*rx,y+.7,b.z,.09,.06,rz*2+.3,true);lights.push(sideEaveX);}for(const sx of [-1,1])for(const sz of [-1,1]){const cornerX=b.x+sx*rx,cornerZ=b.z+sz*rz,tipX=cornerX+sx*.55,tipZ=cornerZ+sz*.55,tipY=y+1.12;const wing=new THREE.Mesh(box,mat('#374543'));wing.position.set((cornerX+tipX)/2,(y+.66+tipY)/2,(cornerZ+tipZ)/2);wing.scale.set(.12,.16,.75);wing.rotation.y=Math.atan2(sz,sx);wing.rotation.z=sx*.28;root.add(wing);cube('#28332c',tipX,tipY+.12,tipZ,.15,.22,.15);const wingGlow=cube('#ffd75a',(cornerX+tipX)/2,(y+.72+tipY)/2,(cornerZ+tipZ)/2,.07,.07,.78,true);wingGlow.rotation.y=Math.atan2(sz,sx);wingGlow.rotation.z=sx*.28;lights.push(wingGlow);const cornerLantern=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.35,8),mat('#e83a28',true));cornerLantern.position.set(tipX,tipY-.28,tipZ);root.add(cornerLantern);lanterns.push(cornerLantern);const core=cube('#fff5b8',tipX,tipY-.28,tipZ,.08,.22,.08,true);lights.push(core);cube('#d42d22',tipX,tipY-.52,tipZ,.03,.16,.03);}}
+ const roofMat=new THREE.MeshLambertMaterial({color:'#374543',side:THREE.DoubleSide}),roofCells=new Map();
+ function roof(b,y,scale=1){const rx=(b.rx+1.2)*scale,rz=(b.rz+1.2)*scale,vertices=[];for(const side of [-1,1])for(let j=0;j<5;j++){const a=j/5,c=(j+1)/5,z1=b.z+side*rz*a,z2=b.z+side*rz*c,h=t=>y+2.3*(1-t)+.65*Math.pow(t,7);vertices.push(b.x-rx,h(a),z1,b.x+rx,h(a),z1,b.x-rx,h(c),z2,b.x-rx,h(c),z2,b.x+rx,h(a),z1,b.x+rx,h(c),z2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();const mesh=new THREE.Mesh(g,roofMat);root.add(mesh);const roofCellKey=`${Math.floor(b.x/64)}:${Math.floor(b.z/64)}`;let cellRoofs=roofCells.get(roofCellKey);if(!cellRoofs)roofCells.set(roofCellKey,cellRoofs=[]);cellRoofs.push(mesh);cube('#927b50',b.x,y+2.32,b.z,rx*2+.4,.14,.18);const eaveGlow=cube('#ffd75a',b.x,y+2.36,b.z,rx*2+.3,.06,.09,true);lights.push(eaveGlow);for(const side of [-1,1]){cube('#74644c',b.x,y+.66,b.z+side*rz,rx*2+.4,.12,.17);const sideEaveZ=cube('#ffc240',b.x,y+.7,b.z+side*rz,rx*2+.3,.06,.09,true);lights.push(sideEaveZ);const sideEaveX=cube('#ffc240',b.x+side*rx,y+.7,b.z,.09,.06,rz*2+.3,true);lights.push(sideEaveX);}for(const sx of [-1,1])for(const sz of [-1,1]){const cornerX=b.x+sx*rx,cornerZ=b.z+sz*rz,tipX=cornerX+sx*.55,tipZ=cornerZ+sz*.55,tipY=y+1.12;const wing=new THREE.Mesh(box,mat('#374543'));wing.position.set((cornerX+tipX)/2,(y+.66+tipY)/2,(cornerZ+tipZ)/2);wing.scale.set(.12,.16,.75);wing.rotation.y=Math.atan2(sz,sx);wing.rotation.z=sx*.28;root.add(wing);cube('#28332c',tipX,tipY+.12,tipZ,.15,.22,.15);const wingGlow=cube('#ffd75a',(cornerX+tipX)/2,(y+.72+tipY)/2,(cornerZ+tipZ)/2,.07,.07,.78,true);wingGlow.rotation.y=Math.atan2(sz,sx);wingGlow.rotation.z=sx*.28;lights.push(wingGlow);const cornerLantern=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.35,8),mat('#e83a28',true));cornerLantern.position.set(tipX,tipY-.28,tipZ);root.add(cornerLantern);lanterns.push(cornerLantern);const core=cube('#fff5b8',tipX,tipY-.28,tipZ,.08,.22,.08,true);lights.push(core);cube('#d42d22',tipX,tipY-.52,tipZ,.03,.16,.03);}}
  function solidShopWall(color,x,y,z,w,h,d){
   cube(color,x,y,z,w,h,d);
   fixtureBounds.push({x,y:y-h/2,z,rx:w/2,rz:d/2,h});
@@ -219,12 +220,25 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  // Curve-following bridge posts sit outside its three-block walking deck.
  for(let i=1;i<JIUQU_BRIDGE.length;i++){const a=JIUQU_BRIDGE[i-1],b=JIUQU_BRIDGE[i],length=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/length,dz=(b[1]-a[1])/length;for(let d=0;d<=length;d+=1.5)for(const side of [-1,1]){const x=a[0]+dx*d+dz*side*1.3,z=a[1]+dz*d-dx*side*1.3;if(Math.abs(x-WATER_CORRIDOR.x)<WATER_CORRIDOR.width/2+.3&&z>=WATER_CORRIDOR.z1&&z<=WATER_CORRIDOR.z2||pathContains(x,z,JIUQU_BRIDGE,1.05)||Math.abs(x+46)<4.5&&Math.abs(z-178)<4.5)continue;cube('#806a48',x,26.4,z,.09,.8,.09);fixtureBounds.push({x,z,rx:.05,rz:.05,y:26,h:.8});}for(const side of [-1,1])for(let d=.25;d<length;d+=.5){const x=a[0]+dx*d+dz*side*1.3,z=a[1]+dz*d-dx*side*1.3;if(Math.abs(x-WATER_CORRIDOR.x)<WATER_CORRIDOR.width/2+.3&&z>=WATER_CORRIDOR.z1&&z<=WATER_CORRIDOR.z2||pathContains(x,z,JIUQU_BRIDGE,1.05)||Math.abs(x+46)<4.5&&Math.abs(z-178)<4.5)continue;const m=cube('#8e7855',x,26.77,z,.53,.065,.07);m.rotation.y=-Math.atan2(dz,dx);fixtureBounds.push({x,z,rx:dx?.265:.035,rz:dx?.035:.265,y:26.72,h:.1});}}
 
- const streetArt=createYuyuanStreetAssets(root,{cube,mat,board,getPos:localPos});fixtureBounds.push(...streetArt.fixtures);Object.assign(stocks,streetArt.stockCaps);const stockCaps={buns:12,candy:8,souvenir:6,tea:6,...streetArt.stockCaps};const collectibleNames=['江南手作纪念品','江南茶具套装','吹糖金龙','康熙通宝铜钱','老坑古玉扳指',...streetArt.shops.filter(s=>!s.food).map(s=>s.name)];
- for(const group of Object.values(streetArt.goods).flat())registerWallTargets(batchMeshes(group,staticMeshes(group),'yuyuan-street-stock'));
- const setStocks=()=>{shopArt.setStocks(stocks);streetArt.setStocks(stocks);};
- const shopArt=createYuyuanShopAssets(root,{cube,mat,board});fixtureBounds.push(...shopArt.fixtures);for(const group of Object.values(shopArt.goods).flat())registerWallTargets(batchMeshes(group,staticMeshes(group),'yuyuan-stock-item'));
+ const stockSeries=[];
+ const batchGoods=(goodsMap,prefix)=>{
+  for(const [key,units]of Object.entries(goodsMap)){
+   const entry=batchStockSeries(root,units,`${prefix}-${key}`,solidPalette);
+   if(entry){
+    registerWallTargets([entry.mesh]);
+    stockSeries.push({key,entry,max:units.length});
+   }
+   for(const group of units){const rest=staticMeshes(group);if(rest.length)registerWallTargets(batchMeshes(group,rest,prefix,solidPalette));}
+  }
+ };
+ const streetArt=createYuyuanStreetAssets(root,{cube,mat,board,getPos:localPos,simulationInterest});fixtureBounds.push(...streetArt.fixtures);Object.assign(stocks,streetArt.stockCaps);const stockCaps={buns:12,candy:8,souvenir:6,tea:6,...streetArt.stockCaps};const collectibleNames=['江南手作纪念品','江南茶具套装','吹糖金龙','康熙通宝铜钱','老坑古玉扳指',...streetArt.shops.filter(s=>!s.food).map(s=>s.name)];
+ batchGoods(streetArt.goods,'yuyuan-street-stock');
+ const setStocks=()=>{shopArt.setStocks(stocks);streetArt.setStocks(stocks);for(const s of stockSeries)s.entry.setCount(Number.isFinite(stocks[s.key])?Math.floor(stocks[s.key]):s.max);};
+ const shopArt=createYuyuanShopAssets(root,{cube,mat,board});fixtureBounds.push(...shopArt.fixtures);
+ batchGoods(shopArt.goods,'yuyuan-stock-item');
+ setStocks();
  cube('#765236',-46,26.42,175,1.9,.84,.8);fixtureBounds.push({x:-46,z:175,rx:.95,rz:.4,y:26,h:.84});for(const x of [-46.5,-46,-45.5])cube('#d0dcc9',x,26.98,175,.16,.23,.16);
- const gardenArt=createYuyuanGardenAssets(root,{cube,mat,batchDetails,buildings:YUYUAN_BUILDINGS});fixtureBounds.push(...gardenArt.fixtures);
+ const gardenArt=createYuyuanGardenAssets(root,{cube,mat,batchDetails,buildings:YUYUAN_BUILDINGS,simulationInterest});fixtureBounds.push(...gardenArt.fixtures);
  // Each willow has many leaves but the entire hanging branch moves rigidly.
  registerWallTargets(gardenArt.willowGroups);
  const classicArt=createYuyuanClassicAssets(root,{cube,mat,board,batchDetails});fixtureBounds.push(...classicArt.fixtures);
@@ -295,7 +309,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   }
  }
 
- const rickshaws=createYuyuanRickshaws({scene,root,getPos:localPos,setView,place:p=>{Object.assign(getPos(),{...p,z:p.z+YUYUAN_SHIFT});},notify,onEvent,getAudio,getSound,getVolume,getPedestrians:()=>actors});
+ const rickshaws=createYuyuanRickshaws({scene,root,getPos:localPos,setView,place:p=>{Object.assign(getPos(),{...p,z:p.z+YUYUAN_SHIFT});},notify,onEvent,getAudio,getSound,getVolume,getPedestrians:()=>actors,simulationInterest});
  function npc(index,x,z,role,color){const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const add=(c,xx,y,zz,w,h,d)=>{const m=new THREE.Mesh(box,mat(c));m.position.set(xx,y,zz);m.scale.set(w,h,d);r.add(m);return m;};const torso=add(color,0,1,0,.43,.7,.3),head=add('#d4a27b',0,1.55,0,.34,.36,.34),hair=add('#332c27',0,1.76,0,.35,.08,.35),arms=[],legs=[];for(const side of [-1,1]){arms.push(add(color,side*.28,1,0,.13,.6,.18));legs.push(add('#34413c',side*.12,.38,0,.17,.76,.22));}styleNpc({root:r,torso,head,hair,arms,legs},index,'visitor');actors.push({root:r,person:true,npcRole:role,guide:{intro:'欢迎来到豫园。湖心亭喝茶、商圈南市老街可品尝南翔小笼与选购手作，商圈有华宝楼古玩与民俗戏台，内园扩建了张南阳大假山与宋代玉玲珑。',choices:[['怎么去地铁？','从西侧牌坊沿福佑路指示去河南南路地铁口。10号线往南京东路方向坐一站，可换乘2号线去陆家嘴。']]}});}
  npc(101,-44.5,176.2,'湖心亭茶客','#b39568');npc(102,-25.5,271.2,'南翔师傅','#c6a27b');npc(103,-61.5,204.5,'灯谜向导','#9f6c79');npc(104,-34,201,'豫园游客','#79939b');npc(105,-56,201,'豫园游客','#96aa82');
  for(const [i,shop]of streetArt.shops.entries())npc(120+i,shop.x-1.7,shop.z+.3,shop.title+'店员',['#b78c66','#85936b','#a87e83'][i%3]);
@@ -306,13 +320,21 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  npc(140,-101.8,212.5,'游商糖人张','#a84232');npc(141,11.8,181.0,'挑担栗子王','#785233');npc(142,-92.2,212.0,'地摊古董刘','#4f6479');
 
  // Ultra-fast Static Mesh Batching (彻底消除卡顿与闪退：将700+发光体与宫灯全域合并为统一极速静态网格)
- const staticDynamic=new Set([...rickshaws.rickshaws.map(r=>r.group),...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(shopArt.goods).flat(),...lights,...lanterns]);
+ const roofMeshes=[...roofCells.values()].flat();
+ const staticDynamic=new Set([...rickshaws.rickshaws.map(r=>r.group),...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(streetArt.goods).flat(),...Object.values(shopArt.goods).flat(),...stockSeries.map(s=>s.entry.mesh),...lights,...lanterns,...roofMeshes]);
  batchDetails(root,staticMeshes(root,staticDynamic),'yuyuan-static-details');
- const batchedLights=batchMeshes(root,lights,'yuyuan-night-glow');
+ for(const groupRoofs of roofCells.values())registerWallTargets(batchMeshes(root,groupRoofs,'yuyuan-roof'));
+ const glowPalette=new Set([...mats.values()].filter(m=>m.isMeshBasicMaterial&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors));
+ const batchedLights=registerWallTargets(batchMeshes(root,lights,'yuyuan-night-glow',glowPalette,false,64));
  lights.splice(0,lights.length,...batchedLights);
- const batchedLanterns=registerWallTargets(batchMeshes(root,lanterns,'yuyuan-night-lanterns'));
+ const batchedLanterns=registerWallTargets(batchMeshes(root,lanterns,'yuyuan-night-lanterns',glowPalette,false,64));
  lanterns.splice(0,lanterns.length,...batchedLanterns);
- for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);}
+ for(const a of actors){a.root.removeFromParent();a.root.position.z+=YUYUAN_SHIFT;scene.add(a.root);a.root.updateMatrixWorld(true);for(const c of a.root.children)c.matrixAutoUpdate=false;}
+ root.updateMatrixWorld(true);
+ const dynamicRoots=new Set([...rickshaws.rickshaws.map(r=>r.group),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots]);
+ const keepAuto=n=>{if(dynamicRoots.has(n))return true;let k=false;for(const c of n.children)if(keepAuto(c))k=true;if(!k)n.matrixAutoUpdate=false;return k;};
+ for(const c of root.children)keepAuto(c);
+ root.matrixAutoUpdate=false;
 
  const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
  const crowd=world?createYuyuanCrowd({scene,world,simulationInterest,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);

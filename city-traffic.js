@@ -5,12 +5,14 @@ import {createBicyclePedaling} from './bicycle-pedaling.js';
 import * as THREE from './three.module.js';
 import {BUND_STREETS,roadX,westSpine,CAR_ROUTES,roadContains} from './city-layout.js';
 import {vehicleContact} from './vehicle-dynamics.js';
-import {createTrafficContacts} from './traffic-contacts.js';
+import {batchMeshes,staticMeshes} from './mesh-batch.js';
+import {createTrafficContactGrid} from './traffic-contacts.js';
 import {nanpuFloor} from './bridge-road.js';
 import {createTrafficDetour} from './traffic-detour.js';
 import {createJunctionControl} from './traffic-junctions.js';
 
 // Photo-inspired street furniture; phases and bus routes use the game's compressed scale.
+const SIGNAL_COLORS=['#ff514c','#ffc85b','#51fba9'],SIGNAL_INDEX={red:0,amber:1,green:2};
 export function signalPhase(time,offset=0){const t=((time+offset)%46+46)%46;return {ns:t<18?'green':t<21?'amber':'red',ew:t>=23&&t<41?'green':t>=41&&t<44?'amber':'red',remaining:Math.ceil(t<18?18-t:t<21?21-t:t<23?23-t:t<41?41-t:t<44?44-t:46-t)};}
 export function routeCrossings(samples,signals){const out=[];for(const signal of signals){let cluster=[];const flush=()=>{if(!cluster.length)return;const p=cluster.reduce((a,b)=>a.dist<b.dist?a:b);const i=p.index,a=samples[Math.max(0,i-2)],b=samples[Math.min(samples.length-1,i+2)];out.push({signal,d:p.d,axis:Math.abs(b.z-a.z)>Math.abs(b.x-a.x)?'ns':'ew'});cluster=[];};for(let i=0;i<samples.length;i++){const p=samples[i],dist=Math.hypot(p.x-signal.x,p.z-signal.z);if(dist<3)cluster.push({...p,index:i,dist});else flush();}flush();}return out;}
 export function forwardDistance(from,to,length,dir=1){return ((to-from)*dir%length+length)%length;}
@@ -36,14 +38,14 @@ export function trafficTravel(agent,dt,time,agents=[],getPose,onFollow=()=>{},cr
  for(const other of agents){if(other===agent||other.route!==agent.route||other.dir!==agent.dir||Math.abs(other.lane-agent.lane)>.5)continue;const gap=forwardDistance(agent.t,other.t,length,agent.dir);if(gap<length/2){const limit=Math.max(0,gap-half-(other.halfLength??1.25)-gapBuffer);if(limit<1e-6)onFollow(other);distance=Math.min(distance,limit);}}
  // Route IDs do not define a lane: buses and cars from different loops share
  // the same carriageway. Follow the vehicle ahead in physical space as well.
- const predicted=new Map(),probe={root:agent.root,halfLength:half+gapBuffer,halfWidth:(agent.halfWidth??.72)+.1};
+ let predicted=null;const probe={root:agent.root,halfLength:half+gapBuffer,halfWidth:(agent.halfWidth??.72)+.1};
  if(getPose)for(const other of agents){
   if(other===agent)continue;
   const a=agent.root.rotation.y,b=other.root.rotation.y,p=agent.root.position,q=other.root.position,dx=q.x-p.x,dz=q.z-p.z;
   // A side-by-side rider is not a leader. Curved-lane interpolation and tiny
   // lane shifts otherwise make both padded following probes reserve each other.
   if(dx*dx+dz*dz>144||Math.abs(p.y-q.y)>1.5||Math.cos(a-b)<.92||Math.abs(dx*(Math.cos(a)+Math.cos(b))-dz*(Math.sin(a)+Math.sin(b)))/2>agent.halfWidth+other.halfWidth+.3||-(dx*(Math.sin(a)+Math.sin(b))+dz*(Math.cos(a)+Math.cos(b)))<=.5)continue;
-  for(let d=0;d<=6;d+=.5){let at=predicted.get(d);if(!at){at=getPose(agent,agent.t+agent.dir*d);predicted.set(d,at);}if(vehicleContact(probe,at.x,at.y,at.z,at.yaw,other)){if(d<=.5)onFollow(other);distance=Math.min(distance,Math.max(0,d-.5));break;}}
+  for(let d=0;d<=6;d+=.5){predicted??=new Map();let at=predicted.get(d);if(!at){at=getPose(agent,agent.t+agent.dir*d);predicted.set(d,at);}if(vehicleContact(probe,at.x,at.y,at.z,at.yaw,other)){if(d<=.5)onFollow(other);distance=Math.min(distance,Math.max(0,d-.5));break;}}
  }
  return Math.max(0,distance);
 }
@@ -65,7 +67,7 @@ export function findSignalPost(signal,axis,side,world,occupied=[]){
 }
 export const trafficSeed=(index,salt=0)=>{let n=Math.imul(index+1,2654435761)^Math.imul(salt+7,1597334677);n=Math.imul(n^(n>>>16),2246822507);return ((n^(n>>>13))>>>0)/4294967296;};
 export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null,getObstacles=()=>[]}){
- const root=new THREE.Group();root.name='city-traffic-details';scene.add(root);const box=new THREE.BoxGeometry(1,1,1),mats=new Map(),buses=[],riders=[],officers=[],stops=[];
+ const root=new THREE.Group();root.name='city-traffic-details';scene.add(root);const box=new THREE.BoxGeometry(1,1,1),vLampGeo=new THREE.CylinderGeometry(.17,.17,.07,12),pLampGeo=new THREE.CylinderGeometry(.14,.14,.06,12),scooterWheelGeo=new THREE.CylinderGeometry(.29,.29,.22,12).rotateX(Math.PI/2),bikeWheelGeo=new THREE.TorusGeometry(.32,.055,5,12),mats=new Map(),buses=[],riders=[],officers=[],stops=[],cycleMarkings=[];
  const mat=(color,glow=false)=>{const key=color+glow;if(!mats.has(key))mats.set(key,glow?new THREE.MeshBasicMaterial({color}):new THREE.MeshLambertMaterial({color}));return mats.get(key);};
  function cube(parent,color,x,y,z,sx,sy,sz,glow=false){const m=new THREE.Mesh(box,mat(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=285;parent.add(m);return m;}
  function board(parent,text,x,y,z,w,h,angle=0){const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle='#9cf1da';ctx.font='bold 29px sans-serif';ctx.textAlign='center';ctx.fillText(text,128,43);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=angle;m.userData.range=240;m.userData.panel=true;parent.add(m);return {mesh:m,canvas:c,ctx,texture};}
@@ -92,7 +94,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
      cube(v,'#192731',0,0,0,.55,1.65,.28);
      const vLamps=[];
      for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-      const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));
+      const m=new THREE.Mesh(vLampGeo,mat(color,true));
       m.rotation.x=Math.PI/2;
       m.position.set(0,.5-i*.5,.18);
       m.userData.range=220;
@@ -108,7 +110,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
      cube(p,'#192731',0,0,0,.45,1.4,.24);
      const pLamps=[];
      for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-      const m=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.06,12),mat(color,true));
+      const m=new THREE.Mesh(pLampGeo,mat(color,true));
       m.rotation.x=Math.PI/2;
       m.position.set(0,.42-i*.42,.15);
       m.userData.range=220;
@@ -128,7 +130,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
     cube(r,'#192731',0,4.9,0,.55,1.65,.28);
     const lamps=[];
     for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-     const m=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.07,12),mat(color,true));
+     const m=new THREE.Mesh(vLampGeo,mat(color,true));
      m.rotation.x=Math.PI/2;
      m.position.set(0,5.4-i*.5,.18);
      m.userData.range=220;
@@ -143,9 +145,9 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   for(const dz of [-6,6]){const m=new THREE.Mesh(new THREE.PlaneGeometry(6,.15),mat('#f5eee0'));m.rotation.x=-Math.PI/2;m.position.set(signal.x+.5,26.055,signal.z+.5+dz);m.userData.range=220;root.add(m);}
  }
  for(const r of signalRoots){r.updateMatrixWorld(true);r.traverse(o=>{if(o.isMesh&&o.geometry.type==='BoxGeometry'){const b=new THREE.Box3().setFromObject(o);solids?.add(b.min.x,b.min.y,b.min.z,b.max.x,b.max.y,b.max.z,'traffic-light');}});}
- function officer(signal,i){let point;for(const [dx,dz]of [[5.5,-8],[-5.5,8],[8,-8]])if(clearPoint(signal.x+dx,signal.z+dz)&&!roadContains(signal.x+dx,signal.z+dz)){point={x:signal.x+dx,z:signal.z+dz};break;}if(!point)return;const r=new THREE.Group();r.position.set(point.x,26,point.z);root.add(r);cube(r,'#88b4d5',0,1,0,.46,.7,.3);cube(r,'#d4eb69',0,1.06,-.17,.45,.53,.08);for(const y of [.86,1.23])cube(r,'#eef6ed',0,y,-.22,.47,.06,.03);cube(r,'#e3b38b',0,1.61,0,.34,.34,.33);cube(r,'#f0f2ee',0,1.83,0,.43,.15,.42);cube(r,'#243649',0,1.77,-.17,.4,.06,.14);for(const x of [-.12,.12])cube(r,'#293a52',x,.38,0,.18,.76,.23);const arm=new THREE.Group();arm.position.set(.31,1.3,0);cube(arm,'#88b4d5',0,-.22,0,.16,.45,.18);cube(arm,'#f2efdf',0,-.49,0,.17,.18,.18);r.add(arm);cube(r,'#88b4d5',-.3,1,0,.16,.58,.18);styleNpc({root:r,torso:r.children[0],head:r.children[4],arms:[arm,r.children[10]],legs:[r.children[7],r.children[8]]},i,'officer');officers.push({root:r,arm,signal,phase:i});}
+ function officer(signal,i){let point;for(const [dx,dz]of [[5.5,-8],[-5.5,8],[8,-8]])if(clearPoint(signal.x+dx,signal.z+dz)&&!roadContains(signal.x+dx,signal.z+dz)){point={x:signal.x+dx,z:signal.z+dz};break;}if(!point)return;const r=new THREE.Group();r.position.set(point.x,26,point.z);root.add(r);cube(r,'#88b4d5',0,1,0,.46,.7,.3);cube(r,'#d4eb69',0,1.06,-.17,.45,.53,.08);for(const y of [.86,1.23])cube(r,'#eef6ed',0,y,-.22,.47,.06,.03);cube(r,'#e3b38b',0,1.61,0,.34,.34,.33);cube(r,'#f0f2ee',0,1.83,0,.43,.15,.42);cube(r,'#243649',0,1.77,-.17,.4,.06,.14);for(const x of [-.12,.12])cube(r,'#293a52',x,.38,0,.18,.76,.23);const arm=new THREE.Group();arm.position.set(.31,1.3,0);cube(arm,'#88b4d5',0,-.22,0,.16,.45,.18);cube(arm,'#f2efdf',0,-.49,0,.17,.18,.18);r.add(arm);cube(r,'#88b4d5',-.3,1,0,.16,.58,.18);styleNpc({root:r,torso:r.children[0],head:r.children[4],arms:[arm,r.children[10]],legs:[r.children[7],r.children[8]]},i,'officer');r.updateMatrixWorld(true);for(const c of r.children)if(c!==arm)c.traverse(o=>{o.matrixAutoUpdate=false;});officers.push({root:r,arm,signal,phase:i});}
  signals.filter((s,i)=>i!==2&&s.id!=='stele-66').forEach(officer);
- function bus(route,i){const r=new THREE.Group();r.name='blue-white-city-bus';root.add(r);cube(r,'#e7eeed',0,1.1,0,1.65,1.65,4.8);cube(r,'#287aad',0,.42,0,1.7,.38,4.82);cube(r,'#273d4a',0,1.56,-2.43,1.45,.92,.05);cube(r,'#395866',0,1.5,2.43,1.45,.85,.05);cube(r,'#e8eeed',0,2.02,0,1.7,.15,4.9);for(const x of [-.83,.83]){for(let z=-1.65;z<=1.75;z+=.8)cube(r,'#578b9b',x,1.48,z,.05,.8,.67);for(const z of [-1.5,1.5])cube(r,'#202d35',x,.3,z,.18,.6,.6);}for(const z of [-1.45,.9])cube(r,'#213b49',-.85,1,z,.05,1.3,.6);cube(r,'#a3cad1',-.88,1.2,-1.45,.03,.82,.46);board(r,route.id==='bund'?'游1 · 滨江环线':'游2 · 陆家嘴',0,1.87,-2.47,1.35,.24);const lights=[-.54,.54].map(x=>cube(r,'#fff4ae',x,.66,-2.48,.24,.17,.06,true));const t=80+i*route.samples.lengthMeters/2;return {root:r,lights,route:route.samples,t:t%route.samples.lengthMeters,dir:1,lane:2.2,speed:2.6,halfLength:2.45,halfWidth:.93,height:2.1,kind:'bus',stopD:80,stopCooldown:0,dwell:0,crossings:routeCrossings(route.samples,signals)};}
+ function bus(route,i){const r=new THREE.Group();r.name='blue-white-city-bus';root.add(r);cube(r,'#e7eeed',0,1.1,0,1.65,1.65,4.8);cube(r,'#287aad',0,.42,0,1.7,.38,4.82);cube(r,'#273d4a',0,1.56,-2.43,1.45,.92,.05);cube(r,'#395866',0,1.5,2.43,1.45,.85,.05);cube(r,'#e8eeed',0,2.02,0,1.7,.15,4.9);for(const x of [-.83,.83]){for(let z=-1.65;z<=1.75;z+=.8)cube(r,'#578b9b',x,1.48,z,.05,.8,.67);for(const z of [-1.5,1.5])cube(r,'#202d35',x,.3,z,.18,.6,.6);}for(const z of [-1.45,.9])cube(r,'#213b49',-.85,1,z,.05,1.3,.6);cube(r,'#a3cad1',-.88,1.2,-1.45,.03,.82,.46);board(r,route.id==='bund'?'游1 · 滨江环线':'游2 · 陆家嘴',0,1.87,-2.47,1.35,.24);const lights=[-.54,.54].map(x=>cube(r,'#fff4ae',x,.66,-2.48,.24,.17,.06,true));r.updateMatrixWorld(true);for(const c of r.children)c.traverse(o=>{o.matrixAutoUpdate=false;});const t=80+i*route.samples.lengthMeters/2;return {root:r,lights,route:route.samples,t:t%route.samples.lengthMeters,dir:1,lane:2.2,speed:2.6,halfLength:2.45,halfWidth:.93,height:2.1,kind:'bus',stopD:80,stopCooldown:0,dwell:0,crossings:routeCrossings(route.samples,signals)};}
  for(const route of CAR_ROUTES.filter(r=>['bund','pudong'].includes(r.id)))for(let i=0;i<2;i++)buses.push(bus(route,i));
  // Follow the street block around instead of turning across both live traffic lanes.
  const rear=CAR_ROUTES.find(r=>r.id==='bund').samples;
@@ -164,11 +166,11 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   const count=Math.ceil(route.lengthMeters/2),paint=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1,1),mat('#426b62'),count),edge=new THREE.InstancedMesh(new THREE.PlaneGeometry(.07,.8),mat('#c4dcc3'),count),stamp=new THREE.Object3D();
   paint.name='curb-cycle-lane';edge.name='cycle-lane-divider';
   for(let i=0;i<count;i++){const d=i*2,a=routePose(route,d,4),b=routePose(route,Math.min(d+2,route.lengthMeters-.001),4);stamp.position.set((a.x+b.x)/2+.5,26.065,(a.z+b.z)/2+.5);stamp.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stamp.scale.set(1,Math.max(.1,Math.hypot(b.x-a.x,b.z-a.z)),1);stamp.updateMatrix();paint.setMatrixAt(i,stamp.matrix);const p=routePose(route,d,3.4);stamp.position.set(p.x+.5,26.075,p.z+.5);stamp.scale.set(1,1,1);stamp.updateMatrix();edge.setMatrixAt(i,stamp.matrix);}
-  for(const mesh of [paint,edge]){mesh.userData.range=285;mesh.computeBoundingSphere();root.add(mesh);}
+  for(const mesh of [paint,edge]){mesh.userData.range=285;mesh.computeBoundingSphere();root.add(mesh);cycleMarkings.push(mesh);}
  }
  function rider(route,i){
   const seedIndex=i+(route===outer?5:0),delivery=i>0,color=delivery?(i%2?'#f6c74b':'#55acd4'):'#af7968',r=new THREE.Group();r.name=delivery?'delivery-scooter':'city-bicycle';root.add(r);const wheels=[];
-  for(const z of [-.65,.65]){const wheel=new THREE.Mesh(delivery?new THREE.CylinderGeometry(.29,.29,.22,12).rotateX(Math.PI/2):new THREE.TorusGeometry(.32,.055,5,12),mat('#263540'));wheel.rotation.y=Math.PI/2;wheel.position.set(0,.34,z);wheel.userData.range=200;r.add(wheel);wheels.push(wheel);cube(r,delivery?'#53616a':color,0,.52,z,.07,.45,.09);}
+  for(const z of [-.65,.65]){const wheel=new THREE.Mesh(delivery?scooterWheelGeo:bikeWheelGeo,mat('#263540'));wheel.rotation.y=Math.PI/2;wheel.position.set(0,.34,z);wheel.userData.range=200;r.add(wheel);wheels.push(wheel);cube(r,delivery?'#53616a':color,0,.52,z,.07,.45,.09);}
   if(delivery){
    r.userData.electric=true;
    // Step-through scooter: broad floorboard, battery body, fairing and rear delivery box.
@@ -183,12 +185,27 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   const torso=cube(r,color,0,1.49,.1,.43,.52,.28),head=cube(r,'#e0b18a',0,1.92,.06,.31,.31,.3),hat=cube(r,delivery?color:'#3d3030',0,2.08,.06,delivery?.4:.32,delivery?.17:.09,.36),arms=[],legs=[];
   for(const x of [-.22,.22]){const arm=cube(r,color,x,1.47,-.23,.13,.47,.17);arm.rotation.x=-.8;arms.push(arm);if(delivery){const thigh=cube(r,'#415069',x*.68,1.04,-.04,.17,.5,.18);thigh.rotation.x=-.7;legs.push(thigh,cube(r,'#415069',x*.68,.84,-.28,.17,.32,.18));}else legs.push(cube(r,'#415069',x*.65,.87,.1,.16,.55,.18));}
   styleNpc({root:r,torso,head,hair:delivery?null:hat,arms,legs},seedIndex,delivery?'delivery':'visitor');
+  const prePedaling=r.children.length;
   const phase=trafficSeed(seedIndex,9)*Math.PI*2,pedaling=delivery?null:createBicyclePedaling({legs,phase,makePart:(...args)=>cube(r,...args)});
+  r.updateMatrixWorld(true);
+  const keepAuto=new Set([...wheels,...legs]);for(let k=prePedaling;k<r.children.length;k++)r.children[k].traverse(o=>keepAuto.add(o));
+  for(const c of r.children)if(!keepAuto.has(c))c.traverse(o=>{o.matrixAutoUpdate=false;});
   return {root:r,wheels,pedaling,route,t:route.lengthMeters*(i/5+trafficSeed(seedIndex,33)*.17),dir:1,lane:4,speed:(delivery?1.35:.95)+trafficSeed(seedIndex,12)*1.5,halfLength:1.06,halfWidth:.45,height:2.22,phase,kind:delivery?'delivery':'bicycle',crossings:routeCrossings(route,signals),deliveryD:route.lengthMeters*trafficSeed(seedIndex,47),deliveryDwell:0,deliveryCooldown:0};
  }
  for(const route of [rear,outer])for(let i=0;i<5;i++)riders.push(rider(route,i));
  for(const b of buses.filter((b,i)=>i%2===0)){const p=routePose(b.route,b.stopD,5.6),a=p.yaw,x=p.x+.5,z=p.z+.5;if(!clearPoint(x,z))continue;const r=new THREE.Group();r.position.set(x,26,z);root.add(r);const bund=b.route===rear,name=bund?'滨江候车点':'陆家嘴候车点';r.add(createBusStopSign({name,code:bund?'游1':'游2',line:bund?'滨江环线':'陆家嘴环线',stations:bund?['滨江候车点','南京路步行街']:['陆家嘴候车点'],yaw:a}));stops.push({root:r,route:b.route,d:b.stopD,yaw:a,name});}
+ const excluded=new Set([...buses.map(b=>b.root),...riders.map(r=>r.root),...officers.map(o=>o.root),...signals.flatMap(s=>s.heads.flatMap(h=>[...h.lamps,h.counter.mesh]))]);
+ const staticTraffic=staticMeshes(root,excluded).filter(m=>!m.userData.panel&&!m.material?.map);
+ const solidPalette=new Set(staticTraffic.map(m=>m.material).filter(m=>m&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors&&(m.isMeshBasicMaterial||(m.isMeshLambertMaterial&&m.emissive.r===0&&m.emissive.g===0&&m.emissive.b===0))));
+ const trafficBatches=batchMeshes(root,staticTraffic,'traffic-static-furniture',solidPalette,false,64);
+ root.updateMatrixWorld(true);
+ root.matrixAutoUpdate=false;
+ for(const r of signalRoots)r.traverse(o=>{o.matrixAutoUpdate=false;});
+ for(const s of stops)s.root.traverse(o=>{o.matrixAutoUpdate=false;});
+ for(const m of cycleMarkings)m.matrixAutoUpdate=false;
+ for(const b of trafficBatches)b.matrixAutoUpdate=false;
  for(const c of cars)c.crossings=routeCrossings(c.route,signals);
+ const contactPool=createTrafficContactGrid();
  const agents=[...cars,...buses,...riders];agents.forEach((a,i)=>a.trafficId=i);let clock=0,first=0,junctionClock=-1,junctions=createJunctionControl(undefined,{getPose:junctionPose});
  // The active list can shrink on player takeover. Only the active prefix is used.
  const travelled=new Float64Array(agents.length);
@@ -199,8 +216,11 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   for(const q of c.detour.path){const length=Math.hypot(q.x-p.x,q.z-p.z),yaw=length>.001?Math.atan2(q.x-p.x,q.z-p.z)+Math.PI:p.yaw;if(d<=length)return {x:p.x+(q.x-p.x)*d/length,y:p.y,z:p.z+(q.z-p.z)*d/length,yaw};d-=length;p={...q,yaw};}return p;
  }
  function worldClear(c,p){const cos=Math.cos(p.yaw),sin=Math.sin(p.yaw);for(const dx of [-c.halfWidth,0,c.halfWidth])for(const dz of [-c.halfLength,0,c.halfLength]){const x=p.x+dx*cos+dz*sin,z=p.z-dx*sin+dz*cos,h=nanpuFloor(world,x,z),y=h!==null&&Math.abs(h-p.y)<1.5?Math.ceil(h):p.y;if(world.get(Math.floor(x),Math.floor(y),Math.floor(z))||world.get(Math.floor(x),Math.floor(y)+1,Math.floor(z)))return false;}return true;}
- let contactGrid=null,gridObstacles=null,gridAllObstacles=null;
- function contact(c,p,obstacles){if(contactGrid&&(obstacles===gridObstacles||obstacles===gridAllObstacles))return contactGrid.test(c,p,obstacles===gridAllObstacles);return agents.some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o))||obstacles.some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o));}
+ let contactGrid=null;
+ function contact(c,p,obstacles,includePlayer=false){
+  if(contactGrid)return contactGrid.test(c,p,includePlayer);
+  return agents.some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o))||obstacles.some(o=>vehicleContact(c,p.x,p.y,p.z,p.yaw,o));
+ }
  function setPose(c,p){c.root.position.set(p.x,p.y,p.z);c.root.rotation.order='YXZ';c.root.rotation.y=p.yaw;c.x=p.x-.5;c.z=p.z-.5;contactGrid?.update(c);}
  // Complete-body checks verify lane 4 around both loops. Cars and buses use +/-2.2.
  // Do not silently move bicycles back to the centre of the carriageway.
@@ -238,15 +258,13 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   const other=state.other,clear=Math.hypot(other.root.position.x-state.start.x,other.root.position.z-state.start.z)>6;
   if(clear||state.age>12)state.returning=true;c.waitTime+=step;
  }
- function advance(step){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}
-  const playerPos=getPos?getPos():null;
-  const obstacles=getObstacles();
+ const trafficOccupied=new Set();let lastTrafficLights=null;
+ function advance(step,playerPos,obstacles,hasPlayerContact){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}
   const playerRiding=playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
-   const occupied=new Set();
+   trafficOccupied.clear();const occupied=trafficOccupied;
    for(const id of ['bund-66','stele-66'])if(!playerRiding&&pedestrianCrossingOccupied(playerPos,id)||obstacles.some(o=>o.person&&o.root.visible!==false&&pedestrianCrossingOccupied(o.root.position,id)))occupied.add(id);
    const crosswalkOccupied=signal=>occupied.has(signal.id);
-  const allObstacles=!playerRiding&&playerPos&&playerPos.y>=25&&playerPos.y<=28?[...obstacles,{root:{position:playerPos},person:true,height:1.85}]:obstacles;
-  gridObstacles=obstacles;gridAllObstacles=allObstacles;contactGrid=createTrafficContacts(agents,obstacles,allObstacles===obstacles?null:allObstacles.at(-1));
+  const includePlayer=hasPlayerContact&&!playerRiding;
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(c.yielding){reverseYield(c,step,obstacles);continue;}
    // If two different turns have already met, one driver backs up physically
@@ -278,27 +296,36 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    // A lane offset travels a longer arc than the centreline on tight bends.
    // Limit the rider's actual displacement instead of jumping around that arc.
    if(['delivery','bicycle'].includes(c.kind)&&travel>0){const p=c.root.position,budget=c.currentSpeed*step*1.15;if(Math.hypot(at.x-p.x,at.z-p.z)>budget){let low=0,high=travel;for(let k=0;k<10;k++){const mid=(low+high)/2,q=pose(c,c.t+c.dir*mid);if(Math.hypot(q.x-p.x,q.z-p.z)<=budget)low=mid;else high=mid;}travel=low;t=(c.t+c.dir*travel+c.route.lengthMeters)%c.route.lengthMeters;at=pose(c,t);}}
-   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,allObstacles))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;c.pedaling?.advance(travel);for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
-  }first=(first+1)%agents.length;contactGrid=null;gridObstacles=null;gridAllObstacles=null;
+   const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,obstacles,includePlayer))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;c.pedaling?.advance(travel);for(const wheel of c.wheels??[])wheel.rotation.z-=travel/.32;
+  }first=(first+1)%agents.length;
  }
  function tick(dt,{night=false,rain=0}={}){
   if(dt>0){
    processDetours();
+   // The other simulation systems run between ticks. Moving traffic agents
+   // update their own grid entries through setPose during every substep.
+   const playerPos=getPos?.(),obstacles=getObstacles();
+   const hasPlayerContact=!!playerPos&&playerPos.y>=25&&playerPos.y<=28;
+   const player=hasPlayerContact?{root:{position:playerPos},person:true,height:1.85}:null;
+   contactPool.reset(agents,obstacles,player);contactGrid=contactPool;
    let remaining=dt;
    travelled.fill(0,0,agents.length);
-   while(remaining>1e-8){
-    const step=Math.min(remaining,1/30);
-    remaining-=step;
-    advance(step);
-    for(let i=0;i<agents.length;i++)travelled[i]+=agents[i].travelSpeed*step;
-   }
+   try{
+    while(remaining>1e-8){
+     const step=Math.min(remaining,1/30);
+     remaining-=step;
+     advance(step,playerPos,obstacles,hasPlayerContact);
+     for(let i=0;i<agents.length;i++)travelled[i]+=agents[i].travelSpeed*step;
+    }
+   }finally{contactGrid=null;}
    for(let i=0;i<agents.length;i++)agents[i].travelSpeed=travelled[i]/dt;
   }
-  for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];head.lamps.forEach((m,i)=>m.material=mat(i===['red','amber','green'].indexOf(status)?['#ff514c','#ffc85b','#51fba9'][i]:'#263638',true));const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
-  for(const c of agents)for(const light of c.lights??[])light.visible=night||rain>.2;
+  for(const s of signals){const phase=signalPhase(clock,s.offset);for(const head of s.heads){const status=phase[head.axis];if(head.lastStatus!==status){head.lastStatus=status;const idx=SIGNAL_INDEX[status];for(let i=0;i<head.lamps.length;i++)head.lamps[i].material=mat(i===idx?SIGNAL_COLORS[i]:'#263638',true);}const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
+  const lightsOn=night||rain>.2;if(lightsOn!==lastTrafficLights){lastTrafficLights=lightsOn;for(const c of agents)for(const light of c.lights??[])light.visible=lightsOn;}
   for(const o of officers){o.arm.rotation.x=signalPhase(clock,o.signal.offset).ns==='green'?-Math.PI/2:-.15;o.root.rotation.y=Math.PI/2;}
  }
  for(const b of buses)if(forwardDistance(b.t,b.stopD,b.route.lengthMeters,b.dir)<.03){b.dwell=6+(b.phase%1)*1.5;b.stopCooldown=14;}
+ const trafficColliders=[...buses,...riders];
  tick(0,{});
- return {tick,buses,riders,signals,officers,stops,agents,junctions,get time(){return clock;},collides:(x,y,z)=>[...buses,...riders].some(c=>{if(y>=c.root.position.y+c.height||y+1.75<=c.root.position.y)return false;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;return Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<c.halfWidth+.29&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<c.halfLength+.29;})};
+ return {tick,buses,riders,signals,officers,stops,agents,junctions,get time(){return clock;},collides:(x,y,z)=>{for(let i=0;i<trafficColliders.length;i++){const c=trafficColliders[i];if(y>=c.root.position.y+c.height||y+1.75<=c.root.position.y)continue;const dx=x-c.root.position.x,dz=z-c.root.position.z,a=c.root.rotation.y;if(Math.abs(dx*Math.cos(a)-dz*Math.sin(a))<c.halfWidth+.29&&Math.abs(dx*Math.sin(a)+dz*Math.cos(a))<c.halfLength+.29)return true;}return false;}};
 }

@@ -3,6 +3,7 @@ import {rickshawMetroClear,rickshawMetroSweepClear} from './rickshaw-clearance.j
 import * as THREE from './three.module.js';
 import { YUYUAN_SHIFT } from './yuyuan-layout.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
+import {createSimulationStep} from './simulation-interest.js';
 
 function batchRickshawStatic(r){
  for(const wheel of r.wheels)batchMeshes(wheel,staticMeshes(wheel),'rickshaw-wheel-details');
@@ -65,15 +66,20 @@ for (let i = 0; i < TOUR_ROUTE.length; i++) {
  TOTAL_LENGTH += len;
 }
 
+function findSegment(d) {
+ let lo = 0, hi = SEGMENTS.length - 1;
+ while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (SEGMENTS[mid].startDist <= d) lo = mid; else hi = mid - 1; }
+ return SEGMENTS[lo];
+}
 function getRoutePose(distance) {
  const d = ((distance % TOTAL_LENGTH) + TOTAL_LENGTH) % TOTAL_LENGTH;
- const seg = SEGMENTS.find(s => d >= s.startDist && d < s.startDist + s.length) || SEGMENTS[0];
+ const seg = findSegment(d);
  const t = (d - seg.startDist) / (seg.length || 1);
  const x = seg.from[0] + t * (seg.to[0] - seg.from[0]);
  const z = seg.from[1] + t * (seg.to[1] - seg.from[1]);
  // Look ahead for continuous smooth curve tangent yaw (平滑四角转向)
  const dNext = (d + 1.2) % TOTAL_LENGTH;
- const segNext = SEGMENTS.find(s => dNext >= s.startDist && dNext < s.startDist + s.length) || seg;
+ const segNext = findSegment(dNext);
  const tNext = (dNext - segNext.startDist) / (segNext.length || 1);
  const xNext = segNext.from[0] + tNext * (segNext.to[0] - segNext.from[0]);
  const zNext = segNext.from[1] + tNext * (segNext.to[1] - segNext.from[1]);
@@ -81,7 +87,7 @@ function getRoutePose(distance) {
  return { x, z, yaw };
 }
 
-export function createYuyuanRickshaws({ scene, root, getPos, setView, place, notify, onEvent = () => {}, getAudio = null, getSound = () => true, getVolume = () => .28, getPedestrians = () => [] }) {
+export function createYuyuanRickshaws({ scene, root, getPos, setView, place, notify, onEvent = () => {}, getAudio = null, getSound = () => true, getVolume = () => .28, getPedestrians = () => [], simulationInterest = null }) {
  const voice=createRickshawAudio({getPos,getAudio,getSound,getVolume});
  function speakRickshawHawking(r,type='warn') {const accepted=voice.request(()=>r.group.position,type);if(accepted&&type==='warn')notify('黄包车夫：'+RICKSHAW_LINES.warn);return accepted;}
  const rickshaws = [];
@@ -298,8 +304,13 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
  let elapsed = 0;
  let lastVoiceTime = 0;
  let lastPasserbyVoiceTime = 0;
+ const rickshawBounds = new THREE.Box3();
+ for (const [x, z] of TOUR_ROUTE) rickshawBounds.expandByPoint(new THREE.Vector3(x, 26, z + YUYUAN_SHIFT));
+ rickshawBounds.expandByScalar(6);
+ const stepOffscreen = createSimulationStep(.2, .1);
 
  function tick(dt, keys = new Set(), externalPedestrians = null) {
+  if (dt > 0 && !ride && simulationInterest) { dt = stepOffscreen(dt, simulationInterest.seesBox(rickshawBounds, 95)); if (dt <= 0) return; }
   elapsed += dt;
   voice.tick(dt);
   const peds = externalPedestrians ?? (getPedestrians ? getPedestrians() : []);

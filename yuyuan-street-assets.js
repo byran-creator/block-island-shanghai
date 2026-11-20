@@ -2,7 +2,7 @@ import * as THREE from './three.module.js';
 import {YUYUAN_BUILDINGS,GARDEN_PONDS} from './yuyuan-layout.js';
 
 // Geometry stays in district-local coordinates; the district root supplies Z+60.
-export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
+export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simulationInterest=null}){
  const fixtures=[],dynamicRoots=new Set(),shops=[],extraShops=[],goods={},stockCaps={};
  const vendors=[],swayingObjects=[],flickeringLights=[],shopLights=[];
  
@@ -20,6 +20,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
 
  const boxGeometry=new THREE.BoxGeometry(1,1,1),sphere=new THREE.SphereGeometry(1,8,5),cylinder=new THREE.CylinderGeometry(1,1,1,10),ring=new THREE.TorusGeometry(1,.075,4,12);
  const glassMaterial=new THREE.MeshLambertMaterial({color:'#d9ece8',transparent:true,opacity:.2,depthWrite:false});
+ const gauzeMat=new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#b71c1c',transparent:true,opacity:0.65,depthWrite:false});
  const timber='#57372a',gold='#c8a663',cream='#eee1bd';
 
  function mesh(parent,g,c,x,y,z,sx,sy,sz){const m=new THREE.Mesh(g,typeof c==='string'?mat(c):c);m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m;}
@@ -246,7 +247,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
   flickeringLights.push({mat: coreMat, baseColor: new THREE.Color('#ffc107'), phase: phaseOffset});
 
   // Translucent Crimson silk gauze outer lampshade (红里透黄薄纱红罩)
-  const gauzeMat = new THREE.MeshLambertMaterial({color:'#e53935', emissive:'#b71c1c', transparent:true, opacity:0.65, depthWrite:false});
+
   const body = new THREE.Mesh(cylinder, gauzeMat);
   body.position.set(0, -0.36*scale, 0);
   body.scale.set(.28*scale, .52*scale, .28*scale);
@@ -263,6 +264,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
   box(g, '#d82d22', 0, -0.82*scale, 0, .05*scale, .36*scale, .05*scale);
   disk(g, gold, 0, -0.64*scale, 0, .06*scale, .025*scale);
 
+  g.updateMatrixWorld(true);for(const c of g.children)c.matrixAutoUpdate=false;
   swayingObjects.push({group: g, phase: phaseOffset, speed: 1.6, maxAngleZ: 0.08, maxAngleX: 0.05, type: 'lantern'});
   return g;
  }
@@ -551,6 +553,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
    box(flagGroup, gold, poleDir*(poleLen-.2), -1.26, 0, .025, .05, .66);
    box(flagGroup, '#d42d22', poleDir*(poleLen-.2), -1.34, 0, .02, .12, .6);
   }
+  flagGroup.updateMatrixWorld(true);for(const c of flagGroup.children)c.matrixAutoUpdate=false;
   swayingObjects.push({group: flagGroup, phase: x*1.9+z*2.7, speed: 2.1, maxAngleZ: 0.11, maxAngleX: 0.05, type: 'flag'});
 
   // Hanging lanterns placed flanking outside signboard boundaries to never block calligraphy text
@@ -844,7 +847,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
  setStocks();
 
  // Animation tick: smooth harmonic swaying in the wind + soft hazy breathing glow (30Hz节流避免逐帧CPU占用)
- let clock = 0, animTimer = 0, districtNear = false;
+ root.updateWorldMatrix(true,true);const swayBounds=new THREE.Box3(),swayPos=new THREE.Vector3();for(let i=0;i<swayingObjects.length;i++){swayingObjects[i].group.getWorldPosition(swayPos);swayBounds.expandByPoint(swayPos);}if(!swayBounds.isEmpty())swayBounds.expandByScalar(2.5);let clock = 0, animTimer = 0, districtNear = false, swaySkipped = false;
  function tick(dt, {night=false}={}){
   clock += dt;
   animTimer += dt;
@@ -856,7 +859,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null}){
   }else districtNear=true;
   // Visibility must update while paused or before the animation throttle yields.
   for(const sl of shopLights)sl.visible=night&&districtNear;
-  if(animTimer < 0.033) return;
+  if(dt>0&&simulationInterest&&!swayBounds.isEmpty()&&!simulationInterest.seesBox(swayBounds,95)){swaySkipped=true;return;}if(!swaySkipped&&animTimer < 0.033) return;swaySkipped = false;
   animTimer = 0;
   const t = clock;
   // 1. Lanterns & flags sway gently in the breeze

@@ -105,9 +105,9 @@ export function createParkLife({scene,world,getPos,getVehicles=()=>[],hasTerrain
   actor.root.rotation.y=pose.yaw;
  }
  function region(items,isNear,district,districtRoutes,lazy=false,visibility=null){
-  const root=new THREE.Group();root.name=district+'-people';root.visible=false;scene.add(root);
+  const root=new THREE.Group();root.name=district+'-people';root.visible=false;scene.add(root);{const update=root.updateMatrixWorld;let skipped=false;root.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}update.call(this,force||skipped);skipped=false;};}
   const people=items.map(([kind,npcRole,start,intro,question,answer,appearance,streetRoute],i)=>{
-   const model=new THREE.Group();root.add(model);model.visible=false;
+   const model=new THREE.Group();root.add(model);model.visible=false;{const update=model.updateMatrixWorld;let skipped=false;model.updateMatrixWorld=function(force){if(!this.visible){skipped=true;return;}update.call(this,force||skipped);skipped=false;};}
    const route=streetRoute??districtRoutes[kind];
    const actor={root:model,kind:(lazy?'street-':'park-')+kind,person:true,npcRole,district,appearance,
     guide:{intro,choices:[[question,answer]]},route,distance:route?route.lengthMeters*start:0,phase:i,
