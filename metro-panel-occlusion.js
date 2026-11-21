@@ -67,11 +67,12 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],ha
   materials.push(entry);
   entry.mesh.material=fogOnly;
  }
- function prepare(camera,fog){
+ function prepare(camera,fog,skipUnderground=false){
   restore();
   if(!camera.isPerspectiveCamera)return;
   eye.setFromMatrixPosition(camera.matrixWorld);
   if(eye.y>45)return;
+  const checkUnderground=!skipUnderground||eye.y<24||camera.userData.probeMetroPanelWalls!==undefined||camera.userData.probeMetroPanelFloors!==undefined||camera.userData.probeMetroPanelFog!==undefined;
   camera.getViewBounds(camera.near,nearMin,nearMax);
   const nearRadius=Math.hypot(camera.near,Math.max(Math.abs(nearMin.x),Math.abs(nearMax.x)),Math.max(Math.abs(nearMin.y),Math.abs(nearMax.y)));
   frustum.setFromProjectionMatrix(projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
@@ -87,6 +88,7 @@ export function createMetroPanelOcclusion(roots,hasTopFace,surfaceOpenings=[],ha
   const camMask=camera.layers.mask;
   for(let pIdx=0;pIdx<panels.length;pIdx++){
    const entry=panels[pIdx],{mesh,geometry,matrix,bounds,plane,surface,visOwner}=entry;
+   if(!surface&&!checkUnderground)continue;
    if(surface&&!surfaceEnabled)continue;
    if(visOwner&&!visOwner.visible)continue;
    if(!mesh.visible||mesh.geometry!==geometry||!mesh.frustumCulled||!(mesh.layers.mask&camMask))continue;

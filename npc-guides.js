@@ -14,7 +14,19 @@ export function createNpcGuides({scene,world,civil,activity,getPos,getVehicles,p
  }
  for(const p of people){if(p.npcRole||p.metroRole)role(p,p.npcRole||p.metroRole,'#9ed6ef');else if(p.signal)role(p,'交警','#a5d9ff');else if(p.name)role(p,p.food?'美食商贩':'纪念品商贩','#ffd58a');else if(p.kind==='delivery-walk')role(p,'外卖小哥','#a9ebc0');}
  for(const p of civil.traffic.riders)if(p.kind==='delivery')role(p,'外卖小哥','#a9ebc0');
- function nearest(){const p=getPos();return roles.filter(r=>r.actor.root.visible!==false&&Math.abs(r.actor.root.position.y-p.y)<2&&r.actor.root.position.distanceTo(new THREE.Vector3(p.x,p.y,p.z))<2.8).sort((a,b)=>a.actor.root.position.distanceToSquared(p)-b.actor.root.position.distanceToSquared(p))[0];}
+ function nearest(){
+  const p=getPos(),px=p.x,py=p.y,pz=p.z;
+  let best=null,bestD2=2.8*2.8;
+  for(let i=0;i<roles.length;i++){
+   const r=roles[i],ar=r.actor.root;
+   if(ar.visible===false)continue;
+   const ap=ar.position,dy=ap.y-py;
+   if(dy<-2||dy>2)continue;
+   const dx=ap.x-px,dz=ap.z-pz,d2=dx*dx+dy*dy+dz*dz;
+   if(d2<bestD2){bestD2=d2;best=r;}
+  }
+  return best;
+ }
  function close(resumeGame=true){if(!panel)return;panel=false;$('npc-dialog').close();document.body?.classList.remove('in-dialogue','in-conversation');const done=conversation;conversation=null;if(replyComplete&&done?.answer)onConversation({type:'city-conversation',district:done.actor.district,kind:done.actor.kind,name:done.name,topic:done.topic,text:done.answer});if(resumeGame)resume();}
  function button(title,action){const b=document.createElement('button');b.className='recipe-card';b.textContent=title;b.onclick=()=>{replyComplete=true;action();};$('npc-actions').appendChild(b);}
  function use(){const r=nearest();if(!r)return false;lookAt({x:r.actor.root.position.x,y:r.actor.root.position.y+1.5,z:r.actor.root.position.z});pause();panel=true;replyComplete=false;document.body?.classList.add('in-dialogue','in-conversation');$('npc-title').textContent=r.title;$('npc-actions').replaceChildren();
@@ -31,7 +43,15 @@ export function createNpcGuides({scene,world,civil,activity,getPos,getVehicles,p
  function beginTick(){for(const [root,r]of reactions){root.position.sub(r.applied);root.rotation.z=r.roll;r.applied.set(0,0,0);}}
  function tick(dt){
   for(const [root,r]of reactions){r.time=Math.max(0,r.time-dt);const next=r.offset.clone().addScaledVector(r.velocity,dt);r.velocity.multiplyScalar(Math.exp(-7*dt));if(!r.time)next.multiplyScalar(Math.exp(-6*dt));const p=root.position.clone().add(next);if(!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z))r.offset.copy(next);root.position.add(r.offset);r.applied.copy(r.offset);root.rotation.z=r.roll+Math.sin(r.time*22)*Math.min(.18,r.time*.2);if(!r.time&&r.offset.length()<.005){root.position.sub(r.applied);root.rotation.z=r.roll;reactions.delete(root);}}
-  const dialogueOpen=panel||document.body?.classList.contains?.('in-conversation'),p=getPos();for(const r of roles){const d=r.actor.root.position.distanceToSquared(p);r.tag.visible=!dialogueOpen&&d<14*14&&d>(r.actor.metroRole?3.5*3.5:1.1*1.1);}const r=nearest();$('guide-prompt').hidden=dialogueOpen||!r;$('guide-prompt').textContent=r?`V 与${r.title}对话`:'';
+  const dialogueOpen=panel||document.body?.classList.contains?.('in-conversation'),p=getPos(),px=p.x,py=p.y,pz=p.z;
+  let r=null,bestD2=2.8*2.8;
+  for(let i=0;i<roles.length;i++){
+   const roleEntry=roles[i],ar=roleEntry.actor.root,ap=ar.position;
+   const dx=ap.x-px,dy=ap.y-py,dz=ap.z-pz,d=dx*dx+dy*dy+dz*dz;
+   roleEntry.tag.visible=!dialogueOpen&&d<14*14&&d>(roleEntry.actor.metroRole?3.5*3.5:1.1*1.1);
+   if(ar.visible!==false&&dy>-2&&dy<2&&d<bestD2){bestD2=d;r=roleEntry;}
+  }
+  $('guide-prompt').hidden=dialogueOpen||!r;$('guide-prompt').textContent=r?`V 与${r.title}对话`:'';
  }
  return {actors,roles,use,close,tick,beginTick,impact,isPanelOpen:()=>panel};
 }

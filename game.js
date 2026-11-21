@@ -218,7 +218,7 @@ const terrainMaterial=new THREE.MeshLambertMaterial({map:atlas,vertexColors:true
 const chunks=new Map(),chunksByNum=new Map(),chunkNum=(cx,cz)=>(cx+4096)*8192+(cz+4096);
 const SUPER_GRID=3,superChunks=new Map(),dirtySuperGroups=new Set(),editedSuperGroups=new Set();
 let nearSuperCx=Math.floor(LANDMARKS.bund.x/CHUNK),nearSuperCz=Math.floor(LANDMARKS.bund.z/CHUNK);
-const isNearSuperChunk=(cx,cz)=>Math.abs(cx-nearSuperCx)<=1&&Math.abs(cz-nearSuperCz)<=1;
+const isNearSuperChunk=()=>false;
 const superGroupKey=(cx,cz)=>Math.floor(cx/SUPER_GRID)+','+Math.floor(cz/SUPER_GRID);
 function dissolveSuperGroup(sgKey){
  const prev=superChunks.get(sgKey);
@@ -280,11 +280,12 @@ function buildSuperGroup(sgKey){
  superMesh.matrixAutoUpdate=false;
  superMesh.userData.range=maxRange;
  if(anyRgb)superMesh.userData.rgbColors=true;
+ let bBe=false,bJh=false,bJa=false;
  for(const m of members){
   const [cx,cz]=m.userData.chunkKey.split(',').map(Number);
-  if(beijingEastFacadeChunk(cx,cz))beijingEastWash.bakeMesh(superMesh);
-  if(jiujiangHankouChunk(cx,cz,CHUNK))jiujiangHankouWash.bakeMesh(superMesh);
-  if(jinganLightChunk(cx,cz,CHUNK))jinganWash.bakeMesh(superMesh);
+  if(!bBe&&beijingEastFacadeChunk(cx,cz)){bBe=true;beijingEastWash.bakeMesh(superMesh);}
+  if(!bJh&&jiujiangHankouChunk(cx,cz,CHUNK)){bJh=true;jiujiangHankouWash.bakeMesh(superMesh);}
+  if(!bJa&&jinganLightChunk(cx,cz,CHUNK)){bJa=true;jinganWash.bakeMesh(superMesh);}
  }
  streetBounce?.bakeMesh(superMesh);
  for(const m of members)m.layers.mask=0;
@@ -408,7 +409,18 @@ const pos={...LANDMARKS.bund},keys=new Set(),direction=new THREE.Vector3(),press
 const inputKeys={has:key=>keys.has(key)||!!touchMovement?.has(key),axes:()=>movementAxes(keys,touchMovement?.vector)};
 await loadingStage('正在准备外滩街景与交通…');
 const testBundBatches=runtimeParams.get('test')==='1'&&runtimeParams.get('bundBatchCells')==='1';
-civil=createBund({scene,world,simulationInterest,staticBatchCell:testBundBatches?192:0,batchProof:testBundBatches&&runtimeParams.get('bundBatchProof')==='1',onEvent:recordCityEvent,getPos:()=>pos,getObstacles:()=>[...(commute?.vehicles??[]),...(commute?.owners??[]),...(npcGuides?.actors.filter(a=>a.person)??[]),...(activity?.bundWalkers?.map(b=>({root:b.root,person:true}))??[])],notify,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;}});weather=createWeather({scene,camera,world,sunBlock,clouds,cloudMat,bellyMat,water,terrainMaterial});
+const sharedBundObstacles=[];let cachedNpcPersons=null,cachedBundWalkerObs=null;
+function getBundObstacles(){
+ sharedBundObstacles.length=0;
+ if(commute?.vehicles)for(const v of commute.vehicles)sharedBundObstacles.push(v);
+ if(commute?.owners)for(const o of commute.owners)sharedBundObstacles.push(o);
+ if(npcGuides&&!cachedNpcPersons)cachedNpcPersons=npcGuides.actors.filter(a=>a.person);
+ if(cachedNpcPersons)for(let i=0;i<cachedNpcPersons.length;i++)sharedBundObstacles.push(cachedNpcPersons[i]);
+ if(activity&&!cachedBundWalkerObs)cachedBundWalkerObs=activity.bundWalkers.map(b=>({root:b.root,person:true}));
+ if(cachedBundWalkerObs)for(let i=0;i<cachedBundWalkerObs.length;i++)sharedBundObstacles.push(cachedBundWalkerObs[i]);
+ return sharedBundObstacles;
+}
+civil=createBund({scene,world,simulationInterest,staticBatchCell:testBundBatches?192:0,batchProof:testBundBatches&&runtimeParams.get('bundBatchProof')==='1',onEvent:recordCityEvent,getPos:()=>pos,getObstacles:getBundObstacles,notify,place:p=>{Object.assign(pos,p);vy=0;},setView:(a,p)=>{yaw=a;pitch=p;setFlight(false);gliding=false;}});weather=createWeather({scene,camera,world,sunBlock,clouds,cloudMat,bellyMat,water,terrainMaterial});
 let timeOptions=clockOptions(),lastClockLabel='';
 let dayClock=36,lastSky=-1,talkDone=false,followDone=false,celebrated=false;
 const cityMedia=createCityMedia({scene});
@@ -645,7 +657,7 @@ function frame(now){
   camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);outline.visible=!!target;if(target)outline.position.set(target.x+.5,target.y+.5,target.z+.5);
   if((mouseHeld!==-1||inputKeys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
   hudTime+=dt;if(hudTime>.15){hudText('coordinates',`X ${(pos.x-40).toFixed(1)} · Y ${pos.y.toFixed(1)} · Z ${(pos.z-40).toFixed(1)}`);hudText('target',target?BLOCKS[target.id].name:'');const nearby=life?.hasUseTarget()?null:companions.nearest(pos,camera),npcVis=!!nearby;if(npcVis!==lastNpcPrompt){(hudEls.npcPrompt??$('npc-prompt'))?.classList.toggle('visible',npcVis);lastNpcPrompt=npcVis;}hudText('npc-prompt',nearby?`奶龙 · G 打招呼 / 跳舞 · H ${nearby.follow?'停止跟随':'一起散步'}`:'');hudTime=0;}
-  updateHudHidden(hudEls.glideStatus??$('glide-status'),!gliding);hudText('glide-status',grounded?'滑翔伞准备好了 · 走向边缘起飞':'滑翔中 · WASD 转向 · Shift 下降 · P 收伞');simulationInterest.beginFrame();life.tick(dt,{night:dayClock>=120,moving:inputKeys.has('KeyW')||inputKeys.has('KeyA')||inputKeys.has('KeyS')||inputKeys.has('KeyD'),racing:!!adventure.state.race});companions.update(dt,pos,camera,elapsed);const effect=adventure.tick(dt,pos,elapsed,dayClock>=120);if(effect?.bounce&&!flying){vy=effect.bounce;grounded=false;beep(1);}
+  updateHudHidden(hudEls.glideStatus??$('glide-status'),!gliding);if(gliding)hudText('glide-status',grounded?'滑翔伞准备好了 · 走向边缘起飞':'滑翔中 · WASD 转向 · Shift 下降 · P 收伞');life.tick(dt,{night:dayClock>=120,moving:inputKeys.has('KeyW')||inputKeys.has('KeyA')||inputKeys.has('KeyS')||inputKeys.has('KeyD'),racing:!!adventure.state.race});companions.update(dt,pos,camera,elapsed);const effect=adventure.tick(dt,pos,elapsed,dayClock>=120);if(effect?.bounce&&!flying){vy=effect.bounce;grounded=false;beep(1);}
  }else if(!started){chunkWork.process(isMobile?2:3);if(!chunkWork.pending)flushSuperGroups(2);camera.position.set(32+Math.sin(elapsed*.03)*1.5,29.8,68+Math.cos(elapsed*.025)*1.0);camera.lookAt(126,52,42);outline.visible=false;}
  const area=soundScene(pos,dayClock>=120);
  music.update({playing:active||story?.filming,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden,sceneTrack:area.track,dt});
@@ -653,7 +665,7 @@ function frame(now){
  const festival=adventure?.isShowActive(),showTime=adventure?.show.elapsed??0;
  skyline.tick(active?dt:0,{night:dayClock>=120,festival,time:elapsed,showTime});
  updateSky(active?dt:0);const climate=weather.tick(active?dt:0,dayClock);const hts=hudEls.hudTimeSlider??$('hud-time-slider');if(hts&&!isScrubbingTime&&document.activeElement!==hts){const mins=String(clockMinutes(dayClock));if(hts.value!==mins)hts.value=mins;}civil.tick(active?dt:0,{night:dayClock>=120,rain:climate.rain,dayClock,festival,showTime});if(carried){const q=boatWorld(carried.root,carried.local);pos.x+=q.x-carried.old.x;pos.z+=q.z-carried.old.z;pos.y+=carried.root.position.y+carried.top-carried.y;camera.position.set(pos.x,pos.y+1.62,pos.z);}hudText('weather-status',climate.name+' · 湿度 '+climate.humidity+'%');const sWeather=hudEls.settingsWeather??$('settings-weather-status');if(sWeather)hudText('settings-weather-status',(hudEls.weatherStatus??$('weather-status'))?.textContent??'');const sRender=hudEls.settingsRender??$('settings-render-mode'),rMode=hudEls.renderMode??$('render-mode');if(sRender&&rMode)hudText('settings-render-mode',rMode.textContent);if(clouds.tick)clouds.tick(active?dt:0,elapsed,climate);
- if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
+ if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&(commute?.ride?.vehicle||(pos.y<=28.5&&pos.x>=-40))&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
  const flashOp=active?String(Math.max(0,(trafficHitUntil-elapsed-.6)*.6)):'0';if(flashOp!==lastFlashOpacity){trafficFlash.style.opacity=flashOp;lastFlashOpacity=flashOp;}
  sceneAudio.update(active?dt:0,{playing:active,hidden:document.hidden,sound,volume:music.volume,pos,yaw,agents:civil.traffic.agents,vendors:()=>[...(activity?.vendors??[]),...(yuyuan?.vendors??[])],riding:commute?.isRiding()||activity?.isRiding()||yuyuan?.isRiding()||metro?.isRiding(),walking:footContact&&Math.abs(vy)<.6&&!flying&&!gliding&&!story?.filming&&!isSwimming({feet:pos.y,dry:metroInterior(pos)}),travel:footTravel,dialogue:npcGuides?.isPanelOpen(),night:dayClock>=120,rain:climate.rain,weatherType:climate.type,rainExposure:climate.rain>.01?rainExposure(world,pos):0});
  yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?inputKeys:new Set(),camera,highView:isHighView(),isMobile});privateSuites?.tick(active,active?dt:0);towerInteriors?.tick(active);restaurant?.tick(active?dt:0);if(towerInteriors?.getPrompt())updateHudHidden(hudEls.skylinePrompt??$('skyline-prompt'),true);if(privateSuites?.getPrompt())updateHudHidden(hudEls.peacePrompt??$('peace-prompt'),true);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);parkLife.tick(active?dt:0);npcGuides?.tick(active?dt:0);rainCrowd?.tick(active?dt:0,climate.rain);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?inputKeys:new Set());updateHudHidden(hudEls.commuteStatus??$('commute-status'),!active||!commuteText);hudText('commute-label',commuteText||'');const drive=commute?.ride?.vehicle;updateHudHidden(hudEls.driveMeter??$('drive-meter'),!drive||!['bicycle','car'].includes(drive.kind));const power=Math.round(Math.abs(drive?.throttle??0)*100),dtEl=hudEls.driveThrottle??$('drive-throttle');if(dtEl&&Number(dtEl.value)!==power)dtEl.value=power;hudText('drive-power',drive?.brake?'刹车':power+'%');const civilPrompt=civil?.getPrompt?.(),guideEl=hudEls.guidePrompt??$('guide-prompt');if(civilPrompt&&active&&!commute?.isRiding()&&!yuyuan?.isRiding()){updateHudHidden(guideEl,false);updateHudText(guideEl,civilPrompt);}else if(!active||commute?.isRiding()||yuyuan?.isRiding())updateHudHidden(guideEl,true);updateHudHidden(hudEls.runStatus??$('run-status'),!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding);if(!isMobile&&!touch)hudText('run-status',isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步');const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch)??privateSuites?.cameraPose(yaw,pitch)??towerInteriors?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}const inConv=Boolean(document.body.classList?.contains?.('in-conversation'));const highW=isHighView();for(const label of wayfindingLabels){const d2=label.position.distanceToSquared(camera.position);label.visible=!inConv&&d2>16&&(highW?d2<(isMobile?16900:32400):d2<9025);}story?.tick(active?dt:0,active&&!document.hidden);contextGuideClock+=dt;if(contextGuideClock>=.25||(!active||document.hidden||story?.filming)&&contextGuide.current){contextGuide.tick(Math.min(contextGuideClock,.25),{playing:active&&!document.hidden,journey:story?.state,pos,touch:isMobile||touch,creative:!life?.state.survival,nearCar:commuteText==='V 接管汽车',night:dayClock>=120,nearBund:Math.hypot(pos.x-LANDMARKS.bund.x,pos.z-LANDMARKS.bund.z)<45,quiet:!!story?.filming||inConv||Boolean(document.body.classList?.contains?.('quest-intro-showing'))});contextGuideClock=0;}if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}photo?.update();renderScene();performanceProbe?.frame(now,performance.now()-probeStart,active||story?.filming);
@@ -1088,7 +1100,7 @@ if(renderer.isWebGLRenderer){
    const r=o.userData?.range;
    const forceTrafficPanel=root.name==='city-traffic-details'&&Boolean(o.userData?.panel);
    if(!forceTrafficPanel&&!(r>0&&r<=160))return;
-   const effRange=r>0?r:285;
+   const effRange=(isMobile&&o.name==='street-products')?22:(r>0?r:285);
    if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();
    if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
    let isStatic=true;
@@ -1102,9 +1114,41 @@ if(renderer.isWebGLRenderer){
  collectShortRange(scene.getObjectByName('city-traffic-details'));
  collectShortRange(scene.getObjectByName('nanjing-street-life'));
  collectShortRange(scene.getObjectByName('peace-restaurant-interior'));
- const peaceRestaurantInterior=scene.getObjectByName('peace-restaurant-interior');
+ const peaceRestaurantInterior=skipHiddenMatrices(scene.getObjectByName('peace-restaurant-interior'));
+ for(const interior of metroInteriors)skipHiddenMatrices(interior);
+ const yuyuanInteriorDetails=yuyuan?.root?.getObjectByName('yuyuan-interior-details');
  const riverfrontSuites=scene.getObjectByName('my-riverfront-suites');
  const suitesBox=riverfrontSuites?new THREE.Box3().setFromObject(riverfrontSuites):null;
+ const origSceneUpdateMW=scene.updateMatrixWorld;
+ scene.updateMatrixWorld=function(force){
+  if(!force&&camera?.isPerspectiveCamera&&!savedEdits.size&&!story?.filming&&!photo?.opened){
+   const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z;
+   if(camY>=38&&peaceRestaurantInterior?.visible){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
+   const foot=camera===startupPreview?startupPreviewFoot:pos;
+   if(!metroInterior(foot)&&camY>=25.8&&surfaceOpeningBoxes.length){
+    const pcx=Math.floor(camX/CHUNK),pcz=Math.floor(camZ/CHUNK);
+    let groundLoaded=true;
+    for(let dx=-1;dx<=1&&groundLoaded;dx++)for(let dz=-1;dz<=1;dz++){
+     if(!chunksByNum.has(chunkNum(pcx+dx,pcz+dz))){groundLoaded=false;break;}
+    }
+    if(groundLoaded){
+     let nearAny=false;
+     if(camY<34){
+      for(let i=0;i<surfaceOpeningBoxes.length;i++){
+       const box=surfaceOpeningBoxes[i],dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
+       if(dx*dx+dz*dz<=784){nearAny=true;break;}
+      }
+     }
+     if(!nearAny){
+      for(const interior of metroInteriors){
+       if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
+      }
+     }
+    }
+   }
+  }
+  origSceneUpdateMW.call(this,force);
+ };
  const beforeOcclusion=scene.onBeforeRender,afterOcclusion=scene.onAfterRender;
  scene.onBeforeRender=function(renderer,scene,camera,target){
   beforeOcclusion.call(this,renderer,scene,camera,target);
@@ -1114,6 +1158,8 @@ if(renderer.isWebGLRenderer){
   if(jinganNight&&!jinganNightRegistered){jinganNightRegistered=true;collectShortRange(jinganNight);}
   if(!renderer.clippingPlanes.length&&camera.layers.mask===1){
    const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z,camMask=camera.layers.mask;
+   const hasFrustum=Boolean(camera.isPerspectiveCamera);
+   if(hasFrustum)metroGateFrustum.setFromProjectionMatrix(metroGateProj.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
    const highView=isHighView(camera),highInteriorCull=camY>=38,highMobileMicroCull=isMobile&&camY>=42,shortScale=isMobile&&highView?(camY>=38?.55:.7):1;
    if(highInteriorCull&&peaceRestaurantInterior?.visible){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
    if(riverfrontSuites?.visible&&suitesBox){
@@ -1128,7 +1174,7 @@ if(renderer.isWebGLRenderer){
     const effR=entry.r*shortScale;
     if(entry.box){
      const b=entry.box,dx=Math.max(b.min.x-camX,0,camX-b.max.x),dy=Math.max(b.min.y-camY,0,camY-b.max.y),dz=Math.max(b.min.z-camZ,0,camZ-b.max.z);
-     if(dx*dx+dy*dy+dz*dz>effR*effR){o.visible=false;tempShortRangeHidden.push(o);}
+     if(dx*dx+dy*dy+dz*dz>effR*effR||(hasFrustum&&!metroGateFrustum.intersectsBox(b))){o.visible=false;tempShortRangeHidden.push(o);}
     }else{
      shortRangeSphere.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
      const c=shortRangeSphere.center,dx=c.x-camX,dy=c.y-camY,dz=c.z-camZ,maxD=effR+shortRangeSphere.radius;
@@ -1141,7 +1187,7 @@ if(renderer.isWebGLRenderer){
      if(!wash.visible||!range||!box)continue;
      const effRange=highView?range*1.15:range;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>effRange*effRange){wash.visible=false;tempShortRangeHidden.push(wash);}
+     if(dx*dx+dy*dy+dz*dz>effRange*effRange||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){wash.visible=false;tempShortRangeHidden.push(wash);}
     }
    }
    if(civil?.staticBatches){
@@ -1150,33 +1196,34 @@ if(renderer.isWebGLRenderer){
      const m=civil.staticBatches[i],box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>farSq){m.visible=false;tempShortRangeHidden.push(m);}
+     if(dx*dx+dy*dy+dz*dz>farSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
    }
-   wallCull.prepare(camera);
+   if(yuyuanInteriorDetails?.visible!==false)wallCull.prepare(camera);
    if(!savedEdits.size&&!story?.filming&&!photo?.opened){
     const foot=camera===startupPreview?startupPreviewFoot:pos;
     const insideMetro=metroInterior(foot);
-    if(!insideMetro&&camera.isPerspectiveCamera&&camera.position.y>=25.8&&surfaceOpeningBoxes.length){
+    let hidMetroInteriors=false;
+    if(!insideMetro&&hasFrustum&&camera.position.y>=25.8&&surfaceOpeningBoxes.length){
      const pcx=Math.floor(camera.position.x/CHUNK),pcz=Math.floor(camera.position.z/CHUNK);
      let groundLoaded=true;
      for(let dx=-1;dx<=1&&groundLoaded;dx++)for(let dz=-1;dz<=1;dz++){
       if(!chunksByNum.has(chunkNum(pcx+dx,pcz+dz))){groundLoaded=false;break;}
      }
      if(groundLoaded){
-      metroGateFrustum.setFromProjectionMatrix(metroGateProj.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
       const seesOpening=camY<34&&surfaceOpeningBoxes.some(box=>{
        const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
        return dx*dx+dz*dz<=784&&metroGateFrustum.intersectsBox(box);
       });
       if(!seesOpening){
+       hidMetroInteriors=true;
        for(const interior of metroInteriors){
         if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
        }
       }
      }
     }
-    metroPanels.prepare(camera,scene.fog);
+    metroPanels.prepare(camera,scene.fog,hidMetroInteriors);
     if(insideMetro)metroRoof.prepare(camera);
    }
    {
@@ -1185,14 +1232,14 @@ if(renderer.isWebGLRenderer){
      const box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>farSq){m.visible=false;tempShortRangeHidden.push(m);}
+     if(dx*dx+dy*dy+dz*dz>farSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
     for(const m of chunks.values()){
      if(m.layers.mask!==1||!m.visible)continue;
      const box=m.geometry?.boundingBox;
      if(!box)continue;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>farSq){m.visible=false;tempShortRangeHidden.push(m);}
+     if(dx*dx+dy*dy+dz*dz>farSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
    }
   }
@@ -1213,10 +1260,10 @@ scene.updateMatrixWorld(true);
 scene.getObjectByName('photo-referenced-led-media')?.traverse(o=>{o.matrixAutoUpdate=false;});
 const transferPassage=scene.getObjectByName('nanjing-paid-transfer-passage');
 if(transferPassage){transferPassage.matrixAutoUpdate=false;const inner=transferPassage.getObjectByName('occluded-metro-interior');if(inner)inner.matrixAutoUpdate=false;}
-function freezeStaticSubtrees(node){if(node.userData.skipHiddenMatrices)return false;let allStatic=!node.matrixAutoUpdate;for(let i=0;i<node.children.length;i++)if(!freezeStaticSubtrees(node.children[i]))allStatic=false;if(allStatic&&node!==scene&&node.children.length>0&&node.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld){const orig=node.updateMatrixWorld;node.updateMatrixWorld=function(force){if(force||this.matrixWorldNeedsUpdate)orig.call(this,force);};}return allStatic;}
+function freezeStaticSubtrees(node){let allStatic=!node.matrixAutoUpdate&&!node.userData.skipHiddenMatrices;for(let i=0;i<node.children.length;i++)if(!freezeStaticSubtrees(node.children[i]))allStatic=false;if(allStatic&&node!==scene&&node.children.length>0&&node.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld){const orig=node.updateMatrixWorld;node.updateMatrixWorld=function(force){if(force||this.matrixWorldNeedsUpdate)orig.call(this,force);};}return allStatic;}
 freezeStaticSubtrees(scene);
 scene.matrixAutoUpdate=false;
-const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?165:235,highStaticMaxDist:isMobile?85:155,highDynamicMaxDist:isMobile?68:165});
+const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:235,highStaticMaxDist:isMobile?78:155,dynamicMaxDist:isMobile?74:185,highDynamicMaxDist:isMobile?64:165});
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming||!!startupPreview});
 const startupParams=runtimeParams;
 const testWarmup=startupParams.get('test')==='1'&&startupParams.get('turnWarmup')==='1'&&renderer.isWebGLRenderer&&!document.hidden;

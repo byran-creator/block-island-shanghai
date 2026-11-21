@@ -412,7 +412,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
     const dx=playerWorld.x-s.worldCenter.x,dz=playerWorld.z-s.worldCenter.z,d2=dx*dx+dz*dz;
     if(rideTrainState)vis=rideTrainState.station===idx||rideTrainState.next===idx||d2<160*160;
     else if(metroNearUnderground)vis=observerIndex===idx||d2<82*82;
-    else vis=s.worldExits.some(e=>(playerWorld.x-e.x)**2+(playerWorld.z-e.z)**2<45*45);
+    else vis=playerWorld.y<34&&s.worldExits.some(e=>(playerWorld.x-e.x)**2+(playerWorld.z-e.z)**2<45*45);
    }
    s.visible=vis;
    for(const n of s.visualNodes)n.visible=vis;

@@ -28,7 +28,7 @@ function isStaticChain(o,scene){
 
 function fastSkipOwner(o,scene){
  for(let p=o.parent;p&&p!==scene;p=p.parent){
-  if(p.userData?.sealedHiddenInstances||p.userData?.skipHiddenMatrices||p.name==='occluded-metro-interior'||p.name==='drone-show'||p.name==='lujiazui-searchlight-beams'||p.name==='choreographed-harbour-fireworks'||p.name==='yuyuan-eaves-and-window-light')return p;
+  if(p.userData?.sealedActorRadius>0||p.userData?.sealedHiddenInstances||p.userData?.skipHiddenMatrices||p.name==='occluded-metro-interior'||p.name==='drone-show'||p.name==='lujiazui-searchlight-beams'||p.name==='choreographed-harbour-fireworks'||p.name==='yuyuan-eaves-and-window-light')return p;
  }
  return null;
 }
@@ -37,7 +37,7 @@ let globalFrame=0;
 
 // Share draw submissions for identical opaque parts. Source scene objects remain
 // intact for walking, doors, dialogue, seats, collision and save logic.
-export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist=Infinity,highStaticMaxDist=staticMaxDist,highDynamicMaxDist=Infinity}={}){
+export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist=Infinity,highStaticMaxDist=staticMaxDist,dynamicMaxDist=Infinity,highDynamicMaxDist=dynamicMaxDist}={}){
  const candidates=new Map(),batches=[],frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),inverse=new THREE.Matrix4(),matrix=new THREE.Matrix4(),cellBox=new THREE.Box3(),tmpBox=new THREE.Box3();
  let frame=0,lastCamObj=null,lastCamX=NaN,lastCamY=NaN,lastCamZ=NaN,lastCamFar=NaN,lastWe0=NaN,lastWe2=NaN,lastWe5=NaN,lastWe8=NaN,lastWe10=NaN,lastPe0=NaN,lastPe5=NaN,lastPe10=NaN;
  function hierarchy(o){
@@ -106,13 +106,16 @@ export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist
    for(let i=0;i<sources.length;i++){
     const s=sources[i],fs=fastSkipOwner(s,scene),owner=fs||s.parent||scene,last=ownerRuns[ownerRuns.length-1];
     if(last&&last.owner===owner)last.end=i+1;
-    else ownerRuns.push({owner,start:i,end:i+1,fastSkip:!!fs,sealed:!!owner.userData?.sealedHiddenInstances,hiddenSynced:false,rigid:false,rcx:0,rcy:0,rcz:0,rr:0});
+    else{
+     const ar=owner.userData?.sealedActorRadius;
+     ownerRuns.push({owner,start:i,end:i+1,fastSkip:!!fs,sealed:!!(owner.userData?.sealedHiddenInstances||ar>0),sealedActor:ar>0,hiddenSynced:false,culledSynced:true,rigid:ar>0,rcx:0,rcy:ar>0?1:0,rcz:0,rr:ar>0?ar:0});
+    }
    }
    const invOwner=new THREE.Matrix4(),relMat=new THREE.Matrix4(),centers=[];
    const gbs=first.geometry.boundingSphere,gbx=gbs.center.x,gby=gbs.center.y,gbz=gbs.center.z,gbr=gbs.radius;
    for(let r=0;r<ownerRuns.length;r++){
     const run=ownerRuns[r],{owner,start,end}=run;
-    if(owner===scene||end-start<2||owner.matrixWorld.determinant()===0)continue;
+    if(run.sealedActor||owner===scene||end-start<2||owner.matrixWorld.determinant()===0)continue;
     let rigid=true;
     for(let i=start;i<end&&rigid;i++){
      const s=entries[i].source;
@@ -174,7 +177,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist
  }
  function update(camera){
   frame=++globalFrame;
-  const ce=camera.matrixWorld.elements,camX=ce[12],camY=ce[13],camZ=ce[14],camFar=camera.far||270,staticFar=Math.min(camFar,camY>=38?highStaticMaxDist:staticMaxDist),staticFarSq=staticFar*staticFar,dynFar=camY>=40?Math.min(camFar,highDynamicMaxDist):Infinity;
+  const ce=camera.matrixWorld.elements,camX=ce[12],camY=ce[13],camZ=ce[14],camFar=camera.far||270,staticFar=Math.min(camFar,camY>=38?highStaticMaxDist:staticMaxDist),staticFarSq=staticFar*staticFar,dynLimit=camY>=38?highDynamicMaxDist:dynamicMaxDist,dynFar=dynLimit<Infinity?Math.min(camFar,dynLimit):Infinity;
   const pe=camera.projectionMatrix.elements,we=camera.matrixWorldInverse.elements;
   const camMoved=camera!==lastCamObj||Math.abs(camX-lastCamX)>1e-5||Math.abs(camY-lastCamY)>1e-5||Math.abs(camZ-lastCamZ)>1e-5||Math.abs(camFar-lastCamFar)>1e-3||Math.abs(we[0]-lastWe0)>1e-5||Math.abs(we[2]-lastWe2)>1e-5||Math.abs(we[5]-lastWe5)>1e-5||Math.abs(we[8]-lastWe8)>1e-5||Math.abs(we[10]-lastWe10)>1e-5||Math.abs(pe[0]-lastPe0)>1e-5||Math.abs(pe[5]-lastPe5)>1e-5||Math.abs(pe[10]-lastPe10)>1e-5;
   if(camMoved){lastCamObj=camera;lastCamX=camX;lastCamY=camY;lastCamZ=camZ;lastCamFar=camFar;lastWe0=we[0];lastWe2=we[2];lastWe5=we[5];lastWe8=we[8];lastWe10=we[10];lastPe0=pe[0];lastPe5=pe[5];lastPe10=pe[10];}
@@ -338,30 +341,42 @@ export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist
     let runAllInside=false;
     if(run.rigid&&(ownerFlags&3)===3){
      let stillRigid=true;
-     for(let i=run.start;i<run.end;i++){
-      const e=entries[i],s=e.source,m=e.origMat;
-      if(s.parent!==e.cachedParent||s.matrixAutoUpdate||!s.frustumCulled||s.geometry!==e.origGeo||s.material!==m||m.transparent||m.opacity!==1){stillRigid=false;break;}
-      if(useColor&&m.emissive&&(m.emissive.r!==0||m.emissive.g!==0||m.emissive.b!==0)){stillRigid=false;break;}
+     if(!run.sealedActor){
+      for(let i=run.start;i<run.end;i++){
+       const e=entries[i],s=e.source,m=e.origMat;
+       if(s.parent!==e.cachedParent||s.matrixAutoUpdate||!s.frustumCulled||s.geometry!==e.origGeo||s.material!==m||m.transparent||m.opacity!==1){stillRigid=false;break;}
+       if(useColor&&m.emissive&&(m.emissive.r!==0||m.emissive.g!==0||m.emissive.b!==0)){stillRigid=false;break;}
+      }
      }
      if(!stillRigid){
       run.rigid=false;
      }else{
       const oe=owner.matrixWorld.elements;
-      const wx=oe[0]*run.rcx+oe[4]*run.rcy+oe[8]*run.rcz+oe[12];
-      const wy=oe[1]*run.rcx+oe[5]*run.rcy+oe[9]*run.rcz+oe[13];
-      const wz=oe[2]*run.rcx+oe[6]*run.rcy+oe[10]*run.rcz+oe[14];
-      const osx=oe[0]*oe[0]+oe[1]*oe[1]+oe[2]*oe[2],osy=oe[4]*oe[4]+oe[5]*oe[5]+oe[6]*oe[6],osz=oe[8]*oe[8]+oe[9]*oe[9]+oe[10]*oe[10];
-      const wr=run.rr*Math.sqrt(osx>=osy?(osx>=osz?osx:osz):(osy>=osz?osy:osz));
-      if(dynFar<Infinity){const ddx=wx-camX,ddy=wy-camY,ddz=wz-camZ,dMax=dynFar+wr;if(ddx*ddx+ddy*ddy+ddz*ddz>dMax*dMax){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}}
-      const d0=wx*p0nx+wy*p0ny+wz*p0nz+p0c;if(d0<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
-      const d1=wx*p1nx+wy*p1ny+wz*p1nz+p1c;if(d1<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
-      const d2=wx*p2nx+wy*p2ny+wz*p2nz+p2c;if(d2<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
-      const d3=wx*p3nx+wy*p3ny+wz*p3nz+p3c;if(d3<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
-      const d4=wx*p4nx+wy*p4ny+wz*p4nz+p4c;if(d4<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
-      const d5=wx*p5nx+wy*p5ny+wz*p5nz+p5c;if(d5<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
-      runAllInside=d0>=wr&&d1>=wr&&d2>=wr&&d3>=wr&&d4>=wr&&d5>=wr;
+      const wx=run.sealedActor?oe[12]:(oe[0]*run.rcx+oe[4]*run.rcy+oe[8]*run.rcz+oe[12]);
+      const wy=run.sealedActor?(oe[13]+run.rcy):(oe[1]*run.rcx+oe[5]*run.rcy+oe[9]*run.rcz+oe[13]);
+      const wz=run.sealedActor?oe[14]:(oe[2]*run.rcx+oe[6]*run.rcy+oe[10]*run.rcz+oe[14]);
+      let wr=run.rr;
+      if(!run.sealedActor){
+       const osx=oe[0]*oe[0]+oe[1]*oe[1]+oe[2]*oe[2],osy=oe[4]*oe[4]+oe[5]*oe[5]+oe[6]*oe[6],osz=oe[8]*oe[8]+oe[9]*oe[9]+oe[10]*oe[10];
+       wr*=Math.sqrt(osx>=osy?(osx>=osz?osx:osz):(osy>=osz?osy:osz));
+      }
+      let distInside=true;
+      if(dynFar<Infinity){
+       const ddx=wx-camX,ddy=wy-camY,ddz=wz-camZ,dSq=ddx*ddx+ddy*ddy+ddz*ddz,dMax=dynFar+wr;
+       if(dSq>dMax*dMax){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+       const dMin=dynFar-wr;distInside=dMin>0&&dSq<=dMin*dMin;
+      }
+      const d0=wx*p0nx+wy*p0ny+wz*p0nz+p0c;if(d0<-wr){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+      const d1=wx*p1nx+wy*p1ny+wz*p1nz+p1c;if(d1<-wr){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+      const d2=wx*p2nx+wy*p2ny+wz*p2nz+p2c;if(d2<-wr){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+      const d3=wx*p3nx+wy*p3ny+wz*p3nz+p3c;if(d3<-wr){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+      const d4=wx*p4nx+wy*p4ny+wz*p4nz+p4c;if(d4<-wr){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+      const d5=wx*p5nx+wy*p5ny+wz*p5nz+p5c;if(d5<-wr){if(!run.culledSynced){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}run.culledSynced=true;}continue;}
+      runAllInside=distInside&&d0>=wr&&d1>=wr&&d2>=wr&&d3>=wr&&d4>=wr&&d5>=wr;
      }
     }
+    run.culledSynced=false;
+    if(owner._deferChildren)owner._syncDeferredChildren();
     // Unsealed or newly hidden runs still validate detachment, reparenting and
     // material/geometry replacements in the same frame.
     let allHiddenInRun=ownerHiddenAttached,prevParent=null,prevFlags=0;
@@ -385,7 +400,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist
      source.layers.mask=mask&~1;
      if(!visible||!(mask&camMask))continue;
      const e=source.matrixWorld.elements;
-     if(source.frustumCulled&&(!runAllInside||dynFar<Infinity)){
+     if(source.frustumCulled&&!runAllInside){
       const wx=centerZero?e[12]:(e[0]*bscx+e[4]*bscy+e[8]*bscz+e[12]),wy=centerZero?e[13]:(e[1]*bscx+e[5]*bscy+e[9]*bscz+e[13]),wz=centerZero?e[14]:(e[2]*bscx+e[6]*bscy+e[10]*bscz+e[14]);
       const sx2=e[0]*e[0]+e[1]*e[1]+e[2]*e[2],sy2=e[4]*e[4]+e[5]*e[5]+e[6]*e[6],sz2=e[8]*e[8]+e[9]*e[9]+e[10]*e[10];
       const r=bsr*Math.sqrt(sx2>=sy2?(sx2>=sz2?sx2:sz2):(sy2>=sz2?sy2:sz2));

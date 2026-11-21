@@ -212,7 +212,31 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
  for(const b of trafficBatches){b.matrixAutoUpdate=false;b.userData.range=145;}
  for(const c of cars)c.crossings=routeCrossings(c.route,signals);
  const contactPool=createTrafficContactGrid();
- const agents=[...cars,...buses,...riders];agents.forEach((a,i)=>a.trafficId=i);let clock=0,first=0,junctionClock=-1,junctions=createJunctionControl(undefined,{getPose:junctionPose});
+ const agents=[...cars,...buses,...riders];agents.forEach((a,i)=>{
+  a.trafficId=i;
+  const r=a.root;r.userData.sealedHiddenInstances=true;
+  r.userData.sealedActorRadius=a.kind==='bus'?7.5:(a.kind==='delivery'||a.kind==='bicycle')?2.6:4.8;
+  if(r.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld){
+   const u=r.updateMatrixWorld;let sk=false,lx=NaN,ly=NaN,lz=NaN,lry=NaN,lrx=NaN;
+   r._syncDeferredChildren=function(){if(this._deferChildren){this._deferChildren=false;const c=this.children;for(let i=0;i<c.length;i++)c[i].updateMatrixWorld(true);}};
+   r.updateMatrixWorld=function(f){
+    if(!this.visible||this.userData.skipMatrixFrame){sk=true;return;}
+    const pos=this.position,rot=this.rotation;
+    if(!f&&!sk&&a._wheelActive===false){
+     if(pos.x===lx&&pos.y===ly&&pos.z===lz&&rot.y===lry&&rot.x===lrx)return;
+     lx=pos.x;ly=pos.y;lz=pos.z;lry=rot.y;lrx=rot.x;
+     this.updateMatrix();
+     if(this.parent===null)this.matrixWorld.copy(this.matrix);
+     else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld,this.matrix);
+     this.matrixWorldNeedsUpdate=false;this._deferChildren=true;return;
+    }
+    lx=pos.x;ly=pos.y;lz=pos.z;lry=rot.y;lrx=rot.x;this._deferChildren=false;
+    u.call(this,f||sk);sk=false;
+   };
+  }
+ });
+ for(const o of officers){o.root.userData.sealedHiddenInstances=true;o.root.userData.sealedActorRadius=2.4;}
+ let clock=0,first=0,junctionClock=-1,junctions=createJunctionControl(undefined,{getPose:junctionPose});
  // The active list can shrink on player takeover. Only the active prefix is used.
  const travelled=new Float64Array(agents.length);
  function pose(c,t){const at=routePose(c.route,t,c.lane);at.x+=.5;at.z+=.5;if(c.kind==='bridge')at.y=nanpuFloor(world,at.x,at.z)??at.y;at.yaw+=c.dir<0?Math.PI:0;return at;}
@@ -273,8 +297,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   const includePlayer=hasPlayerContact&&!playerRiding;
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(playerPos&&interest&&!c.yielding&&!c.detour){
-    const rp0=c.root.position,dx0=rp0.x-playerPos.x,dz0=rp0.z-playerPos.z;
-    if(dx0*dx0+dz0*dz0>12100&&!interest.seesPoint(rp0,4,135)){
+    const rp0=c.root.position,dx0=rp0.x-playerPos.x,dz0=rp0.z-playerPos.z,d20=dx0*dx0+dz0*dz0;
+    if(d20>5625||(interest.highAltitude?.()&&d20>1225)||(!interest.seesPoint(rp0,4,110)&&d20>1600)){
      let fastTravel=c.speed*step;
      for(const crossing of c.crossings??[]){
       if(signalPhase(clock,crossing.signal.offset)[crossing.axis]!=='green'){
@@ -348,26 +372,50 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    }
   }first=(first+1)%agents.length;
  }
+ let trafficAccum=0,trafficSkip=false,lastSkipTrafficMatrix=false;
+ const activeObstacles=[];
  function tick(dt,{night=false,rain=0}={}){
   if(dt>0){
+   const playerPos=getPos?.();
+   const farFromRoads=Boolean(interest&&(interest.highAltitude?.()||(playerPos&&playerPos.x<-45)));
+   let effDt=dt,runStep=true;
+   if(farFromRoads){
+    trafficAccum+=dt;trafficSkip=!trafficSkip;
+    if(trafficSkip)runStep=false;
+    else{effDt=trafficAccum;trafficAccum=0;}
+   }else if(trafficAccum>0){
+    effDt=dt+trafficAccum;trafficAccum=0;trafficSkip=false;
+   }
+   const skipM=!runStep;
+   if(skipM!==lastSkipTrafficMatrix){lastSkipTrafficMatrix=skipM;for(let i=0;i<agents.length;i++)agents[i].root.userData.skipMatrixFrame=skipM;}
+   if(!runStep)return;
    processDetours();
    // The other simulation systems run between ticks. Moving traffic agents
    // update their own grid entries through setPose during every substep.
-   const playerPos=getPos?.(),obstacles=getObstacles();
-   const hasPlayerContact=!!playerPos&&playerPos.y>=25&&playerPos.y<=28;
+   const rawObstacles=getObstacles();
+   activeObstacles.length=0;
+   for(let i=0;i<rawObstacles.length;i++){
+    const o=rawObstacles[i],r=o.root;
+    if(!r||r.visible===false)continue;
+    if(o.person&&r.position.x<-42)continue;
+    activeObstacles.push(o);
+   }
+   const obstacles=activeObstacles;
+   const hasPlayerContact=!!playerPos&&playerPos.y>=25&&playerPos.y<=28&&playerPos.x>=-42;
    const player=hasPlayerContact?{root:{position:playerPos},person:true,height:1.85}:null;
    contactPool.reset(agents,obstacles,player);contactGrid=contactPool;
-   let remaining=dt;
+   let remaining=effDt;
    travelled.fill(0,0,agents.length);
+   const maxSub=farFromRoads?1/15:1/20;
    try{
     while(remaining>1e-8){
-     const step=Math.min(remaining,1/20);
+     const step=Math.min(remaining,maxSub);
      remaining-=step;
      advance(step,playerPos,obstacles,hasPlayerContact);
      for(let i=0;i<agents.length;i++)travelled[i]+=agents[i].travelSpeed*step;
     }
    }finally{contactGrid=null;}
-   for(let i=0;i<agents.length;i++)agents[i].travelSpeed=travelled[i]/dt;
+   for(let i=0;i<agents.length;i++)agents[i].travelSpeed=travelled[i]/effDt;
   }
  const sigPos=getPos?.();
  for(const s of signals){const phase=signalPhase(clock,s.offset),nearSig=!sigPos||(s.x-sigPos.x)**2+(s.z-sigPos.z)**2<=11025;for(const head of s.heads){const status=phase[head.axis];if(head.lastStatus!==status){head.lastStatus=status;const idx=SIGNAL_INDEX[status];for(let i=0;i<head.lamps.length;i++)head.lamps[i].material=mat(i===idx?SIGNAL_COLORS[i]:'#263638',true);}if(!nearSig)continue;const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}

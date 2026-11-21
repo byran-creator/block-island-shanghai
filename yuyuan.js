@@ -371,22 +371,25 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
  const crowd=world?createYuyuanCrowd({scene,world,simulationInterest,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
  innerActors.push(...crowd.people);
- for(const a of actors)skipNode(a.root);
+ for(const a of actors){a.root.userData.sealedHiddenInstances=true;a.root.userData.sealedActorRadius=2.6;skipNode(a.root);}
  let lastFarCull=null;
  function cullView(camera,highView=false,isMobile=false){
   if(!camera)return;
   const cp=camera.position,dx=Math.max(-78-cp.x,cp.x-6,0),dz=Math.max((192+YUYUAN_SHIFT)-cp.z,cp.z-(276+YUYUAN_SHIFT),0);
-  const limit=highView?(isMobile?95:150):(isMobile?140:205),farCull=cp.y>=42||(dx*dx+dz*dz)>limit*limit;
+  const limit=highView?(isMobile?95:150):(isMobile?125:205),farCull=cp.y>=42||(dx*dx+dz*dz)>limit*limit;
   if(farCull!==lastFarCull){
    lastFarCull=farCull;
    detailGroup.visible=!farCull;
    const signBatch=root.getObjectByName('yuyuan-sign-batch');
    if(signBatch){skipNode(signBatch);signBatch.visible=!farCull;}
    for(const a of innerActors)a.root.visible=!farCull;
+   if(farCull)for(const a of visitors.people)a.root.visible=false;
   }
-  for(const a of visitors.people){
-   const ap=a.root.position;
-   a.root.visible=cp.y<42&&(!farCull||((cp.x-ap.x)**2+(cp.z-ap.z)**2)<=limit*limit);
+  if(!farCull){
+   for(const a of visitors.people){
+    const ap=a.root.position;
+    a.root.visible=cp.y<42&&((cp.x-ap.x)**2+(cp.z-ap.z)**2)<=limit*limit;
+   }
   }
  }
  function close(){if(!panel)return;panel=false;$('yuyuan-dialog').close();document.body?.classList.remove('in-dialogue','in-conversation');resume();}
@@ -467,5 +470,5 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   return false;
  }
 
- return {root,actors,shopArt,streetArt,rickshaws,cullView,isRiding:()=>rickshaws.isRiding(),cameraPose:(yaw,pitch)=>rickshaws.cameraPose(yaw,pitch),vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,floorAt:(x,z)=>{const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return null;return moonBridgeFloor(x,lz)??galleryFloor(x,lz,.29)??buildingRoofFloor(x,lz);},collides:(x,y,z)=>{if(y<21||y>45)return false;const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return false;if(galleryFloor(x,lz)!==null)return false;return gates.collides(x,y,lz)||buildingCollides(x,y,lz)||collidesFixtures(x,y,lz);},tick(dt,{night=false,keys=new Set(),camera=null,highView=false,isMobile=false}={}){elapsed+=dt;if(camera)cullView(camera,highView,isMobile);const lp=localPos(),highSkip=Boolean(camera&&camera.position.y>=42),nearDistrict=dt<=0||(!highSkip&&(Math.max(-135-lp.x,lp.x-40,0)**2+Math.max(140-lp.z,lp.z-290,0)**2)<=22500);gates.tick(dt);if(nearDistrict||!lastFarCull||rickshaws.isRiding()){streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});if(nearDistrict)visitors.tick(dt);crowd.tick(dt);rickshaws.tick(dt,keys);}if(night!==lastNightState){lastNightState=night;for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);}},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
+ return {root,actors,shopArt,streetArt,rickshaws,cullView,isRiding:()=>rickshaws.isRiding(),cameraPose:(yaw,pitch)=>rickshaws.cameraPose(yaw,pitch),vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,floorAt:(x,z)=>{const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return null;return moonBridgeFloor(x,lz)??galleryFloor(x,lz,.29)??buildingRoofFloor(x,lz);},collides:(x,y,z)=>{if(y<21||y>45)return false;const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return false;if(galleryFloor(x,lz)!==null)return false;return gates.collides(x,y,lz)||buildingCollides(x,y,lz)||collidesFixtures(x,y,lz);},tick(dt,{night=false,keys=new Set(),camera=null,highView=false,isMobile=false}={}){elapsed+=dt;if(camera)cullView(camera,highView,isMobile);const lp=localPos(),highSkip=Boolean(camera&&camera.position.y>=42),nearDistrict=dt<=0||(!highSkip&&!lastFarCull&&(Math.max(-95-lp.x,lp.x-25,0)**2+Math.max(150-lp.z,lp.z-280,0)**2)<=14400);if(nearDistrict||dt<=0||rickshaws.isRiding()){gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);rickshaws.tick(dt,keys);}if(night!==lastNightState){lastNightState=night;for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);}},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
 }

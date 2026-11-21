@@ -273,9 +273,32 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
  const financialPeople=createLujiazuiPeople({person,cube});tourists.push(...financialPeople);
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
- const throttledPeople=[...bundWalkers,...tourists].filter(p=>p.root.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld);
- for(const p of throttledPeople){const r=p.root,u=r.updateMatrixWorld;let sk=false;r.updateMatrixWorld=function(f){if(this.userData.skipMatrixFrame){sk=true;return;}u.call(this,f||sk);sk=false;};}
- const shopperClear=p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
+ const throttledPeople=[...bundWalkers,...tourists,...sharedWalkers];
+ for(const v of vendors)v._limbActive=false;
+ for(const p of [...throttledPeople,...vendors]){
+  const r=p.root;r.userData.sealedHiddenInstances=true;r.userData.sealedActorRadius=2.6;
+  if(!r._hasSmartMatrix){
+   r._hasSmartMatrix=true;
+   const u=THREE.Object3D.prototype.updateMatrixWorld;let sk=false,lx=NaN,ly=NaN,lz=NaN,lry=NaN;
+   r._syncDeferredChildren=function(){if(this._deferChildren){this._deferChildren=false;const c=this.children;for(let i=0;i<c.length;i++)c[i].updateMatrixWorld(true);}};
+   r.updateMatrixWorld=function(f){
+    if(!this.visible||this.userData.skipMatrixFrame){sk=true;return;}
+    const pos=this.position,ry=this.rotation.y;
+    if(!f&&!sk&&p._limbActive===false){
+     if(pos.x===lx&&pos.y===ly&&pos.z===lz&&ry===lry)return;
+     lx=pos.x;ly=pos.y;lz=pos.z;lry=ry;
+     this.updateMatrix();
+     if(this.parent===null)this.matrixWorld.copy(this.matrix);
+     else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld,this.matrix);
+     this.matrixWorldNeedsUpdate=false;this._deferChildren=true;return;
+    }
+    lx=pos.x;ly=pos.y;lz=pos.z;lry=ry;this._deferChildren=false;
+    u.call(this,f||sk);sk=false;
+   };
+  }
+ }
+ const rawShopperClear=p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&((p.z>=65.35&&p.z<=67.45)||!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29));
+ const shopperClear=rawShopperClear;
  const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
  const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear,interest:simulationInterest});
  const financialFlow=createLujiazuiFlow(financialPeople,{world,others:()=>streetPeople,getPos,interest:simulationInterest});
@@ -290,12 +313,6 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
      if(p._limbActive!==false){
       p._limbActive=false;
       for(let j=0;j<2;j++){p.arms[j].matrixAutoUpdate=false;p.legs[j].matrixAutoUpdate=false;}
-     }
-     if((p.kind==='eat'||p.kind==='shop')&&p.startX!==undefined){
-      const cycle=p.cycleTime||22,t=((clock+p.phase*3.7)%cycle);
-      if(t<5.5){moveShopper(p,{x:p.startX,z:p.startZ},dt,{clear:shopperClear,people:streetPeople,vehicles});if(p.parcel)p.parcel.visible=t>3;}
-      else if(t<cycle-2){const walkT=t-5.5,prog=walkT/(cycle-7.5);moveShopper(p,{x:p.startX-1.2*Math.sin(prog*Math.PI),z:p.startZ+Math.sin(prog*Math.PI*2)*0.25},dt,{clear:shopperClear,people:streetPeople,vehicles});if(p.parcel)p.parcel.visible=true;}
-      else{if(p.parcel)p.parcel.visible=false;moveShopper(p,{x:p.startX,z:p.startZ},dt,{clear:shopperClear,people:streetPeople,vehicles});}
      }
      continue;
     }
@@ -331,21 +348,21 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
   const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
   if(ride){if(f.port===null)ride.departed=true;if(f.port===1-ride.from){teleport(landings[f.port]);const trip=ride;ride=null;if(trip.departed)onEvent({type:'ferry',from:trip.from,to:f.port,departed:true});notify('已抵达'+landings[f.port].name+'。');onProgress();}else{const deck=boatWorld(ferry,{x:0,z:1.8});teleport({...deck,y:f.y+2.34});}}
-  const vehicles=getVehicles();
-  busFlow?.tick(dt);
   const viewer=getPos?.();
   const nanjingDistSq=viewer?(Math.max(-182-viewer.x,viewer.x-15,0)**2+Math.max(50-viewer.z,viewer.z-82,0)**2):0;
   const lujiazuiDistSq=viewer?(Math.max(165-viewer.x,viewer.x-220,0)**2+Math.max(32-viewer.z,viewer.z-126,0)**2):0;
   const bundDistSq=viewer?(Math.max(-38-viewer.x,viewer.x-45,0)**2+Math.max(45-viewer.z,viewer.z-90,0)**2):0;
-  const nanjingActive=!viewer||dt<=0||nanjingDistSq<=12100||simulationInterest?.seesPoint({x:Math.max(-180,Math.min(-25,viewer.x)),y:26,z:66.5},24,125);
-  const lujiazuiActive=!viewer||dt<=0||lujiazuiDistSq<=14400||simulationInterest?.seesPoint({x:175,y:26,z:85},34,155);
-  const bundActive=!viewer||dt<=0||bundDistSq<=11025||simulationInterest?.seesPoint({x:18,y:26,z:66.5},28,145);
   const highAlt=dt>0&&Boolean(simulationInterest?.highAltitude?.());
+  const nanjingActive=!viewer||dt<=0||nanjingDistSq<=4900||(highAlt&&simulationInterest?.seesPoint({x:Math.max(-180,Math.min(-25,viewer.x)),y:26,z:66.5},24,110));
+  const lujiazuiActive=!viewer||dt<=0||lujiazuiDistSq<=5625||(highAlt&&simulationInterest?.seesPoint({x:175,y:26,z:85},34,125));
+  const bundActive=!viewer||dt<=0||bundDistSq<=4900||(highAlt&&simulationInterest?.seesPoint({x:18,y:26,z:66.5},28,120));
   let crowdDt=dt,runCrowd=true;
   if(highAlt){highCrowdAccum+=dt;highCrowdSkip=!highCrowdSkip;if(highCrowdSkip)runCrowd=false;else{crowdDt=highCrowdAccum;highCrowdAccum=0;}}
   else if(highCrowdAccum>0){crowdDt=dt+highCrowdAccum;highCrowdAccum=0;highCrowdSkip=false;}
+  if(runCrowd)busFlow?.tick(crowdDt);
   const skipM=!runCrowd;if(skipM!==lastSkipCrowdMatrix){lastSkipCrowdMatrix=skipM;for(const p of throttledPeople)p.root.userData.skipMatrixFrame=skipM;}
   if(runCrowd){
+   const vehicles=(nanjingActive||lujiazuiActive||bundActive)?getVehicles():[];
    if(nanjingActive||lujiazuiActive||bundActive)nearbyVehicles.refresh(vehicles);
    if(nanjingActive)crowd.tick(crowdDt,nearbyVehicles);
    if(lujiazuiActive)financialFlow.tick(crowdDt,nearbyVehicles,dayClock);
