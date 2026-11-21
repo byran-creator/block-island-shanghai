@@ -273,6 +273,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
  const financialPeople=createLujiazuiPeople({person,cube});tourists.push(...financialPeople);
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
+ const throttledPeople=[...bundWalkers,...tourists].filter(p=>p.root.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld);
+ for(const p of throttledPeople){const r=p.root,u=r.updateMatrixWorld;let sk=false;r.updateMatrixWorld=function(f){if(this.userData.skipMatrixFrame){sk=true;return;}u.call(this,f||sk);sk=false;};}
  const shopperClear=p=>!solidAt(p.x,p.y,p.z,.36)&&!overlaps(world,p.x,p.y,p.z)&&overlaps(world,p.x,p.y-.1,p.z)&&!stalls.some(s=>Math.abs(p.x-s.x)<s.rx+.29&&Math.abs(p.z-s.z)<s.rz+.29);
  const busFlow=transit?createBusPassengers(busGuests,{traffic:transit,clear:shopperClear,neighbours:()=>streetPeople,vehicles:getVehicles}):null;
  const crowd=createStreetCrowd([...tourists.filter(p=>p.district!=='lujiazui'),...sharedWalkers],{others:[...financialPeople,...bundWalkers,...otherPeople],clear:shopperClear,interest:simulationInterest});
@@ -324,6 +326,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    }
   }
  }};
+ let highCrowdAccum=0,highCrowdSkip=false,lastSkipCrowdMatrix=false;
  function tick(dt,{night=false,dayClock}={}){if(getTrafficTime)clock=getTrafficTime();else clock+=dt;cooldown=Math.max(0,cooldown-dt);if(night!==lastSignNight){lastSignNight=night;for(const s of signs)s.mesh.material=night?s.night:s.day;}if(night!==lastLightNight){lastLightNight=night;for(const m of neons)m.visible=night;for(const m of ferryLamps)m.visible=night;}
   const bPhase=signalPhase(clock,0),ewGreen=bPhase.ew==='green';
   const f=ferryPosition(clock);ferry.position.set(f.x,f.y,f.z);ferry.rotation.y=f.yaw;
@@ -337,12 +340,19 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const nanjingActive=!viewer||dt<=0||nanjingDistSq<=12100||simulationInterest?.seesPoint({x:Math.max(-180,Math.min(-25,viewer.x)),y:26,z:66.5},24,125);
   const lujiazuiActive=!viewer||dt<=0||lujiazuiDistSq<=14400||simulationInterest?.seesPoint({x:175,y:26,z:85},34,155);
   const bundActive=!viewer||dt<=0||bundDistSq<=11025||simulationInterest?.seesPoint({x:18,y:26,z:66.5},28,145);
-  if(nanjingActive||lujiazuiActive||bundActive)nearbyVehicles.refresh(vehicles);
-  if(nanjingActive)crowd.tick(dt,nearbyVehicles);
-  if(lujiazuiActive)financialFlow.tick(dt,nearbyVehicles,dayClock);
-  const crossingAdmission={};
-  if(bundActive)bundFlow.tick(dt,clock,nearbyVehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
-  if(nanjingActive)shopVisitors.tick(dt,nearbyVehicles);
+  const highAlt=dt>0&&Boolean(simulationInterest?.highAltitude?.());
+  let crowdDt=dt,runCrowd=true;
+  if(highAlt){highCrowdAccum+=dt;highCrowdSkip=!highCrowdSkip;if(highCrowdSkip)runCrowd=false;else{crowdDt=highCrowdAccum;highCrowdAccum=0;}}
+  else if(highCrowdAccum>0){crowdDt=dt+highCrowdAccum;highCrowdAccum=0;highCrowdSkip=false;}
+  const skipM=!runCrowd;if(skipM!==lastSkipCrowdMatrix){lastSkipCrowdMatrix=skipM;for(const p of throttledPeople)p.root.userData.skipMatrixFrame=skipM;}
+  if(runCrowd){
+   if(nanjingActive||lujiazuiActive||bundActive)nearbyVehicles.refresh(vehicles);
+   if(nanjingActive)crowd.tick(crowdDt,nearbyVehicles);
+   if(lujiazuiActive)financialFlow.tick(crowdDt,nearbyVehicles,dayClock);
+   const crossingAdmission={};
+   if(bundActive)bundFlow.tick(crowdDt,clock,nearbyVehicles,c=>crossingAdmission[c.id]??=ewGreen&&bPhase.remaining>=10&&!vehicles.some(v=>{const p=v.root?.position;return p&&Math.abs(p.y-26)<3&&p.z>=56&&p.z<=76&&p.x>=c.west&&p.x<=c.east&&Math.abs(v.travelSpeed??v.speed??0)>.2;}));
+   if(nanjingActive)shopVisitors.tick(crowdDt,nearbyVehicles);
+  }
   const v=nearestVendor(),port=landings.find(s=>Math.hypot(getPos().x-s.x,getPos().z-s.z)<3&&Math.abs(getPos().y-26)<2),cityPrompt=$('city-prompt');updateHudHidden(cityPrompt,!(v||port||ride));updateHudText(cityPrompt,ride?'轮渡过江中 · 抵达自动下船':port?'V 搭乘轮渡 · '+port.name:v?'V '+(v.indoor?'店内购物':'逛摊位')+' · '+v.name:'');
  }
  const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons));

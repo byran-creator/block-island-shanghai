@@ -37,6 +37,7 @@ export function createSimulationInterest(camera,getPlayer) {
  }
  function animatesLimb(x,y,z,maxDistance=56) {
   if(!player)return true;
+  if((camera?.position?.y??0)>=36&&y<32)return false;
   const dx=x-player.x,dz=z-player.z,d2=dx*dx+dz*dz;
   if(d2>maxDistance*maxDistance)return false;
   if(d2<=324)return true; // Always animate within 18m regardless of heading
@@ -48,7 +49,8 @@ export function createSimulationInterest(camera,getPlayer) {
   }
   return true;
  }
- return {beginFrame,seesPoint,seesBox,animatesLimb};
+ function highAltitude(){return (camera?.position?.y??0)>=36;}
+ return {beginFrame,seesPoint,seesBox,animatesLimb,highAltitude};
 }
 
 // A distant tick never creates a catch-up burst when the player approaches.

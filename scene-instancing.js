@@ -37,7 +37,7 @@ let globalFrame=0;
 
 // Share draw submissions for identical opaque parts. Source scene objects remain
 // intact for walking, doors, dialogue, seats, collision and save logic.
-export function createSceneInstances(scene,{mergeSolidColors=false}={}){
+export function createSceneInstances(scene,{mergeSolidColors=false,staticMaxDist=Infinity,highStaticMaxDist=staticMaxDist,highDynamicMaxDist=Infinity}={}){
  const candidates=new Map(),batches=[],frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),inverse=new THREE.Matrix4(),matrix=new THREE.Matrix4(),cellBox=new THREE.Box3(),tmpBox=new THREE.Box3();
  let frame=0,lastCamObj=null,lastCamX=NaN,lastCamY=NaN,lastCamZ=NaN,lastCamFar=NaN,lastWe0=NaN,lastWe2=NaN,lastWe5=NaN,lastWe8=NaN,lastWe10=NaN,lastPe0=NaN,lastPe5=NaN,lastPe10=NaN;
  function hierarchy(o){
@@ -147,7 +147,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
     }
    }
   }
-  const batch={mesh,entries,ownerRuns,useColor,paletteMat,isStatic:isStaticBatch,staticReady:false,fastOwners:null,staticCount:0,hasUnculled:false,cellSphere:new THREE.Sphere(),uploaded:false,gpuSyncedCount:0,dirtyCount:0,pendingUploadCount:0,gpuSyncedColorCount:0,dirtyColorCount:0,pendingColorUploadCount:0};
+  const batch={mesh,entries,ownerRuns,useColor,paletteMat,isStatic:isStaticBatch,staticReady:false,fastOwners:null,staticCount:0,hasUnculled:false,cellSphere:new THREE.Sphere(),cellBox:new THREE.Box3(),uploaded:false,gpuSyncedCount:0,dirtyCount:0,pendingUploadCount:0,gpuSyncedColorCount:0,dirtyColorCount:0,pendingColorUploadCount:0};
   const syncUploaded=()=>{
    if(batch.pendingUploadCount>0){
     if(batch.pendingUploadCount>=batch.dirtyCount){batch.gpuSyncedCount=Math.max(batch.gpuSyncedCount,batch.pendingUploadCount);batch.dirtyCount=0;}
@@ -174,7 +174,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
  }
  function update(camera){
   frame=++globalFrame;
-  const ce=camera.matrixWorld.elements,camX=ce[12],camY=ce[13],camZ=ce[14],camFar=camera.far||270;
+  const ce=camera.matrixWorld.elements,camX=ce[12],camY=ce[13],camZ=ce[14],camFar=camera.far||270,staticFar=Math.min(camFar,camY>=38?highStaticMaxDist:staticMaxDist),staticFarSq=staticFar*staticFar,dynFar=camY>=40?Math.min(camFar,highDynamicMaxDist):Infinity;
   const pe=camera.projectionMatrix.elements,we=camera.matrixWorldInverse.elements;
   const camMoved=camera!==lastCamObj||Math.abs(camX-lastCamX)>1e-5||Math.abs(camY-lastCamY)>1e-5||Math.abs(camZ-lastCamZ)>1e-5||Math.abs(camFar-lastCamFar)>1e-3||Math.abs(we[0]-lastWe0)>1e-5||Math.abs(we[2]-lastWe2)>1e-5||Math.abs(we[5]-lastWe5)>1e-5||Math.abs(we[8]-lastWe8)>1e-5||Math.abs(we[10]-lastWe10)>1e-5||Math.abs(pe[0]-lastPe0)>1e-5||Math.abs(pe[5]-lastPe5)>1e-5||Math.abs(pe[10]-lastPe10)>1e-5;
   if(camMoved){lastCamObj=camera;lastCamX=camX;lastCamY=camY;lastCamZ=camZ;lastCamFar=camFar;lastWe0=we[0];lastWe2=we[2];lastWe5=we[5];lastWe8=we[8];lastWe10=we[10];lastPe0=pe[0];lastPe5=pe[5];lastPe10=pe[10];}
@@ -238,8 +238,8 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
       else if(batch.hasUnculled)inView=true;
       else if(!camMoved&&batch.cachedInView!==undefined)inView=batch.cachedInView;
       else{
-       const cs=batch.cellSphere,dx=cs.center.x-camX,dy=cs.center.y-camY,dz=cs.center.z-camZ,maxDist=camFar+cs.radius;
-       inView=(dx*dx+dy*dy+dz*dz<=maxDist*maxDist)&&frustum.intersectsSphere(cs);
+       const cb=batch.cellBox,dx=Math.max(cb.min.x-camX,0,camX-cb.max.x),dy=Math.max(cb.min.y-camY,0,camY-cb.max.y),dz=Math.max(cb.min.z-camZ,0,camZ-cb.max.z);
+       inView=(dx*dx+dy*dy+dz*dz<=staticFarSq)&&frustum.intersectsBox(cb);
       }
       batch.cachedInView=inView;
       mesh.count=batch.staticCount;mesh.visible=inView;
@@ -298,8 +298,8 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
     }
     if(!initialPopulate&&!dirty&&count>batch.gpuSyncedCount)dirty=true;
     if(useColor&&!initialPopulate&&!colorDirty&&count>batch.gpuSyncedColorCount)colorDirty=true;
-    if(count>0)cellBox.getBoundingSphere(batch.cellSphere);
-    else batch.cellSphere.radius=-1;
+    if(count>0){batch.cellBox.copy(cellBox);cellBox.getBoundingSphere(batch.cellSphere);}
+    else{batch.cellBox.makeEmpty();batch.cellSphere.radius=-1;}
     batch.staticCount=count;batch.hasUnculled=hasUnculled;batch.staticReady=sceneIdentity;
     if(sceneIdentity&&entries.length>16){
      const seen=new Set(),fos=[];
@@ -311,8 +311,8 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
      }
      batch.fastOwners=fos;
     }else batch.fastOwners=null;
-    const cs=batch.cellSphere,dx=cs.center.x-camX,dy=cs.center.y-camY,dz=cs.center.z-camZ,maxDist=camFar+cs.radius;
-    const inView=count>0&&(hasUnculled||((dx*dx+dy*dy+dz*dz<=maxDist*maxDist)&&frustum.intersectsSphere(cs)));
+    const cb=batch.cellBox,dx=Math.max(cb.min.x-camX,0,camX-cb.max.x),dy=Math.max(cb.min.y-camY,0,camY-cb.max.y),dz=Math.max(cb.min.z-camZ,0,camZ-cb.max.z);
+    const inView=count>0&&(hasUnculled||((dx*dx+dy*dy+dz*dz<=staticFarSq)&&frustum.intersectsBox(cb)));
     batch.cachedInView=inView;
     mesh.count=count;mesh.visible=inView;
     attr.clearUpdateRanges();
@@ -352,6 +352,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
       const wz=oe[2]*run.rcx+oe[6]*run.rcy+oe[10]*run.rcz+oe[14];
       const osx=oe[0]*oe[0]+oe[1]*oe[1]+oe[2]*oe[2],osy=oe[4]*oe[4]+oe[5]*oe[5]+oe[6]*oe[6],osz=oe[8]*oe[8]+oe[9]*oe[9]+oe[10]*oe[10];
       const wr=run.rr*Math.sqrt(osx>=osy?(osx>=osz?osx:osz):(osy>=osz?osy:osz));
+      if(dynFar<Infinity){const ddx=wx-camX,ddy=wy-camY,ddz=wz-camZ,dMax=dynFar+wr;if(ddx*ddx+ddy*ddy+ddz*ddz>dMax*dMax){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}}
       const d0=wx*p0nx+wy*p0ny+wz*p0nz+p0c;if(d0<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
       const d1=wx*p1nx+wy*p1ny+wz*p1nz+p1c;if(d1<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
       const d2=wx*p2nx+wy*p2ny+wz*p2nz+p2c;if(d2<-wr){for(let i=run.start;i<run.end;i++){const e=entries[i];if(e.source.layers.mask!==(e.mask&~1))e.source.layers.mask=e.mask&~1;}continue;}
@@ -384,11 +385,15 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
      source.layers.mask=mask&~1;
      if(!visible||!(mask&camMask))continue;
      const e=source.matrixWorld.elements;
-     if(!runAllInside&&source.frustumCulled){
+     if(source.frustumCulled&&(!runAllInside||dynFar<Infinity)){
       const wx=centerZero?e[12]:(e[0]*bscx+e[4]*bscy+e[8]*bscz+e[12]),wy=centerZero?e[13]:(e[1]*bscx+e[5]*bscy+e[9]*bscz+e[13]),wz=centerZero?e[14]:(e[2]*bscx+e[6]*bscy+e[10]*bscz+e[14]);
       const sx2=e[0]*e[0]+e[1]*e[1]+e[2]*e[2],sy2=e[4]*e[4]+e[5]*e[5]+e[6]*e[6],sz2=e[8]*e[8]+e[9]*e[9]+e[10]*e[10];
-      const negR=-bsr*Math.sqrt(sx2>=sy2?(sx2>=sz2?sx2:sz2):(sy2>=sz2?sy2:sz2));
-      if(wx*p0nx+wy*p0ny+wz*p0nz+p0c<negR||wx*p1nx+wy*p1ny+wz*p1nz+p1c<negR||wx*p2nx+wy*p2ny+wz*p2nz+p2c<negR||wx*p3nx+wy*p3ny+wz*p3nz+p3c<negR||wx*p4nx+wy*p4ny+wz*p4nz+p4c<negR||wx*p5nx+wy*p5ny+wz*p5nz+p5c<negR)continue;
+      const r=bsr*Math.sqrt(sx2>=sy2?(sx2>=sz2?sx2:sz2):(sy2>=sz2?sy2:sz2));
+      if(dynFar<Infinity){const ddx=wx-camX,ddy=wy-camY,ddz=wz-camZ,dMax=dynFar+r;if(ddx*ddx+ddy*ddy+ddz*ddz>dMax*dMax)continue;}
+      if(!runAllInside){
+       const negR=-r;
+       if(wx*p0nx+wy*p0ny+wz*p0nz+p0c<negR||wx*p1nx+wy*p1ny+wz*p1nz+p1c<negR||wx*p2nx+wy*p2ny+wz*p2nz+p2c<negR||wx*p3nx+wy*p3ny+wz*p3nz+p3c<negR||wx*p4nx+wy*p4ny+wz*p4nz+p4c<negR||wx*p5nx+wy*p5ny+wz*p5nz+p5c<negR)continue;
+      }
      }
      if(!supportedTransform(source.matrixWorld)){source.layers.mask=mask;continue;}
      const me=sceneIdentity?e:matrix.multiplyMatrices(inverse,source.matrixWorld).elements;

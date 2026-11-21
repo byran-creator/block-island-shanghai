@@ -65,7 +65,8 @@ export function batchMeshes(parent,meshes,name='static-detail',coloredLambert=nu
    }
    if(!g.boundingSphere)g.computeBoundingSphere();
    p.copy(g.boundingSphere.center).applyMatrix4(mesh.matrixWorld).applyMatrix4(inverse);
-   key='colored:'+bKey+':'+Math.floor(p.x/cellSize)+':'+Math.floor(p.z/cellSize)+':'+(mesh.userData.range??180)+':'+mesh.visible;
+   const cellKey=cellSize>0?(Math.floor(p.x/cellSize)+':'+Math.floor(p.z/cellSize)):'all';
+   key='colored:'+bKey+':'+cellKey+':'+(mesh.userData.range??180)+':'+mesh.visible;
   }
   let group=groups.get(key);if(!group){group={material,instMaterial:instMat,visible:mesh.visible,sources:[],useColor};groups.set(key,group);}group.sources.push(mesh);
  }

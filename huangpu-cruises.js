@@ -77,7 +77,12 @@ export function createHuangpuCruises(scene){
   const edge=[[0,-9.8],[2.1,-8.3],[2.8,-6.7],[2.8,7.7],[2.3,9.1],[-2.3,9.1],[-2.8,7.7],[-2.8,-6.7],[-2.1,-8.3],[0,-9.8]];
   for(let i=1;i<edge.length;i++){const [x,z]=edge[i-1],[xx,zz]=edge[i],m=cube(night,tint,(x+xx)/2,.83,(z+zz)/2,.045,.055,Math.hypot(xx-x,zz-z),true);m.rotation.y=Math.atan2(xx-x,zz-z);}
   for(const side of [-1,1])for(let i=0;i<5;i++){const m=cube(night,warm,side*2.71,1.55+i*.13,-5.7+i*.32,.035,.14,.14,true);m.rotation.x=Math.PI/4;}
-  namePanels(root,night,name,tint);batchMeshes(root,staticMeshes(root,new Set([night,glass])),'cruise-body');batchMeshes(night,staticMeshes(night),'cruise-night-decoration');
+  namePanels(root,night,name,tint);
+  const solidPalette=new Set([...materials.values()].filter(m=>m&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors&&(m.isMeshBasicMaterial||(m.isMeshLambertMaterial&&(!m.emissive||m.emissive.getHex()===0)))));
+  const bodyBatches=batchMeshes(root,staticMeshes(root,new Set([night,glass])),'cruise-body',solidPalette,false,0);
+  const nightBatches=batchMeshes(night,staticMeshes(night),'cruise-night-decoration',solidPalette,false,0);
+  for(const b of [...bodyBatches,...nightBatches])if(b.geometry?.attributes?.color)b.userData.skipLightBake=true;
+  batchMeshes(glass,staticMeshes(glass),'cruise-glass');
   const gate=cube(root,'#c9d6d7',2.5,2.1,5.1,.075,1.8,3);gate.name='boarding-gate';surfaces.push({x:2.5,z:5.1,rx:.04,rz:1.5,top:3.1,solidHeight:2,solidOnly:true,active:()=>!boat.moored||boat.remaining<=2.5});
   const boat={root,night,gate,glassMaterials,kind:'luxury-cruise',name,index,deckSurfaces:[...surfaces,...walls],levels:CRUISE_LEVELS};tickHuangpuCruise(boat,0,false);return boat;
  });
