@@ -404,7 +404,7 @@ const runtimeParams=new URLSearchParams(location.search);
 let restoredEntryPhoto=null;
 const silentPreview=runtimeParams.get('silent')==='1';
 let selected=1,active=false,started=false,flying=false,grounded=false,footContact=false,vy=0,yaw=0,pitch=0,sound=!silentPreview,audioCtx=null,target=null,mined=0,placed=0;
-let dragMode=false,fallback=false,dragging=false,lookPointer=null,lastLook=null,mouseHeld=-1,lastAction=0,toastTimer;
+let dragMode=false,fallback=false,dragging=false,dragLast=null,ignoreNextLockedMove=false,lastMoveMag=0,lastMoveTime=0,lookPointer=null,lastLook=null,mouseHeld=-1,lastAction=0,toastTimer;
 const pos={...LANDMARKS.bund},keys=new Set(),direction=new THREE.Vector3(),pressedAt=new Map(),releaseAt=new Map();
 const inputKeys={has:key=>keys.has(key)||!!touchMovement?.has(key),axes:()=>movementAxes(keys,touchMovement?.vector)};
 await loadingStage('正在准备外滩街景与交通…');
@@ -529,15 +529,39 @@ document.addEventListener('pointerlockchange',()=>{
  if(document.pointerLockElement===canvas){
   fallback=false;
   cursorFree=false;
+  ignoreNextLockedMove=true;dragLast=null;lastMoveMag=0;lastMoveTime=0;
   const pill=$('cursor-toggle');if(pill){pill.classList.remove('active');pill.textContent='Alt 鼠标';}
   document.body.classList.remove('cursor-free');
- }else if(active&&!touch&&!fallback&&!cursorFree&&!isAnyDialogOpen()){
-  openMenu();
+ }else{
+  ignoreNextLockedMove=false;dragLast=null;lastMoveMag=0;lastMoveTime=0;
+  if(active&&!touch&&!fallback&&!cursorFree&&!isAnyDialogOpen())openMenu();
  }
 });
 document.addEventListener('pointerlockerror',()=>{fallback=true;pointerRecovery.show();});
 function look(dx,dy){yaw-=dx*.0023;pitch=Math.max(-1.52,Math.min(1.52,pitch-dy*.0023));}
-document.addEventListener('mousemove',e=>{if(cursorFree)return;if(active&&(document.pointerLockElement===canvas||dragging))look(e.movementX,e.movementY)});
+document.addEventListener('mousemove',e=>{
+ if(cursorFree||!active||touch)return;
+ if(document.pointerLockElement===canvas){
+  const dx=e.movementX,dy=e.movementY;
+  if(!Number.isFinite(dx)||!Number.isFinite(dy))return;
+  if(ignoreNextLockedMove){ignoreNextLockedMove=false;if(Math.abs(dx)>30||Math.abs(dy)>30)return;}
+  const now=performance.now(),mag=Math.hypot(dx,dy);
+  if(mag>280||(mag>120&&(now-lastMoveTime>80||lastMoveMag<25)))return;
+  lastMoveMag=mag;lastMoveTime=now;
+  look(dx,dy);
+  return;
+ }
+ if(dragging){
+  let dx=0,dy=0;
+  if(Number.isFinite(e.clientX)&&Number.isFinite(e.clientY)){
+   if(!dragLast){dragLast={x:e.clientX,y:e.clientY};return;}
+   dx=e.clientX-dragLast.x;dy=e.clientY-dragLast.y;
+   dragLast={x:e.clientX,y:e.clientY};
+   if(dx===0&&dy===0&&(e.movementX||e.movementY)){dx=e.movementX;dy=e.movementY;}
+  }else{dx=e.movementX;dy=e.movementY;}
+  if(Number.isFinite(dx)&&Number.isFinite(dy)&&Math.hypot(dx,dy)<=280)look(dx,dy);
+ }
+});
 function edit(place){
  if(!active)return;if(metro?.isRiding()){notify('先到站下车，再拆建方块。');return;}if(commute?.isRiding()){notify('先下车，再拆建方块。');return;}if(yuyuan?.isRiding()){notify('先下黄包车，再拆建方块。');return;}if(adventure?.state.race){notify('跑酷中不能拆建；按 V 退出后恢复创造模式。');return;}camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);if(!place&&life?.attack()){pendingMine=null;lastAction=performance.now();return;}if(place&&life?.state.held){life.place(target?.place);return;}if(!target)return;
  if(place){const p=target.place;if(!p||p.y<1||!world.valid(p.x,p.y,p.z)){notify('这里已经是世界边界');return;}
@@ -554,8 +578,8 @@ function toggleGlider(){if(metro?.isRiding()){notify('先到站下车，再使�
 function useScene(){if(commute?.beginTakeover()){if(commute.isRiding())contextGuide.used('car');return;}if(story?.use())return;if(metro?.use())return;if(activity?.isRiding()){activity.use();return;}if(civil?.use&&civil.use())return;if(towerInteriors?.use())return;if(privateSuites?.use())return;if(commute?.use())return;if(yuyuan?.use())return;if(npcGuides?.use())return;if(activity?.use())return;if(restaurant?.use())return;if(skyline?.use())return;if(!life.dockUse())adventure.use();}
 installTouchCalloutGuard(document,{isTouch:()=>touch});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('mousedown',e=>{if(!active||touch)return;if(cursorFree){setFreeCursor(false);return;}if(fallback&&!dragMode&&e.button===0&&canvas.requestPointerLock){try{canvas.requestPointerLock()?.catch?.(()=>{});}catch{}}if(fallback||dragMode){if(e.button===0)dragging=true;else if(e.button===2)edit(true);return;}if(e.button===0||e.button===2){mouseHeld=e.button;edit(e.button===2)}});
-document.addEventListener('mouseup',()=>{mouseHeld=-1;dragging=false});
+canvas.addEventListener('mousedown',e=>{if(!active||touch)return;if(cursorFree){setFreeCursor(false);return;}if(fallback&&!dragMode&&e.button===0&&canvas.requestPointerLock){try{canvas.requestPointerLock()?.catch?.(()=>{});}catch{}}if(fallback||dragMode){if(e.button===0){dragging=true;dragLast={x:e.clientX,y:e.clientY};}else if(e.button===2)edit(true);return;}if(e.button===0||e.button===2){mouseHeld=e.button;edit(e.button===2)}});
+document.addEventListener('mouseup',()=>{mouseHeld=-1;dragging=false;dragLast=null;});
 document.addEventListener('keydown',e=>{
  if(photo?.handleKey(e))return;
  if(story?.handleKey(e))return;
@@ -569,7 +593,7 @@ document.addEventListener('keydown',e=>{
  if(!e.repeat){if(/^Digit[1-3]$/.test(e.code)&&['bicycle','car'].includes(commute?.ride?.kind))return;if(/^Digit[1-9]$/.test(e.code))select(Number(e.code.at(-1)));if(e.code==='Digit0')select(10);if(e.code==='Minus')select(11);if(e.code==='Equal')select(12);if(e.code==='KeyV')useScene();if(e.code==='KeyP')toggleGlider();if(e.code==='KeyC')life.craft();if(e.code==='KeyZ')life.eat();if(e.code==='KeyL')life.dive();if(e.code==='KeyB')adventure.paint();if(e.code==='KeyM')adventure.map();if(e.code==='KeyK')adventure.launch();if(e.code==='KeyJ'){if(Math.hypot(pos.x-LANDMARKS.tower.x,pos.z-53)<6)adventure.launch();else companions.recall(pos);}if(e.code==='KeyF')toggleFly();if(e.code==='CapsLock'){runLocked=!runLocked;notify(runLocked?'持续跑步已开启；CapsLock 切回步行。':'已切回步行；按住 Shift 跑步。');}if(e.code==='KeyR')respawn();if(e.code==='KeyQ')edit(false);if(e.code==='KeyE')edit(true);if(e.code==='KeyG')interact();if(e.code==='KeyH')interact(true);if(e.code==='KeyT'&&!life.state.survival){dayClock=(Math.floor(dayClock/60)*60+60)%240+15;notify('已切换小岛时间');}}
 });document.addEventListener('keyup',e=>{const remaining=100-(performance.now()-(pressedAt.get(e.code)??0));if(remaining>0)releaseAt.set(e.code,performance.now()+remaining);else keys.delete(e.code)});
 canvas.addEventListener('wheel',e=>{if(active){e.preventDefault();select(((selected-1+(e.deltaY>0?1:11))%12)+1)}},{passive:false});
-window.addEventListener('blur',()=>{keys.clear();touchMovement?.reset();mouseHeld=-1;if(active){document.exitPointerLock?.();openMenu()}});
+window.addEventListener('blur',()=>{keys.clear();touchMovement?.reset();mouseHeld=-1;dragging=false;dragLast=null;lookPointer=null;lastLook=null;ignoreNextLockedMove=false;lastMoveMag=0;if(active){document.exitPointerLock?.();openMenu()}});
 document.addEventListener('visibilitychange',()=>{music.update({playing:active||story?.filming,night:dayClock>=120,festival:adventure?.isShowActive(),hidden:document.hidden});if(document.hidden)sceneAudio.suspend();if(document.hidden&&active){document.exitPointerLock?.();openMenu()}});
 for(const btn of document.querySelectorAll('[data-key]')){
  btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.dataset.active='true';btn.setPointerCapture(e.pointerId);keys.add(btn.dataset.key)});
@@ -587,9 +611,9 @@ $('mobile-quality-choice').addEventListener('change',e=>{mobileQuality=e.target.
 for(const id of ['firework-quick','touch-firework','touch-firework-more']){$(id)?.addEventListener('click',()=>adventure?.launch?.());}
 $('touch-fly-more')?.addEventListener('click',toggleFly);
 $('touch-run').onclick=()=>{runLocked=!runLocked;notify(runLocked?'持续跑步已开启':'已切回步行');};$('touch-mine').onclick=()=>edit(false);$('touch-place').onclick=()=>edit(true);$('touch-fly').onclick=toggleFly;$('touch-talk').onclick=()=>interact();$('touch-follow').onclick=()=>interact(true);$('touch-use').onclick=useScene;$('touch-glide').onclick=toggleGlider;$('touch-craft').onclick=()=>life.craft();$('touch-eat').onclick=()=>life.eat();$('touch-dive').onclick=()=>life.dive();$('touch-paint').onclick=()=>adventure.paint();$('map-button').onclick=()=>adventure.map();$('mouse-mode').onclick=()=>{dragMode=!dragMode;fallback=dragMode;if(dragMode)pointerRecovery.hide();$('mouse-mode').textContent=dragMode?'鼠标：拖动环顾':'鼠标：自动锁定';$('mouse-mode').setAttribute('aria-pressed',String(dragMode));};
-canvas.addEventListener('pointerdown',e=>{if(!touch||!active)return;lookPointer=e.pointerId;lastLook={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener('pointermove',e=>{if(e.pointerId===lookPointer&&lastLook){const isForced=document.body.classList.contains('force-landscape');const dx=isForced?(e.clientY-lastLook.y):(e.clientX-lastLook.x);const dy=isForced?-(e.clientX-lastLook.x):(e.clientY-lastLook.y);look(dx*1.6,dy*1.6);lastLook={x:e.clientX,y:e.clientY}}});
-for(const event of ['pointerup','pointercancel'])canvas.addEventListener(event,e=>{if(e.pointerId===lookPointer){lookPointer=null;lastLook=null}});
+canvas.addEventListener('pointerdown',e=>{if(!touch||!active||lookPointer!==null)return;lookPointer=e.pointerId;lastLook={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(e.pointerId===lookPointer&&lastLook){const isForced=document.body.classList.contains('force-landscape');const dx=isForced?(e.clientY-lastLook.y):(e.clientX-lastLook.x);const dy=isForced?-(e.clientX-lastLook.x):(e.clientY-lastLook.y);lastLook={x:e.clientX,y:e.clientY};if(Math.hypot(dx,dy)<=220)look(dx*1.6,dy*1.6);}});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,e=>{if(e.pointerId===lookPointer){lookPointer=null;lastLook=null}});
 const yuyuanFloor=(x,z)=>x>=-140&&x<=45&&z>=195&&z<=355?yuyuan?.floorAt?.(x,z):undefined;
 const yuyuanCollides=(x,y,z)=>y>=21&&y<=45&&x>=-140&&x<=45&&z>=195&&z<=355?yuyuan?.collides(x,y,z):false;
 const storyCollides=(x,y,z)=>y>24&&y<28.5?story?.collides(x,y,z):false;
