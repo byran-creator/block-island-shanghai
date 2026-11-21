@@ -19,6 +19,8 @@ export function createSkyGradient(scene,camera){
 
  function tick(dayClock,cloud,fog,visible,isFiery=false){
   dome.visible=visible;dome.position.copy(camera.position);
+  const skyScale=camera?.far&&camera.far<230?(camera.far*.92)/220:1;
+  dome.scale.setScalar(skyScale);
   const alt=Math.sin(dayClock/240*Math.PI*2);
   const day=THREE.MathUtils.smoothstep(alt,-.08,.42);
   const isSunset=dayClock>68&&dayClock<165;

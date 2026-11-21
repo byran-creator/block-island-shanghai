@@ -92,7 +92,7 @@ export function createCitySpecialCar(style){
  if(!Object.hasOwn(colors,style))throw new Error('Unknown city car appearance: '+style);
  materials();if(!models.has(style))models.set(style,model(style));const cached=models.get(style),root=new THREE.Group(),lights=[];
  root.name='city-car-'+style;root.userData.appearance=style;
- const body=new THREE.Mesh(cached.body,bodyMaterial);body.userData.range=285;body.userData.rgbColors=true;root.add(body);
- for(const side of [-1,1]){const lamp=new THREE.Mesh(cached.lamps,lampMaterial);lamp.position.set(side*.4,cached.lampY,-1.279);lamp.userData.range=285;root.add(lamp);lights.push(lamp);}
+ const body=new THREE.Mesh(cached.body,bodyMaterial);body.userData.range=285;body.userData.rgbColors=true;body.matrixAutoUpdate=false;root.add(body);
+ for(const side of [-1,1]){const lamp=new THREE.Mesh(cached.lamps,lampMaterial);lamp.position.set(side*.4,cached.lampY,-1.279);lamp.updateMatrix();lamp.matrixAutoUpdate=false;lamp.userData.range=285;root.add(lamp);lights.push(lamp);}
  return {root,lights};
 }

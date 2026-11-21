@@ -112,7 +112,7 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,belly
  const count=180,positions=new Float32Array(count*18),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));const rainMat=new THREE.MeshBasicMaterial({color:'#c7e6ed',transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});const rainMesh=new THREE.Mesh(geometry,rainMat);rainMesh.frustumCulled=false;rainMesh.userData.range=50;scene.add(rainMesh);
  let seed=1731;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};const drops=Array.from({length:count},()=>({x:0,y:-100,z:0,roof:0}));
  function reset(d){d.x=camera.position.x+(rand()-.5)*38;d.z=camera.position.z+(rand()-.5)*38;d.y=camera.position.y+5+rand()*18;d.roof=world.ground(Math.floor(d.x),Math.floor(d.z));}
- function tick(dt,dayClock){const info=state.tick(dt),phase=dayClock/240*Math.PI*2,night=Math.sin(phase)<0,alt=Math.abs(Math.sin(phase)),cloudiness=Math.max(info.cloud,info.rain,info.fog*.75);const sunDir=new THREE.Vector3(Math.cos(phase)*125,18+alt*50,-90),elevation=.22+alt*.67,azimuth=phase-Math.PI,moonDir=new THREE.Vector3(Math.cos(azimuth)*Math.cos(elevation),Math.sin(elevation),Math.sin(azimuth)*Math.cos(elevation)).multiplyScalar(190);
+ function tick(dt,dayClock){const info=state.tick(dt),phase=dayClock/240*Math.PI*2,night=Math.sin(phase)<0,alt=Math.abs(Math.sin(phase)),cloudiness=Math.max(info.cloud,info.rain,info.fog*.75);const moonDist=Math.min(190,(camera.far||270)*.92),sunDir=new THREE.Vector3(Math.cos(phase)*125,18+alt*50,-90),elevation=.22+alt*.67,azimuth=phase-Math.PI,moonDir=new THREE.Vector3(Math.cos(azimuth)*Math.cos(elevation),Math.sin(elevation),Math.sin(azimuth)*Math.cos(elevation)).multiplyScalar(moonDist);
   // Place the sun behind the visible city while preserving its apparent size and direction.
   const sunDistance=Math.max(1,(camera.far||270)*.96),sunScale=sunDistance/sunDir.length();
   sunBlock.position.copy(camera.position).add(sunDir.multiplyScalar(sunScale));sunBlock.scale.setScalar(.60*sunScale);sunBlock.lookAt(camera.position);sunBlock.visible=!night&&cloudiness<.8;
@@ -131,7 +131,7 @@ export function createWeather({scene,camera,world,sunBlock,clouds,cloudMat,belly
    flareMesh.material.opacity=(.85+.22*duskFactor)*(1-cloudiness*.85);
   }
 
-  moon.position.copy(camera.position).add(moonDir);moon.lookAt(camera.position);moon.visible=night&&cloudiness<.85;
+  moon.position.copy(camera.position).add(moonDir);moon.scale.setScalar(moonDist/190);moon.lookAt(camera.position);moon.visible=night&&cloudiness<.85;
   moonMat.opacity=(.35+.27*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.75);
   craterMat.opacity=moonMat.opacity*.22;
   lunarHaloMat.opacity=(.16+.08*THREE.MathUtils.smoothstep(alt,0,.4))*(1-cloudiness*.8);

@@ -48,7 +48,7 @@ export function createVertexLightBake({sources,bounds,sample=windowSpill,cap=.28
   const existing=g.attributes.color;if(existing&&!mat.vertexColors)return false;
   let colors=existing;if(!colors){colors=new THREE.BufferAttribute(new Float32Array(p.count*3).fill(1),3);g.setAttribute('color',colors);stats.bytes+=colors.array.byteLength;}
   const original=new Float32Array(indices.length*3);for(let j=0;j<indices.length;j++){const i=indices[j];original[j*3]=colors.getX(i);original[j*3+1]=colors.getY(i);original[j*3+2]=colors.getZ(i);}
-  const entry={colors,indices:new Uint32Array(indices),original,energy:new Uint8Array(energy)};entries.add(entry);done.add(g);
+  const entry={colors,indices:new Uint32Array(indices),original,energy:new Uint8Array(energy)};entries.add(entry);done.add(g);(g.userData.bakedEntries??=[]).push(entry);
   if(!mat.vertexColors){if(!materials.has(mat)){const m=mat.clone();m.vertexColors=true;materials.set(mat,m);}mesh.material=materials.get(mat);}
   stats.meshes++;stats.bytes+=entry.indices.byteLength+original.byteLength+entry.energy.byteLength;apply(entry);
   g.addEventListener('dispose',()=>entries.delete(entry));return true;

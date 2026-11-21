@@ -314,6 +314,7 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
   elapsed += dt;
   voice.tick(dt);
   const peds = externalPedestrians ?? (getPedestrians ? getPedestrians() : []);
+  const playerLocal = getPos?.();
 
   for (const r of rickshaws) {
    const isRidden = ride?.rickshaw === r;
@@ -476,16 +477,34 @@ export function createYuyuanRickshaws({ scene, root, getPos, setView, place, not
     }
 
     // 4. Spin wheels vertically along rolling contact axis (垂直立式顺畅前滚)
-    const wheelRot = travel / 0.58;
-    for (const w of r.wheels) {
-     w.rotation.x += wheelRot;
-    }
+    const animNear = isRidden || !playerLocal || ((playerLocal.x - nextX) ** 2 + (playerLocal.z - nextZ) ** 2 <= 8100);
+    if (!animNear) {
+     if (r._animActive !== false) {
+      r._animActive = false;
+      for (const w of r.wheels) w.matrixAutoUpdate = false;
+      r.leftLeg.matrixAutoUpdate = false;
+      r.rightLeg.matrixAutoUpdate = false;
+      r.torso.matrixAutoUpdate = false;
+     }
+    } else {
+     if (r._animActive === false) {
+      r._animActive = true;
+      for (const w of r.wheels) w.matrixAutoUpdate = true;
+      r.leftLeg.matrixAutoUpdate = true;
+      r.rightLeg.matrixAutoUpdate = true;
+      r.torso.matrixAutoUpdate = true;
+     }
+     const wheelRot = travel / 0.58;
+     for (const w of r.wheels) {
+      w.rotation.x += wheelRot;
+     }
 
-    // Stride legs and bob torso
-    const strideFreq = r.speed * 4.2;
-    r.leftLeg.rotation.x = Math.sin(elapsed * strideFreq) * 0.65;
-    r.rightLeg.rotation.x = -Math.sin(elapsed * strideFreq) * 0.65;
-    r.torso.position.y = 1.08 + Math.abs(Math.sin(elapsed * strideFreq * 2)) * 0.04;
+     // Stride legs and bob torso
+     const strideFreq = r.speed * 4.2;
+     r.leftLeg.rotation.x = Math.sin(elapsed * strideFreq) * 0.65;
+     r.rightLeg.rotation.x = -Math.sin(elapsed * strideFreq) * 0.65;
+     r.torso.position.y = 1.08 + Math.abs(Math.sin(elapsed * strideFreq * 2)) * 0.04;
+    }
    } else {
     r.leftLeg.rotation.x = 0;
     r.rightLeg.rotation.x = 0;

@@ -77,6 +77,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   {x:westSpine(66),z:66,offset:0,id:'stele-66'},
   {x:westSpine(99),z:99,offset:8,id:'rear-99'});
  const signalRoots=[];
+ const stopMat=new THREE.MeshLambertMaterial({color:'#f5eee0',polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
  for(const signal of signals){
   signal.heads=[];signal.posts=[];
   if(signal.id==='bund-66'||signal.id==='stele-66'){
@@ -98,7 +99,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
       const m=new THREE.Mesh(vLampGeo,mat(color,true));
       m.rotation.x=Math.PI/2;
       m.position.set(0,.5-i*.5,.18);
-      m.userData.range=220;
+      m.userData.range=145;
+     m.userData.dynamicColor=true;
       v.add(m);
       vLamps.push(m);
      }
@@ -114,7 +116,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
       const m=new THREE.Mesh(pLampGeo,mat(color,true));
       m.rotation.x=Math.PI/2;
       m.position.set(0,.42-i*.42,.15);
-      m.userData.range=220;
+      m.userData.range=145;
+     m.userData.dynamicColor=true;
       p.add(m);
       pLamps.push(m);
      }
@@ -134,7 +137,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
      const m=new THREE.Mesh(vLampGeo,mat(color,true));
      m.rotation.x=Math.PI/2;
      m.position.set(0,5.4-i*.5,.18);
-     m.userData.range=220;
+     m.userData.range=145;
+     m.userData.dynamicColor=true;
      r.add(m);
      lamps.push(m);
     }
@@ -143,7 +147,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    }
   }
   // Stop lines and zebra crossing remain on the road, leaving the sidewalk passable.
-  for(const dz of [-6,6]){const m=new THREE.Mesh(new THREE.PlaneGeometry(6,.15),mat('#f5eee0'));m.rotation.x=-Math.PI/2;m.position.set(signal.x+.5,26.055,signal.z+.5+dz);m.userData.range=220;root.add(m);}
+  for(const dz of [-6,6]){const m=new THREE.Mesh(new THREE.PlaneGeometry(6,.15),stopMat);m.rotation.x=-Math.PI/2;m.position.set(signal.x+.5,26.055,signal.z+.5+dz);m.userData.range=145;root.add(m);}
  }
  for(const r of signalRoots){r.updateMatrixWorld(true);r.traverse(o=>{if(o.isMesh&&o.geometry.type==='BoxGeometry'){const b=new THREE.Box3().setFromObject(o);solids?.add(b.min.x,b.min.y,b.min.z,b.max.x,b.max.y,b.max.z,'traffic-light');}});}
  function officer(signal,i){let point;for(const [dx,dz]of [[5.5,-8],[-5.5,8],[8,-8]])if(clearPoint(signal.x+dx,signal.z+dz)&&!roadContains(signal.x+dx,signal.z+dz)){point={x:signal.x+dx,z:signal.z+dz};break;}if(!point)return;const r=new THREE.Group();r.position.set(point.x,26,point.z);root.add(r);cube(r,'#88b4d5',0,1,0,.46,.7,.3);cube(r,'#d4eb69',0,1.06,-.17,.45,.53,.08);for(const y of [.86,1.23])cube(r,'#eef6ed',0,y,-.22,.47,.06,.03);cube(r,'#e3b38b',0,1.61,0,.34,.34,.33);cube(r,'#f0f2ee',0,1.83,0,.43,.15,.42);cube(r,'#243649',0,1.77,-.17,.4,.06,.14);for(const x of [-.12,.12])cube(r,'#293a52',x,.38,0,.18,.76,.23);const arm=new THREE.Group();arm.position.set(.31,1.3,0);cube(arm,'#88b4d5',0,-.22,0,.16,.45,.18);cube(arm,'#f2efdf',0,-.49,0,.17,.18,.18);r.add(arm);cube(r,'#88b4d5',-.3,1,0,.16,.58,.18);styleNpc({root:r,torso:r.children[0],head:r.children[4],arms:[arm,r.children[10]],legs:[r.children[7],r.children[8]]},i,'officer');r.updateMatrixWorld(true);for(const c of r.children)if(c!==arm)c.traverse(o=>{o.matrixAutoUpdate=false;});officers.push({root:r,arm,signal,phase:i});}
@@ -163,11 +167,12 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
  const bundBuses=buses.filter(b=>b.route===rear);for(const [i,b]of bundBuses.entries()){b.stopDs=[80,steleStop.d];if(i===1){b.t=steleStop.d;b.stopD=steleStop.d;}}
  if(clearPoint(steleStop.p.x,steleStop.p.z)){const r=new THREE.Group();r.position.set(steleStop.p.x+.5,26,steleStop.p.z+.5);root.add(r);r.add(createBusStopSign({name:'南京路步行街',code:'游1',line:'滨江环线',stations:['南京路步行街','滨江候车点'],yaw:steleStop.p.yaw}));stops.push({root:r,route:rear,d:steleStop.d,yaw:steleStop.p.yaw,name:'南京路步行街'});}
  // Painted cycle lanes sit beside the motor lanes; markings add no physical barriers.
+ const cyclePaintMat=new THREE.MeshLambertMaterial({color:'#426b62',polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),cycleEdgeMat=new THREE.MeshLambertMaterial({color:'#c4dcc3',polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-6});
  for(const route of [rear,outer]){
-  const count=Math.ceil(route.lengthMeters/2),paint=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1,1),mat('#426b62'),count),edge=new THREE.InstancedMesh(new THREE.PlaneGeometry(.07,.8),mat('#c4dcc3'),count),stamp=new THREE.Object3D();
+  const count=Math.ceil(route.lengthMeters/2),paint=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1,1),cyclePaintMat,count),edge=new THREE.InstancedMesh(new THREE.PlaneGeometry(.07,.8),cycleEdgeMat,count),stamp=new THREE.Object3D();
   paint.name='curb-cycle-lane';edge.name='cycle-lane-divider';
   for(let i=0;i<count;i++){const d=i*2,a=routePose(route,d,4),b=routePose(route,Math.min(d+2,route.lengthMeters-.001),4);stamp.position.set((a.x+b.x)/2+.5,26.065,(a.z+b.z)/2+.5);stamp.rotation.set(-Math.PI/2,0,Math.atan2(b.x-a.x,b.z-a.z));stamp.scale.set(1,Math.max(.1,Math.hypot(b.x-a.x,b.z-a.z)),1);stamp.updateMatrix();paint.setMatrixAt(i,stamp.matrix);const p=routePose(route,d,3.4);stamp.position.set(p.x+.5,26.075,p.z+.5);stamp.scale.set(1,1,1);stamp.updateMatrix();edge.setMatrixAt(i,stamp.matrix);}
-  for(const mesh of [paint,edge]){mesh.userData.range=285;mesh.computeBoundingSphere();root.add(mesh);cycleMarkings.push(mesh);}
+  for(const mesh of [paint,edge]){mesh.userData.range=145;mesh.computeBoundingSphere();root.add(mesh);cycleMarkings.push(mesh);}
  }
  function rider(route,i){
   const seedIndex=i+(route===outer?5:0),delivery=i>0,color=delivery?(i%2?'#f6c74b':'#55acd4'):'#af7968',r=new THREE.Group();r.name=delivery?'delivery-scooter':'city-bicycle';root.add(r);const wheels=[];
@@ -204,7 +209,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
  for(const r of signalRoots)r.traverse(o=>{o.matrixAutoUpdate=false;});
  for(const s of stops)s.root.traverse(o=>{o.matrixAutoUpdate=false;});
  for(const m of cycleMarkings)m.matrixAutoUpdate=false;
- for(const b of trafficBatches)b.matrixAutoUpdate=false;
+ for(const b of trafficBatches){b.matrixAutoUpdate=false;b.userData.range=145;}
  for(const c of cars)c.crossings=routeCrossings(c.route,signals);
  const contactPool=createTrafficContactGrid();
  const agents=[...cars,...buses,...riders];agents.forEach((a,i)=>a.trafficId=i);let clock=0,first=0,junctionClock=-1,junctions=createJunctionControl(undefined,{getPose:junctionPose});
@@ -269,7 +274,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(playerPos&&interest&&!c.yielding&&!c.detour){
     const rp0=c.root.position,dx0=rp0.x-playerPos.x,dz0=rp0.z-playerPos.z;
-    if(dx0*dx0+dz0*dz0>22500&&!interest.seesPoint(rp0,4,250)){
+    if(dx0*dx0+dz0*dz0>12100&&!interest.seesPoint(rp0,4,135)){
      let fastTravel=c.speed*step;
      for(const crossing of c.crossings??[]){
       if(signalPhase(clock,crossing.signal.offset)[crossing.axis]!=='green'){
@@ -326,7 +331,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    const permitted=junctions.permits(c,at);if(travel>0&&(!permitted||!worldClear(c,at)||contact(c,at,obstacles,includePlayer))){travel=0;c.waitReason=permitted?'obstacle':'junction';c.currentSpeed=THREE.MathUtils.damp(c.currentSpeed,0,12,step);}else{c.t=t;setPose(c,at);}c.waitTime+=step;c.progressSinceWait=(c.progressSinceWait??0)+travel;if(c.progressSinceWait>.5){c.waitTime=0;c.progressSinceWait=0;c.waitReason='';}c.travelSpeed=travel/step;
    if(c.wheels||c.pedaling){
     const rp=c.root.position;
-    if(interest&&!interest.animatesLimb(rp.x,rp.y,rp.z,64)){
+    const farWheel=playerPos&&(rp.x-playerPos.x)**2+(rp.z-playerPos.z)**2>8100;
+    if(farWheel||interest&&!interest.animatesLimb(rp.x,rp.y,rp.z,64)){
      if(c._wheelActive!==false){
       c._wheelActive=false;
       for(const wheel of c.wheels??[])wheel.matrixAutoUpdate=false;
@@ -355,7 +361,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    travelled.fill(0,0,agents.length);
    try{
     while(remaining>1e-8){
-     const step=Math.min(remaining,1/30);
+     const step=Math.min(remaining,1/20);
      remaining-=step;
      advance(step,playerPos,obstacles,hasPlayerContact);
      for(let i=0;i<agents.length;i++)travelled[i]+=agents[i].travelSpeed*step;

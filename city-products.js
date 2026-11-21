@@ -1,6 +1,6 @@
 import * as THREE from './three.module.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
-const mats=new Map(),box=new THREE.BoxGeometry(1,1,1),ball=new THREE.SphereGeometry(1,12,8),disc=new THREE.CylinderGeometry(1,1,1,20);
+const mats=new Map(),box=new THREE.BoxGeometry(1,1,1),ball=new THREE.SphereGeometry(1,8,6),disc=new THREE.CylinderGeometry(1,1,1,12);
 const material=c=>{if(!mats.has(c))mats.set(c,new THREE.MeshLambertMaterial({color:c}));return mats.get(c);};
 export const SHOP_PRODUCTS={
  mooncake:{name:'鲜肉月饼',food:2},
@@ -43,7 +43,7 @@ export const BRAND_PRODUCTS={
 // Individually removable servings. Merge inside each item, never across stock units.
 export function createProduct(kind,{meal=false,batch=true}={}){
  const root=new THREE.Group();root.name='product-'+kind;root.userData.product=kind;
- const part=(geometry,c,x,y,z,w,h,d)=>{const m=new THREE.Mesh(geometry,material(c));m.position.set(x,y,z);m.scale.set(w,h,d);root.add(m);return m;};
+ const part=(geometry,c,x,y,z,w,h,d)=>{const m=new THREE.Mesh(geometry,material(c));m.position.set(x,y,z);m.scale.set(w,h,d);m.userData.range=48;root.add(m);return m;};
  const cube=(...a)=>part(box,...a),round=(...a)=>part(disc,...a),sphere=(...a)=>part(ball,...a);
  const plate=(x=0,z=0,r=.42)=>{round('#f6f0de',x,.035,z,r,.05,r);round('#d8bd81',x,.068,z,r*.91,.015,r*.91);round('#fff9e9',x,.081,z,r*.86,.018,r*.86);};
  if(kind==='gift'){

@@ -39,7 +39,7 @@ let globalFrame=0;
 // intact for walking, doors, dialogue, seats, collision and save logic.
 export function createSceneInstances(scene,{mergeSolidColors=false}={}){
  const candidates=new Map(),batches=[],frustum=new THREE.Frustum(),projection=new THREE.Matrix4(),inverse=new THREE.Matrix4(),matrix=new THREE.Matrix4(),cellBox=new THREE.Box3(),tmpBox=new THREE.Box3();
- let frame=0;
+ let frame=0,lastCamObj=null,lastCamX=NaN,lastCamY=NaN,lastCamZ=NaN,lastCamFar=NaN,lastWe0=NaN,lastWe2=NaN,lastWe5=NaN,lastWe8=NaN,lastWe10=NaN,lastPe0=NaN,lastPe5=NaN,lastPe10=NaN;
  function hierarchy(o){
   if(!o)return 0;
   if(o===scene)return scene.visible?3:1;
@@ -55,12 +55,12 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
   if(mergeSolidColors&&!o.geometry.attributes.color&&isPlainSolidMaterial(o.material)){
    const geoKey=isUnitBox(o.geometry)?'unit-box':o.geometry.uuid;
    const sc=isStaticChain(o,scene)?'S':'D';
-   const cellSuffix=sc==='S'?(':'+Math.floor(o.matrixWorld.elements[12]/64)+':'+Math.floor(o.matrixWorld.elements[14]/64)):'';
+   const cellSuffix=sc==='S'?(':'+Math.floor(o.matrixWorld.elements[12]/128)+':'+Math.floor(o.matrixWorld.elements[14]/128)):'';
    key=['pal',geoKey,o.material.type,o.material.side,!!o.material.flatShading,!!o.material.fog,o.material.blending,o.material.toneMapped?1:0,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,!!o.userData.panel,sc].join(':')+cellSuffix;
   }else if(mergeSolidColors){
    const geoKey=isUnitBox(o.geometry)?'unit-box':o.geometry.uuid;
    const sc=isStaticChain(o,scene)?'S':'D';
-   const cellSuffix=sc==='S'?(':'+Math.floor(o.matrixWorld.elements[12]/64)+':'+Math.floor(o.matrixWorld.elements[14]/64)):'';
+   const cellSuffix=sc==='S'?(':'+Math.floor(o.matrixWorld.elements[12]/128)+':'+Math.floor(o.matrixWorld.elements[14]/128)):'';
    key=[geoKey,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,!!o.userData.panel,sc].join(':')+cellSuffix;
   }else{
    key=[o.geometry.uuid,o.material.uuid,o.layers.mask,o.renderOrder,o.castShadow,o.receiveShadow,o.userData.range??65,!!o.userData.panel].join(':');
@@ -147,7 +147,7 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
     }
    }
   }
-  const batch={mesh,entries,ownerRuns,useColor,paletteMat,isStatic:isStaticBatch,staticReady:false,staticCount:0,hasUnculled:false,cellSphere:new THREE.Sphere(),uploaded:false,gpuSyncedCount:0,dirtyCount:0,pendingUploadCount:0,gpuSyncedColorCount:0,dirtyColorCount:0,pendingColorUploadCount:0};
+  const batch={mesh,entries,ownerRuns,useColor,paletteMat,isStatic:isStaticBatch,staticReady:false,fastOwners:null,staticCount:0,hasUnculled:false,cellSphere:new THREE.Sphere(),uploaded:false,gpuSyncedCount:0,dirtyCount:0,pendingUploadCount:0,gpuSyncedColorCount:0,dirtyColorCount:0,pendingColorUploadCount:0};
   const syncUploaded=()=>{
    if(batch.pendingUploadCount>0){
     if(batch.pendingUploadCount>=batch.dirtyCount){batch.gpuSyncedCount=Math.max(batch.gpuSyncedCount,batch.pendingUploadCount);batch.dirtyCount=0;}
@@ -174,6 +174,10 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
  }
  function update(camera){
   frame=++globalFrame;
+  const ce=camera.matrixWorld.elements,camX=ce[12],camY=ce[13],camZ=ce[14],camFar=camera.far||270;
+  const pe=camera.projectionMatrix.elements,we=camera.matrixWorldInverse.elements;
+  const camMoved=camera!==lastCamObj||Math.abs(camX-lastCamX)>1e-5||Math.abs(camY-lastCamY)>1e-5||Math.abs(camZ-lastCamZ)>1e-5||Math.abs(camFar-lastCamFar)>1e-3||Math.abs(we[0]-lastWe0)>1e-5||Math.abs(we[2]-lastWe2)>1e-5||Math.abs(we[5]-lastWe5)>1e-5||Math.abs(we[8]-lastWe8)>1e-5||Math.abs(we[10]-lastWe10)>1e-5||Math.abs(pe[0]-lastPe0)>1e-5||Math.abs(pe[5]-lastPe5)>1e-5||Math.abs(pe[10]-lastPe10)>1e-5;
+  if(camMoved){lastCamObj=camera;lastCamX=camX;lastCamY=camY;lastCamZ=camZ;lastCamFar=camFar;lastWe0=we[0];lastWe2=we[2];lastWe5=we[5];lastWe8=we[8];lastWe10=we[10];lastPe0=pe[0];lastPe5=pe[5];lastPe10=pe[10];}
   projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(projection);
   const planes=frustum.planes,p0=planes[0],p1=planes[1],p2=planes[2],p3=planes[3],p4=planes[4],p5=planes[5];
   const p0n=p0.normal,p1n=p1.normal,p2n=p2.normal,p3n=p3.normal,p4n=p4.normal,p5n=p5.normal;
@@ -201,21 +205,44 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
     batch.pendingColorUploadCount=0;
    }
    if(batch.isStatic){
-    if(!sceneIdentity)batch.staticReady=false;
+    if(!sceneIdentity){batch.staticReady=false;batch.fastOwners=null;}
     if(batch.staticReady&&(entries[0].mask&camMask)){
      let valid=true;
-     for(let i=0;i<entries.length;i++){
-      const entry=entries[i],s=entry.source,p=s.parent;
-      const e=s.matrixWorld.elements;
-      if(s.frustumCulled!==entry.cachedFrustumCulled){valid=false;break;}
-      if(p!==entry.cachedParent||s.visible!==entry.cachedVis||s.matrixAutoUpdate||s.geometry!==entry.origGeo||s.material!==entry.origMat||e[0]!==entry.m0||e[1]!==entry.m1||e[2]!==entry.m2||e[4]!==entry.m4||e[5]!==entry.m5||e[6]!==entry.m6||e[8]!==entry.m8||e[9]!==entry.m9||e[10]!==entry.m10||e[12]!==entry.m12||e[13]!==entry.m13||e[14]!==entry.m14){valid=false;break;}
-      if(useColor){const c=entry.origMat.color;if(c.r!==entry.cr||c.g!==entry.cg||c.b!==entry.cb){valid=false;break;}}
-      const flags=!p?0:p===scene?sceneVis:p.parent===scene?((sceneVis&1)|((sceneVis&2)&&p.visible?2:0)):p._siFrame===frame?p._siFlags:hierarchy(p);
-      if(flags!==entry.cachedFlags){valid=false;break;}
+     if(batch.fastOwners){
+      const fos=batch.fastOwners;
+      for(let r=0;r<fos.length;r++){
+       const fo=fos[r],o=fo.owner;
+       const flags=o===scene?sceneVis:o.parent===scene?((sceneVis&1)|((sceneVis&2)&&o.visible?2:0)):o._siFrame===frame?o._siFlags:hierarchy(o);
+       if(flags!==fo.flags){valid=false;break;}
+      }
+     }else{
+      let prevParent=null,prevFlags=0;
+      for(let i=0;i<entries.length;i++){
+       const entry=entries[i],s=entry.source,p=s.parent;
+       const e=s.matrixWorld.elements;
+       if(s.frustumCulled!==entry.cachedFrustumCulled){valid=false;break;}
+       if(p!==entry.cachedParent||s.visible!==entry.cachedVis||s.matrixAutoUpdate||s.geometry!==entry.origGeo||s.material!==entry.origMat||e[0]!==entry.m0||e[1]!==entry.m1||e[2]!==entry.m2||e[4]!==entry.m4||e[5]!==entry.m5||e[6]!==entry.m6||e[8]!==entry.m8||e[9]!==entry.m9||e[10]!==entry.m10||e[12]!==entry.m12||e[13]!==entry.m13||e[14]!==entry.m14){valid=false;break;}
+       if(useColor){const c=entry.origMat.color;if(c.r!==entry.cr||c.g!==entry.cg||c.b!==entry.cb){valid=false;break;}}
+       let flags;
+       if(p===prevParent)flags=prevFlags;
+       else{
+        flags=!p?0:p===scene?sceneVis:p.parent===scene?((sceneVis&1)|((sceneVis&2)&&p.visible?2:0)):p._siFrame===frame?p._siFlags:hierarchy(p);
+        prevParent=p;prevFlags=flags;
+       }
+       if(flags!==entry.cachedFlags){valid=false;break;}
+      }
      }
      if(valid){
-      const inView=batch.hasUnculled||frustum.intersectsSphere(batch.cellSphere);
-      mesh.count=batch.staticCount;mesh.visible=inView&&batch.staticCount>0;
+      let inView;
+      if(batch.staticCount<=0)inView=false;
+      else if(batch.hasUnculled)inView=true;
+      else if(!camMoved&&batch.cachedInView!==undefined)inView=batch.cachedInView;
+      else{
+       const cs=batch.cellSphere,dx=cs.center.x-camX,dy=cs.center.y-camY,dz=cs.center.z-camZ,maxDist=camFar+cs.radius;
+       inView=(dx*dx+dy*dy+dz*dz<=maxDist*maxDist)&&frustum.intersectsSphere(cs);
+      }
+      batch.cachedInView=inView;
+      mesh.count=batch.staticCount;mesh.visible=inView;
       continue;
      }
     }
@@ -274,7 +301,20 @@ export function createSceneInstances(scene,{mergeSolidColors=false}={}){
     if(count>0)cellBox.getBoundingSphere(batch.cellSphere);
     else batch.cellSphere.radius=-1;
     batch.staticCount=count;batch.hasUnculled=hasUnculled;batch.staticReady=sceneIdentity;
-    mesh.count=count;mesh.visible=(hasUnculled||frustum.intersectsSphere(batch.cellSphere))&&count>0;
+    if(sceneIdentity&&entries.length>16){
+     const seen=new Set(),fos=[];
+     for(let i=0;i<entries.length;i++){
+      const o=fastSkipOwner(entries[i].source,scene)||entries[i].source.parent||scene;
+      if(seen.has(o))continue;
+      seen.add(o);
+      fos.push({owner:o,flags:hierarchy(o)});
+     }
+     batch.fastOwners=fos;
+    }else batch.fastOwners=null;
+    const cs=batch.cellSphere,dx=cs.center.x-camX,dy=cs.center.y-camY,dz=cs.center.z-camZ,maxDist=camFar+cs.radius;
+    const inView=count>0&&(hasUnculled||((dx*dx+dy*dy+dz*dz<=maxDist*maxDist)&&frustum.intersectsSphere(cs)));
+    batch.cachedInView=inView;
+    mesh.count=count;mesh.visible=inView;
     attr.clearUpdateRanges();
     if(count>0&&initialPopulate){batch.uploaded=true;batch.gpuSyncedCount=entries.length;batch.dirtyCount=0;batch.pendingUploadCount=0;}
     else if(count>0&&dirty){batch.dirtyCount=Math.max(batch.dirtyCount,count);batch.pendingUploadCount=count;attr.addUpdateRange(0,count*16);attr.needsUpdate=true;}

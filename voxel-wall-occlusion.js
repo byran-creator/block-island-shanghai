@@ -98,7 +98,7 @@ export function createStaticWallCull(meshes,isFace) {
   const camMask=camera.layers.mask;
   for(let i=0;i<entries.length;i++) {
    const entry=entries[i],{mesh,matrix,local,world}=entry;
-   if(!mesh.visible||!(mesh.layers.mask&camMask))continue;
+   if(!mesh.visible||mesh.parent?.visible===false||!(mesh.layers.mask&camMask))continue;
    const material=mesh.material;
    if(material&&(!material.depthTest||material.depthFunc!==LessEqualDepth||
     material.polygonOffset||material.stencilWrite||material.isShaderMaterial||mesh.castShadow||

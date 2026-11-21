@@ -119,6 +119,8 @@ C 制作 · G 采食 / 用床 · Z 进食 · Q 反击`);
  for(const m of marine)setMarinePose(m);
  const motion={
   land(dt){
+   const p=getPos?.();
+   if(p&&p.z<210&&(!simulationInterest||!simulationInterest.seesPoint({x:95,y:28,z:315},45,160)))return;
    for(const a of animals){
     a.timer-=dt;a.cooldown=Math.max(0,a.cooldown-dt);
     if(a.timer<=0){a.heading+=(Math.random()-.5)*2.5;a.timer=1.5+Math.random()*4;}

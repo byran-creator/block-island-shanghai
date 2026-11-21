@@ -90,7 +90,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    const cx=front.x+sideCase*(1.4+sideW/2);
    cube(root,'#2c1e13',cx,26.4,front.z+side*.15,sideW,.8,.1); // walnut base
    const glass=cube(root,'#e4f5f8',cx,27.8,front.z+side*.18,sideW,2.0,.02);
-   glass.material=windowGlassMat;
+   glass.material=windowGlassMat;glass.userData.range=85;
    cube(root,'#7a1d26',cx,26.85,front.z+side*.06,sideW-.1,.1,.18); // velvet display riser
   }
   // 3D Luxury Interior Decoration for every shop on Nanjing Road
@@ -192,8 +192,8 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
    cube(stall,'#caa54f',.9,1.68,-.35,.14,.1,.14);
    cube(stall,'#caa54f',-.9,1.82,-.35,.08,.36,.08);
    for(const dx of [-1.05,1.05])cube(stall,'#765c46',dx,.44,0,.12,.88,1);
-   for(const dz of [-.59,.59]){const glass=cube(stall,'#b9dde2',0,1.3,dz,2.4,.6,.025);glass.material=caseGlassMat;}
-   const lid=cube(stall,'#d2eef2',0,1.61,0,2.45,.025,1.25);lid.material=caseLidMat;
+   for(const dz of [-.59,.59]){const glass=cube(stall,'#b9dde2',0,1.3,dz,2.4,.6,.025);glass.material=caseGlassMat;glass.userData.range=85;}
+   const lid=cube(stall,'#d2eef2',0,1.61,0,2.45,.025,1.25);lid.material=caseLidMat;lid.userData.range=85;
    cube(stall,'#fff0ce',0,3.3,0,2.1,.06,.7,true);
   }else{
    let awningMat=awningMats.get(brand.color);if(!awningMat){awningMat=new THREE.MeshLambertMaterial({map:getStripedAwningTexture(brand.color,'#fefcf5')});awningMats.set(brand.color,awningMat);}const awning=cube(stall,brand.color,0,2.5,0,2.6,.16,1.5);awning.material=awningMat;
@@ -269,7 +269,7 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   if(port>=0){if(ferryPhase(clock).port!==port){notify('轮渡还未靠岸，请在渡口候船。');return true;}ride={from:port};notify('已登上轮渡，正在前往'+landings[1-port].name+'。');return true;}
   const v=nearestVendor();if(!v)return false;pause();panel=true;$('city-title').textContent=v.name;$('city-result').textContent='柜台现货 '+v.remaining+' 份 · 购物袋已有 '+(goods[v.product]??0)+' 份'+SHOP_PRODUCTS[v.product].name+'。';$('city-actions').replaceChildren();const button=document.createElement('button');button.className='recipe-card';const label=()=>button.textContent=v.remaining?'购买'+SHOP_PRODUCTS[v.product].name+' · 库存 '+v.remaining:'已售罄';label();button.disabled=!v.remaining;button.onclick=()=>{if(!v.remaining)return;if(cooldown>0){$('city-result').textContent='刚买过一份，稍后再来。';return;}if(v.food){const state=getState();state.food+=2;if(state.hunger<20)state.eat();}v.remaining--;goods[v.product]=(goods[v.product]??0)+1;showStock(v);label();button.disabled=!v.remaining;purchases++;cooldown=30;onEvent({type:'shop'});$('city-result').textContent='已购买'+SHOP_PRODUCTS[v.product].name+'，柜台少一份；购物袋共 '+goods[v.product]+' 份'+(v.food?'，食物已加入背包。':'。');onProgress();};$('city-actions').appendChild(button);$('city-dialog').showModal();return true;
  }
- const busGuests=transit?Array.from({length:2},(_,i)=>{const p={...person(i+250,root,'visitor'),kind:'bus-guest',stationary:true,ready:false,phase:i};p.root.visible=false;tourists.push(p);return p;}):[];
+ const busGuests=transit?Array.from({length:2},(_,i)=>{const p={...person(i+250,root,'visitor'),kind:'bus-guest',stationary:true,ready:false,phase:i};p.root.visible=false;p.root.userData.skipHiddenMatrices=true;{const u=p.root.updateMatrixWorld;let sk=false;p.root.updateMatrixWorld=function(f){if(!this.visible){sk=true;return;}u.call(this,f||sk);sk=false;};}tourists.push(p);return p;}):[];
  const sharedWalkers=extraCrowd.map(p=>{p.crowdManaged=true;p.arms=p.limbs.map(l=>l.arm);p.legs=p.limbs.map(l=>l.leg);return p;});
  const financialPeople=createLujiazuiPeople({person,cube});tourists.push(...financialPeople);
  const streetPeople=[...bundWalkers,...tourists,...sharedWalkers,...vendors,...otherPeople];
@@ -333,10 +333,10 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
   const viewer=getPos?.();
   const nanjingDistSq=viewer?(Math.max(-182-viewer.x,viewer.x-15,0)**2+Math.max(50-viewer.z,viewer.z-82,0)**2):0;
   const lujiazuiDistSq=viewer?(Math.max(165-viewer.x,viewer.x-220,0)**2+Math.max(32-viewer.z,viewer.z-126,0)**2):0;
-  const bundDistSq=viewer?(Math.max(-110-viewer.x,viewer.x-55,0)**2+Math.max(45-viewer.z,viewer.z-90,0)**2):0;
-  const nanjingActive=!viewer||dt<=0||nanjingDistSq<=22500||simulationInterest?.seesPoint({x:Math.max(-180,Math.min(0,viewer.x)),y:26,z:66.5},28,240);
-  const lujiazuiActive=!viewer||dt<=0||lujiazuiDistSq<=22500||simulationInterest?.seesPoint({x:190,y:26,z:85},38,240);
-  const bundActive=!viewer||dt<=0||bundDistSq<=22500||simulationInterest?.seesPoint({x:0,y:26,z:66.5},36,240);
+  const bundDistSq=viewer?(Math.max(-38-viewer.x,viewer.x-45,0)**2+Math.max(45-viewer.z,viewer.z-90,0)**2):0;
+  const nanjingActive=!viewer||dt<=0||nanjingDistSq<=12100||simulationInterest?.seesPoint({x:Math.max(-180,Math.min(-25,viewer.x)),y:26,z:66.5},24,125);
+  const lujiazuiActive=!viewer||dt<=0||lujiazuiDistSq<=14400||simulationInterest?.seesPoint({x:175,y:26,z:85},34,155);
+  const bundActive=!viewer||dt<=0||bundDistSq<=11025||simulationInterest?.seesPoint({x:18,y:26,z:66.5},28,145);
   if(nanjingActive||lujiazuiActive||bundActive)nearbyVehicles.refresh(vehicles);
   if(nanjingActive)crowd.tick(dt,nearbyVehicles);
   if(lujiazuiActive)financialFlow.tick(dt,nearbyVehicles,dayClock);
@@ -348,11 +348,14 @@ export function createCityActivity({scene,world,getPos,getState,teleport,lookAt=
  const moving=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(vendors.flatMap(v=>v.stock),heli,signs.map(s=>s.mesh),neons));
  const furniture=staticMeshes(root,moving),solidPalette=new Set();
  for(const m of furniture){const mat=m.material;if(mat&&!mat.transparent&&mat.opacity===1&&!mat.map&&!mat.vertexColors&&(mat.isMeshBasicMaterial||(mat.isMeshLambertMaterial&&mat.emissive.r===0&&mat.emissive.g===0&&mat.emissive.b===0)))solidPalette.add(mat);}
- const furnitureBatches=batchMeshes(root,furniture,'street-furniture',solidPalette,false,48);
- for(const b of furnitureBatches)if(b.geometry?.attributes?.color)b.userData.skipLightBake=true;
+ const productFurniture=furniture.filter(m=>m.userData.range===48),streetFurniture=furniture.filter(m=>m.userData.range!==48);
+ const productBatches=batchMeshes(root,productFurniture,'street-products',solidPalette,false,32);
+ for(const b of productBatches){if(b.geometry?.attributes?.color)b.userData.skipLightBake=true;b.userData.range=45;}
+ const furnitureBatches=batchMeshes(root,streetFurniture,'street-furniture',solidPalette,false,48);
+ for(const b of furnitureBatches){if(b.geometry?.attributes?.color)b.userData.skipLightBake=true;b.userData.range=b.material?.transparent?85:88;}
  const neonPalette=new Set(neons.map(m=>m.material).filter(m=>m?.isMeshBasicMaterial&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors));
  const neonBatches=batchMeshes(root,neons,'street-neon',neonPalette,false,64);
- for(const b of neonBatches)if(b.geometry?.attributes?.color)b.userData.skipLightBake=true;
+ for(const b of neonBatches){if(b.geometry?.attributes?.color)b.userData.skipLightBake=true;b.userData.range=155;}
  neons.splice(0,neons.length,...neonBatches);
  root.updateMatrixWorld(true);
  const movingTop=new Set([...tourists,...vendors,...bundWalkers].map(p=>p.root).concat(heli));
