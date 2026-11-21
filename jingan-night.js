@@ -65,17 +65,24 @@ export function createJinganNight(parent,world){
  }
  function eaves(x,z,y,rx,rz){
   for(const s of [-1,1]){
-   bar(x+.5,y+.35,z+.5+s*(rz+.55),2*rx+1,.25,.105);
-   bar(x+.5+s*(rx+.55),y+.35,z+.5,.105,.25,2*rz+1);
-   for(const t of [-1,1])bar(x+.5+t*(rx-.2),y+1.46,z+.5+s*(rz+.55),1.25,.19,.105);
+   bar(x+.5,y+.35,z+.5+s*(rz+.55),2*rx+1,.24,.105);
+   bar(x+.5+s*(rx+.55),y+.35,z+.5,.105,.24,2*rz+1);
+   for(const t of [-1,1])bar(x+.5+t*(rx-.2),y+1.46,z+.5+s*(rz+.55),1.2,.18,.105);
   }
  }
  for(const {x,z,y,rx,rz} of JINGAN_ROOFS)eaves(x,z,y,rx,rz);
  for(const h of JINGAN_HALLS){
-  if(h.upper)bar(h.x+.5,h.roof+h.layers+5.01,h.z+.5,2*h.rx-3,.095,.18);
+  if(h.upperRoof){
+   const rrx=Math.max(1,h.rx-(h.id==='mahavira'?0:1)-(h.upperLayers??3)+1);
+   bar(h.x+.5,h.upperRoof+(h.upperLayers??4)+.7,h.z+.5,Math.max(2,2*rrx),.12,.18);
+  }
  }
- const {x,z,firstTier,tiers}=JINGAN_TOWER;
- bar(x+.5,firstTier+tiers*3+2.5,z+1.05,.22,5,.07);
+ // Five Golden Stupas + Ashoka Dharma Wheel + 4 Courtyard Lanterns
+ const {x:tx,z:tz}=JINGAN_TOWER;
+ bar(tx+.5,57.5,tz+.5,.36,6.4,.36);
+ for(const [ox,oz] of [[-1.65,-1.65],[1.65,-1.65],[-1.65,1.65],[1.65,1.65]])bar(tx+.5+ox,56.2,tz+.5+oz,.22,3.6,.22);
+ bar(-289.5,43.2,7.5,1.2,1.2,.12);
+ for(const lz of [-4.5,1.5])for(const sx of [-1,1])bar(-303.5+sx*3.5,27.2,lz,.42,.42,.42);
  for(const plot of JINGAN_OFFICES){
   const {x,z,rx,rz,height,style}=plot;
   if(!world.get(x-rx,26,z-rz))continue;

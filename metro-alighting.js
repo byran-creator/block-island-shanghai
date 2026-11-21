@@ -1,7 +1,7 @@
 import {Group} from './three.module.js';
 import {projectMetroFrame,unprojectMetroFrame} from './metro-west-layout.js';
 
-const DOOR_X=[-22,-18,10,14,18,22],WALK=3,CLIMB=1.7,FADE=1,MAX_ROUTE=37.2;
+const DOOR_X=[-22,-18,10,14,18,22],WALK=3.4,CLIMB=2.1,STROLL=2.15,FADE=1.6,MAX_ROUTE=38.4;
 
 function routeFor(s,ramp,exits,side,index,nearestDoor,frame){
  const x=s.x+nearestDoor(DOOR_X[index]),lane=s.z+side*2.5,floor=ramp.to;
@@ -15,7 +15,8 @@ function routeFor(s,ramp,exits,side,index,nearestDoor,frame){
   [approach,floor,belt,WALK],[foot,floor,belt,WALK],
   [ramp.x,ramp.from,belt,CLIMB],[top,ramp.from,belt,WALK]
  ];
- const b1=ramp.from,fromWorld=(wx,wy,wz,speed=WALK)=>{
+ const b1=ramp.from,spread=(index%3-1)*.65,alt=index%2===0?1:-1;
+ const fromWorld=(wx,wy,wz,speed=STROLL)=>{
   const q=frame?unprojectMetroFrame({x:wx,y:wy,z:wz},frame):{x:wx,y:wy,z:wz};
   return [q.x,q.y,q.z,speed];
  };
@@ -24,37 +25,55 @@ function routeFor(s,ramp,exits,side,index,nearestDoor,frame){
  if(s.id==='nanjing'&&index%3===0){
   // Transfer via the paid concourse southward into Line 10.
   const tx=-100+((index%2)?-.55:.55);
-  points.push([-106.8,b1,75.5,3.4],[tx,b1,78.5,3.6],[tx,b1,85,3.8],[-114,b1,85,3.8],[-114,b1,124,3.8],[-107,b1,124,3.8],[-107,b1,127.5,3.6]);
+  points.push([-106.8,b1,75.5,3.8],[tx,b1,78.5,4.0],[tx,b1,85,4.2],[-114,b1,85,4.2],[-114,b1,124,4.2],[-107,b1,124,4.0],[-107+spread*.5,b1,130,STROLL]);
  }else if(s.id==='nanjing10'){
-  // Shared-concourse Line 10 transfers northward to Line 2 and its exit gates.
-  points.push([158,b1,10,3.6],[164,b1,13,3.6],fromWorld(-114,b1,124,4.2),fromWorld(-114,b1,85,4.2),fromWorld(-100,b1,85,4.2),fromWorld(-100,b1,78.5,4.0),fromWorld(-106,b1,78.5,3.8),fromWorld(-106,b1,66,3.8),fromWorld(-112,b1,66,3.6));
+  // Shared-concourse Line 10 transfers northward into Line 2 and its exit concourse.
+  points.push([158,b1,10,3.8],[164,b1,13,3.8],fromWorld(-114,b1,124,4.4),fromWorld(-114,b1,85,4.4),fromWorld(-100,b1,85,4.4),fromWorld(-100,b1,78.5,4.0),fromWorld(-106,b1,78.5,3.8),fromWorld(-106,b1,66,3.6),fromWorld(-114,b1,66+spread*.4,STROLL));
  }else if(s.id==='xintiandi'){
   pushExitGate();
-  points.push([s.x-22,b1,gateZ,3.6],[s.x-22,b1,13,3.8],[s.x-22,b1,24,4.2],[s.x+32,b1,24,4.4],fromWorld(-179,b1,199,4.2),fromWorld(-179,b1,203,3.8),fromWorld(-176,b1,203,3.6),fromWorld(-158,26,203,2.4),fromWorld(-154,26,203,3.0),fromWorld(-154,26,index%2?199:207,3.0));
+  points.push(
+   [s.x-22,b1,gateZ,3.8],[s.x-22,b1,13,4.2],[s.x-22,b1,24,4.6],[s.x+32,b1,24,4.8],
+   fromWorld(-179,b1,199,4.6),fromWorld(-179,b1,203,4.2),fromWorld(-176,b1,203,4.0),
+   fromWorld(-158,26,203,CLIMB),fromWorld(-154,26,203+spread*.4,STROLL),
+   alt>0?fromWorld(-136,26,203+spread,STROLL):fromWorld(-154,26,218+spread,STROLL)
+  );
  }else if(exits.length){
   pushExitGate();
   const rExit=exits[index%exits.length];
   const eBottom=rExit.x+rExit.dir*rExit.length,eTop=rExit.x;
   const eBelt=rExit.z+(index%2?-.28:.28);
   const streetStep=eTop-rExit.dir*3.2;
+  const st=rExit.from;
   if(s.id==='nanjing'&&rExit.exit===4){
-   points.push([-126.5,b1,gateZ,WALK],[-126.5,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],[-96,rExit.from,67.5,WALK]);
+   points.push([-126.5,b1,gateZ,WALK],[-126.5,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK]);
+   if(index%2===0)points.push([-96,st,67+spread,STROLL],[-74,st,66+spread,STROLL],[-60,st,66+spread,STROLL]);
+   else points.push([-104,st,70,STROLL],[-118,st,67+spread,STROLL],[-138,st,66+spread,STROLL]);
   }else if(s.id==='nanjing'&&rExit.exit===1){
-   points.push([-112,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],[streetStep,rExit.from,64.8,WALK],[-126,rExit.from,65.2,WALK]);
+   points.push([-112,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK],[streetStep,st,64.8,WALK]);
+   if(index%2===0)points.push([-152,st,65.5+spread,STROLL],[-170,st,66+spread,STROLL]);
+   else points.push([-122,st,65.5+spread,STROLL],[-96,st,66+spread,STROLL]);
   }else if(s.id==='lujiazui'&&rExit.exit===3){
-   points.push([157.5,b1,21.8,WALK],[176,b1,21.8,WALK],[176,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],[streetStep,rExit.from,34,WALK]);
+   points.push([157.5,b1,21.8,WALK],[176,b1,21.8,WALK],[176,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK]);
+   if(index%2===0)points.push([208.2,st,36,STROLL],[195.5,st,36,STROLL],[195.5,st,52,STROLL]);
+   else points.push([222,st,25.5+spread,STROLL],[224,st,40+spread,STROLL]);
   }else if(s.id==='lujiazui'&&rExit.exit===1){
-   points.push([157.5,b1,25.6,WALK],[eBottom+1.2,b1,25.6,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],[streetStep-5,rExit.from,26,WALK]);
+   points.push([157.5,b1,25.6,WALK],[eBottom+1.2,b1,25.6,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK]);
+   if(index%2===0)points.push([138,st,25+spread,STROLL],[126,st,28+spread,STROLL]);
+   else points.push([148,st,29+spread,STROLL],[150,st,44+spread,STROLL]);
   }else if(s.id==='yuyuan'&&rExit.exit===4){
-   points.push([gateX,b1,-5.4,WALK],[eBottom-1.2,b1,-5.4,WALK],[eBottom-1.2,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],fromWorld(-78,rExit.from,265,WALK));
+   points.push([gateX,b1,-5.4,WALK],[eBottom-1.2,b1,-5.4,WALK],[eBottom-1.2,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK],fromWorld(-77,st,265+spread*.4,STROLL),fromWorld(-64,st,265+spread*.4,STROLL));
   }else if(s.id==='yuyuan'&&rExit.exit===1){
-   points.push([gateX,b1,-5.4,WALK],[eBottom+1.2,b1,-5.4,WALK],[eBottom+1.2,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],fromWorld(-86,rExit.from,212,WALK),fromWorld(-77,rExit.from,212,WALK));
+   points.push([gateX,b1,-5.4,WALK],[eBottom+1.2,b1,-5.4,WALK],[eBottom+1.2,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK],fromWorld(-86,st,212,STROLL),fromWorld(-77,st,212,STROLL),fromWorld(-77,st,218,STROLL),fromWorld(-68,st,218+spread*.4,STROLL));
   }else if(s.id==='centuryPark'){
-   points.push([gateX,b1,41.5,WALK],[eBottom+1.2,b1,41.5,WALK],[eBottom+1.2,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],[streetStep,rExit.from,42,WALK]);
+   points.push([gateX,b1,41.5,WALK],[eBottom+1.2,b1,41.5,WALK],[eBottom+1.2,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK]);
+   if(index%2===0)points.push([312,st,48,STROLL],[324+spread,st,48,STROLL]);
+   else points.push([302,st,34.5+spread,STROLL],[302,st,48,STROLL]);
   }else if(s.id==='jingan'){
-   points.push([-317.5,b1,27,WALK],[-318.8,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK],[-290,rExit.from,eBelt,WALK]);
+   points.push([-317.5,b1,27,WALK],[-318.8,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK]);
+   if(index%2===0)points.push([-303.5,st,22.5,STROLL],[-303.5+spread*.5,st,11.5,STROLL]);
+   else points.push([-284,st,23+spread*.5,STROLL],[-270,st,22+spread*.5,STROLL]);
   }else{
-   points.push([gateX,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,rExit.from,eBelt,CLIMB],[streetStep,rExit.from,eBelt,WALK]);
+   points.push([gateX,b1,eBelt,WALK],[eBottom,b1,eBelt,WALK],[eTop,st,eBelt,CLIMB],[streetStep,st,eBelt,WALK],[streetStep-rExit.dir*14,st,eBelt+spread,STROLL]);
   }
  }else{
   points.push([top,b1,ramp.z+5.6,WALK]);
@@ -69,7 +88,7 @@ function routeFor(s,ramp,exits,side,index,nearestDoor,frame){
   segments.push({x:px,y:py,z:pz,dx,dy,dz,duration,until:seconds+duration,yaw:Math.atan2(-dx,-dz)});
   seconds+=duration;
  }
- const start=1.7+index*.25,maxDur=MAX_ROUTE-start;
+ const start=1.6+index*.22,maxDur=MAX_ROUTE-start;
  if(seconds>maxDur&&seconds>0){
   const k=maxDur/seconds;
   let acc=0;
@@ -110,7 +129,7 @@ export function createMetroAlighting({parent,stations,ramps,nearestDoor,stationF
   }else if(actor.fade)for(const [i,mesh]of actor.root.children.entries())mesh.material=actor.solid[i];
  }
  // The active station owns two reusable groups of six. Clock-based poses let
- // passengers finish walking up station exits and into the city/transfers.
+ // passengers exit onto surrounding streets/plazas and mingle with pedestrians.
  function tick(station,ageNegative,agePositive){
   const area=routes[station];
   if(!area){clear();return;}

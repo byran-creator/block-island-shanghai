@@ -23,23 +23,24 @@ export const JINGAN_ROADS=[
 ];
 
 export const JINGAN_HALLS=[
- {x:-304,z:15,rx:4,rz:1,roof:31,layers:2},
- {x:-315,z:13,rx:3,rz:2,roof:31,layers:2},
- {x:-293,z:13,rx:3,rz:2,roof:31,layers:2},
- {x:-304,z:-3,rx:8,rz:5,roof:34,layers:4,upper:true},
- {x:-302,z:-19,rx:9,rz:5,roof:37,layers:3,upper:true},
- {x:-316,z:-5,rx:2,rz:4,roof:31,layers:2},
- {x:-292,z:-5,rx:2,rz:4,roof:31,layers:2}
+ {id:'shanmen',x:-304,z:16,rx:7,rz:2,roof:33,layers:3,style:'xieshan'},
+ {id:'drum',x:-317,z:10,rx:2,rz:2,roof:33,layers:2,style:'square',upperRoof:38,upperLayers:3},
+ {id:'bell',x:-291,z:10,rx:2,rz:2,roof:33,layers:2,style:'square',upperRoof:38,upperLayers:3},
+ {id:'west-cloister',x:-318,z:-3,rx:1,rz:9,roof:31,layers:2,style:'xieshan',noEaveDetail:true},
+ {id:'east-cloister',x:-290,z:-3,rx:1,rz:9,roof:31,layers:2,style:'xieshan',noEaveDetail:true},
+ {id:'mahavira',x:-304,z:-5,rx:9,rz:5,roof:33,layers:3,upper:true,upperRoof:39,upperLayers:5,style:'wudian'},
+ {id:'dharma',x:-300,z:-21,rx:8,rz:4,roof:33,layers:3,upper:true,upperRoof:40,upperLayers:4,style:'xieshan'}
 ].map(hall=>({...hall,z:templeZ(hall.z)}));
-export const JINGAN_TOWER={x:-317,z:templeZ(-22),firstTier:32,tiers:6};
+export const JINGAN_TOWER={x:-316,z:templeZ(-23),firstTier:28,tiers:7};
 export const JINGAN_ROOFS=[
- ...JINGAN_HALLS.flatMap(({x,z,rx,rz,roof:y,layers,upper})=>[
-  {x,z,y,rx:rx+1,rz:rz+1},
-  ...(upper?[{x,z,y:y+layers+2,rx:rx-1,rz}]:[])
+ ...JINGAN_HALLS.flatMap(({id,x,z,rx,rz,roof:y,layers,style,upper,upperRoof,upperLayers,noEaveDetail})=>[
+  {id,x,z,y,rx:rx+1,rz:rz+1,layers,style,chiwen:!noEaveDetail&&style!=='square',eaveDetail:!noEaveDetail},
+  ...(upperRoof?[{id:id+'-upper',x,z,y:upperRoof,rx:style==='square'?rx+1:rx-(id==='mahavira'?0:1),rz:style==='square'?rz+1:rz+(id==='mahavira'?1:0),layers:upperLayers,style:upper?'wudian':style,chiwen:style!=='square',eaveDetail:true}]:[])
  ]),
  ...Array.from({length:JINGAN_TOWER.tiers},(_,i)=>{
-  const {x,z,firstTier}=JINGAN_TOWER,r=Math.max(1,3-Math.floor(i/2));
-  return {x,z,y:firstTier+i*3+2,rx:r,rz:r};
+  const {x,z,firstTier}=JINGAN_TOWER,r=i<2?3:2,h=i<3?3:2;
+  const roofY=firstTier+(i<3?i*4:12+(i-3)*3)+h;
+  return {id:'pagoda-'+i,x,z,y:roofY,rx:r+1,rz:r+1,layers:2,style:'square',chiwen:false,eaveDetail:i%2===0&&i<6};
  })
 ];
 export const JINGAN_OFFICES=[
@@ -94,49 +95,93 @@ export function jinganShade(x,y,z,id){
  if(id===9&&y>25)return mineral;
 }
 
-function roof(w,x,z,y,rx,rz,layers){
+function roof(w,x,z,y,rx,rz,layers,style='xieshan'){
  for(let i=0;i<layers;i++){
-  const a=rx-i,b=Math.max(1,rz-Math.floor((i+1)/2));
-  w.fill(x-a,y+i,z-b,x+a,y+i,z+b,7);
+  const a=Math.max(0,rx-i),b=Math.max(style==='square'?0:1,rz-Math.floor((i+1)*.72));
+  for(let xx=x-a;xx<=x+a;xx++)for(let zz=z-b;zz<=z+b;zz++){
+   const edge=xx===x-a||xx===x+a||zz===z-b||zz===z+b;
+   const corner=(xx===x-a||xx===x+a)&&(zz===z-b||zz===z+b);
+   w.set(xx,y+i,zz,i===layers-1||corner||(i===0&&edge)?7:4);
+  }
  }
+ w.set(x,y,z,7);
+ const topLayer=Math.max(0,rx-(layers-1));
+ if(style==='square')w.set(x,y+layers,z,7);
+ else w.fill(x-Math.max(1,topLayer-1),y+layers,z,x+Math.max(1,topLayer-1),y+layers,z,7);
  for(const sx of [-1,1])for(const sz of [-1,1]){
   w.set(x+sx*rx,y+1,z+sz*rz,7);
-  w.set(x+sx*(rx-1),y+2,z+sz*rz,7);
+  if(layers>2&&rx>1)w.set(x+sx*(rx-1),y+2,z+sz*rz,7);
  }
 }
 
-function hall(w,{x,z,rx,rz,roof:top,layers,upper}){
+function hall(w,h){
+ const {id,x,z,rx,rz,roof:top,layers,style,upperRoof,upperLayers}=h;
  const left=x-rx,right=x+rx,north=z-rz,south=z+rz;
  w.fill(left,25,north,right,25,south,9);
- for(const xx of [left,right])w.fill(xx,26,north,xx,top-1,south,8);
- for(const zz of [north,south]){
-  w.fill(left,top-2,zz,right,top-1,zz,8);
-  for(let xx=left;xx<=right;xx+=2){
-   if(Math.abs(xx-x)<=1)continue;
-   w.fill(xx,26,zz,xx,top-2,zz,4);
-   if(Math.abs(xx-x)>=3&&top>=34)w.set(xx+1,29,zz,11);
+ if(id==='shanmen'){
+  w.fill(left,26,north,right,29,south,9);
+  for(const ax of [0,-4,4]){
+   w.fill(x+ax-1,26,north,x+ax+1,28,south,0);
+   if(ax!==0)w.fill(x+ax-1,26,z,x+ax+1,28,z,8);
   }
+  w.fill(left+1,30,north+1,right-1,32,south-1,8);
+  for(let xx=left+1;xx<=right-1;xx+=2)for(const zz of [north,south])w.fill(xx,30,zz,xx,32,zz,4);
+  roof(w,x,z,top,rx+1,rz+1,layers,style);
+  return;
  }
- roof(w,x,z,top,rx+1,rz+1,layers);
- if(upper){
-  const upperY=top+layers,upperX=rx-2,upperZ=rz-1;
-  w.fill(x-upperX,upperY,z-upperZ,x+upperX,upperY+1,z+upperZ,8);
-  for(let xx=x-upperX+1;xx<x+upperX;xx+=2)for(const zz of [z-upperZ,z+upperZ])w.set(xx,upperY+1,zz,11);
-  roof(w,x,z,upperY+2,upperX+1,upperZ+1,2);
-  w.fill(x-upperX,upperY+4,z,x+upperX,upperY+4,z,7);
+ if(id==='bell'||id==='drum'){
+  w.fill(left,26,north,right,29,south,9);
+  w.fill(x-1,30,z-1,x+1,32,z+1,8);
+  roof(w,x,z,top,rx+1,rz+1,layers,'square');
+  for(const cx of [x-1,x+1])for(const cz of [z-1,z+1])w.fill(cx,35,cz,cx,37,cz,4);
+  roof(w,x,z,upperRoof,rx+1,rz+1,upperLayers,'square');
+  return;
+ }
+ if(id==='west-cloister'||id==='east-cloister'){
+  const innerSide=id==='west-cloister'?1:-1;
+  w.fill(left,26,north,right,30,south,8);
+  for(let zz=north;zz<=south;zz+=3)w.fill(x+innerSide,26,zz,x+innerSide,30,zz,4);
+  roof(w,x,z,top,rx+1,rz+1,layers,style);
+  return;
+ }
+ if(id==='mahavira'){
+  w.fill(left-1,26,north-1,right+1,27,south+1,9);
+  w.fill(left+1,28,north+1,x-2,32,south-1,8);
+  w.fill(x+2,28,north+1,right-1,32,south-1,8);
+  w.fill(x-2,28,north+1,x+2,32,north+1,8);
+  w.fill(x-2,32,south-1,x+2,32,south-1,4);
+  for(let xx=left;xx<=right;xx+=3)if(xx!==x)for(const zz of [north,south])w.fill(xx,28,zz,xx,32,zz,4);
+  w.fill(x-1,26,north-1,x+1,28,south+1,0);
+  roof(w,x,z,top,rx+1,rz+1,layers,'wudian');
+  const upRx=rx-2,upRz=rz-1;
+  w.fill(x-upRx,36,z-upRz,x+upRx,38,z+upRz,8);
+  for(let xx=x-upRx;xx<=x+upRx;xx+=3)w.fill(xx,36,z+upRz,xx,38,z+upRz,4);
+  roof(w,x,z,upperRoof,upRx+2,upRz+2,upperLayers,'wudian');
+  return;
+ }
+ if(id==='dharma'){
+  w.fill(left,26,north,right,27,south,9);
+  w.fill(left+1,28,north+1,right-1,32,south-1,8);
+  w.fill(-305,26,north+1,-303,28,south+1,0);
+  roof(w,x,z,top,rx+1,rz+1,layers,'xieshan');
+  const upRx=rx-3,upRz=rz-2;
+  w.fill(x-upRx,36,z-upRz,x+upRx,39,z+upRz,8);
+  roof(w,x,z,upperRoof,upRx+2,upRz+2,upperLayers,'wudian');
  }
 }
 
 function pagoda(w,{x,z,firstTier,tiers}){
- w.fill(x-2,26,z-2,x+2,firstTier-1,z+2,8);
+ w.fill(x-3,26,z-3,x+3,27,z+3,9);
+ let py=firstTier;
  for(let i=0;i<tiers;i++){
-  const y=firstTier+i*3,r=Math.max(1,3-Math.floor(i/2));
-  w.fill(x-r+1,y,z-r+1,x+r-1,y+2,z+r-1,8);
-  roof(w,x,z,y+2,r,r,1);
+  const r=i<2?3:2,h=i<3?3:2;
+  w.fill(x-r,py,z-r,x+r,py+h-1,z+r,8);
+  const roofY=py+h;
+  roof(w,x,z,roofY,r+1,r+1,2,'square');
+  py+=h+1;
  }
- const top=firstTier+tiers*3;
- w.fill(x,top,z,x,top+5,z,7);
- for(const sx of [-1,1])w.fill(x+sx*2,top-6,z,x+sx*2,top-1,z,7);
+ w.fill(x-2,py,z-2,x+2,py+1,z+2,7);
+ w.fill(x,py+2,z,x,py+6,z,7);
 }
 
 function tree(w,x,z,height){
@@ -184,7 +229,11 @@ export function buildJingan(w,roadContains){
  w.fill(b.minX,26,b.minZ,b.maxX,29,b.minZ,8);
  for(const h of JINGAN_HALLS)hall(w,h);
  pagoda(w,JINGAN_TOWER);
- for(const x of [-311,-297])for(const z of [templeZ(4),templeZ(8)])w.fill(x-1,26,z,x+1,26,z,9);
+ // Southeast Ashoka Pillar (正法久住梵幢 / 阿育王柱)
+ const ax=-290,az=7;
+ w.fill(ax-1,26,az-1,ax+1,27,az+1,9);
+ w.fill(ax,28,az,ax,40,az,9);
+ w.set(ax,41,az,7);
  w.fill(-314,25,30,-287,25,42,1);
  w.fill(-308,25,30,-304,25,42,9);
  w.fill(-311,25,35,-289,25,37,6);
