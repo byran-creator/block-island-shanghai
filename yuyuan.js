@@ -104,7 +104,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const outerWalls=[];
  function solidShopWall(color,x,y,z,w,h,d){
   outerWalls.push(cube(color,x,y,z,w,h,d));
-  fixtureBounds.push({x,y:y-h/2,z,rx:w/2,rz:d/2,h});
+  fixtureBounds.push({x,y:y-h/2,z,rx:Math.max(w/2,.22),rz:Math.max(d/2,.22),h});
  }
   for(const b of YUYUAN_BUILDINGS){
    if(b.id==='huxinting'){
@@ -116,11 +116,13 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
      cube('#858a7e',px,23.5,pz,.58,5.0,.58);
      cube('#822e23',px,28,pz,.28,3.6,.28);
      cube('#6a241b',px,26.25,pz,.42,.5,.42);
+     fixtureBounds.push({x:px,z:pz,rx:.28,rz:.28,y:26,h:3.6});
     }
     roof(b,26+1*4,.96);
     for(const side of [-1,1]){
      cube('#6e462d',b.x,26.65,b.z+side*(b.rz-.22),b.rx*2-.7,.5,.1);
      cube('#573520',b.x,26.96,b.z+side*(b.rz-.22),b.rx*2-.5,.08,.14);
+     fixtureBounds.push({x:b.x,z:b.z+side*(b.rz-.22),rx:b.rx-.35,rz:.18,y:26,h:1.1});
     }
     cube('#2e2118',b.x,29.7,b.z,0.024,0.76,0.024);
     cube('#e5a93b',b.x,29.34,b.z,0.06,0.04,0.06,true);
@@ -130,7 +132,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    }
    if(b.historic==='sansui'){
     // 三穗堂: 乾隆五开间宽敞宏丽正堂 (粉墙青砖基座、落地雕花长窗、高敞朱红立柱)
-    outerWalls.push(cube('#edebe2',b.x,27.8,b.z,b.rx*2,.04,b.rz*2));
+    outerWalls.push(cube('#edebe2',b.x,27.9,b.z,b.rx*2-.1,3.8,b.rz*2-.1));
     outerWalls.push(cube('#636964',b.x,26.35,b.z,b.rx*2+.08,.7,b.rz*2+.08));
     for(const sx of [-1,1])for(const sz of [-1,1]){
      cube('#78261e',b.x+sx*(b.rx-.2),28.2,b.z+sz*(b.rz-.2),.3,4.2,.3);
@@ -147,7 +149,8 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    }
    if(b.historic==='yangshan'){
     // 仰山堂与卷雨楼: 二层临水观山名楼 (一层仰山面水、二层卷雨倚假山、双层回廊)
-    outerWalls.push(cube('#edebe2',b.x,27.8,b.z,b.rx*2,.04,b.rz*2));
+    outerWalls.push(cube('#edebe2',b.x,27.9,b.z,b.rx*2-.1,3.8,b.rz*2-.1));
+    outerWalls.push(cube('#edebe2',b.x,31.9,b.z,b.rx*2-.2,3.8,b.rz*2-.2));
     outerWalls.push(cube('#636964',b.x,26.3,b.z,b.rx*2+.08,.6,b.rz*2+.08));
     cube('#704529',b.x,26.65,b.z+b.rz-.15,b.rx*2-.6,.5,.18);
     cube('#8a2a22',b.x,30.2,b.z,b.rx*2+.3,.14,b.rz*2+.3);
@@ -159,7 +162,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    }
    if(b.historic==='dianchun'){
     // 点春堂: 小刀会起义指挥所旧址 (重檐朱柱、古戏台对景、肃穆大堂)
-    outerWalls.push(cube('#e8e5dc',b.x,27.8,b.z,b.rx*2,.04,b.rz*2));
+    outerWalls.push(cube('#e8e5dc',b.x,27.9,b.z,b.rx*2-.1,3.8,b.rz*2-.1));
     outerWalls.push(cube('#636964',b.x,26.3,b.z,b.rx*2+.08,.6,b.rz*2+.08));
     for(const sx of [-1,1])cube('#802820',b.x+sx*(b.rx-.25),28.2,b.z-b.rz-.1,.32,4.2,.32);
     roof(b,26+1*4,1.08);
@@ -168,7 +171,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    }
    if(b.historic==='yuhua'){
     // 玉华堂: 潘允端明代书斋 (冰裂长窗对景玉玲珑名石)
-    outerWalls.push(cube('#f0ede4',b.x,27.8,b.z,b.rx*2,.04,b.rz*2));
+    outerWalls.push(cube('#f0ede4',b.x,27.9,b.z,b.rx*2-.1,3.8,b.rz*2-.1));
     cube('#503825',b.x,27.8,b.z-b.rz-.04,b.rx*2-.6,3.0,.08);
     for(let xx=b.x-b.rx+.9;xx<=b.x+b.rx-.9;xx+=1.4){
      cube('#f5f2e8',xx,27.8,b.z-b.rz-.02,1.2,2.2,.02);
@@ -186,12 +189,13 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
     continue;
    }
    const wallCol=b.id==='shanghai-hotel'?'#8d3c30':b.id==='huabao-lou'?'#7d2a24':(['#804432','#5a4233','#3f4c44','#783a2d','#8c5c36'][Math.abs(Math.round(b.x+b.z))%5]);
+   const doorEast=[-107,8].includes(b.x),doorWest=[-86,25].includes(b.x)||b.id==='lubolang',doorNorth=b.z===271,doorSouth=b.id==='tea-gallery';
    for(const side of [-1,1]){
-    const isDoorSide=([-107,8].includes(b.x)&&side===1)||([-86,25].includes(b.x)&&side===-1);
+    const isDoorSide=(side===1&&doorEast)||(side===-1&&doorWest);
     if(isDoorSide){
-     const flankLen=Math.max(0.4,b.rz-1.4);
+     const flankLen=Math.max(0.4,b.rz-1.65);
      for(const fz of [b.z-b.rz+flankLen/2,b.z+b.rz-flankLen/2])solidShopWall(wallCol,b.x+side*(b.rx+.025),27.5,fz,.04,3,flankLen);
-     for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)if(Math.abs(z-b.z)>=1.4)cube('#5d432b',b.x+side*(b.rx+.035),27.5,z,.06,3,.12);
+     for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)if(Math.abs(z-b.z)>=1.65)cube('#5d432b',b.x+side*(b.rx+.035),27.5,z,.06,3,.12);
      if(b.levels>1){
       solidShopWall(wallCol,b.x+side*(b.rx+.025),29+(b.levels-1)*2,b.z,.04,(b.levels-1)*4,b.rz*2);
       for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)cube('#5d432b',b.x+side*(b.rx+.035),29+(b.levels-1)*2,z,.06,(b.levels-1)*4,.12);
@@ -200,7 +204,29 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
      solidShopWall(wallCol,b.x+side*(b.rx+.025),26+b.levels*2,b.z,.04,b.levels*4,b.rz*2);
      for(let z=b.z-b.rz+.8;z<=b.z+b.rz-.4;z+=1.6)cube('#5d432b',b.x+side*(b.rx+.035),26+b.levels*2,z,.06,b.levels*4,.12);
     }
-   }for(const side of [-1,1]){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-'))){if(b.levels>1)solidShopWall(wallCol,b.x,30+(b.levels-1)*2,b.z-b.rz-.028,b.rx*2,(b.levels-1)*4,.035);continue;}for(const sign of [-1,1])solidShopWall(wallCol,b.x+sign*(b.rx+1.5)/2,26+b.levels*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx-1.5,b.levels*4,.035);if(b.levels>1)solidShopWall(wallCol,b.x,29.5+(b.levels-1)*2,b.z+side*(b.rz+.028)+(side>0?1:0),b.rx*2,(b.levels-1)*4-1,.035);}for(let level=1;level<=b.levels;level++)roof(b,26+level*4,level===b.levels?.96:1.1);for(const side of [-1,1])for(let x=b.x-b.rx+.6;x<=b.x+b.rx-.4;x+=1.2){if(side===-1&&(['nanxiang','craft-shop','tea-gallery'].includes(b.id)||b.id.startsWith('yuyuan-street-')||b.id.startsWith('yuyuan-south-')))continue;cube('#62482f',x,27.5,b.z+side*(b.rz+.035)+(side>0?1:0),.11,3,.08);if(Math.abs(x-b.x)>1.5){cube('#593e2b',x,27.55,b.z+side*(b.rz+.08)+(side>0?1:0),.84,1.72,.06);const winGlow=cube('#ffba54',x,27.55,b.z+side*(b.rz+.07)+(side>0?1:0),.78,1.6,.02,true);lights.push(winGlow);for(const dx of [-.27,0,.27])cube('#d3ba77',x+dx,27.55,b.z+side*(b.rz+.12)+(side>0?1:0),.035,1.5,.025);for(const y of [27.05,27.55,28.05])cube('#d3ba77',x,y,b.z+side*(b.rz+.12)+(side>0?1:0),.78,.035,.025);}}if(b.levels>=2)for(const side of [-1,1]){cube('#8c5b32',b.x,30.05,b.z+side*(b.rz+.35),b.rx*2+.7,.12,.65);cube('#76502c',b.x,30.9,b.z+side*(b.rz+.6),b.rx*2+.7,.09,.09);for(let x=b.x-b.rx;x<=b.x+b.rx;x+=.6)cube('#76502c',x,30.5,b.z+side*(b.rz+.6),.05,.8,.06);const upperWin=cube('#ffba54',b.x,30.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(upperWin);}if(b.levels>=3)for(const side of [-1,1]){cube('#8c5b32',b.x,34.05,b.z+side*(b.rz+.35),b.rx*2+.5,.12,.65);const topWin=cube('#ffba54',b.x,34.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(topWin);}}
+   }
+   for(const side of [-1,1]){
+    const wz=b.z+side*(b.rz+.028),isDoorSide=(side===-1&&doorNorth)||(side===1&&doorSouth);
+    if(isDoorSide){
+     const flankW=Math.max(0.4,b.rx-1.65);
+     for(const sign of [-1,1])solidShopWall(wallCol,b.x+sign*(b.rx-flankW/2),27.5,wz,flankW,3,.04);
+     if(b.levels>1)solidShopWall(wallCol,b.x,29+(b.levels-1)*2,wz,b.rx*2,(b.levels-1)*4,.04);
+    }else{
+     solidShopWall(wallCol,b.x,26+b.levels*2,wz,b.rx*2,b.levels*4,.04);
+    }
+   }
+   for(let level=1;level<=b.levels;level++)roof(b,26+level*4,level===b.levels?.96:1.1);
+   for(const side of [-1,1]){
+    const wz=b.z+side*(b.rz+.035),isDoorSide=(side===-1&&doorNorth)||(side===1&&doorSouth);
+    for(let x=b.x-b.rx+.6;x<=b.x+b.rx-.4;x+=1.2){
+     if(isDoorSide&&Math.abs(x-b.x)<1.65)continue;
+     cube('#62482f',x,27.5,wz,.11,3,.08);
+     if(Math.abs(x-b.x)>1.5){cube('#593e2b',x,27.55,wz+side*.045,.84,1.72,.06);const winGlow=cube('#ffba54',x,27.55,wz+side*.035,.78,1.6,.02,true);lights.push(winGlow);for(const dx of [-.27,0,.27])cube('#d3ba77',x+dx,27.55,wz+side*.085,.035,1.5,.025);for(const y of [27.05,27.55,28.05])cube('#d3ba77',x,y,wz+side*.085,.78,.035,.025);}
+    }
+   }
+   if(b.levels>=2)for(const side of [-1,1]){cube('#8c5b32',b.x,30.05,b.z+side*(b.rz+.35),b.rx*2+.7,.12,.65);cube('#76502c',b.x,30.9,b.z+side*(b.rz+.6),b.rx*2+.7,.09,.09);for(let x=b.x-b.rx;x<=b.x+b.rx;x+=.6)cube('#76502c',x,30.5,b.z+side*(b.rz+.6),.05,.8,.06);const upperWin=cube('#ffba54',b.x,30.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(upperWin);}
+   if(b.levels>=3)for(const side of [-1,1]){cube('#8c5b32',b.x,34.05,b.z+side*(b.rz+.35),b.rx*2+.5,.12,.65);const topWin=cube('#ffba54',b.x,34.5,b.z+side*(b.rz+.32),b.rx*2-1.5,1.2,.02,true);lights.push(topWin);}
+  }
   board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,264.5,5.5,.9);board('江南手作',-62,30,264.5,5.5,.9);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);
  const wayfinding=createYuyuanWayfinding();wayfinding.position.set(-35,26,10);root.add(wayfinding);
  board('华宝楼 · 百年商厦',-86,37.2,165.8,5.5,.9);board('天裕楼 · 豫园名阁',8,37.2,166.8,5.5,.9);board('和丰楼 · 美食雅集',8,33,184.8,5.5,.9);
@@ -211,7 +237,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  for(const [wx,wz,ww,wd] of [[-46,178-2.6,5.4,.08],[-46,178+2.6,5.4,.08],[-46-2.6,178,.08,5.4],[-46+2.6,178,.08,5.4],[-20,188-4.1,10.2,.08],[-20-5.1,188,.08,8.2]]){const wg=cube('#2cb8ff',wx,22.35,wz,ww,.06,wd,true);lights.push(wg);}
  // Grand North Entrance Stone Paifang (豫园北门石木牌坊 - bazaar_gate.jpg)
  const gateX=-46.5,gateZ=149.2;
- for(const px of [gateX-3.8,gateX-1.6,gateX+1.6,gateX+3.8]){cube('#7b756b',px,26.3,gateZ,.55,.6,.55);cube('#653e2d',px,29.2,gateZ,.28,5.2,.28);}
+ for(const px of [gateX-3.8,gateX-1.6,gateX+1.6,gateX+3.8]){cube('#7b756b',px,26.3,gateZ,.55,.6,.55);cube('#653e2d',px,29.2,gateZ,.28,5.2,.28);fixtureBounds.push({x:px,z:gateZ,rx:.28,rz:.28,y:26,h:5.2});}
  cube('#5c3727',gateX,31.4,gateZ,8.4,.32,.36);cube('#5c3727',gateX,29.8,gateZ,8.4,.22,.26);
  for(const [cx,w,yLevel] of [[gateX,4.2,32.4],[gateX-2.7,2.8,31.2],[gateX+2.7,2.8,31.2]]){cube('#364940',cx,yLevel,gateZ,w,.22,.9);for(const sx of [-1,1]){const tip=cube('#364940',cx+sx*(w/2+.22),yLevel+.18,gateZ,.28,.14,.8);tip.rotation.z=sx*.35;cube('#23322a',cx+sx*(w/2+.32),yLevel+.32,gateZ,.14,.2,.14);}}
  board('豫园 · 海上名园',gateX,30.6,gateZ-.14,3.2,.72);
@@ -457,10 +483,10 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  function buildingCollides(x, y, lz){
   if(y > 42 || y < 24) return false;
   if(galleryFloor(x, lz) !== null) return false;
-  if(pathContains(x, lz + YUYUAN_SHIFT, YUYUAN_STATION_WALK, 2.2) || pathContains(x, lz + YUYUAN_SHIFT, YUYUAN_STATION_WALK_SOUTH, 2.2) || pathContains(x, lz, JIUQU_BRIDGE, 1.8) || (Math.abs(x - (-60)) < 1.8 && lz >= 169 && lz <= 194) || gardenPathContains(x, lz, 2.0)) return false;
+  if(pathContains(x, lz + YUYUAN_SHIFT, YUYUAN_STATION_WALK, 2.2) || pathContains(x, lz + YUYUAN_SHIFT, YUYUAN_STATION_WALK_SOUTH, 2.2) || pathContains(x, lz, JIUQU_BRIDGE, 1.8) || (Math.abs(x - (-60)) < 1.8 && lz >= 169 && lz <= 194)) return false;
   for(const b of YUYUAN_BUILDINGS){
    const dx = x - b.x, dz = lz - b.z;
-   if(Math.abs(dx) >= b.rx || Math.abs(dz) >= b.rz) continue;
+   if(Math.abs(dx) >= b.rx + .25 || Math.abs(dz) >= b.rz + .25) continue;
    if(b.id === 'huxinting') continue;
    const roofY = 26 + b.levels * 4 + 0.35;
    if(y >= roofY) continue;

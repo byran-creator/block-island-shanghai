@@ -450,7 +450,9 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
    if(!service&&ride?.index===t.index&&ride.from!==st.origin&&st.remaining<2.6){end(true);notify('本车驶出体验区域 · 已安全回到站台，请到对面乘坐返程列车。');}
    if(ride?.index===t.index&&st.phase==='dwell'&&(service?isTerminal(st):st.station!==ride.from)&&st.remaining<3){st.open?end():end(true);notify('已到 '+METRO_STATIONS[st.station].name+' · 请从对面站台返程，或沿扶梯出站。');}
   }
-  if(observerIndex>=0&&playerLocal.y<=18)alighting.tick(observerIndex,timeSinceArrival(observerIndex,1),timeSinceArrival(observerIndex,-1));
+  const alightingStation=observerIndex>=0&&playerLocal.y<23?observerIndex
+   :(playerWorld.y<29?stations.findIndex(s=>s.visible&&(s.worldExits?.some(e=>(playerWorld.x-e.x)**2+(playerWorld.z-e.z)**2<28*28)||(playerWorld.y<23&&(playerWorld.x-s.worldCenter.x)**2+(playerWorld.z-s.worldCenter.z)**2<72*72))):-1);
+  if(alightingStation>=0)alighting.tick(alightingStation,timeSinceArrival(alightingStation,1),timeSinceArrival(alightingStation,-1));
   else alighting.clear();
   if(playing)walkRider(dt,keys);positionRider();const p=getPos(),r=metroRampAt(p.x,p.z),h=metroRampFloor(p.x,p.z);if(!ride&&canCarry()&&r&&Math.abs(p.y-h)<.13){const d=(p.x-r.x)*r.dir;if(d>.05&&d<r.length-.05){const step=(p.z>=r.z?1:-1)*r.dir*dt*.7,x=p.x+step;place({x,y:metroRampFloor(x,p.z),z:p.z},r);}}
   treadTimer+=dt;

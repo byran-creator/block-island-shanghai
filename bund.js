@@ -391,6 +391,106 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   fixtures.add(p.x-.075,26,p.z-.075,p.x+.075,29.2,p.z+.075,'lamp');
  }
  const cc=CITY_BUILDINGS.find(b=>b.id==='convention');for(const dx of [-4,4]){const orb=new THREE.Mesh(new THREE.SphereGeometry(3.2,20,12),new THREE.MeshPhongMaterial({color:'#9bcbd3',shininess:85}));orb.position.set(cc.x+dx,26+cc.h+1,cc.z);orb.userData.range=285;scene.add(orb);const ring=new THREE.Mesh(new THREE.TorusGeometry(3.25,.06,4,28),mat('#dbe5d7',true));ring.position.copy(orb.position);ring.rotation.x=Math.PI/2;ring.userData.range=285;scene.add(ring);}
+ { // Upgraded 3D Lujiazui Central Green (陆家嘴中心绿地): tensile pavilion, lake & fountain, bronze spring sculpture, pergola & botanical grove.
+  const g=new THREE.Group();scene.add(g);
+  const gCyl=new THREE.CylinderGeometry(1,1,1,10),gSph=new THREE.SphereGeometry(1,10,7),gRock=new THREE.IcosahedronGeometry(1,0),gCone=new THREE.ConeGeometry(1,1,8);
+  const gp=(geo,c,x,y,z,sx,sy,sz,glow=false)=>{const m=new THREE.Mesh(geo,mat(c,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.range=285;g.add(m);return m;};
+  // 1. Southeast White Tensile Membrane Pavilion Stage (x:201.4..211.8, z:51.8..57.0)
+  const px=206.6,pz=54.4;
+  cube(g,'#cfd3cb',px,26.06,pz,10.4,.12,5.2);cube(g,'#dfe2da',px,26.18,pz,9.2,.14,4.4);
+  cube(g,'#ebeae2',px,27.35,56.25,6.4,2.1,.28);cube(g,'#c8a862',px,28.1,56.08,4.6,.12,.08);facadeLights.push(cube(g,'#ffe29e',px,28.35,56.08,5.8,.08,.06,true));
+  for(const dz of [53.2,54.2,55.2])cube(g,'#7b5336',px,26.42,dz,6.2,.26,.42);
+  for(const mx of [202.2,206.6,211.0])for(const mz of [52.2,56.6]){
+   const outZ=mz<pz?-0.35:0.35,pole=gp(gCyl,'#8c96a0',mx,27.85,mz+outZ*.3,.09,3.5,.09);pole.rotation.x=mz<pz?.16:-.16;
+   cube(g,'#59626a',mx,26.28,mz,.28,.36,.28);
+  }
+  const mxGrid=16,mzGrid=8,mw=9.8,md=4.6,mPos=[],mIdx=[],mUv=[],mVert=(u,v)=>{
+   const x=px+u*mw/2,z=pz+v*md/2;
+   const p1=Math.exp(-((u+.58)**2)*5-v*v*2.2)*1.55,p2=Math.exp(-(u*u)*5-v*v*2.2)*1.85,p3=Math.exp(-((u-.58)**2)*5-v*v*2.2)*1.55;
+   const sag=(v*v-0.25)*0.45+0.12*Math.cos(u*Math.PI*2);
+   return [x,28.95+p1+p2+p3+sag,z];
+  };
+  for(const dy of [.08,-.05])for(let iz=0;iz<=mzGrid;iz++)for(let ix=0;ix<=mxGrid;ix++){
+   const u=ix/mxGrid*2-1,v=iz/mzGrid*2-1,[x,y,z]=mVert(u,v);mPos.push(x,y+dy,z);mUv.push(ix/mxGrid,iz/mzGrid);
+  }
+  const stride=mxGrid+1,layer=(mzGrid+1)*stride;
+  for(let iz=0;iz<mzGrid;iz++)for(let ix=0;ix<mxGrid;ix++){
+   const a=iz*stride+ix,b=a+1,c=a+stride,d=c+1;
+   mIdx.push(a,c,b,b,c,d,layer+a,layer+b,layer+c,layer+b,layer+d,layer+c);
+  }
+  for(let ix=0;ix<mxGrid;ix++){const t=ix,bt=(mzGrid)*stride+ix;mIdx.push(t,t+1,layer+t,t+1,layer+t+1,layer+t,bt,layer+bt,bt+1,bt+1,layer+bt,layer+bt+1);}
+  for(let iz=0;iz<mzGrid;iz++){const l=iz*stride,r=l+mxGrid;mIdx.push(l,layer+l,l+stride,l+stride,layer+l,layer+l+stride,r,r+stride,layer+r,r+stride,layer+r+stride,layer+r);}
+  const mGeo=new THREE.BufferGeometry();mGeo.setAttribute('position',new THREE.Float32BufferAttribute(mPos,3));mGeo.setAttribute('uv',new THREE.Float32BufferAttribute(mUv,2));mGeo.setIndex(mIdx);mGeo.computeVertexNormals();
+  const membrane=new THREE.Mesh(mGeo,mat('#f6f8fa'));membrane.userData.range=285;membrane.userData.disposeAfterStaticBatch=true;g.add(membrane);
+  facadeLights.push(cube(g,'#ffdfa2',px,29.1,pz,7.8,.05,.09,true));
+  fixtures.add(202.2,26,52.4,211.0,29.8,56.6,'pavilion');
+
+  // 2. Northeast Lake, Cedar Boardwalk Pier, 3-Tier Fountain, Taihu Rockery & Lotuses (x:198.6..209.4, z:42.6..47.9)
+  cube(g,'#c7cbc4',204.5,26.05,42.75,9.6,.14,.5);cube(g,'#c7cbc4',204.5,26.05,47.75,9.6,.14,.5);cube(g,'#c7cbc4',209.15,26.05,45.25,.5,.14,5.4);
+  cube(g,'#8c5e3b',199.4,26.15,45.25,1.5,.18,4.9);
+  for(const bz of [43.0,44.1,45.25,46.4,47.5]){cube(g,'#5d3c25',199.85,23.5,bz,.22,5.0,.22);cube(g,'#6a462b',200.08,26.6,bz,.1,.88,.1);}
+  cube(g,'#7b5336',200.08,27.02,45.25,.14,.08,4.9);
+  fixtures.add(199.98,26,42.8,200.28,27.15,47.7,'parapet');
+  const fx=204.4,fz=45.2;
+  gp(gCyl,'#b8beb5',fx,21.5,fz,.9,3.0,.9);gp(gCyl,'#d7dbd2',fx,22.95,fz,1.35,.22,1.35);gp(gCyl,'#e2e5dd',fx,23.58,fz,.88,.18,.88);gp(gCyl,'#c8a64e',fx,24.15,fz,.42,.2,.42);
+  gp(gSph,'#e8f8fb',fx,24.95,fz,.18,.65,.18);facadeLights.push(gp(gCyl,'#7de2f0',fx,22.42,fz,1.55,.04,1.55,true));
+  for(let i=0;i<8;i++){const a=i*Math.PI/4,jet=gp(gCyl,'#c8f4fa',fx+Math.cos(a)*.8,23.85,fz+Math.sin(a)*.8,.06,1.65,.06);jet.rotation.y=-a;jet.rotation.z=.72;}
+  fixtures.add(203.0,22,43.8,205.8,25.5,46.6,'fountain');
+  for(const [rx,ry,rz,sx,sy,sz,c] of [[208.1,24.4,44.3,1.15,3.2,1.1,'#82877e'],[207.4,25.6,44.9,.75,2.2,.8,'#969b91'],[208.4,26.8,43.9,.65,1.8,.7,'#8d9288']]){
+   const rk=gp(gRock,c,rx,ry,rz,sx,sy,sz);rk.rotation.set(.2,rx,.15);
+  }
+  cube(g,'#4b7540',207.7,26.9,44.6,.95,.22,.8);cube(g,'#c6f2f9',207.3,24.6,44.8,.35,3.8,.5);
+  fixtures.add(206.9,22,43.2,208.9,28.5,45.8,'rock');
+  for(let i=0;i<10;i++){
+   const lx=201.3+((i*1.9)%5.6),lz=43.5+((i*1.3)%3.4);if(Math.hypot(lx-fx,lz-fz)<1.7)continue;
+   gp(gCyl,'#3f703d',lx,22.36,lz,.38,.03,.38);
+   if(i%3===0){gp(gSph,'#f497b6',lx,22.44,lz,.14,.11,.14);gp(gSph,'#f7d354',lx,22.49,lz,.06,.06,.06);}
+  }
+
+  // 3. Southwest "Spring of Lujiazui" Floral Carpet & Golden Ribbon Sculpture Plaza (x:184.4..188.6, z:51.9..56.1)
+  const sx=186.5,sz=54.0;
+  gp(gCyl,'#cdd2c9',sx,26.1,sz,2.15,.2,2.15);gp(gCyl,'#dfe3dc',sx,26.26,sz,1.55,.18,1.55);gp(gCyl,'#3e3631',sx,26.65,sz,.56,.75,.56);
+  for(let i=0;i<12;i++){
+   const a=i*Math.PI/6,flCol=['#d94862','#f2b830','#9c6bb8','#f27a96'][i%4];
+   gp(gSph,'#45733e',sx+Math.cos(a)*1.75,26.3,sz+Math.sin(a)*1.75,.34,.18,.34);gp(gSph,flCol,sx+Math.cos(a)*1.75,26.42,sz+Math.sin(a)*1.75,.2,.14,.2);
+  }
+  for(let i=0;i<5;i++){
+   const a=i*Math.PI*2/5,rb=gp(gCone,'#e6ba42',sx+Math.cos(a)*.28,28.55,sz+Math.sin(a)*.28,.16,3.4,.16);
+   rb.rotation.set(Math.sin(a)*.28,a,Math.cos(a)*.28);
+  }
+  gp(gSph,'#e8bf4d',sx,29.95,sz,.24,.36,.24);facadeLights.push(cube(g,'#ffdfa2',sx,26.4,sz,1.3,.06,1.3,true));
+  fixtures.add(184.4,26,51.9,188.6,30.4,56.1,'sculpture');
+
+  // 4. Northwest Timber Pergola Rest Court & Stepped Garden Walkways (x:183.8..187.8, z:42.5..45.1)
+  const gx=185.8,gz=43.8;
+  cube(g,'#d5d9d0',gx,26.03,gz,4.8,.06,3.2);
+  for(const dx of [-1.7,0,1.7])for(const dz of [-1.1,1.1])cube(g,'#6a4228',gx+dx,27.35,gz+dz,.16,2.7,.16);
+  cube(g,'#7b4d2f',gx,28.76,gz,3.9,.14,2.5);
+  for(let bx=-1.6;bx<=1.6;bx+=.64)cube(g,'#8c5a37',gx+bx,28.9,gz,.12,.14,2.7);
+  for(const bx of [-1.2,1.2])gp(gSph,'#8a6ca8',gx+bx,29.02,gz,.85,.28,.95);
+  cube(g,'#7c5438',gx,26.42,gz,.26,.18,.62);
+  cube(g,'#8c6244',gx-1.05,26.38,gz,1.3,.24,.48);cube(g,'#8c6244',gx+1.05,26.38,gz,1.3,.24,.48);
+  facadeLights.push(cube(g,'#ffe09c',gx,28.65,gz,3.1,.05,.08,true));
+  fixtures.add(183.8,26,42.5,187.8,29.0,45.1,'pergola');
+
+  // Stepping stone links, specimen trees (Camphor, Golden Ginkgo, Sakura), and courtyard bollard lamps
+  for(const [tx,tz] of [[186,46.0],[186,47.1],[186.5,51.6],[197.6,45.2],[201.4,51.5],[204.5,51.5]])cube(g,'#cfd3ca',tx,26.02,tz,.85,.04,.65);
+  const parkTrees=[
+   [181.2,42.2,'#447349',1.15],[181.0,46.2,'#e3b530',1.05],[190.8,42.0,'#f2a7bb',1.0],[191.2,46.4,'#4f8553',1.1],
+   [181.2,52.6,'#e3b530',1.1],[181.2,56.2,'#47784c',1.05],[191.2,52.4,'#f2a7bb',.98],[191.4,56.2,'#497d50',1.1],
+   [211.6,42.2,'#e3b530',1.05],[211.8,46.8,'#45784b',1.05],[212.5,54.2,'#f2a7bb',.95],[199.4,55.2,'#497b4f',1.0]
+  ];
+  for(const [tx,tz,fol,sc] of parkTrees){
+   gp(gCyl,'#63462f',tx,26+1.35*sc,tz,.14*sc,2.7*sc,.14*sc);
+   gp(gSph,fol,tx,26+2.85*sc,tz,1.45*sc,1.15*sc,1.4*sc);
+   gp(gSph,fol,tx+.45*sc,26+2.5*sc,tz-.35*sc,1.0*sc,.85*sc,1.0*sc);
+   fixtures.add(tx-.2,26,tz-.2,tx+.2,28.8,tz+.2,'tree');
+  }
+  for(const [bx,bz] of [[193.2,43.0],[196.8,43.0],[193.2,55.2],[196.8,55.2],[183.0,47.3],[189.5,50.8],[201.5,47.3],[210.5,50.8]]){
+   cube(g,'#3b4248',bx,26.32,bz,.16,.64,.16);cube(g,'#d9d2be',bx,26.72,bz,.18,.18,.18);facadeLights.push(cube(g,'#ffe29e',bx,26.72,bz,.2,.14,.2,true));
+  }
+  label('陆家嘴中心绿地 · 都市绿肺',202.5,31.4,49.0);
+ }
  // A broad continuous observation deck, with seats and warm riverside edge lights.
  for(let z=promenadeStart;z<=240;z+=8){if(Math.abs(z-185)<9||inSuzhou(promenadeX(z),z))continue;const p=promenadeX(z),r=new THREE.Group();r.position.set(p+2.4,26,z+.5);const cuts=waterfrontParapetSpans(z,r.position.x,CRUISE_DOCK.z);for(const [start,b]of cuts){const a=Math.max(promenadeStart,start);if(b<=a)continue;const dz=(a+b)/2-(z+.5);cube(r,'#deded5',0,.62,dz,.2,1.2,b-a);fixtures.add(r.position.x-.10,26.02,a,r.position.x+.10,27.22,b,'parapet');facadeLights.push(cube(r,'#ffdea0',0,.08,dz,.3,.12,b-a,true));}scene.add(r);}
  label('外滩大观景台 · 对岸陆家嘴',promenadeX(86)-15,29.2,86);

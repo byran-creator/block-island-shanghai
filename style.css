@@ -274,8 +274,11 @@ body.touch .quest-tracker #tracked-arrow,body.force-landscape .quest-tracker #tr
 
 body.touch #map-destinations button[data-destination="village"],body.force-landscape #map-destinations button[data-destination="village"]{order:-1}
 
-/* Held game controls must not invoke mobile text selection or link callouts. */
-body.touch :is(button,summary,[role="button"],#touch-controls,#hotbar,#world),body.touch :is(button,summary,[role="button"],#touch-controls,#hotbar) *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* Held game controls and iOS viewport must not invoke mobile text selection, callouts or pinch-zoom. */
+html,body{overscroll-behavior:none;touch-action:manipulation}
+body.touch,body.touch *:not(input):not(textarea):not(select):not(option):not([contenteditable="true"]){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+body.touch:not(.in-menu) :is(#world,#touch-controls,#hotbar,.hud){touch-action:none}
+body.touch dialog[open],body.touch dialog[open] *{touch-action:pan-y}
 body.touch :is(input,textarea,select,[contenteditable="true"]){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 
 /* Loading audio stays in the viewport, outside the scrolling menu card. */

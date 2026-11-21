@@ -36,8 +36,8 @@ export const GARDEN_BEDS=[
 export const INNER_GARDEN_PATH=[[-35,194],[-35,196],[-40,197.5],[-45,196.5],[-50,198],[-54,197.5],[-54,204],[-60,204],[-68,205],[-75,205]];
 export const INNER_GARDEN_EAST_PATH=[[-35,196],[-35,204],[-35,211],[-29.5,211]];
 export const INNER_GARDEN_EAST_BANK_PATH=[[2.5,211],[5,215],[5,225]];
-export const INNER_GARDEN_SOUTH_PATH=[[-54,204],[-60,214],[-62,226],[-62,246],[-52,248],[-42,248]];
-export const INNER_GARDEN_ROCKERY_PATH=[[-75,205],[-86,206],[-94,206],[-94,222],[-86,226],[-78,226],[-68,226]];
+export const INNER_GARDEN_SOUTH_PATH=[[-54,204],[-54.7,214],[-54.7,223],[-57.2,229],[-57.2,238.2],[-54.5,243],[-48,244],[-42,248]];
+export const INNER_GARDEN_ROCKERY_PATH=[[-75,205],[-68,208],[-68,220],[-68,228]];
 
 export function gardenPathContains(x,z,width=3){
  return pathContains(x,z,INNER_GARDEN_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_PATH,width)||pathContains(x,z,INNER_GARDEN_EAST_BANK_PATH,width)||pathContains(x,z,INNER_GARDEN_SOUTH_PATH,width)||pathContains(x,z,INNER_GARDEN_ROCKERY_PATH,width);

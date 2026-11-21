@@ -26,16 +26,8 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
  const rock=new THREE.IcosahedronGeometry(1,0);
 
  // 1. Whitewashed Perimeter Garden Wall Coping and Circular Moon Openings
- // Uses continuous dark-grey pitched tile coping atop the voxel wall (low computation, 0 redundant wall slice meshes)
  function wall(axis,fixed,u1,u2,holes=[]){
-  const normal=fixed+.5,len=u2-u1;
-  if(axis==='z'){
-   block('#414b43',(u1+u2)/2,31.45,normal,len,.18,1.2);
-   block('#667064',(u1+u2)/2,31.58,normal,len,.12,.22);
-  }else{
-   block('#414b43',normal,31.45,(u1+u2)/2,1.2,.18,len);
-   block('#667064',normal,31.58,(u1+u2)/2,.22,.12,len);
-  }
+  const normal=fixed+.5;
   for(const hole of holes)for(const face of [-1,1]){
    const frame=new THREE.Mesh(new THREE.TorusGeometry(hole.r+.08,.08,4,24),mat('#646b61'));
    frame.position.set(axis==='z'?hole.u:normal+face*.59,hole.y,axis==='z'?normal+face*.59:hole.u);
@@ -52,13 +44,15 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
   wall(axis,fixed,u1,u2,holes);
  }
 
- // 1b. Whitewashed Diamond Lattice Leak-Window Walls (图3同款粉墙黛瓦花格漏窗墙，全园大范围应用)
+ // 1b. Whitewashed Diamond Lattice Leak-Window Walls (图3同款粉墙黛瓦花格漏窗墙，全园大范围应用且实体防穿模)
  function leakWindowWall(x1,z1,x2,z2){
   const axis=x1===x2?'z':'x',len=Math.hypot(x2-x1,z2-z1);
+  if(len<0.2)return;
   const cx=(x1+x2)/2,cz=(z1+z2)/2;
   if(axis==='z'){
    block('#ede9da',cx,27.6,cz,.34,3.2,len);
    block('#3d4941',cx,29.35,cz,.58,.18,len+.3);
+   fixtures.push({x:cx,z:cz,rx:.25,rz:len/2,y:26,h:3.5});
    for(let zz=Math.min(z1,z2)+1.8;zz<=Math.max(z1,z2)-1.8;zz+=3.2){
     for(const side of [-.18,.18]){
      beam('#6e7367',[cx+side,27.1,zz-.65],[cx+side,28.3,zz+.65],.035);
@@ -68,6 +62,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
   }else{
    block('#ede9da',cx,27.6,cz,len,3.2,.34);
    block('#3d4941',cx,29.35,cz,len+.3,.18,.58);
+   fixtures.push({x:cx,z:cz,rx:len/2,rz:.25,y:26,h:3.5});
    for(let xx=Math.min(x1,x2)+1.8;xx<=Math.max(x1,x2)-1.8;xx+=3.2){
     for(const side of [-.18,.18]){
      beam('#6e7367',[xx-.65,27.1,cz+side],[xx+.65,28.3,cz+side],.035);
@@ -76,9 +71,13 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
    }
   }
  }
- leakWindowWall(-74,258,2,258);
- leakWindowWall(-74,194,-38,194);
- leakWindowWall(-32,194,2,194);
+ leakWindowWall(-74.5,258,3.2,258);
+ leakWindowWall(-74.5,194,-38,194);
+ leakWindowWall(-32,194,3.2,194);
+ leakWindowWall(-74.5,194,-74.5,201.5);
+ leakWindowWall(-74.5,208.5,-74.5,258);
+ leakWindowWall(3.2,194,3.2,208.5);
+ leakWindowWall(3.2,213.5,3.2,258);
 
  // 2. Classical Curved Stepping Stone Path Ribbons
  function pathRibbon(points){
@@ -136,9 +135,14 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
   for(let s=0;s<steps;s++){
    const t=(s+.5)/steps,xx=p1[0]+t*(p2[0]-p1[0]),zz=p1[1]+t*(p2[1]-p1[1]);
    const waveY=27.2+.9*Math.sin((i*steps+s)*.22),h=waveY-26+1.2;
+   if(xx>=-56.2&&xx<=-53.2){
+    block('#3b4540',xx,29.55,zz,.54,.24,.54);
+    continue;
+   }
    block('#e5e3d3',xx,26+h/2,zz,.42,h,.42);
    block('#3b4540',xx,waveY+1.25,zz,.54,.16,.54);
    block('#586660',xx,waveY+1.36,zz,.22,.12,.22);
+   fixtures.push({x:xx,z:zz,rx:.28,rz:.28,y:26,h:h+1.3});
    if(s%3===0){
     const bHeight=2.6+random()*1.2,stem=new THREE.Mesh(pole,mat('#5d783e'));
     stem.position.set(xx+.6,26+bHeight/2,zz+(random()-.5)*.4);stem.scale.set(.035,bHeight,.035);group.add(stem);
@@ -146,7 +150,9 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
    }
   }
  }
+ for(const px of [-56.4,-53.0]){block('#753129',px,27.8,218.2,.32,3.6,.48);fixtures.push({x:px,z:218.2,rx:.2,rz:.28,y:26,h:3.6});}
  const dhX=-78,dhZ=216;
+ fixtures.push({x:dhX,z:dhZ,rx:.55,rz:.85,y:26,h:5.5});
  // Authentic Ming-Qing sculpted dragon head (泥塑彩绘龙首 - dragon_wall.jpg)
  // 1. Dragon snout & upper jaw curving forward
  block('#34433b',dhX,29.8,dhZ+.35,.72,.42,.85);
@@ -199,6 +205,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
  block('#eae7de',ylX,26.4,ylZ,2.1,.22,2.1);
  block('#f5f3ec',ylX,26.62,ylZ,2.4,.22,2.4);
  block('#ccc7bd',ylX,26.78,ylZ,2.2,.1,2.2);
+ fixtures.push({x:ylX,z:ylZ,rx:1.25,rz:1.25,y:26,h:3.8});
  // Song Dynasty Huashigang Scholar Stone (皱、漏、瘦、透)
  // Reaching ~3.8m with hand-sculpted hollow lobes around open voids
  const ylLobes=[
@@ -238,6 +245,7 @@ export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batc
  const stgX=-16,stgZ=232;
  // Raised stage platform with wooden planks
  block('#5c4129',stgX,26.4,stgZ,6.6,.8,5.6);
+ fixtures.push({x:stgX,z:stgZ,rx:3.1,rz:2.6,y:26,h:3.2});
  // Vermilion stage pillars
  for(const dx of [-2.9,2.9])for(const dz of [-2.4,2.4]){const post=block('#892d27',stgX+dx,28.6,stgZ+dz,.22,3.8,.22);addFixture(post);}
  // Red carved railings around the stage edges
