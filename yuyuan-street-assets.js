@@ -62,8 +62,8 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   const {x,z,rx,rz}=b,front=z-rz,back=z+rz-.5,doorX=x+.5,counterZ=z+1.6;
   shops.push({id,x:doorX,z,title,key,name,food});goods[key]=[];stockCaps[key]=6;
   for(const side of [-1,1]){cube(timber,doorX+side*1.62,27.5,front-.07,.2,3,.17);cube(gold,doorX+side*1.62,27.5,front-.17,.025,2.94,.025);}
-  cube(timber,x,29.27,front-.015,rx*2-.35,.5,.12);cube(gold,x,29.55,front-.06,rx*2-.25,.055,.17);
-  board(title,x,29.26,front-.08,rx*1.58,.68,Math.PI);
+  cube(timber,x,29.34,front-.08,rx*2-.35,.5,.1);cube(gold,x,29.7,front-.1,rx*2-.25,.055,.15);
+  board(title,x,29.34,front-.16,Math.min(rx*1.2,3.8),.72,Math.PI);
   for(const side of [-1,1]){
    const caseX=side<0?x-rx+1.15:x+rx-.8,width=side<0?Math.max(.6,rx-2.6):Math.max(.6,rx-3.1);
    cube(timber,caseX,26.5,front-.02,width,.9,.12);mesh(root,boxGeometry,glassMaterial,caseX,27.76,front-.045,width,1.55,.027);

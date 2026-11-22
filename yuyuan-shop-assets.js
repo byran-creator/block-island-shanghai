@@ -30,8 +30,8 @@ export function createYuyuanShopAssets(root,{cube,mat,board}){
   // Thin rug and tile inlays are visual surfaces, never floor blockers.
   cube(accent,x,26.085,z,2.65,.018,rz*2-1.8);for(const dx of [-1.24,1.24])cube(gold,x+dx,26.101,z,.03,.009,rz*2-2);
   for(const dx of [-1.62,1.62]){cube(timber,x+dx,27.6,front,.22,3.2,.2);cube(gold,x+dx,27.62,front-.13,.035,3.06,.03);}
-  cube(timber,x,29.28,front,rx*2-.4,.36,.28);cube(gold,x,29.49,front,rx*2-.3,.06,.34);
-  board(title,x,29.18,front-.16,rx*1.58,.72,Math.PI);
+  cube(timber,x,29.36,front-.21,rx*2-.4,.48,.1);cube(gold,x,29.74,front-.23,rx*2-.3,.06,.14);
+  board(title,x,29.36,front-.29,Math.min(rx*1.2,4.4),.72,Math.PI);
   for(const side of [-1,1]){
    const width=rx-2.12,cx=x+side*(1.78+width/2);
    cube(timber,cx,26.6,front,width,1.1,.15);mesh(root,shapes.box,glass,cx,27.95,front,width,1.58,.025);

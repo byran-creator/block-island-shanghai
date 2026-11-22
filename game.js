@@ -658,7 +658,7 @@ function physics(dt){
  if(pos.y>HEIGHT+12)pos.y=HEIGHT+12;
  if(pos.y<-5)respawn();
 }
-let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0,lastIdleFrame=-Infinity,lastFlashOpacity='',lastNpcPrompt=null;
+let prev=performance.now(),elapsed=0,hudTime=0,chunkClock=0,lastIdleFrame=-Infinity,lastFlashOpacity='',lastNpcPrompt=null,lastFrameWorkMs=0;
 const hudEls={npcPrompt:$('npc-prompt'),glideStatus:$('glide-status'),musicChoice:$('music-choice'),hudTimeSlider:$('hud-time-slider'),weatherStatus:$('weather-status'),settingsWeather:$('settings-weather-status'),settingsRender:$('settings-render-mode'),renderMode:$('render-mode'),skylinePrompt:$('skyline-prompt'),peacePrompt:$('peace-prompt'),commuteStatus:$('commute-status'),driveMeter:$('drive-meter'),driveThrottle:$('drive-throttle'),guidePrompt:$('guide-prompt'),runStatus:$('run-status')};
 function renderScene(){
  const highView=syncCameraClip();
@@ -672,11 +672,11 @@ function renderScene(){
 function frame(now){
  if(document.hidden||!active&&!story?.filming&&now-lastIdleFrame<(photo?.opened?1000/30:1000/15)){prev=now;requestAnimationFrame(frame);return;}
  if(isMobile&&(active||story?.filming)&&mobilePacer.skip(now,mobileQuality==='clear'?60:30)){requestAnimationFrame(frame);return;}
- lastIdleFrame=now;const probeStart=performanceProbe?performance.now():0;performanceProbe?.beginFrame(active||story?.filming);
+ lastIdleFrame=now;const frameWorkStart=performance.now(),probeStart=performanceProbe?frameWorkStart:0;performanceProbe?.beginFrame(active||story?.filming);
  footContact=grounded;const walkStartX=pos.x,walkStartZ=pos.z;let footTravel=0;
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?vesselQueries.support(pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}if(active||story?.filming){camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();simulationInterest.beginFrame();}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?inputKeys:new Set()});
- if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?1:3);if(!chunkWork.pending&&dt<0.035)flushSuperGroups(1);stepDistrictTextureWarmup();saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
+ if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}chunkWork.process(isMobile?1:3);if(!chunkWork.pending&&dt<0.035)flushSuperGroups(1);stepDistrictTextureWarmup(dt);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
   footTravel=Math.hypot(pos.x-walkStartX,pos.z-walkStartZ);
   camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);outline.visible=!!target;if(target)outline.position.set(target.x+.5,target.y+.5,target.z+.5);
   if((mouseHeld!==-1||inputKeys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
@@ -692,7 +692,7 @@ function frame(now){
  if(active&&!activity?.isRiding()&&!yuyuan?.isRiding()&&(commute?.ride?.vehicle||(pos.y<=28.5&&pos.x>=-40))&&!metroInterior(pos)){const hit=trafficContact({agents:civil.traffic.agents,player:pos,vehicle:commute?.ride?.vehicle,world,blocked:(x,y,z)=>staticCollides(x,y,z)});if(hit){const v=commute?.ride?.vehicle;if(v){v.root.position.set(hit.point.x,hit.point.y,hit.point.z);v.speed=0;v.throttle=0;v.shock=.8;v.impactCooldown=.4;}else{Object.assign(pos,hit.point);camera.position.set(pos.x,pos.y+1.62,pos.z);vy=0;}if(hit.speed>.2&&elapsed>trafficHitUntil){trafficHitUntil=elapsed+1.2;const damage=Math.min(6,Math.max(1,Math.ceil(hit.speed*.8)));life.state.hurt(damage);sceneAudio.horn();notify(life.state.survival?'被来车撞到 · 生命 -'+damage:'被来车碰到，已退到车旁。');}}}
  const flashOp=active?String(Math.max(0,(trafficHitUntil-elapsed-.6)*.6)):'0';if(flashOp!==lastFlashOpacity){trafficFlash.style.opacity=flashOp;lastFlashOpacity=flashOp;}
  sceneAudio.update(active?dt:0,{playing:active,hidden:document.hidden,sound,volume:music.volume,pos,yaw,agents:civil.traffic.agents,vendors:()=>[...(activity?.vendors??[]),...(yuyuan?.vendors??[])],riding:commute?.isRiding()||activity?.isRiding()||yuyuan?.isRiding()||metro?.isRiding(),walking:footContact&&Math.abs(vy)<.6&&!flying&&!gliding&&!story?.filming&&!isSwimming({feet:pos.y,dry:metroInterior(pos)}),travel:footTravel,dialogue:npcGuides?.isPanelOpen(),night:dayClock>=120,rain:climate.rain,weatherType:climate.type,rainExposure:climate.rain>.01?rainExposure(world,pos):0});
- yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?inputKeys:new Set(),camera,highView:isHighView(),isMobile});privateSuites?.tick(active,active?dt:0);towerInteriors?.tick(active);restaurant?.tick(active?dt:0);if(towerInteriors?.getPrompt())updateHudHidden(hudEls.skylinePrompt??$('skyline-prompt'),true);if(privateSuites?.getPrompt())updateHudHidden(hudEls.peacePrompt??$('peace-prompt'),true);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);parkLife.tick(active?dt:0);npcGuides?.tick(active?dt:0);rainCrowd?.tick(active?dt:0,climate.rain);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?inputKeys:new Set());updateHudHidden(hudEls.commuteStatus??$('commute-status'),!active||!commuteText);hudText('commute-label',commuteText||'');const drive=commute?.ride?.vehicle;updateHudHidden(hudEls.driveMeter??$('drive-meter'),!drive||!['bicycle','car'].includes(drive.kind));const power=Math.round(Math.abs(drive?.throttle??0)*100),dtEl=hudEls.driveThrottle??$('drive-throttle');if(dtEl&&Number(dtEl.value)!==power)dtEl.value=power;hudText('drive-power',drive?.brake?'刹车':power+'%');const civilPrompt=civil?.getPrompt?.(),guideEl=hudEls.guidePrompt??$('guide-prompt');if(civilPrompt&&active&&!commute?.isRiding()&&!yuyuan?.isRiding()){updateHudHidden(guideEl,false);updateHudText(guideEl,civilPrompt);}else if(!active||commute?.isRiding()||yuyuan?.isRiding())updateHudHidden(guideEl,true);updateHudHidden(hudEls.runStatus??$('run-status'),!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding);if(!isMobile&&!touch)hudText('run-status',isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步');const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch)??privateSuites?.cameraPose(yaw,pitch)??towerInteriors?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}const inConv=Boolean(document.body.classList?.contains?.('in-conversation'));const highW=isHighView();for(const label of wayfindingLabels){const d2=label.position.distanceToSquared(camera.position);label.visible=!inConv&&d2>16&&(highW?d2<(isMobile?16900:32400):d2<9025);}story?.tick(active?dt:0,active&&!document.hidden);contextGuideClock+=dt;if(contextGuideClock>=.25||(!active||document.hidden||story?.filming)&&contextGuide.current){contextGuide.tick(Math.min(contextGuideClock,.25),{playing:active&&!document.hidden,journey:story?.state,pos,touch:isMobile||touch,creative:!life?.state.survival,nearCar:commuteText==='V 接管汽车',night:dayClock>=120,nearBund:Math.hypot(pos.x-LANDMARKS.bund.x,pos.z-LANDMARKS.bund.z)<45,quiet:!!story?.filming||inConv||Boolean(document.body.classList?.contains?.('quest-intro-showing'))});contextGuideClock=0;}if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}photo?.update();renderScene();performanceProbe?.frame(now,performance.now()-probeStart,active||story?.filming);
+ yuyuan?.tick(active?dt:0,{night:dayClock>=120,keys:active?inputKeys:new Set(),camera,highView:isHighView(),isMobile});privateSuites?.tick(active,active?dt:0);towerInteriors?.tick(active);restaurant?.tick(active?dt:0);if(towerInteriors?.getPrompt())updateHudHidden(hudEls.skylinePrompt??$('skyline-prompt'),true);if(privateSuites?.getPrompt())updateHudHidden(hudEls.peacePrompt??$('peace-prompt'),true);cityMedia.tick(active?dt:0,{dayClock,festival,showTime});lujiazuiShow.tick(active?dt:0,{active:festival,time:showTime});residents?.tick(active?dt:0);parkLife.tick(active?dt:0);npcGuides?.tick(active?dt:0);rainCrowd?.tick(active?dt:0,climate.rain);quests?.tick(active?dt:0,active&&!document.hidden&&!npcGuides?.isPanelOpen());const commuteText=commute?.tick(active?dt:0,active?inputKeys:new Set());updateHudHidden(hudEls.commuteStatus??$('commute-status'),!active||!commuteText);hudText('commute-label',commuteText||'');const drive=commute?.ride?.vehicle;updateHudHidden(hudEls.driveMeter??$('drive-meter'),!drive||!['bicycle','car'].includes(drive.kind));const power=Math.round(Math.abs(drive?.throttle??0)*100),dtEl=hudEls.driveThrottle??$('drive-throttle');if(dtEl&&Number(dtEl.value)!==power)dtEl.value=power;hudText('drive-power',drive?.brake?'刹车':power+'%');const civilPrompt=civil?.getPrompt?.(),guideEl=hudEls.guidePrompt??$('guide-prompt');if(civilPrompt&&active&&!commute?.isRiding()&&!yuyuan?.isRiding()){updateHudHidden(guideEl,false);updateHudText(guideEl,civilPrompt);}else if(!active||commute?.isRiding()||yuyuan?.isRiding())updateHudHidden(guideEl,true);updateHudHidden(hudEls.runStatus??$('run-status'),!active||isMobile||touch||commute?.isRiding()||metro?.isRiding()||yuyuan?.isRiding()||flying||gliding);if(!isMobile&&!touch)hudText('run-status',isSwimming({feet:pos.y,dry:metroInterior(pos)})?'游泳 · 空格上浮 · Shift 下潜':runLocked?'持续跑步 · CapsLock 切回步行':'Shift 跑步 · CapsLock 持续跑步');const rideCamera=commute?.cameraPose(yaw,pitch)??yuyuan?.cameraPose(yaw,pitch)??privateSuites?.cameraPose(yaw,pitch)??towerInteriors?.cameraPose(yaw,pitch);if(rideCamera&&active){camera.position.set(rideCamera.position.x,rideCamera.position.y,rideCamera.position.z);camera.lookAt(rideCamera.focus.x,rideCamera.focus.y,rideCamera.focus.z);}const inConv=Boolean(document.body.classList?.contains?.('in-conversation'));const highW=isHighView();for(const label of wayfindingLabels){const d2=label.position.distanceToSquared(camera.position);label.visible=!inConv&&d2>16&&(highW?d2<(isMobile?16900:32400):d2<9025);}story?.tick(active?dt:0,active&&!document.hidden);contextGuideClock+=dt;if(contextGuideClock>=.25||(!active||document.hidden||story?.filming)&&contextGuide.current){contextGuide.tick(Math.min(contextGuideClock,.25),{playing:active&&!document.hidden,journey:story?.state,pos,touch:isMobile||touch,creative:!life?.state.survival,nearCar:commuteText==='V 接管汽车',night:dayClock>=120,nearBund:Math.hypot(pos.x-LANDMARKS.bund.x,pos.z-LANDMARKS.bund.z)<45,quiet:!!story?.filming||inConv||Boolean(document.body.classList?.contains?.('quest-intro-showing'))});contextGuideClock=0;}if(story?.filming){chunkWork.process(isMobile?2:3);story.filmFrame(storyDt);}photo?.update();renderScene();lastFrameWorkMs=performance.now()-frameWorkStart;performanceProbe?.frame(now,lastFrameWorkMs,active||story?.filming);
 }
 function onResize(){
  mobileLayout?.apply();touchMovement?.reset();mobilePacer.reset();
@@ -842,12 +842,24 @@ if(renderer.isWebGLRenderer){
  }
  void prepareStreetTextureBitmaps(renderer,roadArt,()=>!active&&!document.hidden);
 }
-function stepDistrictTextureWarmup(){
- if(!renderer.isWebGLRenderer||districtWarmupCursor>=districtWarmupTextures.length)return;
- if(pos.x<-210||pos.x>290||pos.z<10||pos.z>185)return;
+function queueRemainingSceneTextures(){
+ if(!renderer.isWebGLRenderer)return;
+ const seen=new Set(districtWarmupTextures);
+ scene.traverse(obj=>{
+  const mats=Array.isArray(obj.material)?obj.material:(obj.material?[obj.material]:null);
+  if(!mats)return;
+  for(const m of mats){
+   const tex=m?.map;
+   if(tex&&tex.image&&!tex.isRenderTargetTexture&&!seen.has(tex)){seen.add(tex);districtWarmupTextures.push(tex);}
+  }
+ });
+}
+function stepDistrictTextureWarmup(dt){
+ if(!renderer.isWebGLRenderer||document.hidden||districtWarmupCursor>=districtWarmupTextures.length)return;
+ if(dt>0.025||lastFrameWorkMs>12)return;
  while(districtWarmupCursor<districtWarmupTextures.length){
   const tex=districtWarmupTextures[districtWarmupCursor++];
-  if(!tex||renderer.properties.get(tex).__version===tex.version)continue;
+  if(!tex||!tex.image||tex.isRenderTargetTexture||renderer.properties.get(tex).__version===tex.version)continue;
   renderer.initTexture(tex);
   break;
  }
@@ -1423,6 +1435,7 @@ if(renderer.isWebGLRenderer&&bundWarmFoot&&!document.hidden){
   restoreBundWarmupTime?.();
  }
 }
+queueRemainingSceneTextures();
 if(renderer.isWebGLRenderer&&!document.hidden&&!testWarmup){
  const warmOrigin=savedStartupView?.pos??LANDMARKS.bund;
  ensureChunks(warmOrigin);

@@ -208,7 +208,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
      const flankLen=Math.max(0.4,b.rz-1.65);
      for(const fz of [b.z-b.rz+flankLen/2,b.z+b.rz-flankLen/2])solidShopWall(wallCol,wx,27.5,fz,wt,3,flankLen);
      solidShopWall(wallCol,wx,29.5,b.z,wt,1,b.rz*2+.1);
-     outerWalls.push(cube(timberCol,wx,29.1,b.z,wt+.08,.22,3.4));
+     outerWalls.push(cube(timberCol,wx,29.1,b.z,wt,.22,3.4));
     }else{
      solidShopWall(wallCol,wx,28,b.z,wt,4,b.rz*2+.1);
      outerWalls.push(cube(plinthCol,wx,26.27,b.z,wt+.1,.54,b.rz*2+.14));
@@ -230,7 +230,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
      const flankW=Math.max(0.4,b.rx-1.65);
      for(const sign of [-1,1])solidShopWall(wallCol,b.x+sign*(b.rx-flankW/2),27.5,wz,flankW,3,wt);
      solidShopWall(wallCol,b.x,29.5,wz,b.rx*2+.1,1,wt);
-     outerWalls.push(cube(timberCol,b.x,29.1,wz,3.4,.22,wt+.08));
+     outerWalls.push(cube(timberCol,b.x,29.1,wz,3.4,.22,wt));
     }else{
      solidShopWall(wallCol,b.x,28,wz,b.rx*2+.1,4,wt);
      outerWalls.push(cube(plinthCol,b.x,26.27,wz,b.rx*2+.14,.54,wt+.1));
@@ -266,7 +266,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
     const topWin=cube('#ffba54',b.x,35.6,b.z+side*(b.rz+.07),b.rx*2-1.8,1.35,.02,true);lights.push(topWin);
    }
   }
-  board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,264.5,5.5,.9);board('江南手作',-62,30,264.5,5.5,.9);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);
+  board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,264.5,5.5,.9,Math.PI);board('江南手作',-62,30,264.5,5.5,.9,Math.PI);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);
  const wayfinding=createYuyuanWayfinding();wayfinding.position.set(-35,26,10);root.add(wayfinding);
  board('华宝楼 · 百年商厦',-86,36.8,165.72,5.5,.9,Math.PI);board('天裕楼 · 豫园名阁',8,36.8,165.72,5.5,.9,Math.PI);board('和丰楼 · 美食雅集',8,32.8,183.72,5.5,.9,Math.PI);
  board('上海老饭店 · 百年名筵',8,36.8,197.72,5.5,.9,Math.PI);board('宁波汤团店 · 经典名点',8,32.8,215.72,5.5,.9,Math.PI);board('老庙黄金 · 百年祥瑞',8,32.8,247.72,5.5,.9,Math.PI);
