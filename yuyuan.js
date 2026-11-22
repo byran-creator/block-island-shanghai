@@ -54,14 +54,16 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
     ctx.fillStyle='#ffe57f';ctx.font='bold 16px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText?.('❖',bw/2,26);
     const chars=text.replace(/[\s·\-_]/g,'').split(''),startY=48,availH=bh-startY-45,spacing=Math.min(52,availH/Math.max(1,chars.length));
     const fontSize=Math.min(34,Math.max(18,Math.round(spacing*0.75)));
-    ctx.font=`bold ${fontSize}px "Songti SC","SimSun","Noto Serif CJK SC",serif`;
+    ctx.font=`bold ${fontSize}px "STXingkai","Xingkai SC","FZXingKai-S04S","STKaiti","KaiTi","Kaiti SC","LiSu",serif`;
     chars.forEach((ch,i)=>{
      const cy=startY+i*spacing+spacing/2;
+     ctx.shadowColor='rgba(0,0,0,0.85)';ctx.shadowBlur=4;ctx.shadowOffsetY=3;
      ctx.strokeStyle='#050302';ctx.lineWidth=Math.max(3,Math.round(fontSize*0.13));ctx.strokeText?.(ch,bw/2,cy);
      const cg=ctx.createLinearGradient?.(0,cy-fontSize*0.5,0,cy+fontSize*0.5);
-     if(cg?.addColorStop){cg.addColorStop(0,'#ffffff');cg.addColorStop(0.25,'#fff0a0');cg.addColorStop(0.6,'#ffd24d');cg.addColorStop(0.88,'#e59e18');cg.addColorStop(1,'#ad6d0d');ctx.fillStyle=cg;}
-     else ctx.fillStyle='#ffd24d';
+     if(cg?.addColorStop){cg.addColorStop(0,'#fff8c4');cg.addColorStop(0.28,'#ffea85');cg.addColorStop(0.58,'#ffd559');cg.addColorStop(0.88,'#df9d20');cg.addColorStop(1,'#b57210');ctx.fillStyle=cg;}
+     else ctx.fillStyle='#ffd559';
      ctx.fillText?.(ch,bw/2,cy);
+     ctx.shadowBlur=0;ctx.shadowOffsetY=0;
     });
     const ss=26,sx=bw/2-ss/2,sy=bh-38;
     ctx.fillStyle='#a62420';ctx.fillRect?.(sx,sy,ss,ss);
@@ -82,14 +84,20 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
     ctx.strokeStyle='#e8995a';ctx.lineWidth=1.2;ctx.strokeRect?.(sx+1,sy+1,ss-2,ss-2);
     ctx.fillStyle='#fff0db';ctx.font='bold 11px "STKaiti","KaiTi",serif';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText?.('非遗',sx+ss/2,sy+ss/2);
-    const tx=(bw-42)/2,ty=bh/2+1;ctx.textAlign='center';ctx.textBaseline='middle';
-    const fontSize=Math.min(42,Math.max(20,Math.round((bw-60)/Math.max(5,text.length)*0.95)));
-    ctx.font=`bold ${fontSize}px "Songti SC","SimSun","Noto Serif CJK SC",serif`;
+    const tx=(bw-44)/2,ty=bh/2+2;ctx.textAlign='center';ctx.textBaseline='middle';
+    const calligraphy='"STXingkai","Xingkai SC","FZXingKai-S04S","STKaiti","KaiTi","Kaiti SC","LiSu",serif';
+    let fontSize=Math.min(48,Math.max(20,Math.round((bw-64)/Math.max(5,text.length)*1.05)));
+    ctx.font=`bold ${fontSize}px ${calligraphy}`;
+    const measured=ctx.measureText?.(text)?.width??0;
+    if(measured>bw-96)fontSize=Math.max(18,Math.floor(fontSize*(bw-96)/measured));
+    ctx.font=`bold ${fontSize}px ${calligraphy}`;
+    ctx.shadowColor='rgba(0,0,0,0.85)';ctx.shadowBlur=4;ctx.shadowOffsetY=3;
     ctx.strokeStyle='#050302';ctx.lineWidth=Math.max(3,Math.round(fontSize*0.13));ctx.strokeText?.(text,tx,ty);
     const textGrad=ctx.createLinearGradient?.(0,ty-fontSize*0.55,0,ty+fontSize*0.55);
-    if(textGrad?.addColorStop){textGrad.addColorStop(0,'#ffffff');textGrad.addColorStop(0.22,'#fff0a2');textGrad.addColorStop(0.55,'#ffd54f');textGrad.addColorStop(0.85,'#e59e18');textGrad.addColorStop(1,'#ad6d0d');ctx.fillStyle=textGrad;}
-    else ctx.fillStyle='#ffd54f';
+    if(textGrad?.addColorStop){textGrad.addColorStop(0,'#fff8c4');textGrad.addColorStop(0.28,'#ffea85');textGrad.addColorStop(0.58,'#ffd559');textGrad.addColorStop(0.88,'#df9d20');textGrad.addColorStop(1,'#b57210');ctx.fillStyle=textGrad;}
+    else ctx.fillStyle='#ffd559';
     ctx.fillText?.(text,tx,ty);
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;
    }
    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
    t.minFilter=THREE.LinearFilter;t.magFilter=THREE.LinearFilter;t.generateMipmaps=false;t.anisotropy=1;
@@ -260,9 +268,9 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   }
   board('湖心亭',-46,30.3,178-2.65,2.6,.6);board('南翔小笼',-26,30,264.5,5.5,.9);board('江南手作',-62,30,264.5,5.5,.9);board('九曲桥',-65,28,173,3.4,.7,Math.PI/2);
  const wayfinding=createYuyuanWayfinding();wayfinding.position.set(-35,26,10);root.add(wayfinding);
- board('华宝楼 · 百年商厦',-86,37.2,165.8,5.5,.9);board('天裕楼 · 豫园名阁',8,37.2,166.8,5.5,.9);board('和丰楼 · 美食雅集',8,33,184.8,5.5,.9);
- board('上海老饭店 · 百年名筵',8,37.2,198.8,5.5,.9);board('宁波汤团店 · 经典名点',8,30,216.8,5.5,.9);board('老庙黄金 · 百年祥瑞',8,33,248.8,5.5,.9);
- board('上海梨膏糖 · 非遗老号',-107,33,151.8,5.5,.9);board('童涵春堂 · 传统国药',-107,33,199.8,5.5,.9);board('绿波廊 · 湖畔美馔',-20,33,183.8,4.8,.9);
+ board('华宝楼 · 百年商厦',-86,36.8,165.72,5.5,.9,Math.PI);board('天裕楼 · 豫园名阁',8,36.8,165.72,5.5,.9,Math.PI);board('和丰楼 · 美食雅集',8,32.8,183.72,5.5,.9,Math.PI);
+ board('上海老饭店 · 百年名筵',8,36.8,197.72,5.5,.9,Math.PI);board('宁波汤团店 · 经典名点',8,32.8,215.72,5.5,.9,Math.PI);board('老庙黄金 · 百年祥瑞',8,32.8,247.72,5.5,.9,Math.PI);
+ board('上海梨膏糖 · 非遗老号',-107,32.8,151.72,5.5,.9,Math.PI);board('童涵春堂 · 传统国药',-107,32.8,198.72,5.5,.9,Math.PI);board('绿波廊 · 湖畔美馔',-20,32.8,183.72,4.8,.9,Math.PI);
  board('大假山 · 望江亭',-72,30.5,220.8,4.5,.8);board('穿云龙墙 · 粉墙竹影',-62,29.8,217.2,4.2,.7);board('江南名石 · 玉玲珑',-36,29,244.5,4,.7);
  // Signature Huxinting & Lubolang waterside terrace cyan glow (水上露台水线蓝光 - 参考图 user_huxinting_night_water.png)
  for(const [wx,wz,ww,wd] of [[-46,178-2.6,5.4,.08],[-46,178+2.6,5.4,.08],[-46-2.6,178,.08,5.4],[-46+2.6,178,.08,5.4],[-20,188-4.1,10.2,.08],[-20-5.1,188,.08,8.2]]){const wg=cube('#2cb8ff',wx,22.35,wz,ww,.06,wd,true);lights.push(wg);}
@@ -271,7 +279,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  for(const px of [gateX-3.8,gateX-1.6,gateX+1.6,gateX+3.8]){cube('#7b756b',px,26.3,gateZ,.55,.6,.55);cube('#653e2d',px,29.2,gateZ,.28,5.2,.28);fixtureBounds.push({x:px,z:gateZ,rx:.28,rz:.28,y:26,h:5.2});}
  cube('#5c3727',gateX,31.4,gateZ,8.4,.32,.36);cube('#5c3727',gateX,29.8,gateZ,8.4,.22,.26);
  for(const [cx,w,yLevel] of [[gateX,4.2,32.4],[gateX-2.7,2.8,31.2],[gateX+2.7,2.8,31.2]]){cube('#364940',cx,yLevel,gateZ,w,.22,.9);for(const sx of [-1,1]){const tip=cube('#364940',cx+sx*(w/2+.22),yLevel+.18,gateZ,.28,.14,.8);tip.rotation.z=sx*.35;cube('#23322a',cx+sx*(w/2+.32),yLevel+.32,gateZ,.14,.2,.14);}}
- board('豫园 · 海上名园',gateX,30.6,gateZ-.14,3.2,.72);
+ board('豫园 · 海上名园',gateX,30.6,gateZ-.24,3.4,.72,Math.PI);
  const waterArt=createYuyuanWater(root,{ponds:GARDEN_PONDS,deferView:deferPondView}),localPos=()=>({...getPos(),z:getPos().z-YUYUAN_SHIFT});
  const gates=createYuyuanGates(root,{cube,mat,getPos:localPos,onProgress,onEvent});
  board('内园检票 · V',-35,31.9,193.88,2.5,.48);board('内园检票 · V',-75.12,31.9,205,2.5,.48,-Math.PI/2);

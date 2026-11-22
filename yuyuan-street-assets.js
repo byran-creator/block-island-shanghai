@@ -747,7 +747,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
    const rSide=box(pGroup,'#2d3a33',sx*(span+.3),4.92,0,.28,.14,.85);
    rSide.rotation.z=sx*.32;
   }
-  board(title,x,30.3,z,Math.min(totalW-2, 4.6),.68,yaw);
+  board(title,x,30.26,z+(yaw===0?-.27:.27),Math.min(totalW-2,4.8),.54,yaw===0?Math.PI:0);
  }
 
  paifang(-96.5, 149.2, 0, '豫园商城 · 西市老街', 5.2);

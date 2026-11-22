@@ -741,8 +741,38 @@ function setFlight(value){
   const flyChip=$('touch-fly');if(flyChip){flyChip.textContent=flying?'🕊 关闭飞行':'🕊 飞行模式';flyChip.classList.toggle('flying',flying);}
   const flyMoreChip=$('touch-fly-more');if(flyMoreChip){flyMoreChip.textContent=flying?'🕊 关闭飞行 F':'🕊 飞行模式 F';flyMoreChip.classList.toggle('flying',flying);}
 }
+const warmScissorVec=new THREE.Vector4();
+function warmViewScissor(foot,yaws){
+ if(!renderer.isWebGLRenderer||document.hidden||!foot||!yaws?.length)return;
+ const prevPos=camera.position.clone(),prevRot=camera.rotation.clone();
+ const prevScissorTest=renderer.getScissorTest();
+ renderer.getScissor(warmScissorVec);
+ renderer.setScissor(0,0,1,1);
+ renderer.setScissorTest(true);
+ const prevPreview=startupPreview,prevFoot=startupPreviewFoot;
+ startupPreview=camera;startupPreviewFoot=foot;
+ try{
+  camera.position.set(foot.x,foot.y+1.62,foot.z);
+  for(const warmYaw of yaws){
+   camera.rotation.set(-.08,warmYaw,0,'YXZ');
+   camera.updateMatrixWorld();
+   syncCameraClip(camera);
+   yuyuan?.cullView?.(camera,isHighView(camera),isMobile);
+   renderer.render(scene,camera);
+  }
+ }finally{
+  startupPreview=prevPreview;startupPreviewFoot=prevFoot;
+  camera.position.copy(prevPos);
+  camera.rotation.copy(prevRot);
+  camera.updateMatrixWorld();
+  syncCameraClip(camera);
+  yuyuan?.cullView?.(camera,isHighView(camera),isMobile);
+  renderer.setScissor(warmScissorVec);
+  renderer.setScissorTest(prevScissorTest);
+ }
+}
 function placePlayer(point){if(civil?.staticCollides(point.x,point.y,point.z))point=safeLanding(world,point,(x,y,z)=>staticCollides(x,y,z))??point;ensureChunks(point);pos.x=point.x;pos.y=point.y;pos.z=point.z;vy=0;grounded=false;yaw=point.z>=270&&point.x<=170?0:point.z>=68?-Math.PI/2:point.x>=80?Math.PI/2:0;pitch=-.12;}
-function teleport(point){touchMovement?.reset();privateSuites?.leaveSeat();towerInteriors?.leaveSeat();civil?.leaveSeat();metro?.end(true);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.dismount?.('传送');placePlayer(point);}
+function teleport(point){touchMovement?.reset();privateSuites?.leaveSeat();towerInteriors?.leaveSeat();civil?.leaveSeat();metro?.end(true);commute?.end(true);activity?.cancelRide();yuyuan?.rickshaws?.dismount?.('传送');placePlayer(point);if(started&&bootReady&&renderer.isWebGLRenderer&&!document.hidden){chunkWork.process(isMobile?4:8);flushSuperGroups(16);warmViewScissor(pos,[yaw,yaw+Math.PI/2,yaw-Math.PI/2]);}}
 if(['localhost','127.0.0.1'].includes(location.hostname))window.__game={
   camera,pos,teleport,lookTowards,setFlight,bundBatchVariants:civil.batchVariants,
   setPos:(x,y,z)=>{teleport({x,y,z});pos.x=x;pos.y=y;pos.z=z;ensureChunks({x,y,z},true,true);camera.position.set(x,y+1.62,z);},
@@ -1335,9 +1365,9 @@ if(isMobile){
  camera.position.set(32,29.8,69);camera.lookAt(126,52,42);camera.updateMatrixWorld(true);
  const visible=menuVisibleChunks(chunkWork.desired,camera,CHUNK,HEIGHT);
  chunkWork.prioritize(visible);
- const chunkDeadline=performance.now()+420;
+ const chunkDeadline=performance.now()+950;
  while(performance.now()<chunkDeadline&&([...visible].some(key=>!chunks.has(key))||chunkWork.desired.size>chunks.size)){
-  chunkWork.process(10);
+  chunkWork.process(16);
   await new Promise(resolve=>setTimeout(resolve,0));
  }
   flushSuperGroups(256);
@@ -1392,6 +1422,14 @@ if(renderer.isWebGLRenderer&&bundWarmFoot&&!document.hidden){
  }finally{
   restoreBundWarmupTime?.();
  }
+}
+if(renderer.isWebGLRenderer&&!document.hidden&&!testWarmup){
+ const warmOrigin=savedStartupView?.pos??LANDMARKS.bund;
+ ensureChunks(warmOrigin);
+ const warmDeadline=performance.now()+350;
+ while(performance.now()<warmDeadline&&chunkWork.pending)chunkWork.process(16);
+ flushSuperGroups(256);
+ warmViewScissor(warmOrigin,[0,Math.PI/2,Math.PI,-Math.PI/2]);
 }
 if(testWarmup&&!document.hidden){
  const view=initialView;
