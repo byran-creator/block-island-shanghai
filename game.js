@@ -1098,8 +1098,12 @@ if(renderer.isWebGLRenderer){
  });
  const metroLines=Object.values(metro.lines);
  const allSurfaceOpenings=metroLines.flatMap(line=>line.surfaceOpenings);
- const surfaceOpeningBoxes=allSurfaceOpenings.map(o=>new THREE.Box3(new THREE.Vector3(o.minX,22,o.minZ),new THREE.Vector3(o.maxX,27.5,o.maxZ)));
- const metroInteriors=[metro.root.getObjectByName('occluded-metro-interior'),...metro.root.children.filter(c=>c.isInstancedMesh),...metroLines.flatMap(line=>[line.root.getObjectByName('occluded-metro-interior'),...line.root.children.filter(c=>c.isInstancedMesh)])].filter(Boolean);
+ const toOpeningBoxes=ops=>ops.map(o=>new THREE.Box3(new THREE.Vector3(o.minX,22,o.minZ),new THREE.Vector3(o.maxX,27.5,o.maxZ)));
+ const surfaceOpeningBoxes=toOpeningBoxes(allSurfaceOpenings);
+ const metroLineGroups=metroLines.map(line=>({boxes:toOpeningBoxes(line.surfaceOpenings),interiors:[line.root.getObjectByName('occluded-metro-interior'),...line.root.children.filter(c=>c.isInstancedMesh)].filter(Boolean)})).filter(g=>g.interiors.length);
+ const rootInteriors=[metro.root.getObjectByName('occluded-metro-interior'),...metro.root.children.filter(c=>c.isInstancedMesh)].filter(Boolean);
+ if(rootInteriors.length)metroLineGroups.push({boxes:surfaceOpeningBoxes,interiors:rootInteriors});
+ const metroInteriors=metroLineGroups.flatMap(g=>g.interiors);
  const tempHiddenMetroInteriors=[],metroGateFrustum=new THREE.Frustum(),metroGateProj=new THREE.Matrix4();
  const metroPanels=createMetroPanelOcclusion([metro.root,...metroLines.map(line=>line.root)],
   (x,y,z)=>hasMetroTerrainFace(x,y,z,x,y+1,z),allSurfaceOpenings,
@@ -1156,16 +1160,18 @@ if(renderer.isWebGLRenderer){
      if(!chunksByNum.has(chunkNum(pcx+dx,pcz+dz))){groundLoaded=false;break;}
     }
     if(groundLoaded){
-     let nearAny=false;
-     if(camY<34){
-      for(let i=0;i<surfaceOpeningBoxes.length;i++){
-       const box=surfaceOpeningBoxes[i],dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-       if(dx*dx+dz*dz<=784){nearAny=true;break;}
+     for(let gIdx=0;gIdx<metroLineGroups.length;gIdx++){
+      const group=metroLineGroups[gIdx];let nearGroup=false;
+      if(camY<34){
+       for(let i=0;i<group.boxes.length;i++){
+        const box=group.boxes[i],dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
+        if(dx*dx+dz*dz<=324){nearGroup=true;break;}
+       }
       }
-     }
-     if(!nearAny){
-      for(const interior of metroInteriors){
-       if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
+      if(!nearGroup){
+       for(const interior of group.interiors){
+        if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
+       }
       }
      }
     }
@@ -1236,16 +1242,21 @@ if(renderer.isWebGLRenderer){
       if(!chunksByNum.has(chunkNum(pcx+dx,pcz+dz))){groundLoaded=false;break;}
      }
      if(groundLoaded){
-      const seesOpening=camY<34&&surfaceOpeningBoxes.some(box=>{
-       const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-       return dx*dx+dz*dz<=784&&metroGateFrustum.intersectsBox(box);
-      });
-      if(!seesOpening){
-       hidMetroInteriors=true;
-       for(const interior of metroInteriors){
-        if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
+      let hiddenCount=0;
+      for(let gIdx=0;gIdx<metroLineGroups.length;gIdx++){
+       const group=metroLineGroups[gIdx];
+       const seesGroup=camY<34&&group.boxes.some(box=>{
+        const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
+        return dx*dx+dz*dz<=324&&metroGateFrustum.intersectsBox(box);
+       });
+       if(!seesGroup){
+        hiddenCount++;
+        for(const interior of group.interiors){
+         if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
+        }
        }
       }
+      hidMetroInteriors=hiddenCount>0&&hiddenCount===metroLineGroups.length;
      }
     }
     metroPanels.prepare(camera,scene.fog,hidMetroInteriors);
@@ -1290,6 +1301,7 @@ freezeStaticSubtrees(scene);
 scene.matrixAutoUpdate=false;
 const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:150,highStaticMaxDist:isMobile?78:145,dynamicMaxDist:isMobile?74:115,highDynamicMaxDist:isMobile?64:110});
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming||!!startupPreview});
+await Promise.race([shaderWarmup.frontDone,new Promise(resolve=>setTimeout(resolve,450))]);
 const startupParams=runtimeParams;
 const testWarmup=startupParams.get('test')==='1'&&startupParams.get('turnWarmup')==='1'&&renderer.isWebGLRenderer&&!document.hidden;
 const testEntryPhoto=isMobile&&startupParams.get('test')==='1'&&startupParams.get('holdRestoredEntry')==='1';

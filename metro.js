@@ -405,6 +405,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   const cullStations=!!config?.pauseHiddenDynamics&&canCullInteriors();
   const rideTrainState=ride?trains[ride.index].state:null;
   const metroNearUnderground=playerWorld.y<25||!!config?.undergroundVisible?.(playerWorld);
+  const showPlatformDoors=!cullStations||metroNearUnderground;
   for(let idx=0;idx<stations.length;idx++){
    const s=stations[idx];
    let vis=true;
@@ -417,6 +418,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
    s.visible=vis;
    for(const n of s.visualNodes)n.visible=vis;
    if(s.staffRoot)s.staffRoot.visible=vis;
+   for(const d of s.doors)for(const leaf of d.leaves)leaf.mesh.visible=vis&&showPlatformDoors;
   }
   for(const t of trains){
    const previous=t.state,st=nextState(clock,t.offset,t.direction),riding=ride?.index===t.index;

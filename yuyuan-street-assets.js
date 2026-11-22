@@ -57,7 +57,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
 
  for(const [id,title,key,name,type,food,accent]of specs){
   const physical=YUYUAN_BUILDINGS.find(building=>building.id===id);if(!physical)continue;
-  const westFacing=id.startsWith('yuyuan-street-'),b=westFacing?{...physical,rx:4,rz:5}:physical;
+  const westFacing=id.startsWith('yuyuan-street-'),b=physical;
   const childStart=root.children.length,fixtureStart=fixtures.length;
   const {x,z,rx,rz}=b,front=z-rz,back=z+rz-.5,doorX=x+.5,counterZ=z+1.6;
   shops.push({id,x:doorX,z,title,key,name,food});goods[key]=[];stockCaps[key]=6;
@@ -89,10 +89,10 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   for(const dx of [-1.8,1.8]){cube(timber,x+dx,28.95,z-.5,.055,.25,.055);cube(gold,x+dx,28.83,z-.5,.57,.06,.57);cube('#fff0c2',x+dx,28.61,z-.5,.49,.37,.49,true);cube(gold,x+dx,28.41,z-.5,.57,.06,.57);for(const side of [-1,1])cube(timber,x+dx+side*.255,28.6,z-.5,.027,.42,.52);}
   if(westFacing){
    for(const dx of [-2.5,-.85,.85,2.5]){
-    cube(timber,x+dx,31.5,front-.055,1.32,1.62,.08);cube('#b7c5b9',x+dx,31.5,front-.102,1.14,1.42,.016);
-    for(const bar of [-.36,0,.36])cube(timber,x+dx+bar,31.5,front-.12,.045,1.48,.025);
-    for(const y of [30.83,31.28,31.73,32.17])cube(timber,x+dx,y,front-.12,1.21,.05,.025);
-    cube(gold,x+dx,30.68,front-.05,1.44,.085,.2);
+    cube(timber,x+dx,33.05,front-.08,1.32,1.28,.08);cube('#b7c5b9',x+dx,33.05,front-.125,1.14,1.10,.016);
+    for(const bar of [-.36,0,.36])cube(timber,x+dx+bar,33.05,front-.14,.045,1.14,.025);
+    for(const y of [32.68,33.05,33.42])cube(timber,x+dx,y,front-.14,1.21,.045,.025);
+    cube(gold,x+dx,32.38,front-.07,1.44,.085,.18);
    }
    for(let i=childStart;i<root.children.length;i++){const object=root.children[i],dx=object.position.x-x,dz=object.position.z-z;object.position.x=x+dz;object.position.z=z-dx;object.quaternion.premultiply(westFacingRotation);}
    for(let i=fixtureStart;i<fixtures.length;i++){const f=fixtures[i],dx=f.x-x,dz=f.z-z,rx=f.rx;f.x=x+dz;f.z=z-dx;f.rx=f.rz;f.rz=rx;}
@@ -836,14 +836,23 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   if(dt>0&&simulationInterest&&!swayBounds.isEmpty()&&!simulationInterest.seesBox(swayBounds,95)){swaySkipped=true;return;}if(!swaySkipped&&animTimer < 0.033) return;swaySkipped = false;
   animTimer = 0;
   const t = clock;
-  // 1. Lanterns & flags sway gently in the breeze
+  // 1. Lanterns & flags sway gently in the breeze (skip updates & freeze matrices >30m from player)
+  const lp = getPos?.();
   for(let i = 0; i < swayingObjects.length; i++){
-   const item = swayingObjects[i];
+   const item = swayingObjects[i], grp = item.group;
+   if(lp && dt > 0){
+    const dx = grp.position.x - lp.x, dz = grp.position.z - lp.z;
+    if(dx*dx + dz*dz > 900){
+     if(grp.matrixAutoUpdate){grp.rotation.set(0,0,0);grp.updateMatrix();grp.matrixAutoUpdate=false;}
+     continue;
+    }
+    if(!grp.matrixAutoUpdate)grp.matrixAutoUpdate=true;
+   }
    const windGust = Math.sin(t * 0.6 + item.phase * 0.5) * 0.25;
    const swayZ = Math.sin(t * item.speed + item.phase) * (item.maxAngleZ + windGust * item.maxAngleZ);
    const swayX = Math.cos(t * item.speed * 0.75 + item.phase * 1.3) * item.maxAngleX;
-   item.group.rotation.z = swayZ;
-   item.group.rotation.x = swayX;
+   grp.rotation.z = swayZ;
+   grp.rotation.x = swayX;
   }
   // 2. Soft hazy breathing glow for lantern cores
   if(night && flickeringLights.length > 0){

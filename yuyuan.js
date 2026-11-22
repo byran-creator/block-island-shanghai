@@ -92,7 +92,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
     ctx.fillText?.(text,tx,ty);
    }
    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-   t.minFilter=THREE.LinearMipmapLinearFilter;t.magFilter=THREE.LinearFilter;t.generateMipmaps=true;t.anisotropy=4;
+   t.minFilter=THREE.LinearFilter;t.magFilter=THREE.LinearFilter;t.generateMipmaps=false;t.anisotropy=1;
    material=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide});
    boardCache.set(cacheKey,material);
   }
