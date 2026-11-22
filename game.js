@@ -1124,7 +1124,7 @@ if(renderer.isWebGLRenderer){
    const r=o.userData?.range;
    const forceTrafficPanel=root.name==='city-traffic-details'&&Boolean(o.userData?.panel);
    if(!forceTrafficPanel&&!(r>0&&r<=160))return;
-   const effRange=(isMobile&&o.name==='street-products')?22:(r>0?r:285);
+   const effRange=o.name==='street-products'?(isMobile?22:42):(r>0?r:285);
    if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();
    if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
    let isStatic=true;
@@ -1215,12 +1215,13 @@ if(renderer.isWebGLRenderer){
     }
    }
    if(civil?.staticBatches){
-    const farSq=camera.far*camera.far;
+    const farSq=camera.far*camera.far,mulMaxSq=isMobile?4900:11025;
     for(let i=0;i<civil.staticBatches.length;i++){
      const m=civil.staticBatches[i],box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
+     const maxSq=m.name==='bund-mullions-static'?mulMaxSq:farSq;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>farSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
    }
    if(yuyuanInteriorDetails?.visible!==false)wallCull.prepare(camera);
@@ -1287,7 +1288,7 @@ if(transferPassage){transferPassage.matrixAutoUpdate=false;const inner=transferP
 function freezeStaticSubtrees(node){let allStatic=!node.matrixAutoUpdate&&!node.userData.skipHiddenMatrices;for(let i=0;i<node.children.length;i++)if(!freezeStaticSubtrees(node.children[i]))allStatic=false;if(allStatic&&node!==scene&&node.children.length>0&&node.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld){const orig=node.updateMatrixWorld;node.updateMatrixWorld=function(force){if(force||this.matrixWorldNeedsUpdate)orig.call(this,force);};}return allStatic;}
 freezeStaticSubtrees(scene);
 scene.matrixAutoUpdate=false;
-const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:235,highStaticMaxDist:isMobile?78:155,dynamicMaxDist:isMobile?74:185,highDynamicMaxDist:isMobile?64:165});
+const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:150,highStaticMaxDist:isMobile?78:145,dynamicMaxDist:isMobile?74:115,highDynamicMaxDist:isMobile?64:110});
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming||!!startupPreview});
 const startupParams=runtimeParams;
 const testWarmup=startupParams.get('test')==='1'&&startupParams.get('turnWarmup')==='1'&&renderer.isWebGLRenderer&&!document.hidden;

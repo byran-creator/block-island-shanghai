@@ -234,35 +234,19 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   const g = new THREE.Group();
   g.position.set(x, y, z);
   parent.add(g);
+  dynamicRoots.add(g);
 
   // Hook / cable
   box(g, '#785b3b', 0, -0.06, 0, .02, .12, .02);
 
   // Warm golden-amber glowing luminous inner core (暖金黄发光内核)
-  const coreMat = mat('#ffc107', true);
-  const core = new THREE.Mesh(cylinder, coreMat);
-  core.position.set(0, -0.36*scale, 0);
-  core.scale.set(.18*scale, .48*scale, .18*scale);
-  g.add(core);
-  flickeringLights.push({mat: coreMat, baseColor: new THREE.Color('#ffc107'), phase: phaseOffset});
-
-  // Translucent Crimson silk gauze outer lampshade (红里透黄薄纱红罩)
-
-  const body = new THREE.Mesh(cylinder, gauzeMat);
+  const body = new THREE.Mesh(cylinder, mat(color, true));
   body.position.set(0, -0.36*scale, 0);
-  body.scale.set(.28*scale, .52*scale, .28*scale);
+  body.scale.set(.26*scale, .52*scale, .26*scale);
   g.add(body);
-
-  // Golden waist hoop trim (金边腰箍)
-  disk(g, gold, 0, -0.36*scale, 0, .285*scale, .025*scale);
-
-  // Top & bottom brass collars
   disk(g, gold, 0, -0.1*scale, 0, .2*scale, .04*scale);
   disk(g, gold, 0, -0.62*scale, 0, .19*scale, .04*scale);
-
-  // Bottom red fringe & golden tassel (红穗流苏)
   box(g, '#d82d22', 0, -0.82*scale, 0, .05*scale, .36*scale, .05*scale);
-  disk(g, gold, 0, -0.64*scale, 0, .06*scale, .025*scale);
 
   g.updateMatrixWorld(true);for(const c of g.children)c.matrixAutoUpdate=false;
   swayingObjects.push({group: g, phase: phaseOffset, speed: 1.6, maxAngleZ: 0.08, maxAngleX: 0.05, type: 'lantern'});
@@ -832,7 +816,12 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   for(let i = 0; i < count; i++){
    const t = (i + 0.5) / count, lx = x1 + (x2 - x1) * t, sag = Math.sin(t * Math.PI) * 0.26, ly = y - sag;
    const color = lanternColors[(Math.floor(z * 3 + lx * 2) % lanternColors.length + lanternColors.length) % lanternColors.length];
-   createSwayingLantern(root, lx, ly, z, color, 1.65, lx*2.3+z*1.7);
+   const sc = 1.65;
+   box(root, '#785b3b', lx, ly - .08*sc, z, .03, .16*sc, .03);
+   disk(root, mat(color, true), lx, ly - .36*sc, z, .26*sc, .52*sc);
+   disk(root, gold, lx, ly - .10*sc, z, .20*sc, .04*sc);
+   disk(root, gold, lx, ly - .62*sc, z, .19*sc, .04*sc);
+   box(root, '#d82d22', lx, ly - .80*sc, z, .05*sc, .34*sc, .05*sc);
   }
  }
 

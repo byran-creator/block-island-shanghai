@@ -171,7 +171,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
     tendrilGroup.add(leafMesh);
    }
   }
-  batchDetails(tendrilGroup,staticMeshes(tendrilGroup),'yuyuan-willow');
+  batchDetails(tendrilGroup,staticMeshes(tendrilGroup),'yuyuan-willow',0);
   swayingWillows.push({group:tendrilGroup,phase:x*1.3+z*.7});
  }
  weepingWillow(-48.5,164.2,0,1.4,1.1); // North central pond shoreline (on solid ground, leaning south)

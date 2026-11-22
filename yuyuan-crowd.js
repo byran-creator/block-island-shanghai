@@ -7,7 +7,7 @@ import {createSimulationStep} from './simulation-interest.js';
 
 // One-way street circuits distribute visitors around the shops. The quiet
 // inner circuit stays behind the ticket walls and never walks through a gate.
-export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null}){
+export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null,getPos=null}){
  const people=[],cache=new Map(),geo=new THREE.BoxGeometry(1,1,1),mats=new Map();
  const mat=c=>{if(!mats.has(c))mats.set(c,new THREE.MeshLambertMaterial({color:c}));return mats.get(c);};
  const clear=(x,z)=>{const key=x+','+z;if(!cache.has(key))cache.set(key,!!world.get(Math.floor(x),25,Math.floor(z))&&!blocked(x,26,z));return cache.get(key);};
@@ -100,13 +100,14 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
   crowdBounds.expandByScalar(4);
   return stepOffscreen(dt,simulationInterest.seesBox(crowdBounds,85));
  }
- return {people,get navigationError(){return navigationError;},tick(dt){dt=simulationDelta(dt);if(dt<=0)return;for(let i=0;i<people.length;i++)syncGrid(people[i]);for(const a of people){a.rerouteIn=Math.max(0,a.rerouteIn-dt);let moved=false;
+ let crowdFrame=0;
+ return {people,get navigationError(){return navigationError;},tick(dt){dt=simulationDelta(dt);if(dt<=0)return;crowdFrame++;const gp=getPos?.(),odd=(crowdFrame&1)===1;for(let i=0;i<people.length;i++)syncGrid(people[i]);for(const a of people){const dxp=gp?a.root.position.x-gp.x:0,dzp=gp?a.root.position.z-gp.z:0,d2=dxp*dxp+dzp*dzp,isFar=!!gp&&d2>1444;a.farAccum=(a.farAccum||0)+dt;if(isFar&&odd)continue;const stepDt=a.farAccum;a.farAccum=0;a.rerouteIn=Math.max(0,a.rerouteIn-stepDt);let moved=false;
   const volume=staticClear(a.root.position.x,a.root.position.z)?0:penetration(a.root.position.x,a.root.position.z);
   // A player block can materialise around an existing NPC after save load or
   // construction. Walk out while reducing overlap, never erase it or teleport.
-  if(volume>1e-7)moved=escapeNewBlock(a,dt,volume);
-  else if(a.pause>0)a.pause=Math.max(0,a.pause-dt);
-  else if(a.detour){const detour=a.detour,target=detour.points[detour.index],p=a.root.position,q={x:target[0],z:target[1],yaw:Math.atan2(target[0]-p.x,target[1]-p.z)+Math.PI};moved=stepTo(a,q,dt);if(Math.hypot(p.x-q.x,p.z-q.z)<.06){detour.index++;if(detour.index>=detour.points.length){a.d=detour.endD;a.detour=null;}}else if(!moved&&a.wait>3&&!a.rerouteIn)reroute(a);}
+  if(volume>1e-7)moved=escapeNewBlock(a,stepDt,volume);
+  else if(a.pause>0)a.pause=Math.max(0,a.pause-stepDt);
+  else if(a.detour){const detour=a.detour,target=detour.points[detour.index],p=a.root.position,q={x:target[0],z:target[1],yaw:Math.atan2(target[0]-p.x,target[1]-p.z)+Math.PI};moved=stepTo(a,q,stepDt);if(Math.hypot(p.x-q.x,p.z-q.z)<.06){detour.index++;if(detour.index>=detour.points.length){a.d=detour.endD;a.detour=null;}}else if(!moved&&a.wait>3&&!a.rerouteIn)reroute(a);}
   else {
    let lead=null,leadIdx=Infinity;
    const ax=a.root.position.x,az=a.root.position.z,ayaw=a.root.rotation.y,gx=Math.floor(ax/CELL),gz=Math.floor(az/CELL);
@@ -127,12 +128,12 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
     const dist=Math.hypot(lead.root.position.x-a.root.position.x,lead.root.position.z-a.root.position.z);
     currentSpeed=Math.min(a.speed,lead.speed*.96*Math.max(.72,Math.min(1.0,(dist-.5)/.35)));
    }
-   const d=(a.d+currentSpeed*dt)%a.length,q=a.pose(d);
+   const d=(a.d+currentSpeed*stepDt)%a.length,q=a.pose(d);
    if(!staticClear(q.x,q.z)){if(a.wait>.8&&!a.rerouteIn)reroute(a);}
-   else {moved=stepTo(a,q,dt);if(moved)a.d=d;}
+   else {moved=stepTo(a,q,stepDt);if(moved)a.d=d;}
   }
   if(moved){
-   a.wait=0;a.browseIn-=dt;
+   a.wait=0;a.browseIn-=stepDt;
    if(a.browseIn<=0){
     let crowded=false;
     const ax=a.root.position.x,az=a.root.position.z,gx=Math.floor(ax/CELL),gz=Math.floor(az/CELL);
@@ -148,13 +149,27 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null})
     if(!crowded){a.pause=.8+(a.phase%1.9);a.browseCount++;a.browseIn=18+(a.phase*7%31);}
    }
   }
-  else if(!a.pause)a.wait+=dt;
-  const isWalking=THREE.MathUtils.damp(a.walkWeight??1,moved?1:0,10,dt);a.walkWeight=isWalking;
+  else if(!a.pause)a.wait+=stepDt;
+  const freezeLimbs=!!gp&&d2>1024;
+  if(freezeLimbs){
+   if(!a._limbFrozen){
+    a._limbFrozen=true;
+    for(let i=0;i<2;i++){a.arms[i].rotation.x=0;a.arms[i].updateMatrix();a.arms[i].matrixAutoUpdate=false;a.legs[i].rotation.x=0;a.legs[i].updateMatrix();a.legs[i].matrixAutoUpdate=false;}
+    if(a.body){a.body.position.y=0;a.body.rotation.y=0;a.body.rotation.z=0;a.body.updateMatrix();a.body.matrixAutoUpdate=false;}
+   }
+   continue;
+  }
+  if(a._limbFrozen){
+   a._limbFrozen=false;
+   for(let i=0;i<2;i++){a.arms[i].matrixAutoUpdate=true;a.legs[i].matrixAutoUpdate=true;}
+   if(a.body)a.body.matrixAutoUpdate=true;
+  }
+  const isWalking=THREE.MathUtils.damp(a.walkWeight??1,moved?1:0,10,stepDt);a.walkWeight=isWalking;
   const swing=Math.sin(a.travel*a.stride+a.phase)*.58*isWalking;
   const armSwing=Math.sin(a.travel*a.stride+a.phase)*.48*isWalking;
   for(let i=0;i<2;i++){
-   a.arms[i].rotation.x=THREE.MathUtils.damp(a.arms[i].rotation.x,(i?1:-1)*armSwing,10,dt);
-   a.legs[i].rotation.x=THREE.MathUtils.damp(a.legs[i].rotation.x,(i?-1:1)*swing,10,dt);
+   a.arms[i].rotation.x=THREE.MathUtils.damp(a.arms[i].rotation.x,(i?1:-1)*armSwing,10,stepDt);
+   a.legs[i].rotation.x=THREE.MathUtils.damp(a.legs[i].rotation.x,(i?-1:1)*swing,10,stepDt);
   }
   if(a.body){
    a.body.position.y=Math.abs(Math.sin(a.travel*a.stride+a.phase))*.045*isWalking;

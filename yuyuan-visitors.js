@@ -4,7 +4,7 @@ import {styleNpc} from './npc-appearance.js';
 import {batchMeshes,staticMeshes} from './mesh-batch.js';
 import {createPedestrianVehicleIndex,pedestrianStepClear} from './pedestrian-traffic.js';
 import {yuyuanWalkRoute} from './yuyuan-access.js';
-export function createYuyuanVisitors({scene,world,getVehicles=()=>[],blocked=(x,y,z)=>overlaps(world,x,y,z)}){
+export function createYuyuanVisitors({scene,world,getVehicles=()=>[],getPos=null,blocked=(x,y,z)=>overlaps(world,x,y,z)}){
  // Separate offset paths join around the ends. A closed walking loop avoids
  // opposing walkers swapping lanes in place or cutting back into a follower.
  const centerPoints=yuyuanWalkRoute(world),offset=sign=>centerPoints.map((p,i)=>{const a=centerPoints[Math.max(0,i-1)],b=centerPoints[Math.min(centerPoints.length-1,i+1)],prev=[p[0]-a[0],p[1]-a[1]],next=[b[0]-p[0],b[1]-p[1]],n=v=>{const d=Math.hypot(...v)||1;return [v[1]/d,-v[0]/d];};let u=n(prev),v=n(next);if(i===0)u=v;if(i===centerPoints.length-1)v=u;const dot=1+u[0]*v[0]+u[1]*v[1];return [p[0]+sign*.85*(u[0]+v[0])/dot,p[1]+sign*.65*(u[1]+v[1])/dot];});
@@ -31,11 +31,14 @@ export function createYuyuanVisitors({scene,world,getVehicles=()=>[],blocked=(x,
   return false;
  }
  const nearbyVehicles=createPedestrianVehicleIndex();
- function tick(dt){nearbyVehicles.refresh(getVehicles());for(const a of people){if(a.pause>0){a.pause=Math.max(0,a.pause-dt);for(const limb of [...a.arms,...a.legs])limb.rotation.x=THREE.MathUtils.damp(limb.rotation.x,0,8,dt);continue;}const next=(a.d+a.speed*dt)%length,q=pose(next),r=a.root.position;
+ let visFrame=0;
+ function tick(dt){visFrame++;const gp=getPos?.(),odd=(visFrame&1)===1;nearbyVehicles.refresh(getVehicles());for(const a of people){const r=a.root.position,dxp=gp?r.x-gp.x:0,dzp=gp?r.z-gp.z:0,d2=dxp*dxp+dzp*dzp,isFar=!!gp&&d2>1600;a.farAccum=(a.farAccum||0)+dt;if(dt>0&&isFar&&odd)continue;const stepDt=dt>0?a.farAccum:0;a.farAccum=0;if(a.pause>0){a.pause=Math.max(0,a.pause-stepDt);for(const limb of [...a.arms,...a.legs])limb.rotation.x=THREE.MathUtils.damp(limb.rotation.x,0,8,stepDt);continue;}const next=(a.d+a.speed*stepDt)%length,q=pose(next);
    const clear=!blocked(q.x,q.y,q.z)&&world.get(Math.floor(q.x),25,Math.floor(q.z))&&pedestrianStepClear(r,q,nearbyVehicles)&&!visitorOccupied(a,q.x,q.z);
-   if(clear){a.travel+=Math.hypot(q.x-r.x,q.z-r.z);a.d=next;r.set(q.x,q.y,q.z);const delta=Math.atan2(Math.sin(q.yaw-a.root.rotation.y),Math.cos(q.yaw-a.root.rotation.y));a.root.rotation.y+=delta*(1-Math.exp(-5*dt));a.wait=0;}else a.wait+=dt;
-   const pace=clear?Math.sin(a.travel*5+a.phase)*.32:0;a.arms.forEach((l,i)=>l.rotation.x=THREE.MathUtils.damp(l.rotation.x,(i?1:-1)*pace,8,dt));a.legs.forEach((l,i)=>l.rotation.x=THREE.MathUtils.damp(l.rotation.x,(i?-1:1)*pace,8,dt));
-   if(clear&&a.d<a.speed*dt){a.pause=2+(a.phase%2)*2;}
+   if(clear){a.travel+=Math.hypot(q.x-r.x,q.z-r.z);a.d=next;r.set(q.x,q.y,q.z);const delta=Math.atan2(Math.sin(q.yaw-a.root.rotation.y),Math.cos(q.yaw-a.root.rotation.y));a.root.rotation.y+=delta*(1-Math.exp(-5*stepDt));a.wait=0;}else a.wait+=stepDt;
+   const freezeLimbs=!!gp&&d2>1024;
+   if(freezeLimbs){if(!a._limbFrozen){a._limbFrozen=true;for(const l of [...a.arms,...a.legs]){l.rotation.x=0;l.updateMatrix();l.matrixAutoUpdate=false;}}}
+   else{if(a._limbFrozen){a._limbFrozen=false;for(const l of [...a.arms,...a.legs])l.matrixAutoUpdate=true;}const pace=clear?Math.sin(a.travel*5+a.phase)*.32:0;a.arms.forEach((l,i)=>l.rotation.x=THREE.MathUtils.damp(l.rotation.x,(i?1:-1)*pace,8,stepDt));a.legs.forEach((l,i)=>l.rotation.x=THREE.MathUtils.damp(l.rotation.x,(i?-1:1)*pace,8,stepDt));}
+   if(clear&&a.d<a.speed*stepDt){a.pause=2+(a.phase%2)*2;}
   }}
  return {people,tick};
 }

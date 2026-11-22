@@ -22,8 +22,8 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   if(packStatic)for(const mesh of meshes)mesh.userData.yuyuanWallTarget=true;
   return meshes;
  };
- const batchDetails=(group,meshes,name)=>{
-  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette,packStatic,84);
+ const batchDetails=(group,meshes,name,cellSize=84)=>{
+  const batches=batchMeshes(group,meshes.filter(mesh=>!mesh.userData.yuyuanColorBatch),name,solidPalette,packStatic,cellSize);
   for(const mesh of batches)if(mesh.userData.rgbColors)mesh.userData.yuyuanColorBatch=true;
   return registerWallTargets(batches);
  };
@@ -190,7 +190,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
    }
    const wallCol=b.id==='shanghai-hotel'?'#8d3c30':b.id==='huabao-lou'?'#7d2a24':(['#804432','#5a4233','#3f4c44','#783a2d','#8c5c36'][Math.abs(Math.round(b.x+b.z))%5]);
    const doorEast=[-107,8].includes(b.x),doorWest=[-86,25].includes(b.x)||b.id==='lubolang',doorNorth=b.z===271,doorSouth=b.id==='tea-gallery';
-   const topY=26+b.levels*4,wt=.42,inset=.16,upperWallCol='#ece6d8',timberCol='#4a2e1f',plinthCol='#5d615e';
+   const topY=26+b.levels*4,wt=.42,inset=.16,upperWallCol=wallCol,timberCol='#4a2e1f',plinthCol='#5d615e';
    for(const sx of [-1,1])for(const sz of [-1,1]){
     outerWalls.push(cube(timberCol,b.x+sx*(b.rx-inset),26+b.levels*2,b.z+sz*(b.rz-inset),.34,b.levels*4,.34));
    }
@@ -428,15 +428,15 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  detailGroup.matrixAutoUpdate=false;
  root.add(detailGroup);
  const innerActors=[...actors];
- const visitors=world?createYuyuanVisitors({scene,world,getVehicles,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
- const crowd=world?createYuyuanCrowd({scene,world,simulationInterest,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
+ const visitors=world?createYuyuanVisitors({scene,world,getVehicles,getPos,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
+ const crowd=world?createYuyuanCrowd({scene,world,simulationInterest,getPos,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
  innerActors.push(...crowd.people);
  for(const a of actors){a.root.userData.sealedHiddenInstances=true;a.root.userData.sealedActorRadius=2.6;skipNode(a.root);}
  let lastFarCull=null;
  function cullView(camera,highView=false,isMobile=false){
   if(!camera)return;
   const cp=camera.position,dx=Math.max(-78-cp.x,cp.x-6,0),dz=Math.max((192+YUYUAN_SHIFT)-cp.z,cp.z-(276+YUYUAN_SHIFT),0);
-  const limit=highView?(isMobile?95:150):(isMobile?125:205),farCull=cp.y>=42||(dx*dx+dz*dz)>limit*limit;
+  const limit=highView?(isMobile?95:140):(isMobile?120:135),farCull=cp.y>=42||(dx*dx+dz*dz)>limit*limit;
   if(farCull!==lastFarCull){
    lastFarCull=farCull;
    detailGroup.visible=!farCull;
@@ -530,5 +530,5 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
   return false;
  }
 
- return {root,actors,shopArt,streetArt,rickshaws,cullView,isRiding:()=>rickshaws.isRiding(),cameraPose:(yaw,pitch)=>rickshaws.cameraPose(yaw,pitch),vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,floorAt:(x,z)=>{const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return null;return moonBridgeFloor(x,lz)??galleryFloor(x,lz,.29)??buildingRoofFloor(x,lz);},collides:(x,y,z)=>{if(y<21||y>45)return false;const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return false;if(galleryFloor(x,lz)!==null)return false;return gates.collides(x,y,lz)||buildingCollides(x,y,lz)||collidesFixtures(x,y,lz);},tick(dt,{night=false,keys=new Set(),camera=null,highView=false,isMobile=false}={}){elapsed+=dt;if(camera)cullView(camera,highView,isMobile);const lp=localPos(),highSkip=Boolean(camera&&camera.position.y>=42),nearDistrict=dt<=0||(!highSkip&&!lastFarCull&&(Math.max(-95-lp.x,lp.x-25,0)**2+Math.max(150-lp.z,lp.z-280,0)**2)<=14400);if(nearDistrict||dt<=0||rickshaws.isRiding()){gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);rickshaws.tick(dt,keys);}if(night!==lastNightState){lastNightState=night;for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);}},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
+ return {root,actors,shopArt,streetArt,rickshaws,cullView,isRiding:()=>rickshaws.isRiding(),cameraPose:(yaw,pitch)=>rickshaws.cameraPose(yaw,pitch),vendors:(streetArt.vendors??[]).map(v=>({...v,position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT},root:{position:{x:v.position.x,y:v.position.y,z:v.position.z+YUYUAN_SHIFT}}})),gardenArt,classicArt,waterArt,gates,visitors,crowd,get inventory(){return {...collectibles};},use,close,isPanelOpen:()=>panel,floorAt:(x,z)=>{const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return null;return moonBridgeFloor(x,lz)??galleryFloor(x,lz,.29)??buildingRoofFloor(x,lz);},collides:(x,y,z)=>{if(y<21||y>45)return false;const lz=z-YUYUAN_SHIFT;if(x<-135||x>40||lz<140||lz>290)return false;if(galleryFloor(x,lz)!==null)return false;return gates.collides(x,y,lz)||buildingCollides(x,y,lz)||collidesFixtures(x,y,lz);},tick(dt,{night=false,keys=new Set(),camera=null,highView=false,isMobile=false}={}){elapsed+=dt;if(camera)cullView(camera,highView,isMobile);const lp=localPos(),highSkip=Boolean(camera&&camera.position.y>=42),nearDistrict=dt<=0||(!highSkip&&!lastFarCull&&(Math.max(-95-lp.x,lp.x-25,0)**2+Math.max(150-lp.z,lp.z-280,0)**2)<=10000);if(nearDistrict||dt<=0||rickshaws.isRiding()){gates.tick(dt);streetArt.tick?.(dt,{night});waterArt.tick(dt,{night});gardenArt.tick(dt,{night});visitors.tick(dt);crowd.tick(dt);rickshaws.tick(dt,keys);}if(night!==lastNightState){lastNightState=night;for(const l of lights)l.visible=night;for(const l of lanterns)l.material=mat(night?'#ffc477':'#c17d57',night);}},serialize:()=>({gardenEntry:gates.serialize(),elapsed,lastTea,lastSnack,orders,teas,stocks:{...stocks},collectibles:{...collectibles},solved:[...solved]}),restore(d){gates.restore(d?.gardenEntry);elapsed=Number.isFinite(d?.elapsed)?Math.max(0,d.elapsed):0;lastTea=Number.isFinite(d?.lastTea)?Math.min(elapsed,d.lastTea):-30;lastSnack=Number.isFinite(d?.lastSnack)?Math.min(elapsed,d.lastSnack):-30;orders=Math.max(0,Math.floor(d?.orders??0));teas=Math.max(0,Math.floor(d?.teas??0));solved=new Set((Array.isArray(d?.solved)?d.solved:[]).filter(i=>[0,1,2].includes(i)));for(const [key,max]of Object.entries(stockCaps))stocks[key]=Number.isInteger(d?.stocks?.[key])?Math.max(0,Math.min(max,d.stocks[key])):max;collectibles={};for(const name of collectibleNames)if(Number.isInteger(d?.collectibles?.[name])&&d.collectibles[name]>0)collectibles[name]=Math.min(99999,d.collectibles[name]);setStocks();}};
 }
