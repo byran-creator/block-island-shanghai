@@ -18,7 +18,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
   ['yuyuan-south-east','童涵春堂','south-teaware','乾隆老字号本草香茗','tea',0,'#52715b']
  ];
 
- const boxGeometry=new THREE.BoxGeometry(1,1,1),sphere=new THREE.SphereGeometry(1,8,5),cylinder=new THREE.CylinderGeometry(1,1,1,10),ring=new THREE.TorusGeometry(1,.075,4,12);
+ const boxGeometry=new THREE.BoxGeometry(1,1,1),sphere=new THREE.SphereGeometry(1,5,4),cylinder=new THREE.CylinderGeometry(1,1,1,6),ring=new THREE.TorusGeometry(1,.075,3,8);
  const glassMaterial=new THREE.MeshLambertMaterial({color:'#d9ece8',transparent:true,opacity:.2,depthWrite:false});
  const gauzeMat=new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#b71c1c',transparent:true,opacity:0.65,depthWrite:false});
  const timber='#57372a',gold='#c8a663',cream='#eee1bd';
@@ -828,7 +828,7 @@ export function createYuyuanStreetAssets(root,{cube,mat,board,getPos=null,simula
  for(const {x1, x2, z, y} of streetLanternCables){
   const cx = (x1 + x2) / 2, len = Math.abs(x2 - x1);
   box(root, '#3b2f24', cx, y, z, len, .035, .035);
-  const count = Math.max(3, Math.floor(len / 1.5));
+  const count = Math.max(3, Math.floor(len / 2.2));
   for(let i = 0; i < count; i++){
    const t = (i + 0.5) / count, lx = x1 + (x2 - x1) * t, sag = Math.sin(t * Math.PI) * 0.26, ly = y - sag;
    const color = lanternColors[(Math.floor(z * 3 + lx * 2) % lanternColors.length + lanternColors.length) % lanternColors.length];

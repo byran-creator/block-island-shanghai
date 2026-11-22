@@ -8,7 +8,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
  night.name='yuyuan-eaves-and-window-light';night.userData.sealedHiddenInstances=true;night.visible=false;
  garden.name='yuyuan-corridor-and-planting';animatedGarden.name='yuyuan-animated-garden';
  root.add(garden,night,animatedGarden);
- const unitBox=new THREE.BoxGeometry(1,1,1),leafGeometry=new THREE.SphereGeometry(1,8,5),stemGeometry=new THREE.CylinderGeometry(1,1,1,6),discGeometry=new THREE.CylinderGeometry(1,1,0.1,12);
+ const unitBox=new THREE.BoxGeometry(1,1,1),leafGeometry=new THREE.SphereGeometry(1,5,4),stemGeometry=new THREE.CylinderGeometry(1,1,1,6),discGeometry=new THREE.CylinderGeometry(1,1,0.1,8);
  const up=new THREE.Vector3(0,1,0),delta=new THREE.Vector3();
  function block(group,color,x,y,z,w,h,d,glow=false){const mesh=cube(color,x,y,z,w,h,d,glow);group.add(mesh);return mesh;}
  function beam(group,color,a,b,width=.045,glow=false){delta.set(b[0]-a[0],b[1]-a[1],b[2]-a[2]);const mesh=new THREE.Mesh(unitBox,mat(color,glow));mesh.position.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2);mesh.scale.set(width,delta.length(),width);mesh.quaternion.setFromUnitVectors(up,delta.normalize());group.add(mesh);return mesh;}
@@ -24,11 +24,11 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
   }
   beam(night,'#ffe0a1',[b.x-rx,y+2.39,b.z],[b.x+rx,y+2.39,b.z],.09,true);
  }
- for(let level=1;level<b.levels;level++)for(const side of [-1,1])for(let x=b.x-b.rx+.7;x<b.x+b.rx-.3;x+=1.2){
-  const y=27.5+level*4,z=b.z+side*(b.rz+.075)+(side>0?1:0);
+ for(let level=1;level<b.levels;level++)for(const side of [-1,1])for(let x=b.x-b.rx+1.1;x<=b.x+b.rx-1.1;x+=2.0){
+  const y=27.5+level*4,z=b.z+side*(b.rz+.085);
   block(night,'#dca65e',x,y,z,.83,1.7,.018,true);
-  for(const dx of [-.3,0,.3])block(garden,'#493b2b',x+dx,y,z+side*.02,.035,1.76,.025);
-  for(const dy of [-.56,0,.56])block(garden,'#493b2b',x,y+dy,z+side*.02,.89,.04,.025);
+  block(garden,'#493b2b',x,y,z+side*.02,.04,1.76,.025);
+  block(garden,'#493b2b',x,y,z+side*.02,.89,.045,.025);
  }
  }
 
@@ -171,6 +171,7 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
     tendrilGroup.add(leafMesh);
    }
   }
+  batchDetails(tendrilGroup,staticMeshes(tendrilGroup),'yuyuan-willow');
   swayingWillows.push({group:tendrilGroup,phase:x*1.3+z*.7});
  }
  weepingWillow(-48.5,164.2,0,1.4,1.1); // North central pond shoreline (on solid ground, leaning south)

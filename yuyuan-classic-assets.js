@@ -6,7 +6,7 @@ import {INNER_GARDEN,INNER_GARDEN_BOUNDARY,INNER_GARDEN_PATH,INNER_GARDEN_EAST_P
 // district layout. This module supplies their local-coordinate finish.
 export function createYuyuanClassicAssets(root,{cube,mat,board,batchDetails=batchMeshes}){
  const group=new THREE.Group();group.name='yuyuan-classic-inner-garden';root.add(group);
- const fixtures=[],box=new THREE.BoxGeometry(1,1,1),leaf=new THREE.SphereGeometry(1,8,5),pole=new THREE.CylinderGeometry(1,1,1,7),lRingGeo=new THREE.TorusGeometry(.045,.012,4,8),lCoreGeo=new THREE.SphereGeometry(.18,8,6),lSkinGeo=new THREE.SphereGeometry(.28,10,8),lSkinMat=new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#d84315',transparent:true,opacity:.58,depthWrite:false}),up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
+ const fixtures=[],box=new THREE.BoxGeometry(1,1,1),leaf=new THREE.SphereGeometry(1,5,4),pole=new THREE.CylinderGeometry(1,1,1,5),lRingGeo=new THREE.TorusGeometry(.045,.012,3,6),lCoreGeo=new THREE.SphereGeometry(.18,5,4),lSkinGeo=new THREE.SphereGeometry(.28,6,4),lSkinMat=new THREE.MeshLambertMaterial({color:'#e53935',emissive:'#d84315',transparent:true,opacity:.58,depthWrite:false}),up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
  let seed=28679;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  function block(color,x,y,z,w,h,d){const mesh=cube(color,x,y,z,w,h,d);group.add(mesh);return mesh;}
  function addFixture(mesh){mesh.geometry.computeBoundingBox();mesh.updateMatrix();const b=mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);fixtures.push({x:(b.min.x+b.max.x)/2,z:(b.min.z+b.max.z)/2,rx:(b.max.x-b.min.x)/2,rz:(b.max.z-b.min.z)/2,y:b.min.y,h:b.max.y-b.min.y});}
