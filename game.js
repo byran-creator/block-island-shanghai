@@ -1341,7 +1341,7 @@ if(transferPassage){transferPassage.matrixAutoUpdate=false;const inner=transferP
 function freezeStaticSubtrees(node){let allStatic=!node.matrixAutoUpdate&&!node.userData.skipHiddenMatrices;for(let i=0;i<node.children.length;i++)if(!freezeStaticSubtrees(node.children[i]))allStatic=false;if(allStatic&&node!==scene&&node.children.length>0&&node.updateMatrixWorld===THREE.Object3D.prototype.updateMatrixWorld){const orig=node.updateMatrixWorld;node.updateMatrixWorld=function(force){if(force||this.matrixWorldNeedsUpdate)orig.call(this,force);};}return allStatic;}
 freezeStaticSubtrees(scene);
 scene.matrixAutoUpdate=false;
-const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:150,highStaticMaxDist:isMobile?78:145,dynamicMaxDist:isMobile?74:115,highDynamicMaxDist:isMobile?64:110});
+const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:185,highStaticMaxDist:isMobile?78:240,dynamicMaxDist:isMobile?74:185,highDynamicMaxDist:isMobile?64:260});
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming||!!startupPreview});
 await Promise.race([shaderWarmup.frontDone,new Promise(resolve=>setTimeout(resolve,450))]);
 const startupParams=runtimeParams;
