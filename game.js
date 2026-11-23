@@ -1143,7 +1143,7 @@ if(renderer.isWebGLRenderer){
  const toOpeningBoxes=ops=>ops.map(o=>new THREE.Box3(new THREE.Vector3(o.minX,22,o.minZ),new THREE.Vector3(o.maxX,27.5,o.maxZ)));
  const surfaceOpeningBoxes=toOpeningBoxes(allSurfaceOpenings);
  const metroLineGroups=metroLines.map(line=>({boxes:toOpeningBoxes(line.surfaceOpenings),interiors:[line.root.getObjectByName('occluded-metro-interior'),...line.root.children.filter(c=>c.isInstancedMesh)].filter(Boolean)})).filter(g=>g.interiors.length);
- const rootInteriors=[metro.root.getObjectByName('occluded-metro-interior'),...metro.root.children.filter(c=>c.isInstancedMesh)].filter(Boolean);
+ const rootInteriors=[metro.root.getObjectByName('occluded-metro-interior'),scene.getObjectByName('nanjing-paid-transfer-passage'),...metro.root.children.filter(c=>c.isInstancedMesh)].filter(Boolean);
  if(rootInteriors.length)metroLineGroups.push({boxes:surfaceOpeningBoxes,interiors:rootInteriors});
  const metroInteriors=metroLineGroups.flatMap(g=>g.interiors);
  const tempHiddenMetroInteriors=[],metroGateFrustum=new THREE.Frustum(),metroGateProj=new THREE.Matrix4();
@@ -1169,51 +1169,49 @@ if(renderer.isWebGLRenderer){
    if(!(o.isMesh||o.isPoints)||o.isInstancedMesh)return;
    const r=o.userData?.range;
    const forceTrafficPanel=root.name==='city-traffic-details'&&Boolean(o.userData?.panel);
-   if(!forceTrafficPanel&&!(r>0&&r<=160))return;
-   const effRange=o.name==='street-products'?(isMobile?22:42):(r>0?r:285);
+   const isNanjingLow=root.name==='nanjing-street-life';
+   if(!forceTrafficPanel&&!isNanjingLow&&!(r>0&&r<=160))return;
    if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();
    if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
    let isStatic=true;
    for(let p=o;p&&p!==scene;p=p.parent)if(p.matrixAutoUpdate){isStatic=false;break;}
    const box=isStatic?o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld):null;
+   if(isNanjingLow&&(!box||box.max.y>=50)&&!(r>0&&r<=160))return;
+   const effRange=o.name==='street-products'?(isMobile?22:42):(r>0?r:240);
+   const denseStreetRange=isNanjingLow&&box&&box.max.y<50?135:0;
    const highHide=root.name==='peace-restaurant-interior'||o.name==='street-products'||(root.name==='city-traffic-details'&&(o.userData.panel||o.name==='traffic-static-furniture'));
    const highMobileHide=o.name==='street-furniture';
-   shortRangeEntries.push({o,r:effRange,box,highHide,highMobileHide});
+   shortRangeEntries.push({o,r:effRange,box,denseStreetRange,highHide,highMobileHide});
   });
  }
  collectShortRange(scene.getObjectByName('city-traffic-details'));
  collectShortRange(scene.getObjectByName('nanjing-street-life'));
  collectShortRange(scene.getObjectByName('peace-restaurant-interior'));
  const peaceRestaurantInterior=skipHiddenMatrices(scene.getObjectByName('peace-restaurant-interior'));
+ const peaceBox=peaceRestaurantInterior?new THREE.Box3().setFromObject(peaceRestaurantInterior):null;
+ const shouldHidePeace=(x,y,z)=>Boolean(peaceRestaurantInterior?.visible&&(y>=38||(peaceBox&&Math.max(peaceBox.min.x-x,0,x-peaceBox.max.x)**2+Math.max(peaceBox.min.y-y,0,y-peaceBox.max.y)**2+Math.max(peaceBox.min.z-z,0,z-peaceBox.max.z)**2>3025)));
  for(const interior of metroInteriors)skipHiddenMatrices(interior);
  const yuyuanInteriorDetails=yuyuan?.root?.getObjectByName('yuyuan-interior-details');
  const riverfrontSuites=scene.getObjectByName('my-riverfront-suites');
  const suitesBox=riverfrontSuites?new THREE.Box3().setFromObject(riverfrontSuites):null;
  const origSceneUpdateMW=scene.updateMatrixWorld;
  scene.updateMatrixWorld=function(force){
-  if(!force&&camera?.isPerspectiveCamera&&!savedEdits.size&&!story?.filming&&!photo?.opened){
+  if(!force&&camera?.isPerspectiveCamera&&!savedEdits.size&&!photo?.opened){
    const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z;
-   if(camY>=38&&peaceRestaurantInterior?.visible){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
-   const foot=camera===startupPreview?startupPreviewFoot:pos;
+   if(shouldHidePeace(camX,camY,camZ)){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
+   const foot=story?.filming?camera.position:(camera===startupPreview?startupPreviewFoot:pos);
    if(!metroInterior(foot)&&camY>=25.8&&surfaceOpeningBoxes.length){
-    const pcx=Math.floor(camX/CHUNK),pcz=Math.floor(camZ/CHUNK);
-    let groundLoaded=true;
-    for(let dx=-1;dx<=1&&groundLoaded;dx++)for(let dz=-1;dz<=1;dz++){
-     if(!chunksByNum.has(chunkNum(pcx+dx,pcz+dz))){groundLoaded=false;break;}
-    }
-    if(groundLoaded){
-     for(let gIdx=0;gIdx<metroLineGroups.length;gIdx++){
-      const group=metroLineGroups[gIdx];let nearGroup=false;
-      if(camY<34){
-       for(let i=0;i<group.boxes.length;i++){
-        const box=group.boxes[i],dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-        if(dx*dx+dz*dz<=324){nearGroup=true;break;}
-       }
+    for(let gIdx=0;gIdx<metroLineGroups.length;gIdx++){
+     const group=metroLineGroups[gIdx];let nearGroup=false;
+     if(camY<34){
+      for(let i=0;i<group.boxes.length;i++){
+       const box=group.boxes[i],dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
+       if(dx*dx+dz*dz<=324){nearGroup=true;break;}
       }
-      if(!nearGroup){
-       for(const interior of group.interiors){
-        if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
-       }
+     }
+     if(!nearGroup){
+      for(const interior of group.interiors){
+       if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
       }
      }
     }
@@ -1233,7 +1231,9 @@ if(renderer.isWebGLRenderer){
    const hasFrustum=Boolean(camera.isPerspectiveCamera);
    if(hasFrustum)metroGateFrustum.setFromProjectionMatrix(metroGateProj.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
    const highView=isHighView(camera),highInteriorCull=camY>=38,highMobileMicroCull=isMobile&&camY>=42,shortScale=isMobile&&highView?(camY>=38?.55:.7):1;
-   if(highInteriorCull&&peaceRestaurantInterior?.visible){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
+   const inYuyuanStreet=!highView&&camY<32&&camX>=-125&&camX<=38&&camZ>=205&&camZ<=345;
+   const inDenseStreet=inYuyuanStreet||(!highView&&camY<32&&camX>=-250&&camX<=5&&camZ>=45&&camZ<=100);
+   if(shouldHidePeace(camX,camY,camZ)){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
    if(riverfrontSuites?.visible&&suitesBox){
     const sdx=Math.max(suitesBox.min.x-camX,0,camX-suitesBox.max.x),sdy=Math.max(suitesBox.min.y-camY,0,camY-suitesBox.max.y),sdz=Math.max(suitesBox.min.z-camZ,0,camZ-suitesBox.max.z);
     const sLim=highInteriorCull?45:65;
@@ -1243,7 +1243,8 @@ if(renderer.isWebGLRenderer){
     const entry=shortRangeEntries[i],o=entry.o;
     if(!o.visible||!(o.layers.mask&camMask)||o.parent?.visible===false)continue;
     if((highInteriorCull&&entry.highHide)||(highMobileMicroCull&&entry.highMobileHide)){o.visible=false;tempShortRangeHidden.push(o);continue;}
-    const effR=entry.r*shortScale;
+    const baseR=(inYuyuanStreet&&entry.denseStreetRange)?Math.min(entry.r,entry.denseStreetRange):entry.r;
+    const effR=baseR*shortScale;
     if(entry.box){
      const b=entry.box,dx=Math.max(b.min.x-camX,0,camX-b.max.x),dy=Math.max(b.min.y-camY,0,camY-b.max.y),dz=Math.max(b.min.z-camZ,0,camZ-b.max.z);
      if(dx*dx+dy*dy+dz*dz>effR*effR||(hasFrustum&&!metroGateFrustum.intersectsBox(b))){o.visible=false;tempShortRangeHidden.push(o);}
@@ -1262,62 +1263,57 @@ if(renderer.isWebGLRenderer){
      if(dx*dx+dy*dy+dz*dz>effRange*effRange||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){wash.visible=false;tempShortRangeHidden.push(wash);}
     }
    }
+   const farSq=camera.far*camera.far,lowFarSq=inDenseStreet?145*145:farSq;
    if(civil?.staticBatches){
-    const farSq=camera.far*camera.far,mulMaxSq=isMobile?4900:11025;
+    const mulMaxSq=isMobile?4900:11025;
     for(let i=0;i<civil.staticBatches.length;i++){
      const m=civil.staticBatches[i],box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
-     const maxSq=m.name==='bund-mullions-static'?mulMaxSq:farSq;
+     const maxSq=m.name==='bund-mullions-static'?mulMaxSq:(box.max.y<=55?lowFarSq:farSq);
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
      if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
    }
    if(yuyuanInteriorDetails?.visible!==false)wallCull.prepare(camera);
-   if(!savedEdits.size&&!story?.filming&&!photo?.opened){
-    const foot=camera===startupPreview?startupPreviewFoot:pos;
+   if(!savedEdits.size&&!photo?.opened){
+    const foot=story?.filming?camera.position:(camera===startupPreview?startupPreviewFoot:pos);
     const insideMetro=metroInterior(foot);
     let hidMetroInteriors=false;
     if(!insideMetro&&hasFrustum&&camera.position.y>=25.8&&surfaceOpeningBoxes.length){
-     const pcx=Math.floor(camera.position.x/CHUNK),pcz=Math.floor(camera.position.z/CHUNK);
-     let groundLoaded=true;
-     for(let dx=-1;dx<=1&&groundLoaded;dx++)for(let dz=-1;dz<=1;dz++){
-      if(!chunksByNum.has(chunkNum(pcx+dx,pcz+dz))){groundLoaded=false;break;}
-     }
-     if(groundLoaded){
-      let hiddenCount=0;
-      for(let gIdx=0;gIdx<metroLineGroups.length;gIdx++){
-       const group=metroLineGroups[gIdx];
-       const seesGroup=camY<34&&group.boxes.some(box=>{
-        const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-        return dx*dx+dz*dz<=324&&metroGateFrustum.intersectsBox(box);
-       });
-       if(!seesGroup){
-        hiddenCount++;
-        for(const interior of group.interiors){
-         if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
-        }
+     let hiddenCount=0;
+     for(let gIdx=0;gIdx<metroLineGroups.length;gIdx++){
+      const group=metroLineGroups[gIdx];
+      const seesGroup=camY<34&&group.boxes.some(box=>{
+       const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
+       return dx*dx+dz*dz<=324&&metroGateFrustum.intersectsBox(box);
+      });
+      if(!seesGroup){
+       hiddenCount++;
+       for(const interior of group.interiors){
+        if(interior.visible){interior.visible=false;tempHiddenMetroInteriors.push(interior);}
        }
       }
-      hidMetroInteriors=hiddenCount>0&&hiddenCount===metroLineGroups.length;
      }
+     hidMetroInteriors=hiddenCount>0&&hiddenCount===metroLineGroups.length;
     }
     metroPanels.prepare(camera,scene.fog,hidMetroInteriors);
     if(insideMetro)metroRoof.prepare(camera);
    }
    {
-    const farSq=camera.far*camera.far;
     for(const {mesh:m} of superChunks.values()){
      const box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
+     const maxSq=box.max.y<=55?lowFarSq:farSq;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>farSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
     for(const m of chunks.values()){
      if(m.layers.mask!==1||!m.visible)continue;
      const box=m.geometry?.boundingBox;
      if(!box)continue;
+     const maxSq=box.max.y<=55?lowFarSq:farSq;
      const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>farSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
     }
    }
   }
