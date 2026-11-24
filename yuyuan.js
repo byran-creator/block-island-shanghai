@@ -390,7 +390,13 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const roofMeshes=[...roofCells.values()].flat();
  const staticDynamic=new Set([...rickshaws.rickshaws.map(r=>r.group),...actors.map(a=>a.root),...gardenArt.dynamicRoots,...classicArt.dynamicRoots,...waterArt.dynamicRoots,...gates.dynamicRoots,...streetArt.dynamicRoots,...Object.values(streetArt.goods).flat(),...Object.values(shopArt.goods).flat(),...stockSeries.map(s=>s.entry.mesh),...lights,...lanterns,...lanternSkins,...roofMeshes,...outerWalls]);
  batchDetails(root,outerWalls,'yuyuan-outer-walls');
- batchDetails(root,staticMeshes(root,staticDynamic),'yuyuan-static-details');
+ const staticDetails=staticMeshes(root,staticDynamic);
+ for(const m of staticDetails){
+  const mt=m.material;
+  if(mt&&!mt.transparent&&mt.opacity===1&&!mt.map&&!mt.vertexColors&&((mt.isMeshLambertMaterial&&(!mt.emissive||mt.emissive.getHex()===0))||(mt.isMeshBasicMaterial&&mt.color?.getHexString()!=='ffc107')))solidPalette.add(mt);
+  if(!m.userData.range)m.userData.range=155;
+ }
+ batchDetails(root,staticDetails,'yuyuan-static-details',48);
  for(const groupRoofs of roofCells.values())registerWallTargets(batchMeshes(root,groupRoofs,'yuyuan-roof'));
  const glowPalette=new Set([...mats.values()].filter(m=>m.isMeshBasicMaterial&&!m.transparent&&m.opacity===1&&!m.map&&!m.vertexColors));
  const batchedLights=registerWallTargets(batchMeshes(root,lights,'yuyuan-night-glow',glowPalette,false,96));
@@ -439,12 +445,38 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  const visitors=world?createYuyuanVisitors({scene,world,getVehicles,getPos,blocked:(x,y,z)=>overlaps(world,x,y,z)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...visitors.people);
  const crowd=world?createYuyuanCrowd({scene,world,simulationInterest,getPos,blocked:(x,y,z)=>overlaps(world,x,y,z)||gates.collides(x,y,z-YUYUAN_SHIFT)||buildingCollides(x,y,z-YUYUAN_SHIFT)||collidesFixtures(x,y,z-YUYUAN_SHIFT)}):{people:[],tick(){}};actors.push(...crowd.people);
  innerActors.push(...crowd.people);
- for(const a of actors){a.root.userData.sealedHiddenInstances=true;a.root.userData.sealedActorRadius=2.6;skipNode(a.root);}
+ for(const a of actors){
+  const r=a.root;r.userData.sealedHiddenInstances=true;r.userData.sealedActorRadius=2.6;
+  if(!r._hasSmartMatrix){
+   r._hasSmartMatrix=true;
+   const u=THREE.Object3D.prototype.updateMatrixWorld;let sk=false,lx=NaN,ly=NaN,lz=NaN,lry=NaN;
+   r._syncDeferredChildren=function(){if(this._deferChildren){this._deferChildren=false;const c=this.children;for(let i=0;i<c.length;i++)c[i].updateMatrixWorld(true);}};
+   r.updateMatrixWorld=function(f){
+    if(!this.visible||this.userData.skipMatrixFrame){sk=true;return;}
+    const pos=this.position,ry=this.rotation.y;
+    if(!f&&!sk&&a._limbFrozen===true){
+     if(pos.x===lx&&pos.y===ly&&pos.z===lz&&ry===lry)return;
+     lx=pos.x;ly=pos.y;lz=pos.z;lry=ry;
+     this.updateMatrix();
+     if(this.parent===null)this.matrixWorld.copy(this.matrix);
+     else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld,this.matrix);
+     this.matrixWorldNeedsUpdate=false;this._deferChildren=true;return;
+    }
+    lx=pos.x;ly=pos.y;lz=pos.z;lry=ry;this._deferChildren=false;
+    u.call(this,f||sk);sk=false;
+   };
+  }
+ }
+ const innerClassic=skipNode(root.getObjectByName('yuyuan-classic-inner-garden'));
  let lastFarCull=null;
  function cullView(camera,highView=false,isMobile=false){
   if(!camera)return;
   const cp=camera.position,dx=Math.max(-78-cp.x,cp.x-6,0),dy=Math.max(0,cp.y-38),dz=Math.max((192+YUYUAN_SHIFT)-cp.z,cp.z-(276+YUYUAN_SHIFT),0);
   const limit=highView?(isMobile?115:190):(isMobile?120:140),farCull=(dx*dx+dy*dy+dz*dz)>limit*limit;
+  if(innerClassic){
+   const wantClassic=!farCull&&(highView||cp.y>=31.5||(cp.x>=-86&&cp.x<=6));
+   if(innerClassic.visible!==wantClassic)innerClassic.visible=wantClassic;
+  }
   if(farCull!==lastFarCull){
    lastFarCull=farCull;
    detailGroup.visible=!farCull;

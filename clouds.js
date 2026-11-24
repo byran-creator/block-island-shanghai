@@ -239,7 +239,7 @@ export function createClouds(camera=new THREE.PerspectiveCamera()){
   const source=belly?bellyMat:bodyMat;
   const mesh=new THREE.InstancedMesh(plane,source.clone(),items.length);
   mesh.name=group.name+(belly?'-belly':'-body');mesh.frustumCulled=false;
-  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(mesh);batches.push({group,mesh,items,source});
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(mesh);batches.push({group,mesh,items,source,lastSortElapsed:-1,lastQx:NaN,lastQy:NaN,lastQz:NaN,lastX:NaN,lastZ:NaN});
  }
  const coverage=[0,0,0];let initialized=false;
  // Continuous seamless cyclic drift with organic spatial convergence waves and sunlight transmission
@@ -315,12 +315,16 @@ export function createClouds(camera=new THREE.PerspectiveCamera()){
   }
 
   // Retain the gradual weather contract: type changes must not pop whole tiers.
-  const fade=1-Math.exp(-Math.max(0,dt)/3);
+  const fade=1-Math.exp(-Math.max(0,dt)/2.2);
+  let coverageChanged=false;
   for(let i=0;i<3;i++){
-   const group=[tier1Group,tier2Group,tier3Group][i],target=group.visible?1:0;
-   coverage[i]=initialized?coverage[i]+(target-coverage[i])*fade:target;group.visible=coverage[i]>.001;
+   const group=[tier1Group,tier2Group,tier3Group][i],target=group.visible?1:0,prevCov=coverage[i];
+   coverage[i]=(!initialized||dt===0)?target:coverage[i]+(target-coverage[i])*fade;
+   group.visible=coverage[i]>.018;
+   if(Math.abs(coverage[i]-prevCov)>.005)coverageChanged=true;
   }
   initialized=true;
+  if(!tier1Group.visible&&!tier2Group.visible&&!tier3Group.visible)return;
   // Organic drift and spatial gathering dynamics
   for(let i=0;i<cloudList.length;i++){
    const c=cloudList[i];
@@ -340,12 +344,16 @@ export function createClouds(camera=new THREE.PerspectiveCamera()){
    c.root.position.y=c.baseY+dispY;
   }
   camera.updateWorldMatrix(true,false);
-  for(const {group,mesh,items,source} of batches){
+  const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z,cq=camera.quaternion;
+  for(const batch of batches){
+   const {group,mesh,items,source}=batch;
    if(!group.visible)continue;
    const amount=coverage[[tier1Group,tier2Group,tier3Group].indexOf(group)];
    mesh.material.color.copy(source.color);mesh.material.opacity=source.opacity*amount;
+   const needMatrixUpdate=batch.lastSortElapsed<0||dt===0||dt>=.25||coverageChanged||Math.abs(elapsed-batch.lastSortElapsed)>=.08||(Math.abs(cq.x-batch.lastQx)+Math.abs(cq.y-batch.lastQy)+Math.abs(cq.z-batch.lastQz))>.004||Math.hypot(camX-batch.lastX,camZ-batch.lastZ)>.8;
+   if(!needMatrixUpdate)continue;
+   batch.lastSortElapsed=elapsed;batch.lastQx=cq.x;batch.lastQy=cq.y;batch.lastQz=cq.z;batch.lastX=camX;batch.lastZ=camZ;
    // Sorting within each transparent batch avoids arbitrary instance overlap.
-   const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z;
    items.sort((a,b)=>{
     const dax=a.root.position.x+a.x-camX,day=a.root.position.y+a.y-camY,daz=a.root.position.z+a.z-camZ;
     const dbx=b.root.position.x+b.x-camX,dby=b.root.position.y+b.y-camY,dbz=b.root.position.z+b.z-camZ;
@@ -353,7 +361,7 @@ export function createClouds(camera=new THREE.PerspectiveCamera()){
    });
    for(let i=0;i<items.length;i++){
     const b=items[i];position.set(b.root.position.x+b.x,b.root.position.y+b.y,b.root.position.z+b.z);
-    scale.set(b.w,b.h,1);matrix.compose(position,camera.quaternion,scale);mesh.setMatrixAt(i,matrix);
+    scale.set(b.w,b.h,1);matrix.compose(position,cq,scale);mesh.setMatrixAt(i,matrix);
    }
    mesh.instanceMatrix.needsUpdate=true;
   }

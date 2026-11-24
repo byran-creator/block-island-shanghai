@@ -64,57 +64,72 @@ function koiGeometry(tail=false){
 // -------------------------------------------------------------
 // ANIMAL ASSETS: MANDARIN DUCKS (戏水鸳鸯), TURTLES (晒背水龟), DRAGONFLIES (蜻蜓点水)
 // -------------------------------------------------------------
-function createMandarinDuck(isMale=true){
- const g=new THREE.Group();
- const bodyMat=new THREE.MeshLambertMaterial({color:isMale?'#8c4228':'#6d5a49'});
- const body=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),bodyMat);
- body.scale.set(.18,.12,.31);body.position.set(0,.08,0);g.add(body);
-
- const breastMat=new THREE.MeshLambertMaterial({color:isMale?'#4a2634':'#847262'});
- const breast=new THREE.Mesh(new THREE.SphereGeometry(1,7,5),breastMat);
- breast.scale.set(.16,.11,.16);breast.position.set(0,.09,.14);g.add(breast);
-
- const headMat=new THREE.MeshLambertMaterial({color:isMale?'#1c5c4e':'#645345'});
- const head=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),headMat);
- head.scale.set(.11,.13,.14);head.position.set(0,.24,.16);g.add(head);
-
- const billMat=new THREE.MeshLambertMaterial({color:isMale?'#d94328':'#483f36'});
- const bill=new THREE.Mesh(new THREE.ConeGeometry(.042,.13,5),billMat);
- bill.rotation.x=-Math.PI/2;bill.position.set(0,.21,.31);g.add(bill);
-
- if(isMale){
-  const sailMat=new THREE.MeshLambertMaterial({color:'#e27424',side:THREE.DoubleSide});
-  for(const side of [-1,1]){
-   const sailGeo=new THREE.BufferGeometry();
-   sailGeo.setAttribute('position',new THREE.Float32BufferAttribute([
-    0,0,0, side*.035,.16,-.05, 0,0,-.17
-   ],3));
-   sailGeo.computeVertexNormals();
-   const sail=new THREE.Mesh(sailGeo,sailMat);
-   sail.position.set(side*.11,.14,-.03);g.add(sail);
-
-   const eyeStripe=new THREE.Mesh(new THREE.BoxGeometry(.02,.028,.12),new THREE.MeshBasicMaterial({color:'#fdfbf6'}));
-   eyeStripe.position.set(side*.105,.25,.14);eyeStripe.rotation.x=.18;g.add(eyeStripe);
+const wildlifeMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+const wildlifeGeos={maleDuck:null,femaleDuck:null,turtle:null};
+function buildStaticAnimalGeometry(parts){
+ const positions=[],colors=[],normals=[];
+ const point=new THREE.Vector3(),normal=new THREE.Vector3(),mat=new THREE.Matrix4(),normMat=new THREE.Matrix3();
+ const pos=new THREE.Vector3(),quat=new THREE.Quaternion(),scl=new THREE.Vector3(),eul=new THREE.Euler();
+ for(const part of parts){
+  const g=part.geo.index?part.geo.toNonIndexed():part.geo,col=new THREE.Color(part.color),a=g.attributes.position,n=g.attributes.normal;
+  pos.set(part.x??0,part.y??0,part.z??0);
+  eul.set(part.rx??0,part.ry??0,part.rz??0);
+  quat.setFromEuler(eul);
+  scl.set(part.sx??1,part.sy??1,part.sz??1);
+  mat.compose(pos,quat,scl);normMat.getNormalMatrix(mat);
+  for(let i=0;i<a.count;i++){
+   point.fromBufferAttribute(a,i).applyMatrix4(mat);positions.push(point.x,point.y,point.z);
+   if(n)normal.fromBufferAttribute(n,i).applyMatrix3(normMat).normalize();else normal.set(0,1,0);
+   normals.push(normal.x,normal.y,normal.z);colors.push(col.r,col.g,col.b);
   }
+  if(g!==part.geo)g.dispose();
+  part.geo.dispose();
  }
- const tail=new THREE.Mesh(new THREE.ConeGeometry(.055,.18,4),new THREE.MeshLambertMaterial({color:isMale?'#1e242c':'#4e4034'}));
- tail.rotation.x=Math.PI/2.3;tail.position.set(0,.14,-.25);g.add(tail);
- return g;
+ const out=new THREE.BufferGeometry();
+ out.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ out.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+ out.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ out.computeBoundingSphere();
+ return out;
+}
+
+function createMandarinDuck(isMale=true){
+ const key=isMale?'maleDuck':'femaleDuck';
+ if(!wildlifeGeos[key]){
+  const parts=[
+   {geo:new THREE.SphereGeometry(1,8,6),color:isMale?'#8c4228':'#6d5a49',y:.08,sx:.18,sy:.12,sz:.31},
+   {geo:new THREE.SphereGeometry(1,7,5),color:isMale?'#4a2634':'#847262',y:.09,z:.14,sx:.16,sy:.11,sz:.16},
+   {geo:new THREE.SphereGeometry(1,8,6),color:isMale?'#1c5c4e':'#645345',y:.24,z:.16,sx:.11,sy:.13,sz:.14},
+   {geo:new THREE.ConeGeometry(.042,.13,5),color:isMale?'#d94328':'#483f36',y:.21,z:.31,rx:-Math.PI/2},
+   {geo:new THREE.ConeGeometry(.055,.18,4),color:isMale?'#1e242c':'#4e4034',y:.14,z:-.25,rx:Math.PI/2.3}
+  ];
+  if(isMale){
+   for(const side of [-1,1]){
+    const sailGeo=new THREE.BufferGeometry();
+    sailGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,side*.035,.16,-.05,0,0,-.17],3));
+    sailGeo.computeVertexNormals();
+    parts.push({geo:sailGeo,color:'#e27424',x:side*.11,y:.14,z:-.03});
+    parts.push({geo:new THREE.BoxGeometry(.02,.028,.12),color:'#fdfbf6',x:side*.105,y:.25,z:.14,rx:.18});
+   }
+  }
+  wildlifeGeos[key]=buildStaticAnimalGeometry(parts);
+ }
+ return new THREE.Mesh(wildlifeGeos[key],wildlifeMat);
 }
 
 function createPondTurtle(){
- const g=new THREE.Group();
- const shell=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshLambertMaterial({color:'#36482e'}));
- shell.scale.set(.18,.09,.24);shell.position.set(0,.08,0);g.add(shell);
- const rim=new THREE.Mesh(new THREE.TorusGeometry(.21,.025,4,12),new THREE.MeshLambertMaterial({color:'#9e9365'}));
- rim.rotation.x=Math.PI/2;rim.scale.set(.85,1.15,1);rim.position.set(0,.05,0);g.add(rim);
- const neck=new THREE.Mesh(new THREE.CylinderGeometry(.032,.038,.14,6),new THREE.MeshLambertMaterial({color:'#45583b'}));
- neck.rotation.x=Math.PI/3;neck.position.set(0,.09,.18);g.add(neck);
- for(const sx of [-.15,.15])for(const sz of [-.11,.11]){
-  const foot=new THREE.Mesh(new THREE.BoxGeometry(.07,.02,.07),new THREE.MeshLambertMaterial({color:'#384732'}));
-  foot.position.set(sx,.04,sz);g.add(foot);
+ if(!wildlifeGeos.turtle){
+  const parts=[
+   {geo:new THREE.SphereGeometry(1,8,6),color:'#36482e',y:.08,sx:.18,sy:.09,sz:.24},
+   {geo:new THREE.TorusGeometry(.21,.025,4,12),color:'#9e9365',y:.05,rx:Math.PI/2,sx:.85,sy:1.15,sz:1},
+   {geo:new THREE.CylinderGeometry(.032,.038,.14,6),color:'#45583b',y:.09,z:.18,rx:Math.PI/3}
+  ];
+  for(const sx of [-.15,.15])for(const sz of [-.11,.11]){
+   parts.push({geo:new THREE.BoxGeometry(.07,.02,.07),color:'#384732',x:sx,y:.04,z:sz});
+  }
+  wildlifeGeos.turtle=buildStaticAnimalGeometry(parts);
  }
- return g;
+ return new THREE.Mesh(wildlifeGeos.turtle,wildlifeMat);
 }
 
 function createDragonfly(color='#d63228'){
@@ -261,6 +276,7 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
    for(let i=0;i<ripples.length;i++){const r=ripples[i],u=(elapsed*.11+r.phase)%1,scale=.35+u*.6;dummy.position.set(r.x,22.302,r.z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}
    bodies.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;rings.instanceMatrix.needsUpdate=true;
   }
+  if(!animalsGroup.visible)return;
   if(paintedWildlife===elapsed)return;
   paintedWildlife=elapsed;
 
@@ -308,6 +324,8 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
    visible=inView;
    for(const object of animatedRoots)object.visible=inView;
   }
+  const nearAnimals=inView&&(dx*dx+Math.max(0,cp.y-36)**2+dz*dz<=54*54)&&!(cp.y<32&&cp.z>258);
+  animalsGroup.visible=nearAnimals;
   if(inView)paint();
  }
  tick(0);return {dynamicRoots,tick,prepareView};

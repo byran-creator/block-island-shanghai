@@ -96,7 +96,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
      cube(v,'#192731',0,0,0,.55,1.65,.28);
      const vLamps=[];
      for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-      const m=new THREE.Mesh(vLampGeo,mat(color,true));
+      const m=new THREE.Mesh(vLampGeo,new THREE.MeshBasicMaterial({color}));
       m.rotation.x=Math.PI/2;
       m.position.set(0,.5-i*.5,.18);
       m.userData.range=145;
@@ -113,7 +113,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
      cube(p,'#192731',0,0,0,.45,1.4,.24);
      const pLamps=[];
      for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-      const m=new THREE.Mesh(pLampGeo,mat(color,true));
+      const m=new THREE.Mesh(pLampGeo,new THREE.MeshBasicMaterial({color}));
       m.rotation.x=Math.PI/2;
       m.position.set(0,.42-i*.42,.15);
       m.userData.range=145;
@@ -134,7 +134,7 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
     cube(r,'#192731',0,4.9,0,.55,1.65,.28);
     const lamps=[];
     for(const [i,color]of ['#ff514c','#ffc85b','#51fba9'].entries()){
-     const m=new THREE.Mesh(vLampGeo,mat(color,true));
+     const m=new THREE.Mesh(vLampGeo,new THREE.MeshBasicMaterial({color}));
      m.rotation.x=Math.PI/2;
      m.position.set(0,5.4-i*.5,.18);
      m.userData.range=145;
@@ -289,34 +289,45 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
   if(clear||state.age>12)state.returning=true;c.waitTime+=step;
  }
  const trafficOccupied=new Set();let lastTrafficLights=null;
- function advance(step,playerPos,obstacles,hasPlayerContact){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}
-  const playerRiding=playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
+ function advance(step,playerPos,obstacles,hasPlayerContact,lightTrafficMode=false){clock+=step;if(clock>=junctionClock){junctions.update(agents);junctionClock=clock+.2;}
+  const playerRiding=!(lightTrafficMode&&!hasPlayerContact)&&playerPos&&agents.some(a=>Math.hypot(playerPos.x-a.root.position.x,playerPos.z-a.root.position.z)<=(a.halfLength??1.5)+.6);
    trafficOccupied.clear();const occupied=trafficOccupied;
-   for(const id of ['bund-66','stele-66'])if(!playerRiding&&pedestrianCrossingOccupied(playerPos,id)||obstacles.some(o=>o.person&&o.root.visible!==false&&pedestrianCrossingOccupied(o.root.position,id)))occupied.add(id);
+   if(!(lightTrafficMode&&!hasPlayerContact))for(const id of ['bund-66','stele-66'])if(!playerRiding&&pedestrianCrossingOccupied(playerPos,id)||obstacles.some(o=>o.person&&o.root.visible!==false&&pedestrianCrossingOccupied(o.root.position,id)))occupied.add(id);
    const crosswalkOccupied=signal=>occupied.has(signal.id);
   const includePlayer=hasPlayerContact&&!playerRiding;
   for(let i=0;i<agents.length;i++){const c=agents[(i+first)%agents.length];
    if(playerPos&&interest&&!c.yielding&&!c.detour){
     const rp0=c.root.position,dx0=rp0.x-playerPos.x,dz0=rp0.z-playerPos.z,d20=dx0*dx0+dz0*dz0;
-    if(d20>5625||(interest.highAltitude?.()&&d20>1225)||(!interest.seesPoint(rp0,4,110)&&d20>1600)){
-     let fastTravel=c.speed*step;
+    if((lightTrafficMode&&(interest.highAltitude?.()||d20>900))||d20>5625||(!interest.seesPoint(rp0,4,110)&&d20>1600)){
+     let targetSpd=c.speed;
      for(const crossing of c.crossings??[]){
       if(signalPhase(clock,crossing.signal.offset)[crossing.axis]!=='green'){
        const ahead=forwardDistance(c.t,crossing.d,c.route.lengthMeters,c.dir),stop=6+(c.halfLength??1.25);
-       if(ahead>=stop-.05&&ahead<stop+fastTravel+2)fastTravel=Math.min(fastTravel,Math.max(0,ahead-stop));
+       if(ahead>=stop-.05&&ahead<stop+10)targetSpd=Math.min(targetSpd,Math.max(0,(ahead-stop)*1.15));
       }
      }
+     let maxStepDist=Infinity;
      for(let j=0;j<agents.length;j++){
       const o=agents[j];if(o===c||o.route!==c.route||o.dir!==c.dir||Math.abs(o.lane-c.lane)>.5)continue;
       const gap=forwardDistance(c.t,o.t,c.route.lengthMeters,c.dir);
-      if(gap<c.route.lengthMeters/2)fastTravel=Math.min(fastTravel,Math.max(0,gap-(c.halfLength??1.25)-(o.halfLength??1.25)-Math.max(2.8,c.speed*1.7)));
+      if(gap<c.route.lengthMeters/2){
+       const hardGap=(c.halfLength??1.25)+(o.halfLength??1.25)+1.4;
+       const softGap=hardGap+Math.max(1.8,c.speed*1.3);
+       maxStepDist=Math.min(maxStepDist,Math.max(0,gap-hardGap));
+       if(gap<softGap+6){
+        const leadSpd=o.currentSpeed??o.speed;
+        targetSpd=Math.min(targetSpd,gap<=softGap?Math.min(leadSpd,Math.max(0,(gap-hardGap)*1.2)):leadSpd+(targetSpd-leadSpd)*((gap-softGap)/6));
+       }
+      }
      }
-     if(c.kind==='bus'){c.stopCooldown=Math.max(0,c.stopCooldown-step);if(c.dwell>0){c.dwell=Math.max(0,c.dwell-step);fastTravel=0;}}
-     if(c.kind==='delivery'){c.deliveryCooldown=Math.max(0,c.deliveryCooldown-step);if(c.deliveryDwell>0){c.deliveryDwell=Math.max(0,c.deliveryDwell-step);fastTravel=0;}}
-     if(fastTravel>0){
+     if(c.kind==='bus'){c.stopCooldown=Math.max(0,c.stopCooldown-step);if(c.dwell>0){c.dwell=Math.max(0,c.dwell-step);targetSpd=0;maxStepDist=0;}}
+     if(c.kind==='delivery'){c.deliveryCooldown=Math.max(0,c.deliveryCooldown-step);if(c.deliveryDwell>0){c.deliveryDwell=Math.max(0,c.deliveryDwell-step);targetSpd=0;maxStepDist=0;}}
+     const nextSpd=targetSpd===0&&maxStepDist===0?0:THREE.MathUtils.damp(c.currentSpeed??targetSpd,targetSpd,4.5,step);
+     let fastTravel=Math.min(nextSpd*step,maxStepDist);
+     if(fastTravel>1e-5){
       const nt=(c.t+c.dir*fastTravel+c.route.lengthMeters)%c.route.lengthMeters,nat=pose(c,nt);
       if(junctions.permits(c,nat)){c.t=nt;setPose(c,nat);}else fastTravel=0;
-     }
+     }else fastTravel=0;
      c.currentSpeed=fastTravel/step;c.travelSpeed=c.currentSpeed;
      if(c._wheelActive!==false){c._wheelActive=false;for(const wheel of c.wheels??[])wheel.matrixAutoUpdate=false;}
      continue;
@@ -377,7 +388,8 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
  function tick(dt,{night=false,rain=0}={}){
   if(dt>0){
    const playerPos=getPos?.();
-   const farFromRoads=Boolean(interest&&(interest.highAltitude?.()||(playerPos&&playerPos.x<-45)));
+   const farFromRoads=Boolean(interest&&!interest.highAltitude?.()&&playerPos&&playerPos.x<-95&&playerPos.y<31);
+   const lightTrafficMode=Boolean(interest&&(interest.highAltitude?.()||(playerPos&&playerPos.y<32&&((playerPos.x<-22&&playerPos.z>=50&&playerPos.z<=82)||(playerPos.x>=-125&&playerPos.x<=32&&playerPos.z>=212&&playerPos.z<=345)))));
    let effDt=dt,runStep=true;
    if(farFromRoads){
     trafficAccum+=dt;trafficSkip=!trafficSkip;
@@ -389,36 +401,43 @@ export function createCityTraffic({scene,world,getPos,routePose,cars,solids=null
    const skipM=!runStep;
    if(skipM!==lastSkipTrafficMatrix){lastSkipTrafficMatrix=skipM;for(let i=0;i<agents.length;i++)agents[i].root.userData.skipMatrixFrame=skipM;}
    if(!runStep)return;
-   processDetours();
-   // The other simulation systems run between ticks. Moving traffic agents
-   // update their own grid entries through setPose during every substep.
-   const rawObstacles=getObstacles();
-   activeObstacles.length=0;
-   for(let i=0;i<rawObstacles.length;i++){
-    const o=rawObstacles[i],r=o.root;
-    if(!r||r.visible===false)continue;
-    if(o.person&&r.position.x<-42)continue;
-    activeObstacles.push(o);
+   let hasComplex=false;
+   if(lightTrafficMode){for(let i=0;i<agents.length;i++)if(agents[i].yielding||agents[i].detour){hasComplex=true;break;}}
+   let obstacles=activeObstacles,hasPlayerContact=false;
+   if(!lightTrafficMode||hasComplex){
+    processDetours();
+    // The other simulation systems run between ticks. Moving traffic agents
+    // update their own grid entries through setPose during every substep.
+    const rawObstacles=getObstacles();
+    activeObstacles.length=0;
+    for(let i=0;i<rawObstacles.length;i++){
+     const o=rawObstacles[i],r=o.root;
+     if(!r||r.visible===false)continue;
+     if(o.person&&r.position.x<-42)continue;
+     activeObstacles.push(o);
+    }
+    hasPlayerContact=!!playerPos&&playerPos.y>=25&&playerPos.y<=28&&playerPos.x>=-42;
+    const player=hasPlayerContact?{root:{position:playerPos},person:true,height:1.85}:null;
+    contactPool.reset(agents,obstacles,player);contactGrid=contactPool;
+   }else{
+    activeObstacles.length=0;
+    contactGrid=null;
    }
-   const obstacles=activeObstacles;
-   const hasPlayerContact=!!playerPos&&playerPos.y>=25&&playerPos.y<=28&&playerPos.x>=-42;
-   const player=hasPlayerContact?{root:{position:playerPos},person:true,height:1.85}:null;
-   contactPool.reset(agents,obstacles,player);contactGrid=contactPool;
    let remaining=effDt;
    travelled.fill(0,0,agents.length);
-   const maxSub=farFromRoads?1/15:1/20;
+   const maxSub=lightTrafficMode?1/12:(farFromRoads?1/15:1/20);
    try{
     while(remaining>1e-8){
      const step=Math.min(remaining,maxSub);
      remaining-=step;
-     advance(step,playerPos,obstacles,hasPlayerContact);
+     advance(step,playerPos,obstacles,hasPlayerContact,lightTrafficMode);
      for(let i=0;i<agents.length;i++)travelled[i]+=agents[i].travelSpeed*step;
     }
    }finally{contactGrid=null;}
    for(let i=0;i<agents.length;i++)agents[i].travelSpeed=travelled[i]/effDt;
   }
  const sigPos=getPos?.();
- for(const s of signals){const phase=signalPhase(clock,s.offset),nearSig=!sigPos||(s.x-sigPos.x)**2+(s.z-sigPos.z)**2<=11025;for(const head of s.heads){const status=phase[head.axis];if(head.lastStatus!==status){head.lastStatus=status;const idx=SIGNAL_INDEX[status];for(let i=0;i<head.lamps.length;i++)head.lamps[i].material=mat(i===idx?SIGNAL_COLORS[i]:'#263638',true);}if(!nearSig)continue;const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
+ for(const s of signals){const phase=signalPhase(clock,s.offset),nearSig=!sigPos||(s.x-sigPos.x)**2+(s.z-sigPos.z)**2<=11025;for(const head of s.heads){const status=phase[head.axis];if(head.lastStatus!==status){head.lastStatus=status;const idx=SIGNAL_INDEX[status];for(let i=0;i<head.lamps.length;i++)head.lamps[i].material.color.set(i===idx?SIGNAL_COLORS[i]:'#263638');}if(!nearSig)continue;const value=String(phase.remaining);if(head.counter.value!==value){const {ctx,texture}=head.counter;ctx.fillStyle='#112332';ctx.fillRect(0,0,256,64);ctx.fillStyle=status==='red'?'#ff6b61':'#a7edc5';ctx.fillText(value,128,43);texture.needsUpdate=true;head.counter.value=value;}}}
   const lightsOn=night||rain>.2;if(lightsOn!==lastTrafficLights){lastTrafficLights=lightsOn;for(const c of agents)for(const light of c.lights??[])light.visible=lightsOn;}
   for(const o of officers){o.arm.rotation.x=signalPhase(clock,o.signal.offset).ns==='green'?-Math.PI/2:-.15;o.root.rotation.y=Math.PI/2;}
  }

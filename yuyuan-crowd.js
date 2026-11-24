@@ -21,7 +21,13 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null,g
   const simple=[],indices=new Map();for(const p of points){const k=key(p);if(indices.has(k)&&!(k===key(points[0])&&p===points.at(-1))){const index=indices.get(k);while(simple.length>index+1)indices.delete(key(simple.pop()));}else{indices.set(k,simple.length);simple.push(p);}}
   points.splice(0,points.length,...simple);
   const parts=[];let length=0;for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]);parts.push({a,b,d,start:length});length+=d;}
-  function pose(distance){const d=(distance%length+length)%length,part=parts.find(p=>d<=p.start+p.d)??parts.at(-1),t=(d-part.start)/part.d;return {x:part.a[0]+t*(part.b[0]-part.a[0]),z:part.a[1]+t*(part.b[1]-part.a[1]),yaw:Math.atan2(part.b[0]-part.a[0],part.b[1]-part.a[1])+Math.PI};}
+  function pose(distance){
+   const d=(distance%length+length)%length;
+   let lo=0,hi=parts.length-1;
+   while(lo<hi){const mid=(lo+hi)>>1;if(d<=parts[mid].start+parts[mid].d)hi=mid;else lo=mid+1;}
+   const part=parts[lo],t=(d-part.start)/part.d;
+   return {x:part.a[0]+t*(part.b[0]-part.a[0]),z:part.a[1]+t*(part.b[1]-part.a[1]),yaw:Math.atan2(part.b[0]-part.a[0],part.b[1]-part.a[1])+Math.PI};
+  }
   for(let i=0;i<count;i++){const id=firstId+i,root=new THREE.Group(),body=new THREE.Group(),color=['#8b6579','#627e92','#a48a5e','#62907b','#a87c67'][id%5];root.add(body);scene.add(root);
    function box(parent,c,x,y,z,w,h,d){const m=new THREE.Mesh(geo,mat(c));m.position.set(x,y,z);m.scale.set(w,h,d);parent.add(m);return m;}
    const torso=box(body,color,0,1.05,0,.43,.7,.3),head=box(body,'#d3a982',0,1.57,0,.34,.35,.32),hair=box(body,'#3d302b',0,1.76,0,.35,.08,.33),arms=[],legs=[];
@@ -102,7 +108,9 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null,g
  }
  let crowdFrame=0;
  return {people,get navigationError(){return navigationError;},tick(dt){dt=simulationDelta(dt);if(dt<=0)return;crowdFrame++;const gp=getPos?.(),odd=(crowdFrame&1)===1;for(let i=0;i<people.length;i++)syncGrid(people[i]);for(const a of people){const dxp=gp?a.root.position.x-gp.x:0,dzp=gp?a.root.position.z-gp.z:0,d2=dxp*dxp+dzp*dzp,isFar=!!gp&&d2>1444;a.farAccum=(a.farAccum||0)+dt;if(isFar&&odd)continue;const stepDt=a.farAccum;a.farAccum=0;a.rerouteIn=Math.max(0,a.rerouteIn-stepDt);let moved=false;
-  const volume=staticClear(a.root.position.x,a.root.position.z)?0:penetration(a.root.position.x,a.root.position.z);
+  const rx0=a.root.position.x,rz0=a.root.position.z,ix0=Math.floor(rx0),iz0=Math.floor(rz0);
+  const hasVoxel=world.get(ix0,26,iz0)||world.get(ix0,27,iz0)||world.get(Math.floor(rx0-.29),26,iz0)||world.get(Math.floor(rx0+.29),26,iz0)||world.get(ix0,26,Math.floor(rz0-.29))||world.get(ix0,26,Math.floor(rz0+.29));
+  const volume=hasVoxel?penetration(rx0,rz0):0;
   // A player block can materialise around an existing NPC after save load or
   // construction. Walk out while reducing overlap, never erase it or teleport.
   if(volume>1e-7)moved=escapeNewBlock(a,stepDt,volume);
@@ -129,8 +137,9 @@ export function createYuyuanCrowd({scene,world,blocked,simulationInterest=null,g
     currentSpeed=Math.min(a.speed,lead.speed*.96*Math.max(.72,Math.min(1.0,(dist-.5)/.35)));
    }
    const d=(a.d+currentSpeed*stepDt)%a.length,q=a.pose(d);
-   if(!staticClear(q.x,q.z)){if(a.wait>.8&&!a.rerouteIn)reroute(a);}
-   else {moved=stepTo(a,q,stepDt);if(moved)a.d=d;}
+   moved=stepTo(a,q,stepDt);
+   if(moved)a.d=d;
+   else if(a.wait>.8&&!a.rerouteIn)reroute(a);
   }
   if(moved){
    a.wait=0;a.browseIn-=stepDt;

@@ -171,7 +171,7 @@ try{
   canvas,
   antialias:initialRenderProfile.antialias,
   powerPreference:'high-performance',
-  logarithmicDepthBuffer:true,
+  logarithmicDepthBuffer:false,
   precision:'highp'
  });
 }catch(e){
@@ -216,16 +216,24 @@ drawBookshopTile(ctx);
 const atlas=new THREE.CanvasTexture(atlasCanvas);atlas.magFilter=THREE.NearestFilter;atlas.minFilter=THREE.NearestFilter;atlas.colorSpace=THREE.SRGBColorSpace;
 const terrainMaterial=new THREE.MeshLambertMaterial({map:atlas,vertexColors:true});
 const chunks=new Map(),chunksByNum=new Map(),chunkNum=(cx,cz)=>(cx+4096)*8192+(cz+4096);
-const SUPER_GRID=3,superChunks=new Map(),dirtySuperGroups=new Set(),editedSuperGroups=new Set();
+const SUPER_GRID=2,superChunks=new Map(),dirtySuperGroups=new Set(),editedSuperGroups=new Set();
 let nearSuperCx=Math.floor(LANDMARKS.bund.x/CHUNK),nearSuperCz=Math.floor(LANDMARKS.bund.z/CHUNK);
 const isNearSuperChunk=()=>false;
 const superGroupKey=(cx,cz)=>Math.floor(cx/SUPER_GRID)+','+Math.floor(cz/SUPER_GRID);
 const origUMW=THREE.Object3D.prototype.updateMatrixWorld;
 function freezeStaticLeaf(m){m.matrixAutoUpdate=false;m.updateMatrixWorld=function(force){if(force||this.matrixWorldNeedsUpdate)origUMW.call(this,force);};}
+function isSealedDryChunk(cx,cz){
+ const x0=cx*CHUNK,z0=cz*CHUNK;
+ for(let z=z0;z<z0+CHUNK;z++)for(let x=x0;x<x0+CHUNK;x++){
+  if(!world.get(x,25,z)&&!world.get(x,24,z))return false;
+ }
+ return true;
+}
 function dissolveSuperGroup(sgKey){
  const prev=superChunks.get(sgKey);
  if(!prev)return;
  for(const m of prev.members)if(chunks.get(m.userData.chunkKey)===m)m.layers.mask=1;
+ if(prev.underMesh){scene.remove(prev.underMesh);prev.underMesh.geometry.dispose();}
  scene.remove(prev.mesh);prev.mesh.geometry.dispose();
  superChunks.delete(sgKey);
 }
@@ -251,11 +259,17 @@ function buildSuperGroup(sgKey){
  if(!totalVerts){return;}
  const PosArr=allInt16?Int16Array:Float32Array,NormArr=allInt8?Int8Array:Float32Array;
  const pOut=new PosArr(totalVerts*3),nOut=new NormArr(totalVerts*3),uvOut=new Float32Array(totalVerts*2),colOut=new Float32Array(totalVerts*3);
- const idxOut=totalVerts>=65535?new Uint32Array(totalIdx):new Uint16Array(totalIdx);
- let vOff=0,iOff=0;
+ const useU32=totalVerts>=65535;
+ const sIdxTmp=useU32?new Uint32Array(totalIdx):new Uint16Array(totalIdx);
+ const uIdxTmp=useU32?new Uint32Array(totalIdx):new Uint16Array(totalIdx);
+ let vOff=0,sLen=0,uLen=0;
+ let sMinX=Infinity,sMinY=Infinity,sMinZ=Infinity,sMaxX=-Infinity,sMaxY=-Infinity,sMaxZ=-Infinity;
+ let uMinX=Infinity,uMinY=Infinity,uMinZ=Infinity,uMaxX=-Infinity,uMaxY=-Infinity,uMaxZ=-Infinity;
  for(const m of members){
   const g=m.geometry,pa=g.attributes.position.array,na=g.attributes.normal.array,uva=g.attributes.uv.array,ca=g.attributes.color.array,ia=g.index.array,vc=pa.length/3;
   if(!vc)continue;
+  const [mcx,mcz]=m.userData.chunkKey.split(',').map(Number);
+  const sealed=isSealedDryChunk(mcx,mcz);
   pOut.set(pa,vOff*3);
   if(allInt8===(na instanceof Int8Array))nOut.set(na,vOff*3);
   else for(let i=0;i<na.length;i++)nOut[vOff*3+i]=na instanceof Int8Array?na[i]/127:na[i];
@@ -266,22 +280,58 @@ function buildSuperGroup(sgKey){
     for(let j=0;j<bi.length;j++){const k=j*3,dst=(vOff+bi[j])*3;colOut[dst]=bo[k];colOut[dst+1]=bo[k+1];colOut[dst+2]=bo[k+2];}
    }
   }
-  for(let i=0;i<ia.length;i++)idxOut[iOff+i]=ia[i]+vOff;
-  vOff+=vc;iOff+=ia.length;
+  for(let i=0;i<ia.length;i+=3){
+   const a0=ia[i],a1=ia[i+1],a2=ia[i+2];
+   const p0=a0*3,p1=a1*3,p2=a2*3;
+   const y0=pa[p0+1],y1=pa[p1+1],y2=pa[p2+1];
+   if(y0===0&&y1===0&&y2===0&&na[p0+1]<0)continue;
+   const x0=pa[p0],z0=pa[p0+2],x1=pa[p1],z1=pa[p1+2],x2=pa[p2],z2=pa[p2+2];
+   const i0=a0+vOff,i1=a1+vOff,i2=a2+vOff;
+   if(sealed&&y0<=23.5&&y1<=23.5&&y2<=23.5){
+    uIdxTmp[uLen++]=i0;uIdxTmp[uLen++]=i1;uIdxTmp[uLen++]=i2;
+    if(x0<uMinX)uMinX=x0;if(x0>uMaxX)uMaxX=x0;if(x1<uMinX)uMinX=x1;if(x1>uMaxX)uMaxX=x1;if(x2<uMinX)uMinX=x2;if(x2>uMaxX)uMaxX=x2;
+    if(y0<uMinY)uMinY=y0;if(y0>uMaxY)uMaxY=y0;if(y1<uMinY)uMinY=y1;if(y1>uMaxY)uMaxY=y1;if(y2<uMinY)uMinY=y2;if(y2>uMaxY)uMaxY=y2;
+    if(z0<uMinZ)uMinZ=z0;if(z0>uMaxZ)uMaxZ=z0;if(z1<uMinZ)uMinZ=z1;if(z1>uMaxZ)uMaxZ=z1;if(z2<uMinZ)uMinZ=z2;if(z2>uMaxZ)uMaxZ=z2;
+   }else{
+    sIdxTmp[sLen++]=i0;sIdxTmp[sLen++]=i1;sIdxTmp[sLen++]=i2;
+    if(x0<sMinX)sMinX=x0;if(x0>sMaxX)sMaxX=x0;if(x1<sMinX)sMinX=x1;if(x1>sMaxX)sMaxX=x1;if(x2<sMinX)sMinX=x2;if(x2>sMaxX)sMaxX=x2;
+    if(y0<sMinY)sMinY=y0;if(y0>sMaxY)sMaxY=y0;if(y1<sMinY)sMinY=y1;if(y1>sMaxY)sMaxY=y1;if(y2<sMinY)sMinY=y2;if(y2>sMaxY)sMaxY=y2;
+    if(z0<sMinZ)sMinZ=z0;if(z0>sMaxZ)sMaxZ=z0;if(z1<sMinZ)sMinZ=z1;if(z1>sMaxZ)sMaxZ=z1;if(z2<sMinZ)sMinZ=z2;if(z2>sMaxZ)sMaxZ=z2;
+   }
+  }
+  vOff+=vc;
  }
+ if(!sLen)return;
+ const posAttr=new THREE.BufferAttribute(pOut,3),normAttr=new THREE.BufferAttribute(nOut,3,allInt8),uvAttr=new THREE.BufferAttribute(uvOut,2),colAttr=new THREE.BufferAttribute(colOut,3);
  const geo=new THREE.BufferGeometry();
- geo.setAttribute('position',new THREE.BufferAttribute(pOut,3));
- geo.setAttribute('normal',new THREE.BufferAttribute(nOut,3,allInt8));
- geo.setAttribute('uv',new THREE.BufferAttribute(uvOut,2));
- geo.setAttribute('color',new THREE.BufferAttribute(colOut,3));
- geo.setIndex(new THREE.BufferAttribute(idxOut,1));
- geo.computeBoundingSphere();
- geo.computeBoundingBox();
+ geo.setAttribute('position',posAttr);
+ geo.setAttribute('normal',normAttr);
+ geo.setAttribute('uv',uvAttr);
+ geo.setAttribute('color',colAttr);
+ geo.setIndex(new THREE.BufferAttribute(sIdxTmp.slice(0,sLen),1));
+ geo.boundingBox=new THREE.Box3(new THREE.Vector3(sMinX,sMinY,sMinZ),new THREE.Vector3(sMaxX,sMaxY,sMaxZ));
+ geo.boundingSphere=geo.boundingBox.getBoundingSphere(new THREE.Sphere());
  const superMesh=new THREE.Mesh(geo,terrainMaterial);
  superMesh.name='terrain-super-chunk';
  freezeStaticLeaf(superMesh);
  superMesh.userData.range=maxRange;
  if(anyRgb)superMesh.userData.rgbColors=true;
+ let underMesh=null;
+ if(uLen>0){
+  const uGeo=new THREE.BufferGeometry();
+  uGeo.setAttribute('position',posAttr);
+  uGeo.setAttribute('normal',normAttr);
+  uGeo.setAttribute('uv',uvAttr);
+  uGeo.setAttribute('color',colAttr);
+  uGeo.setIndex(new THREE.BufferAttribute(uIdxTmp.slice(0,uLen),1));
+  uGeo.boundingBox=new THREE.Box3(new THREE.Vector3(uMinX,uMinY,uMinZ),new THREE.Vector3(uMaxX,uMaxY,uMaxZ));
+  uGeo.boundingSphere=uGeo.boundingBox.getBoundingSphere(new THREE.Sphere());
+  underMesh=new THREE.Mesh(uGeo,terrainMaterial);
+  underMesh.name='terrain-super-under';
+  freezeStaticLeaf(underMesh);
+  underMesh.userData.range=maxRange;
+  scene.add(underMesh);
+ }
  let bBe=false,bJh=false,bJa=false;
  for(const m of members){
   const [cx,cz]=m.userData.chunkKey.split(',').map(Number);
@@ -292,7 +342,7 @@ function buildSuperGroup(sgKey){
  streetBounce?.bakeMesh(superMesh);
  for(const m of members)m.layers.mask=0;
  scene.add(superMesh);
- superChunks.set(sgKey,{mesh:superMesh,members});
+ superChunks.set(sgKey,{mesh:superMesh,underMesh,members});
 }
 function flushSuperGroups(maxCount=2){
  if(!dirtySuperGroups.size)return;
@@ -671,6 +721,7 @@ function renderScene(){
  renderer.render(scene,camera);
  if(active&&restoredEntryPhoto?.rendered())restoredEntryPhoto=null;
 }
+let chunkStarveTick=0;
 function frame(now){
  if(document.hidden||!active&&!story?.filming&&now-lastIdleFrame<(photo?.opened?1000/30:1000/15)){prev=now;requestAnimationFrame(frame);return;}
  if(isMobile&&(active||story?.filming)&&mobilePacer.skip(now,mobileQuality==='clear'?60:30)){requestAnimationFrame(frame);return;}
@@ -678,7 +729,7 @@ function frame(now){
  footContact=grounded;const walkStartX=pos.x,walkStartZ=pos.z;let footTravel=0;
  const support=active&&!flying&&!gliding&&!activity?.isRiding()&&!commute?.isRiding()&&!yuyuan?.isRiding()?vesselQueries.support(pos.x,pos.y,pos.z):null,carried=support&&Math.abs(pos.y-support.y)<.2?{...support,old:boatWorld(support.root,support.local)}:null;
  requestAnimationFrame(frame);const storyDt=Math.min((now-prev)/1000,1);let dt=Math.min((now-prev)/1000,.1);prev=now;elapsed+=dt;for(const [key,until]of releaseAt)if(now>=until){keys.delete(key);releaseAt.delete(key);}if(active||story?.filming){camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();simulationInterest.beginFrame();}npcGuides?.beginTick();rainCrowd?.beginTick();towerInteriors?.beginTick();activity?.tick(active?dt:0,{night:dayClock>=120,dayClock});metro?.tick(active?dt:0,{playing:active,sound:sound&&sceneAudio.enabled,keys:active?inputKeys:new Set()});
- if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}if(dt<0.035&&lastFrameWorkMs<15){const cwDeadline=performance.now()+(isMobile?.55:.95);let cwSteps=0;while(chunkWork.pending&&cwSteps<(isMobile?1:2)&&performance.now()<cwDeadline){chunkWork.process(1);cwSteps++;}}if(dirtySuperGroups.size&&dt<0.035)flushSuperGroups(1);stepDistrictTextureWarmup(dt);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
+ if(active){chunkClock+=dt;if(chunkClock>.6){ensureChunks(pos);chunkClock=0;}const curChunkKey=Math.floor(pos.x/CHUNK)+','+Math.floor(pos.z/CHUNK);if(dt<0.035&&lastFrameWorkMs<16){const cwDeadline=performance.now()+(isMobile?.55:.95);let cwSteps=0;while(chunkWork.pending&&cwSteps<(isMobile?1:2)&&performance.now()<cwDeadline){chunkWork.process(1);cwSteps++;}}else if(chunkWork.pending&&(!chunks.has(curChunkKey)||(++chunkStarveTick&3)===0)){chunkWork.process(1);}if(dirtySuperGroups.size&&(dt<0.035||(chunkStarveTick&3)===0))flushSuperGroups(1);stepDistrictTextureWarmup(dt);saves?.tick(dt);let remaining=dt;while(remaining>0&&!activity?.isRiding()&&!commute?.isRiding()&&!metro?.isRiding()&&!yuyuan?.isRiding()){const step=Math.min(remaining,1/120);physics(step);remaining-=step;}
   footTravel=Math.hypot(pos.x-walkStartX,pos.z-walkStartZ);
   camera.position.set(pos.x,pos.y+1.62,pos.z);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();camera.getWorldDirection(direction);target=trace(world,camera.position,direction);outline.visible=!!target;if(target)outline.position.set(target.x+.5,target.y+.5,target.z+.5);
   if((mouseHeld!==-1||inputKeys.has('KeyQ'))&&now-lastAction>260)edit(mouseHeld===2);tickMining(dt);
@@ -1196,11 +1247,11 @@ if(renderer.isWebGLRenderer){
      if(!forceCustom||isStatic){
       const box=isStatic?o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld):null;
       if(!isNanjingLow||(box&&box.max.y<50)||(r>0&&r<=160)){
-       const effRange=o.name==='street-products'?(isMobile?22:42):(forceCustom?opts.defaultRange:(r>0?r:240));
+       const effRange=o.name==='street-products'?22:(forceCustom?opts.defaultRange:(r>0?r:240));
        const denseStreetRange=opts?.denseRange??(isNanjingLow&&box&&box.max.y<50?95:root.name==='city-traffic-details'?75:0);
        const highHide=opts?.highHide??(root.name==='peace-restaurant-interior'||o.name==='street-products'||(root.name==='city-traffic-details'&&(o.userData.panel||o.name==='traffic-static-furniture')));
        const highMobileHide=o.name==='street-furniture';
-       shortRangeEntries.push({o,r:effRange,box,denseStreetRange,highHide,highMobileHide});
+       shortRangeEntries.push({o,r:effRange,box,denseStreetRange,yuyuanOnlyDense:isNanjingLow,highHide,highMobileHide});
       }
      }
     }
@@ -1218,6 +1269,11 @@ if(renderer.isWebGLRenderer){
  const peaceRestaurantInterior=skipHiddenMatrices(scene.getObjectByName('peace-restaurant-interior'));
  const peaceBox=peaceRestaurantInterior?new THREE.Box3().setFromObject(peaceRestaurantInterior):null;
  const shouldHidePeace=(x,y,z)=>Boolean(peaceRestaurantInterior?.visible&&(y>=38||(peaceBox&&Math.max(peaceBox.min.x-x,0,x-peaceBox.max.x)**2+Math.max(peaceBox.min.y-y,0,y-peaceBox.max.y)**2+Math.max(peaceBox.min.z-z,0,z-peaceBox.max.z)**2>3025)));
+ const nanjingStreetLife=skipHiddenMatrices(scene.getObjectByName('nanjing-street-life'));
+ if(nanjingStreetLife)nanjingStreetLife.userData.sealedHiddenInstances=true;
+ const shouldHideNanjingLife=(y,z)=>Boolean(nanjingStreetLife?.visible&&y<32&&z>=205&&!savedEdits.size);
+ const skyDome=scene.children.find(o=>o.isMesh&&!o.material?.transparent&&o.geometry?.type==='SphereGeometry'&&o.geometry.parameters?.radius>=100);
+ if(skyDome)skyDome.renderOrder=10;
  for(const interior of metroInteriors)skipHiddenMatrices(interior);
  const yuyuanInteriorDetails=yuyuan?.root?.getObjectByName('yuyuan-interior-details');
  const riverfrontSuites=scene.getObjectByName('my-riverfront-suites');
@@ -1227,6 +1283,7 @@ if(renderer.isWebGLRenderer){
   if(!force&&camera?.isPerspectiveCamera&&!savedEdits.size&&!photo?.opened){
    const camX=camera.position.x,camY=camera.position.y,camZ=camera.position.z;
    if(shouldHidePeace(camX,camY,camZ)){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
+   if(shouldHideNanjingLife(camY,camZ)){nanjingStreetLife.visible=false;tempShortRangeHidden.push(nanjingStreetLife);}
    const foot=story?.filming?camera.position:(camera===startupPreview?startupPreviewFoot:pos);
    if(!metroInterior(foot)&&camY>=25.8&&surfaceOpeningBoxes.length){
     if(paidTransferPassage?.visible){paidTransferPassage.visible=false;tempHiddenMetroInteriors.push(paidTransferPassage);}
@@ -1262,7 +1319,19 @@ if(renderer.isWebGLRenderer){
    const highView=isHighView(camera),highInteriorCull=camY>=38,highMobileMicroCull=isMobile&&camY>=42,shortScale=isMobile&&highView?(camY>=38?.55:.7):1;
    const inYuyuanStreet=!highView&&camY<32&&camX>=-125&&camX<=38&&camZ>=205&&camZ<=345;
    const inDenseStreet=inYuyuanStreet||(!highView&&camY<32&&camX>=-250&&camX<=5&&camZ>=45&&camZ<=100);
+   const farSq=camera.far*camera.far,lowFarSq=inYuyuanStreet?108*108:inDenseStreet?140*140:farSq,lowCapY=inDenseStreet?72:58;
+   if(water.visible&&!savedEdits.size&&!highView&&camY>=25.8&&camY<31&&((camX<=-36&&camZ>=22&&camZ<=205)||(camX>=-125&&camX<=16&&camZ>=212&&camZ<=335))){water.visible=false;tempShortRangeHidden.push(water);}
+   if(!highView&&camY<32&&civil?.boats){
+    const boatLimSq=inYuyuanStreet?110*110:inDenseStreet?125*125:farSq;
+    for(let i=0;i<civil.boats.length;i++){
+     const br=civil.boats[i]?.root;
+     if(!br?.visible)continue;
+     const bdx=br.position.x-camX,bdz=br.position.z-camZ;
+     if(bdx*bdx+bdz*bdz>boatLimSq){br.visible=false;tempShortRangeHidden.push(br);}
+    }
+   }
    if(shouldHidePeace(camX,camY,camZ)){peaceRestaurantInterior.visible=false;tempShortRangeHidden.push(peaceRestaurantInterior);}
+   if(shouldHideNanjingLife(camY,camZ)){nanjingStreetLife.visible=false;tempShortRangeHidden.push(nanjingStreetLife);}
    if(riverfrontSuites?.visible&&suitesBox){
     const sdx=Math.max(suitesBox.min.x-camX,0,camX-suitesBox.max.x),sdy=Math.max(suitesBox.min.y-camY,0,camY-suitesBox.max.y),sdz=Math.max(suitesBox.min.z-camZ,0,camZ-suitesBox.max.z);
     const sLim=highInteriorCull?45:65;
@@ -1272,7 +1341,8 @@ if(renderer.isWebGLRenderer){
     const entry=shortRangeEntries[i],o=entry.o;
     if(!o.visible||!(o.layers.mask&camMask)||o.parent?.visible===false)continue;
     if((highInteriorCull&&entry.highHide)||(highMobileMicroCull&&entry.highMobileHide)){o.visible=false;tempShortRangeHidden.push(o);continue;}
-    const baseR=(inYuyuanStreet&&entry.denseStreetRange)?Math.min(entry.r,entry.denseStreetRange):entry.r;
+    const useDense=entry.denseStreetRange&&(entry.yuyuanOnlyDense?inYuyuanStreet:inDenseStreet);
+    const baseR=useDense?Math.min(entry.r,entry.denseStreetRange):entry.r;
     const effR=baseR*shortScale;
     if(entry.box){
      const b=entry.box,dx=Math.max(b.min.x-camX,0,camX-b.max.x),dy=Math.max(b.min.y-camY,0,camY-b.max.y),dz=Math.max(b.min.z-camZ,0,camZ-b.max.z);
@@ -1292,22 +1362,22 @@ if(renderer.isWebGLRenderer){
      if(dx*dx+dy*dy+dz*dz>effRange*effRange||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){wash.visible=false;tempShortRangeHidden.push(wash);}
     }
    }
-   const farSq=camera.far*camera.far,lowFarSq=inYuyuanStreet?105*105:inDenseStreet?135*135:farSq;
    if(civil?.staticBatches){
-    const mulMaxSq=isMobile?4900:11025;
+    const mulMaxSq=isMobile?4900:(inDenseStreet?5625:11025);
     for(let i=0;i<civil.staticBatches.length;i++){
      const m=civil.staticBatches[i],box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
-     const maxSq=m.name==='bund-mullions-static'?mulMaxSq:(box.max.y<=58?lowFarSq:farSq);
-     const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     const maxSq=m.name==='bund-mullions-static'?mulMaxSq:(box.max.y<=lowCapY?lowFarSq:farSq);
+     const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z),d2=dx*dx+dy*dy+dz*dz;
+     if(d2>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     else if(!m.material?.transparent)m.renderOrder=d2<1600?-4:d2<7225?-3:d2<22500?-2:-1;
     }
    }
    if(yuyuanInteriorDetails?.visible!==false)wallCull.prepare(camera);
+   let hidMetroInteriors=false;
    if(!savedEdits.size&&!photo?.opened){
     const foot=story?.filming?camera.position:(camera===startupPreview?startupPreviewFoot:pos);
     const insideMetro=metroInterior(foot);
-    let hidMetroInteriors=false;
     if(!insideMetro&&hasFrustum&&camera.position.y>=25.8&&surfaceOpeningBoxes.length){
      if(paidTransferPassage?.visible){paidTransferPassage.visible=false;tempHiddenMetroInteriors.push(paidTransferPassage);}
      let hiddenCount=0;
@@ -1330,20 +1400,26 @@ if(renderer.isWebGLRenderer){
     if(insideMetro)metroRoof.prepare(camera);
    }
    {
-    for(const {mesh:m} of superChunks.values()){
+    for(const {mesh:m,underMesh:um} of superChunks.values()){
+     if(um?.visible){
+      const ub=um.geometry?.boundingBox;
+      if(hidMetroInteriors||!ub||(hasFrustum&&!metroGateFrustum.intersectsBox(ub))){um.visible=false;tempShortRangeHidden.push(um);}
+     }
      const box=m.geometry?.boundingBox;
      if(!m.visible||!box)continue;
-     const maxSq=box.max.y<=58?lowFarSq:farSq;
-     const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     const maxSq=box.max.y<=lowCapY?lowFarSq:farSq;
+     const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z),d2=dx*dx+dy*dy+dz*dz;
+     if(d2>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     else if(!m.material?.transparent)m.renderOrder=d2<1600?-4:d2<7225?-3:d2<22500?-2:-1;
     }
     for(const m of chunks.values()){
      if(m.layers.mask!==1||!m.visible)continue;
      const box=m.geometry?.boundingBox;
      if(!box)continue;
-     const maxSq=box.max.y<=58?lowFarSq:farSq;
-     const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z);
-     if(dx*dx+dy*dy+dz*dz>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     const maxSq=box.max.y<=lowCapY?lowFarSq:farSq;
+     const dx=Math.max(box.min.x-camX,0,camX-box.max.x),dy=Math.max(box.min.y-camY,0,camY-box.max.y),dz=Math.max(box.min.z-camZ,0,camZ-box.max.z),d2=dx*dx+dy*dy+dz*dz;
+     if(d2>maxSq||(hasFrustum&&!metroGateFrustum.intersectsBox(box))){m.visible=false;tempShortRangeHidden.push(m);}
+     else if(!m.material?.transparent)m.renderOrder=d2<1600?-4:d2<7225?-3:d2<22500?-2:-1;
     }
    }
   }

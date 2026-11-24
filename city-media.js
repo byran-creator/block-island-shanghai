@@ -27,6 +27,7 @@ export function createCityMedia({scene}){
   else{ctx.font='bold 90px sans-serif';ctx.fillText(MEDIA_MESSAGES[frame],w/2,h*.5,w*.87);ctx.font='30px sans-serif';ctx.fillStyle=festival?'#ffffff':'#94e4dd';ctx.fillText('CITY LIFE · SHANGHAI',w/2,h*.77);}texture.needsUpdate=true;}
 
  const white=new THREE.Color('#d9f5ff'),colors=frameColors.map(color=>new THREE.Color(color));
+ let lastStripStep=-1,lastStripFest=null;
  function tick(dt,{dayClock=36,festival=false,showTime=0}={}){
   clock+=dt;
   const frame=Math.floor(clock/8)%3,schedule=mediaSchedule(dayClock),cue=festival?showCue(showTime):null;
@@ -47,6 +48,9 @@ export function createCityMedia({scene}){
    for(const strip of strips)strip.visible=stripsVisible;
   }
   if(!stripsVisible)return;
+  const stripStep=festival?-1:Math.floor(clock*12);
+  if(!festival&&stripStep===lastStripStep&&lastStripFest===false)return;
+  lastStripStep=stripStep;lastStripFest=festival;
   for(const [i,strip] of strips.entries()){
    if(cue)strip.material.color.setHSL(cue.hue,.82,.62*cue.brightness);
    else strip.material.color.copy(colors[frame]).lerp(white,(.5+.5*Math.sin(clock*.6-i*.07))*.35);

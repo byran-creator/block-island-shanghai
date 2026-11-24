@@ -72,18 +72,21 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  for(const r of voxelRoads)for(let d=8;d<r.samples.lengthMeters-6;d+=8){
   const p=r.samples[d*2];
   if(voxelRoads.some(other=>other!==r&&westRoadAt(other,p.x,p.z,2)))continue;
-  const key=Math.floor(p.x/64)+','+Math.floor(p.z/64);
+  const key=Math.floor(p.x/192)+','+Math.floor(p.z/192);
   if(!roadPaint.has(key))roadPaint.set(key,[]);
   const vertices=roadPaint.get(key),x=p.x+.5,z=p.z+.5,y=26.035;
   const w=r.ax===r.bx?.09:.74,l=r.az===r.bz?.09:.74;
   vertices.push(x-w,y,z-l,x+w,y,z+l,x+w,y,z-l,x-w,y,z-l,x-w,y,z+l,x+w,y,z+l);
  }
+ const voxelMarkings=[];
  for(const vertices of roadPaint.values()){
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  geometry.computeBoundingBox();
   const mesh=new THREE.Mesh(geometry,markingMat('#f3e6c2'));
-  mesh.name='voxel-street-markings';mesh.userData.range=170;scene.add(mesh);
+  mesh.name='voxel-street-markings';mesh.userData.range=170;mesh.matrixAutoUpdate=false;scene.add(mesh);
   existingObjects.add(mesh);
+  voxelMarkings.push(mesh);
  }
  for(const s of BUND_STREETS)label(s.name+' · '+(s.kind==='pedestrian'?'步行':'车行'),roadX(s.z)-6,29,s.z);
  // One crossing surface per road: bars follow the roadway, repeated across it.
@@ -527,14 +530,14 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   if(rain!==lastRain){lastRain=rain;roadMat.shininess=22+rain*90;roadMat.color.set(rain>.3?'#293b46':'#34424b');}
   if(festival||showWasActive)for(const m of showColumns){const level=festival?bundShowLevel(showTime,m.userData.showBand):1,material=m.material;if(material.transparent)material.opacity=m.userData.showOpacity*level;else material.color.copy(m.userData.showColor).multiplyScalar(level);if(festival)m.visible=true;}showWasActive=festival;
   waibaidu.tick(night);traffic.tick(dt,{night,rain});cruises.tick(dt,{night});
-  if(!p||p.z>=140&&p.x>=40)for(const car of cars){const at=car.root.position;if(at.z>=195&&at.z<=220&&at.x>=90&&at.x<=320){const a=car.root.rotation.y,front=nanpuFloor(world,at.x-Math.sin(a),at.z-Math.cos(a)),back=nanpuFloor(world,at.x+Math.sin(a),at.z+Math.cos(a));car.root.rotation.x=front!==null&&back!==null?Math.atan2(front-back,2):0;}else if(car.root.rotation.x!==0)car.root.rotation.x=0;}
+  if(!p||simulationInterest?.highAltitude?.()||(p.z>=140&&p.x>=40))for(const car of cars){const at=car.root.position;if(at.z>=195&&at.z<=220&&at.x>=90&&at.x<=320){const a=car.root.rotation.y,front=nanpuFloor(world,at.x-Math.sin(a),at.z-Math.cos(a)),back=nanpuFloor(world,at.x+Math.sin(a),at.z+Math.cos(a));car.root.rotation.x=front!==null&&back!==null?Math.atan2(front-back,2):0;}else if(car.root.rotation.x!==0)car.root.rotation.x=0;}
   const highAlt=dt>0&&Boolean(simulationInterest?.highAltitude?.());
   let pedDt=dt,runPed=true;
   if(highAlt){highPedAccum+=dt;highPedSkip=!highPedSkip;if(highPedSkip)runPed=false;else{pedDt=highPedAccum;highPedAccum=0;}}
   else if(highPedAccum>0){pedDt=dt+highPedAccum;highPedAccum=0;highPedSkip=false;}
   const skipM=!runPed;if(skipM!==lastSkipPedMatrix){lastSkipPedMatrix=skipM;for(const person of pedestrians)person.root.userData.skipMatrixFrame=skipM;}
   if(runPed){
-   const nearPromenade=!p||pedDt<=0||(Math.max(10-p.x,p.x-38,0)**2+Math.max(18-p.z,p.z-208,0)**2)<=5184||(highAlt&&simulationInterest?.seesPoint({x:24,y:26,z:Math.max(24,Math.min(200,p.z))},24,125));
+   const nearPromenade=!p||pedDt<=0||(!(p.z>=212&&p.y<32)&&(Math.max(10-p.x,p.x-38,0)**2+Math.max(18-p.z,p.z-208,0)**2)<=2025)||(highAlt&&simulationInterest?.seesPoint({x:24,y:26,z:Math.max(24,Math.min(200,p.z))},24,125));
    let effPedDt=pedDt;
    if(nearPromenade){
     farPedAccum=0;farPedCount=0;
@@ -552,45 +555,45 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
  }
  addLandmarkFinish(scene,world,mat('#a8b7b8'));
  function canonicalWinGroup(g){
-  if(!g||typeof g!=='string')return g;
-  const idx=g.indexOf(':');if(idx<0)return g;
-  const use=g.slice(0,idx),b=+g.slice(idx+1);
-  if(use==='hotel')return b<=3?'hotel:0':b<=5?'hotel:4':b<=8?'hotel:6':'hotel:9';
-  if(use==='home')return b===0?'home:0':b<=4?'home:1':b<=7?'home:5':'home:8';
-  if(use==='retail')return b<=2?'retail:0':b<=10?'retail:3':'retail:11';
-  return b===0?'office:0':b<=2?'office:1':b<=5?'office:3':'office:6';
+  if(!g||typeof g!=='string'||!g.includes(':'))return g;
+  return 'w:'+((lightGroupVisible(g,true,180)?4:0)|(lightGroupVisible(g,true,120)?2:0)|(lightGroupVisible(g,true,170)?1:0));
  }
  // Merge static streets, windows and facade details by material. Moving people/cars stay animated.
  const animated=new Set([...cars,...boats,...pedestrians].map(o=>o.root).concat(customsClock.root)),nightSet=new Map([...windows.map(m=>[m,'window']),...facadeLights.map(m=>[m,'facade']),...goldSurfaces.map(m=>[m,'wash']),...skylineLEDs.map(m=>[m,'skyline-led'])]),batches=new Map();
  scene.updateMatrixWorld(true);
  for(const root of [...scene.children]){if(existingObjects.has(root)||animated.has(root)||root.isSprite)continue;
-  root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),rawGroup=o.userData.lightGroup,group=kind==='window'?canonicalWinGroup(rawGroup):rawGroup,band=o.userData.showBand,key=o.material.uuid+':'+kind+':'+(group??'')+':'+(band??'');let batch=batches.get(key);if(!batch){batch={material:band===undefined?o.material:o.material.clone(),kind,group,band,sources:[]};batches.set(key,batch);}batch.sources.push(o);});scene.remove(root);
+  root.traverse(o=>{if(!o.isMesh||o.userData.panel)return;const kind=nightSet.get(o),rawGroup=o.userData.lightGroup,group=kind==='window'?canonicalWinGroup(rawGroup):rawGroup,band=o.userData.showBand,key=o.material.uuid+':'+kind+':'+(group??'')+':'+(band??'');let batch=batches.get(key);if(!batch){batch={material:band===undefined?o.material:o.material.clone(),kind,group,rawGroup,band,sources:[]};batches.set(key,batch);}batch.sources.push(o);});scene.remove(root);
  }
- windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;const staticBatches=[];
- function addStaticBatch(sources,material){
-  const mesh=new THREE.Mesh(bundStaticGeometry(sources),material);
+ windows.length=0;facadeLights.length=0;goldSurfaces.length=0;skylineLEDs.length=0;const staticBatches=[...voxelMarkings];
+ function addStaticBatch(sources,material,useVertexColor=false){
+  const mesh=new THREE.Mesh(bundStaticGeometry(sources,useVertexColor),material);
+  mesh.name='bund-static-batch';
   mesh.geometry.computeBoundingBox();
   mesh.matrixAutoUpdate=false;mesh.userData.range=285;scene.add(mesh);staticBatches.push(mesh);
   return mesh;
  }
- const districtCenter=new THREE.Vector3();
- function partitionBundDistricts(sources,cuts){
-  const buckets=Array.from({length:cuts.length+1},()=>[]);
-  for(const source of sources){
-   const geometry=source.geometry;
-   if(!geometry.boundingSphere)geometry.computeBoundingSphere();
-   districtCenter.copy(geometry.boundingSphere.center).applyMatrix4(source.matrixWorld);
-   let bi=0;while(bi<cuts.length&&districtCenter.x>=cuts[bi])bi++;
-   buckets[bi].push(source);
-  }
-  return buckets.filter(bucket=>bucket.length>0);
- }
  const batchVariants=batchProof?[]:null;
  const dynamicBundMats=new Set([...shoppingStone,skylineMaterial,roadMat,...lamps.map(l=>l.material)]);
+ const warmGraniteMap=getBundGraniteTexture('warm'),curtainMap=getCurtainWallTexture();
  const solidBundSources=[],solidBundPalette=new Set(),mullionSolidSources=[],mullionSolidPalette=new Set(),facadeSolidSources=[],facadeSolidPalette=new Set(),windowSolidGroups=new Map(),showBandGroups=new Map();
+ const westGraniteSources=[],curtainSources=[],shoppingGraniteSources=[];
  for(const b of batches.values()){
   // Keep small draws, translucent overlays and all lighting controls grouped as authored.
   const keepOrder=b.sources.some(source=>source.userData.keepBatchOrder);
+  if(!batchProof&&b.kind===undefined&&b.band===undefined&&!keepOrder&&!b.material.transparent&&b.material.opacity===1&&b.material.isMeshLambertMaterial&&!b.material.vertexColors){
+   if(b.material.name==='nanjing-stone-bounce'&&b.material.map===warmGraniteMap){
+    for(const s of b.sources)shoppingGraniteSources.push(s);
+    continue;
+   }
+   if(!dynamicBundMats.has(b.material)&&b.material.map===warmGraniteMap&&(!b.material.emissive||b.material.emissive.getHex()===0)){
+    for(const s of b.sources)westGraniteSources.push(s);
+    continue;
+   }
+   if(!dynamicBundMats.has(b.material)&&b.material.map===curtainMap&&(!b.material.emissive||b.material.emissive.getHex()===0)){
+    for(const s of b.sources)curtainSources.push(s);
+    continue;
+   }
+  }
   if(!batchProof&&!dynamicBundMats.has(b.material)&&!b.material.transparent&&b.material.opacity===1&&!b.material.map&&!b.material.vertexColors){
    const isPlainBasic=b.material.isMeshBasicMaterial;
    const isPlainLambert=b.material.isMeshLambertMaterial&&(!b.material.emissive||b.material.emissive.getHex()===0);
@@ -615,7 +618,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    if(!keepOrder&&b.kind==='window'&&b.band===undefined&&isPlainBasic){
     const wKey=String(b.group??'');
     let entry=windowSolidGroups.get(wKey);
-    if(!entry){entry={group:b.group,sources:[],palette:new Set()};windowSolidGroups.set(wKey,entry);}
+    if(!entry){entry={group:b.rawGroup??b.group,canonical:b.group,sources:[],palette:new Set()};windowSolidGroups.set(wKey,entry);}
     entry.palette.add(b.material);
     for(const s of b.sources)entry.sources.push(s);
     continue;
@@ -628,13 +631,15 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   }
   const vertCount=b.sources.reduce((count,source)=>count+source.geometry.attributes.position.count,0);
   const canSplit=staticBatchCell&&b.kind===undefined&&b.band===undefined&&!b.material.transparent&&b.material.opacity===1&&!keepOrder&&vertCount>=32768;
-  const canSplitHuge=!canSplit&&!batchProof&&(b.kind===undefined||b.kind==='skyline-led')&&b.band===undefined&&!b.material.transparent&&b.material.opacity===1&&vertCount>=65536;
-  const canSplitNightFacade=b.kind==='facade'&&b.band===undefined&&!b.material.transparent&&b.material.opacity===1&&vertCount>=65536;
-  const canSplitDistrict=!canSplit&&!canSplitHuge&&!canSplitNightFacade&&b.kind===undefined&&b.band===undefined&&!keepOrder&&!b.material.transparent&&b.material.opacity===1&&vertCount>=2400;
+  const canSplitGrid=!canSplit&&!batchProof&&b.kind===undefined&&b.band===undefined&&!keepOrder&&!b.material.transparent&&b.material.opacity===1&&vertCount>=2400;
+  const canSplitSkyLed=!canSplit&&!batchProof&&b.kind==='skyline-led'&&b.band===undefined&&!b.material.transparent&&b.material.opacity===1&&vertCount>=3200;
+  const canSplitNightFacade=!batchProof&&b.kind==='facade'&&b.band===undefined&&!b.material.transparent&&b.material.opacity===1&&vertCount>=2400;
+  const canSplitNightWin=!batchProof&&b.kind==='window'&&b.band===undefined&&b.group!=='w:0'&&!b.material.transparent&&b.material.opacity===1&&vertCount>=1200;
   const groups=canSplit?partitionBundStaticSources(b.sources,staticBatchCell)
-    :canSplitHuge?partitionBundStaticSources(b.sources,128)
-    :canSplitNightFacade?partitionBundStaticSources(b.sources,128)
-    :canSplitDistrict?partitionBundDistricts(b.sources,[-105,-15,85])
+    :canSplitGrid?partitionBundStaticSources(b.sources,160)
+    :canSplitSkyLed?partitionBundStaticSources(b.sources,192)
+    :canSplitNightFacade?partitionBundStaticSources(b.sources,192)
+    :canSplitNightWin?partitionBundStaticSources(b.sources,240)
     :[b.sources];
   if(canSplit&&groups.length>1){
    const cells=groups.map(sources=>addStaticBatch(sources,b.material));
@@ -646,7 +651,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
    for(const sources of groups){
     const m=addStaticBatch(sources,b.material);
     if(b.band!==undefined){m.userData.showBand=b.band;m.userData.showColor=m.material.color.clone();m.userData.showOpacity=m.material.opacity;showColumns.push(m);}
-    if(b.kind==='window'){m.userData.lightGroup=b.group;windows.push(m);}
+    if(b.kind==='window'){m.userData.lightGroup=b.rawGroup??b.group;windows.push(m);}
     else if(b.kind==='facade')facadeLights.push(m);
     else if(b.kind==='wash'){m.geometry.computeBoundingBox();m.userData.washRange=b.material?.name==='nanjing-facade-wash'?115:145;m.userData.range=m.userData.washRange;goldSurfaces.push(m);}
     else if(b.kind==='skyline-led')skylineLEDs.push(m);
@@ -654,8 +659,25 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   }
   for(const source of b.sources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
  }
+ if(westGraniteSources.length){
+  const sharedWestMat=new THREE.MeshLambertMaterial({map:warmGraniteMap,vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2});
+  for(const cell of partitionBundStaticSources(westGraniteSources,160))addStaticBatch(cell,sharedWestMat,true);
+  for(const source of westGraniteSources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
+ }
+ if(curtainSources.length){
+  const sharedCurtainMat=new THREE.MeshLambertMaterial({map:curtainMap,vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2});
+  for(const cell of partitionBundStaticSources(curtainSources,160))addStaticBatch(cell,sharedCurtainMat,true);
+  for(const source of curtainSources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
+ }
+ if(shoppingGraniteSources.length){
+  const shoppingGraniteMat=new THREE.MeshLambertMaterial({name:'nanjing-stone-bounce',map:warmGraniteMap,emissive:'#a28259',emissiveIntensity:0,emissiveMap:warmGraniteMap,vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2});
+  shoppingStone.push(shoppingGraniteMat);
+  for(const cell of partitionBundStaticSources(shoppingGraniteSources,160))addStaticBatch(cell,shoppingGraniteMat,true);
+  for(const source of shoppingGraniteSources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
+ }
  if(solidBundSources.length){
-  const mergedSolid=batchMeshes(scene,solidBundSources,'bund-solid-static',solidBundPalette,false,128);
+  for(const s of solidBundSources)s.userData.range=285;
+  const mergedSolid=batchMeshes(scene,solidBundSources,'bund-solid-static',solidBundPalette,false,144);
   for(const m of mergedSolid){
    if(m.parent!==scene){addStaticBatch([m],m.material);}
    else{m.geometry.computeBoundingBox();m.matrixAutoUpdate=false;m.userData.range=285;if(m.geometry?.attributes?.color)m.userData.skipLightBake=true;staticBatches.push(m);}
@@ -663,6 +685,7 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   for(const source of solidBundSources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
  }
  if(facadeSolidSources.length){
+  for(const s of facadeSolidSources)s.userData.range=285;
   const mergedFacade=batchMeshes(scene,facadeSolidSources,'bund-facade-lights',facadeSolidPalette,false,192);
   for(const m of mergedFacade){
    if(m.parent!==scene){facadeLights.push(addStaticBatch([m],m.material));}
@@ -671,7 +694,8 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   for(const source of facadeSolidSources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
  }
  if(mullionSolidSources.length){
-  const mergedMullions=batchMeshes(scene,mullionSolidSources,'bund-mullions-static',mullionSolidPalette,false,160);
+  for(const s of mullionSolidSources)s.userData.range=285;
+  const mergedMullions=batchMeshes(scene,mullionSolidSources,'bund-mullions-static',mullionSolidPalette,false,144);
   for(const m of mergedMullions){
    if(m.parent!==scene){addStaticBatch([m],m.material);}
    else{m.geometry.computeBoundingBox();m.matrixAutoUpdate=false;m.userData.range=285;if(m.geometry?.attributes?.color)m.userData.skipLightBake=true;staticBatches.push(m);}
@@ -679,8 +703,9 @@ export function createBund({scene,world,getPos,getObstacles=()=>[],notify=()=>{}
   for(const source of mullionSolidSources)if(source.userData.disposeAfterStaticBatch)source.geometry.dispose();
  }
  for(const entry of windowSolidGroups.values()){
-  const darkGroup=entry.group==='hotel:9'||entry.group==='home:8'||entry.group==='retail:11'||entry.group==='office:6';
-  const mergedWin=batchMeshes(scene,entry.sources,'bund-windows-'+(entry.group??'all'),entry.palette,false,darkGroup?0:240);
+  const darkGroup=entry.canonical==='w:0';
+  for(const s of entry.sources)s.userData.range=285;
+  const mergedWin=batchMeshes(scene,entry.sources,'bund-windows-'+(entry.canonical??'all'),entry.palette,false,darkGroup?0:220);
   for(const m of mergedWin){
    let out;
    if(m.parent!==scene){out=addStaticBatch([m],m.material);}
