@@ -472,7 +472,7 @@ export function createYuyuan({scene,world=null,getVehicles=()=>[],getPos,getStat
  function cullView(camera,highView=false,isMobile=false){
   if(!camera)return;
   const cp=camera.position,dx=Math.max(-78-cp.x,cp.x-6,0),dy=Math.max(0,cp.y-38),dz=Math.max((192+YUYUAN_SHIFT)-cp.z,cp.z-(276+YUYUAN_SHIFT),0);
-  const limit=highView?(isMobile?115:190):(isMobile?120:140),farCull=(dx*dx+dy*dy+dz*dz)>limit*limit;
+  const limit=highView?(isMobile?165:190):(isMobile?120:140),farCull=(dx*dx+dy*dy+dz*dz)>limit*limit;
   if(innerClassic){
    const wantClassic=!farCull&&(highView||cp.y>=31.5||(cp.x>=-86&&cp.x<=6));
    if(innerClassic.visible!==wantClassic)innerClassic.visible=wantClassic;

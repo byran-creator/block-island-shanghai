@@ -1442,7 +1442,7 @@ const transferPassage=scene.getObjectByName('nanjing-paid-transfer-passage');
 if(transferPassage){transferPassage.matrixAutoUpdate=false;const inner=transferPassage.getObjectByName('occluded-metro-interior');if(inner)inner.matrixAutoUpdate=false;}
 function freezeStaticSubtrees(node){let allStatic=!node.matrixAutoUpdate&&!node.userData.skipHiddenMatrices;for(let i=0;i<node.children.length;i++)if(!freezeStaticSubtrees(node.children[i]))allStatic=false;if(allStatic&&node!==scene&&node.updateMatrixWorld===origUMW)freezeStaticLeaf(node);return allStatic;}
 scene.matrixAutoUpdate=false;
-const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:145,highStaticMaxDist:isMobile?78:190,dynamicMaxDist:isMobile?74:118,highDynamicMaxDist:isMobile?64:205});
+const sceneInstances=createSceneInstances(scene,{mergeSolidColors:!!renderer.isWebGLRenderer,staticMaxDist:isMobile?96:145,highStaticMaxDist:isMobile?165:190,dynamicMaxDist:isMobile?74:118,highDynamicMaxDist:isMobile?180:205});
 freezeStaticSubtrees(scene);
 const shaderWarmup=startShaderWarmup({renderer,scene,camera,busy:()=>document.hidden||active||!!story?.filming||!!startupPreview});
 await Promise.race([shaderWarmup.frontDone,new Promise(resolve=>setTimeout(resolve,450))]);
