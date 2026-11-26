@@ -1,4 +1,5 @@
-// Temporary playtest excerpt. Served with the game to avoid external redirects.
+// Public edition plays no loading-screen audio (in-game score starts after entering);
+// private friends edition (`data-edition="friends"`) keeps the playtest excerpt.
 import {primeGameAudioContext} from './audio-context.js';
 import {createMobileLayout} from './mobile-layout.js';
 export const LOADING_SONG={title:'上海滩',artist:'叶丽仪',audio:new URL('./assets/audio/loading-shanghai-4297cd84acac.mp3',import.meta.url).href,source:'https://music.163.com/song?id=5284592'};
@@ -48,24 +49,26 @@ export function createLoadingMusic({audio,events,volume=.12,enabled=()=>true,onS
 
 // Separate lightweight entry: audio can run while game.js builds the city.
 if(typeof document!=='undefined'&&loadingMusicAllowed(location)&&(document.currentScript?.id==='loading-music-bootstrap'||document.getElementById('loading-music-credit'))&&document.documentElement.dataset.gameStarted!=='true'){
+ const isFriends=document.documentElement?.dataset?.edition==='friends';
  const preferences=()=>{try{return JSON.parse(localStorage.getItem('block-island-music-preferences')||'{}')??{};}catch{return {};}};
  const enabled=()=>preferences().enabled!==false&&document.getElementById('music-toggle')?.getAttribute('aria-pressed')!=='false'&&document.getElementById('sound')?.getAttribute('aria-pressed')!=='false';
  const volume=()=>{const saved=preferences().volume,slider=document.getElementById('music-volume');return (Number.isFinite(saved)?saved:slider?Number(slider.value)/100:.28)*.45;};
  let status='';
- const paint=()=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=status==='playing'?'正在播放':status==='muted'?'配乐已静音':status==='error'?'音乐加载失败':status==='blocked'?'等待浏览器允许播放':'';if(credit)credit.hidden=status==='stopped';};
+ const paint=()=>{const credit=document.getElementById('loading-music-credit'),node=document.getElementById('loading-music-state');if(node)node.textContent=status==='playing'?'正在播放':status==='muted'?'配乐已静音':status==='error'?'音乐加载失败':status==='blocked'?'等待浏览器允许播放':'';if(credit)credit.hidden=!isFriends||status==='stopped';};
  const ready=()=>{document.removeEventListener('DOMContentLoaded',ready);paint();};
  const onStatus=state=>{status=state;document.documentElement.dataset.loadingMusicState=state;paint();if(state==='stopped')document.removeEventListener('DOMContentLoaded',ready);};
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);
- const music=createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus});
+ if(isFriends&&document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);
+ const music=isFriends?createLoadingMusic({audio:new Audio(),events:document,volume,enabled,onStatus}):null;
+ if(!isFriends){const credit=document.getElementById('loading-music-credit');if(credit)credit.hidden=true;}
  function begin(){
   document.removeEventListener('block-island-load-start',begin);
   document.removeEventListener('click',welcomeClick,true);
-  music.start();
+  music?.start();
   try{primeGameAudioContext();}catch{}
   if(typeof navigator!=='undefined'&&(navigator.maxTouchPoints>0||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)))try{
    const layout=createMobileLayout({body:document.body,view:()=>({width:innerWidth,height:innerHeight}),document,orientation:screen.orientation,storage:localStorage});void layout.requestNative();
   }catch{}
  }
  function welcomeClick(event){if(document.documentElement.dataset.gameStarted!=='true'&&event.target.closest?.('#play'))begin();}
- if(document.documentElement.dataset.startGated==='true'){document.addEventListener('click',welcomeClick,true);document.addEventListener('block-island-load-start',begin);}else music.start();
+ if(document.documentElement.dataset.startGated==='true'){document.addEventListener('click',welcomeClick,true);document.addEventListener('block-island-load-start',begin);}else music?.start();
 }

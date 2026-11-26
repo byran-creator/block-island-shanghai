@@ -263,15 +263,36 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
   }
   if(!deferView)paint();
  }
+ function koiAt(f,i,u){
+  return [
+   f.cx+f.rx*(.64*Math.cos(u)+.30*Math.cos(1.85*u+i*1.3)),
+   f.cz+f.rz*(.64*Math.sin(u)+.30*Math.sin(1.42*u+i*2.1))
+  ];
+ }
+ function duckAt(d,pair,u){
+  return [
+   d.cx+d.rx*(.64*Math.cos(u)+.28*Math.cos(1.7*u+pair*1.5)),
+   d.cz+d.rz*(.64*Math.sin(u)-.28*Math.sin(2.1*u+pair*1.1))
+  ];
+ }
+ function dfAt(df,idx,u){
+  return [
+   df.cx+df.rx*(.66*Math.cos(u)+.28*Math.cos(2.3*u+idx)),
+   df.cz+df.rz*(.64*Math.sin(1.5*u+idx)+.28*Math.sin(u))
+  ];
+ }
  function paint(){
+  const du=0.02;
   if(paintedWater!==waterElapsed){
    const elapsed=waterElapsed;
    paintedWater=elapsed;
    for(let i=0;i<fish.length;i++){
-    const f=fish[i],a=f.phase+elapsed*f.speed,sa=Math.sin(a),ca=Math.cos(a),x=f.cx+f.rx*ca,z=f.cz+f.rz*sa,y=f.height+Math.sin(elapsed*.75+i)*.008;
-    const yaw=Math.atan2(-f.rx*sa*f.speed,f.rz*ca*f.speed);
+    const f=fish[i],u=f.phase+elapsed*f.speed+0.38*Math.sin(elapsed*f.speed*0.62+i*1.7);
+    const [x,z]=koiAt(f,i,u),[nx,nz]=koiAt(f,i,u+du),vx=nx-x,vz=nz-z;
+    const y=f.height+Math.sin(elapsed*.75+i)*.008,yaw=Math.atan2(vx,vz);
+    const tailAmp=0.18+Math.min(0.24,Math.hypot(vx,vz)*(f.speed/du)*0.22);
     dummy.position.set(x,y,z);dummy.rotation.set(0,yaw,0);dummy.scale.setScalar(f.scale);dummy.updateMatrix();bodies.setMatrixAt(i,dummy.matrix);
-    dummy.position.set(x-Math.sin(yaw)*.4*f.scale,y,z-Math.cos(yaw)*.4*f.scale);dummy.rotation.y=yaw+Math.sin(elapsed*(4.2+i%3)+i)*.25;dummy.updateMatrix();tails.setMatrixAt(i,dummy.matrix);
+    dummy.position.set(x-Math.sin(yaw)*.4*f.scale,y,z-Math.cos(yaw)*.4*f.scale);dummy.rotation.y=yaw+Math.sin(elapsed*(3.8+i%3)+i)*tailAmp;dummy.updateMatrix();tails.setMatrixAt(i,dummy.matrix);
    }
    for(let i=0;i<ripples.length;i++){const r=ripples[i],u=(elapsed*.11+r.phase)%1,scale=.35+u*.6;dummy.position.set(r.x,22.302,r.z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}
    bodies.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;rings.instanceMatrix.needsUpdate=true;
@@ -280,15 +301,16 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
   if(paintedWildlife===elapsed)return;
   paintedWildlife=elapsed;
 
-  // Animated Mandarin ducks swimming in pairs
-  for(const d of ducks){
-   const a=d.phase+elapsed*d.speed,sa=Math.sin(a),ca=Math.cos(a);
-   const dx=d.cx+d.rx*ca, dz=d.cz+d.rz*sa;
-   const bobY=22.31+Math.sin(elapsed*2.6+d.phase)*0.01;
-   const yaw=Math.atan2(-d.rx*sa, d.rz*ca)+Math.PI;
-   const pitch=Math.sin(elapsed*2.6+d.phase)*0.035;
+  // Animated Mandarin ducks swimming in coordinated meandering pairs
+  for(let idx=0;idx<ducks.length;idx++){
+   const d=ducks[idx],pair=idx>>1,lead=ducks[pair*2];
+   const u=lead.phase+elapsed*lead.speed+0.48*Math.sin(elapsed*lead.speed*0.52+pair*2.3)-(idx%2?0.28:0);
+   const [dx,dz]=duckAt(d,pair,u),[nx,nz]=duckAt(d,pair,u+du);
+   const bobY=22.31+Math.sin(elapsed*2.4+d.phase)*0.01;
+   const yaw=Math.atan2(nx-dx,nz-dz)+Math.PI;
+   const pitch=Math.sin(elapsed*2.4+d.phase)*0.025;
    d.mesh.position.set(dx,bobY,dz);
-   d.mesh.rotation.set(pitch,yaw,0);
+   d.mesh.rotation.set(pitch,yaw,Math.sin(elapsed*2.4+d.phase)*0.02);
   }
 
   // Animated basking turtles idle head nodding
@@ -297,12 +319,12 @@ export function createYuyuanWater(root,{ponds,deferView=false}){
    t.mesh.rotation.y=t.rotY+Math.sin(elapsed*0.7+i*2)*0.08;
   }
 
-  // Animated dragonflies hovering and wing flutter
-  for(const df of dragonflies){
-   const a=df.phase+elapsed*df.speed,sa=Math.sin(a),ca=Math.cos(a);
-   const fx=df.cx+df.rx*ca, fz=df.cz+df.rz*sa;
+  // Animated dragonflies hovering, darting in figure-8 patterns and wing flutter
+  for(let idx=0;idx<dragonflies.length;idx++){
+   const df=dragonflies[idx],u=df.phase+elapsed*df.speed*0.65+0.62*Math.sin(elapsed*df.speed*0.95+idx*1.9);
+   const [fx,fz]=dfAt(df,idx,u),[nx,nz]=dfAt(df,idx,u+du);
    const fy=df.cy+Math.sin(elapsed*3.5+df.phase)*0.06;
-   const yaw=Math.atan2(-df.rx*sa, df.rz*ca)+Math.PI/2;
+   const yaw=Math.atan2(nx-fx,nz-fz)+Math.PI/2;
    df.group.position.set(fx,fy,fz);
    df.group.rotation.set(0,yaw,0);
    const wingFlap=Math.sin(elapsed*42+df.phase)*0.32;

@@ -8,7 +8,7 @@ import {metroPlatformDirection as basePlatformDirection,metroBackOptions} from '
 import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
 import {metroSignCanvasSize} from './metro-sign-paint.js';
 import {createMetroSignArt} from './metro-sign-art.js';
-import {METRO_POSTER_SRC,METRO_POSTER_ASPECT} from './metro-poster-art.js';
+import {FRIENDS_METRO_POSTER_URL,METRO_POSTER_ASPECT,createShanghaiCityPosterCanvas} from './metro-poster-art.js';
 import {styleNpc} from './npc-appearance.js';
 import {announcementLines,speakVoiceLines} from './voice-settings.js';
 import {terrazzoTexture,decorateMetroStation} from './metro-decor.js';
@@ -102,8 +102,10 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function announce(text,english,{cue='station',speaker=lineNumber+'号线广播'}={}){const speech=globalThis.speechSynthesis,lines=announcementLines(speech,'metro',text,english);const isMobile=typeof window!=='undefined'&&(('ontouchstart' in window)||window.innerWidth<=768||window.innerHeight<=520);caption.textContent=isMobile?(speaker+' · '+text):(speaker+' · '+lines.map(line=>line.text).join(' / '));caption.hidden=false;subtitleTime=isMobile?5:8;if(!audioAllowed||!getSound())return;sounds.play(cue);try{if(speech?.speaking||speech?.pending)return;ownSpeech=speakVoiceLines(speech,globalThis.SpeechSynthesisUtterance,lines,{onEnd:()=>ownSpeech=false})>0;}catch{ownSpeech=false;}}
  function suspend(){audioAllowed=false;sounds.suspend();if(ownSpeech){globalThis.speechSynthesis?.cancel();ownSpeech=false;}}
  function stationSign(lines,x,y,z,w,h,options={}){const a=board(root,lines,x,y,z,w,h,'#f4f7f4','#192123',{...options,transit:true});a.mesh.rotation.y=options.yaw??0;a.mesh.userData.stationSign={y,height:h,width:w,options};cube(a.mesh,'#555b5c',0,0,0,w+.035,h+.035,.075);if(!options.wall){const ceiling=y>14?21.5:10.8,hang=Math.max(.15,ceiling>y+h/2?ceiling-y-h/2:.46);for(const side of [-1,1])cube(a.mesh,'#687273',side*w*.36,h/2+hang/2,0,.035,hang,.035);}return a;}
- const posterTexture=new THREE.Texture();posterTexture.colorSpace=THREE.SRGBColorSpace;posterTexture.minFilter=THREE.LinearMipmapLinearFilter;posterTexture.magFilter=THREE.LinearFilter;posterTexture.anisotropy=4;
- if(typeof Image!=='undefined'){const art=new Image();art.onload=()=>{posterTexture.image=art;posterTexture.needsUpdate=true;};art.src=METRO_POSTER_SRC;}
+ const isFriendsEdition=typeof document!=='undefined'&&document.documentElement?.dataset?.edition==='friends';
+ const cityPosterCanvas=!isFriendsEdition?createShanghaiCityPosterCanvas():null;
+ const posterTexture=cityPosterCanvas?new THREE.CanvasTexture(cityPosterCanvas):new THREE.Texture();posterTexture.colorSpace=THREE.SRGBColorSpace;posterTexture.minFilter=THREE.LinearMipmapLinearFilter;posterTexture.magFilter=THREE.LinearFilter;posterTexture.anisotropy=4;
+ if(isFriendsEdition&&typeof Image!=='undefined'){const art=new Image();art.onload=()=>{posterTexture.image=art;posterTexture.needsUpdate=true;};art.src=new URL(FRIENDS_METRO_POSTER_URL,typeof document!=='undefined'?document.baseURI:import.meta.url).href;}
  const posterMaterial=new THREE.MeshBasicMaterial({map:posterTexture});
  for(const s of METRO_STATIONS){
   slabMats.clear();
@@ -122,7 +124,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   state.bag=cube(root,'#cfb064',s.x-24,17.28,s.z-8,.6,.6,.5);state.bag.visible=false;
   stationSign(['安全检查','Security check'],s.x-22,20.25,s.z-8,4.8,.7,{line2:false,arrow:'↓',pictogram:'bag'});
   const localGuide=s.localGuide??['去外滩或东方明珠怎么走？',s.id==='nanjing'?'出站后沿南京路向东走到外滩；乘浦东方向列车可到陆家嘴。':'1号方向出站后去东方明珠；乘市区方向列车到南京东路，再往东走到外滩。'];
-  const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐'+lineNumber+'号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],localGuide,['广告上的演唱会能买票吗？','墙上展示的是玩家提供的华晨宇演唱会图片，不代表真实场次，站内也不提供售票。']]}};staff.push(employee);state.staffRoot=employee.root;
+  const posterChoice=isFriendsEdition?['墙上的海报是什么主题？','墙上展示的是朋友分享版限定主题海报，不代表真实场次，站内也不提供售票。']:['墙上的海报是什么主题？','这是“漫游申城 · 上海城市印象”主题公益灯箱，欢迎乘地铁打卡陆家嘴、南京路和豫园。'];
+  const employee={root:person(root,0,s.x-25,16,s.z-6,'#6a91a9'),person:true,metroRole:'地铁安检员',guide:{intro:'欢迎乘坐'+lineNumber+'号线。把背包放到旁边安检机上，检查完成后再进闸。你的物品会原样保留。',choices:[['怎么坐地铁？','按 V 放包安检，等检查完成。到绿色箭头闸机按 V 刷免费体验票，再沿自动扶梯下到B2。'],localGuide,posterChoice]}};staff.push(employee);state.staffRoot=employee.root;
   const gx=s.x+METRO_HALL.gateX,gz=s.z+METRO_HALL.gateZ;
   for(const b of metroFarePartitions(s))cube(root,'#a7b4bc',b.x,17.75,b.z,b.w,3.5,b.d,.42);
   for(const z of [gz-2,gz+2]){cube(root,'#b9c3c6',gx,16.6,z,2,1.2,.48);cube(root,'#28403e',gx,17.22,z,.8,.05,.35);}

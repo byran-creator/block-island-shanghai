@@ -457,14 +457,19 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
    const sway=Math.sin(elapsed*1.4+w.phase)*0.07;
    w.group.rotation.z=sway;w.group.rotation.x=Math.cos(elapsed*1.1+w.phase)*0.05;
   }
-  // Graceful swimming swans gliding, water bobbing, and neck foraging
-  for(const sw of animatedSwans){
-   const t=elapsed*sw.speed+sw.phase;
-   const px=sw.cx+Math.cos(t)*sw.rx, pz=sw.cz+Math.sin(t)*sw.rz;
+  const du=0.02;
+  // Graceful swimming swans with glide-and-linger S-curve foraging
+  for(let idx=0;idx<animatedSwans.length;idx++){
+   const sw=animatedSwans[idx];
+   const u=elapsed*sw.speed*0.85+sw.phase+0.42*Math.sin(elapsed*sw.speed*0.45+idx*1.9);
+   const px=sw.cx+sw.rx*(.64*Math.cos(u)+.28*Math.cos(1.65*u+idx*1.4));
+   const pz=sw.cz+sw.rz*(.64*Math.sin(u)-.28*Math.sin(2.05*u+idx*0.9));
+   const nx=sw.cx+sw.rx*(.64*Math.cos(u+du)+.28*Math.cos(1.65*(u+du)+idx*1.4));
+   const nz=sw.cz+sw.rz*(.64*Math.sin(u+du)-.28*Math.sin(2.05*(u+du)+idx*0.9));
    const bob=Math.sin(elapsed*2.4+sw.phase)*0.016;
    sw.root.position.set(px,22.38+bob,pz);
-   const yaw=Math.atan2(-sw.rx*Math.sin(t),sw.rz*Math.cos(t));
-   sw.root.rotation.set(Math.sin(elapsed*2.4+sw.phase)*0.025,yaw,0);
+   const yaw=Math.atan2(nx-px,nz-pz);
+   sw.root.rotation.set(Math.sin(elapsed*2.4+sw.phase)*0.025,yaw,Math.sin(elapsed*1.8+sw.phase)*0.02);
    sw.neck.rotation.x=Math.sin(elapsed*1.8+sw.phase)*0.22;
    sw.neck.rotation.y=Math.sin(elapsed*0.9+sw.phase)*0.32;
    if(sw.wings[0])sw.wings[0].rotation.z=0.14+Math.sin(elapsed*3.2+sw.phase)*0.06;
@@ -477,12 +482,19 @@ export function createYuyuanGardenAssets(root,{cube,mat,buildings,batchDetails=b
    eg.neck.rotation.x=(Math.sin(elapsed*0.8+eg.phase)>0.4)?0.28*Math.sin(elapsed*2.5):0.0;
    eg.neck.rotation.y=Math.sin(elapsed*0.6+eg.phase)*0.22;
   }
-  // Circling and wing flapping swallows
-  for(const sw of animatedSwallows){
-   const t=elapsed*(sw.speed/sw.radius)+sw.phase;
-   sw.root.position.set(sw.cx+Math.cos(t)*sw.radius,sw.cy+Math.sin(t*2)*0.4,sw.cz+Math.sin(t)*sw.radius);
-   sw.root.rotation.y=-t+Math.PI/2;
-   const flap=Math.sin(elapsed*22)*0.45;
+  // Swooping figure-8 swallows with banking and wingbeat-glide cadence
+  for(let idx=0;idx<animatedSwallows.length;idx++){
+   const sw=animatedSwallows[idx];
+   const u=elapsed*(sw.speed/sw.radius)*0.85+sw.phase+0.25*Math.sin(elapsed*0.7+idx);
+   const px=sw.cx+sw.radius*(.70*Math.cos(u)+.26*Math.cos(2.1*u+idx));
+   const pz=sw.cz+sw.radius*(.66*Math.sin(1.4*u+idx)+.26*Math.sin(u));
+   const py=sw.cy+Math.sin(u*2.1+idx)*0.55+Math.cos(u*0.9)*0.25;
+   const nx=sw.cx+sw.radius*(.70*Math.cos(u+du)+.26*Math.cos(2.1*(u+du)+idx));
+   const nz=sw.cz+sw.radius*(.66*Math.sin(1.4*(u+du)+idx)+.26*Math.sin(u+du));
+   sw.root.position.set(px,py,pz);
+   sw.root.rotation.set(0,Math.atan2(nx-px,nz-pz),Math.sin(u*1.5+idx)*0.24);
+   const glide=Math.sin(elapsed*1.4+idx)>0.55?0.25:1;
+   const flap=Math.sin(elapsed*22)*0.45*glide;
    if(sw.wings[0])sw.wings[0].rotation.z=flap;
    if(sw.wings[1])sw.wings[1].rotation.z=-flap;
   }
