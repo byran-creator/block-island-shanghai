@@ -8,7 +8,7 @@ import {metroPlatformDirection as basePlatformDirection,metroBackOptions} from '
 import {metroFixtures,fixtureCollision,passengerSpot} from './metro-fixtures.js';
 import {metroSignCanvasSize} from './metro-sign-paint.js';
 import {createMetroSignArt} from './metro-sign-art.js';
-import {FRIENDS_METRO_POSTER_URL,METRO_POSTER_ASPECT,createShanghaiCityPosterCanvas} from './metro-poster-art.js';
+import {PUBLIC_METRO_POSTER_URL,FRIENDS_METRO_POSTER_URL,METRO_POSTER_ASPECT} from './metro-poster-art.js';
 import {styleNpc} from './npc-appearance.js';
 import {announcementLines,speakVoiceLines} from './voice-settings.js';
 import {terrazzoTexture,decorateMetroStation} from './metro-decor.js';
@@ -89,8 +89,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   const different=!!options?.backLines||options?.layout==='route'||['←','→'].includes(options?.arrow)||options?.sections?.some(s=>['←','→'].includes(s.arrow));
   const backOptions=options?{...metroBackOptions(options),...options.backOptions}:null,shared=!['arrival','route'].includes(options?.layout);
   let frontArt=signArt.acquire(lines,options,size.width,size.height,color,bg,shared),backArt=different?signArt.acquire(options?.backLines??lines,backOptions,size.width,size.height,color,bg,shared):frontArt;
-  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),front=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:frontArt.texture})),back=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:backArt.texture}));
-  front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.04:.012;back.position.z=options?.transit?-.04:-.012;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);m.userData.signFaces={front:options,back:backOptions};parent.add(m);
+  const m=new THREE.Group(),geometry=new THREE.PlaneGeometry(w,h),front=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:frontArt.texture,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4})),back=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:backArt.texture,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
+  front.userData.panel=back.userData.panel=true;front.position.z=options?.transit?.048:.018;back.position.z=options?.transit?-.048:-.018;back.rotation.y=Math.PI;m.add(front,back);m.position.set(x,y,z);m.userData.signFaces={front:options,back:backOptions};parent.add(m);
   let pending=null;
   const paint=text=>{pending=null;m.userData.signText={front:[...text],back:[...(options?.backLines??text)]};frontArt=signArt.repaint(frontArt,text);backArt=different?signArt.repaint(backArt,options?.backLines??text):frontArt;front.material.map=frontArt.texture;back.material.map=backArt.texture;};paint(lines);
   function queuePaint(text){pending=text;m.userData.signText={front:[...text],back:[...(options?.backLines??text)]};}
@@ -103,9 +103,8 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
  function suspend(){audioAllowed=false;sounds.suspend();if(ownSpeech){globalThis.speechSynthesis?.cancel();ownSpeech=false;}}
  function stationSign(lines,x,y,z,w,h,options={}){const a=board(root,lines,x,y,z,w,h,'#f4f7f4','#192123',{...options,transit:true});a.mesh.rotation.y=options.yaw??0;a.mesh.userData.stationSign={y,height:h,width:w,options};cube(a.mesh,'#555b5c',0,0,0,w+.035,h+.035,.075);if(!options.wall){const ceiling=y>14?21.5:10.8,hang=Math.max(.15,ceiling>y+h/2?ceiling-y-h/2:.46);for(const side of [-1,1])cube(a.mesh,'#687273',side*w*.36,h/2+hang/2,0,.035,hang,.035);}return a;}
  const isFriendsEdition=typeof document!=='undefined'&&document.documentElement?.dataset?.edition==='friends';
- const cityPosterCanvas=!isFriendsEdition?createShanghaiCityPosterCanvas():null;
- const posterTexture=cityPosterCanvas?new THREE.CanvasTexture(cityPosterCanvas):new THREE.Texture();posterTexture.colorSpace=THREE.SRGBColorSpace;posterTexture.minFilter=THREE.LinearMipmapLinearFilter;posterTexture.magFilter=THREE.LinearFilter;posterTexture.anisotropy=4;
- if(isFriendsEdition&&typeof Image!=='undefined'){const art=new Image();art.onload=()=>{posterTexture.image=art;posterTexture.needsUpdate=true;};art.src=new URL(FRIENDS_METRO_POSTER_URL,typeof document!=='undefined'?document.baseURI:import.meta.url).href;}
+ const posterTexture=new THREE.Texture();posterTexture.colorSpace=THREE.SRGBColorSpace;posterTexture.minFilter=THREE.LinearMipmapLinearFilter;posterTexture.magFilter=THREE.LinearFilter;posterTexture.anisotropy=4;
+ if(typeof Image!=='undefined'){const art=new Image();art.onload=()=>{posterTexture.image=art;posterTexture.needsUpdate=true;};art.src=new URL(isFriendsEdition?FRIENDS_METRO_POSTER_URL:PUBLIC_METRO_POSTER_URL,typeof document!=='undefined'?document.baseURI:import.meta.url).href;}
  const posterMaterial=new THREE.MeshBasicMaterial({map:posterTexture});
  for(const s of METRO_STATIONS){
   slabMats.clear();
@@ -152,7 +151,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
   // Different phases and destinations prevent passengers marching in identical rows.
   for(let i=0;i<34;i++){const y=i<14?16:6,z=i<14?s.z-11+(i%4)*2.4:s.z-3.4+(i%5)*1.3,x=s.x-31+(i*7.73)%62;
    const gx=s.x+METRO_HALL.gateX;let self=null;
-   const clear=(x,y,z)=>!(y===16&&x>s.x-27&&x<s.x-10&&z<s.z-4&&z>s.z-13)&&!fixtureCollision(state.fixtures,x,y,z,.38,1.92)&&Math.abs(x-gx)>1.4&&!METRO_RAMPS.some(r=>Math.abs(r.z-z)<r.width+.4&&Math.abs(y-(metroRampFloor(x,z)??-100))<2)&&!state.people.some(p=>p!==self&&Math.abs(p.y-y)<2&&Math.abs(p.z-z)<.7&&Math.abs(p.x-x)<2);
+   const clear=(x,y,z)=>!(y===16&&x>s.x-27&&x<s.x-10&&z<s.z-4&&z>s.z-13)&&!fixtureCollision(state.fixtures,x,y,z,.38,1.92)&&Math.abs(x-gx)>1.4&&!METRO_RAMPS.some(r=>{const d=(x-r.x)*r.dir;return d>=-1.8&&d<=r.length+1.8&&Math.abs(z-r.z)<r.width+.65&&y>=Math.min(r.from,r.to)-1&&y<=Math.max(r.from,r.to)+1;})&&!state.people.some(p=>p!==self&&Math.abs(p.y-y)<2&&Math.abs(p.z-z)<.7&&Math.abs(p.x-x)<2);
    const spot=passengerSpot(s,x,z,y,clear);if(!spot)continue;const p=person(root,i,spot.x,y,spot.z);self={root:p,...spot,phase:i*2.173,speed:.28+(i%7)*.055,clear};state.people.push(self);}
   const frame=config?.stationFrame?.(s);
   frameNodes(firstNode,frame);
@@ -456,7 +455,7 @@ export function createMetro({scene,getPos,place,setView,notify,getAudio,getSound
    if(ride?.index===t.index&&st.phase==='dwell'&&(service?isTerminal(st):st.station!==ride.from)&&st.remaining<3){st.open?end():end(true);notify('已到 '+METRO_STATIONS[st.station].name+' · 请从对面站台返程，或沿扶梯出站。');}
   }
   const alightingStation=observerIndex>=0&&playerLocal.y<23?observerIndex
-   :(playerWorld.y<29?stations.findIndex(s=>s.visible&&(s.worldExits?.some(e=>(playerWorld.x-e.x)**2+(playerWorld.z-e.z)**2<55*55)||(playerWorld.y<23&&(playerWorld.x-s.worldCenter.x)**2+(playerWorld.z-s.worldCenter.z)**2<72*72))):-1);
+   :(playerWorld.y<29?stations.findIndex(s=>s.worldExits?.some(e=>(playerWorld.x-e.x)**2+(playerWorld.z-e.z)**2<65*65)||(s.visible&&playerWorld.y<23&&(playerWorld.x-s.worldCenter.x)**2+(playerWorld.z-s.worldCenter.z)**2<72*72)):-1);
   if(alightingStation>=0)alighting.tick(alightingStation,timeSinceArrival(alightingStation,1),timeSinceArrival(alightingStation,-1),{dt,player:playerWorld,interiorVisible:visuals.interior.visible});
   else alighting.clear();
   if(playing)walkRider(dt,keys);positionRider();const p=getPos(),r=metroRampAt(p.x,p.z),h=metroRampFloor(p.x,p.z);if(!ride&&canCarry()&&r&&Math.abs(p.y-h)<.13){const d=(p.x-r.x)*r.dir;if(d>.05&&d<r.length-.05){const step=(p.z>=r.z?1:-1)*r.dir*dt*.7,x=p.x+step;place({x,y:metroRampFloor(x,p.z),z:p.z},r);}}

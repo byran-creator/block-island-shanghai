@@ -43,7 +43,7 @@ function buildStrollLoop(surfacePts,speed,index){
 function routeFor(s,ramp,exits,side,index,nearestDoor,frame){
  const x=s.x+nearestDoor(DOOR_X[index]),lane=s.z+side*2.5,floor=ramp.to;
  const foot=ramp.x+ramp.dir*ramp.length,approach=foot+ramp.dir*1.8,top=ramp.x-ramp.dir*.8;
- const belt=ramp.z+(index%3-1)*.46;
+ const belt=ramp.z-.34+(index%3)*.12;
  // Doors at either end of the station avoid the platform escalator opening.
  const bypass=side>0&&x<ramp.x?s.z-2.5:lane;
  const points=[
@@ -81,7 +81,7 @@ function routeFor(s,ramp,exits,side,index,nearestDoor,frame){
   pushExitGate();
   const rExit=exits[index%exits.length];
   const eBottom=rExit.x+rExit.dir*rExit.length,eTop=rExit.x;
-  const eBelt=rExit.z+(index%2?-.28:.28);
+  const eBelt=(rExit.width??1.5)<1?Math.floor(rExit.z)+.26+(index%2?0:.06):rExit.z-.34+(index%2?0:.14);
   const streetStep=eTop-rExit.dir*3.2;
   const st=rExit.from;
   if(s.id==='nanjing'&&rExit.exit===4){
@@ -195,9 +195,9 @@ export function createMetroAlighting({parent,stations,ramps,nearestDoor,stationF
     const newWave=age<actor.lastAge-1;
     if(newWave&&actor.mode!=='idle'){
      const dist=player?Math.hypot(actor.root.position.x-player.x,actor.root.position.z-player.z):Infinity;
-     const recycleUnderground=(!player||player.y<23.5)&&(actor.mode==='stroll'||actor.y>=16);
-     const recycleSurface=player&&player.y>=23.5&&(actor.mode==='stroll'?dist>36:actor.y<15.5);
-     if(recycleUnderground||recycleSurface){actor.mode='idle';actor.elapsed=0;}
+     const underground=!player||player.y<16.5;
+     const recycle=underground?(actor.mode==='stroll'||actor.y>=16):(actor.mode==='stroll'?dist>48:actor.y<15.5);
+     if(recycle){actor.mode='idle';actor.elapsed=0;}
     }
     if(actor.mode==='stroll'){
      actor.elapsed+=dt>0?dt:0;
@@ -222,7 +222,7 @@ export function createMetroAlighting({parent,stations,ramps,nearestDoor,stationF
      p=pose(actor,route.segments,actor.elapsed,area.frame,opacity);
     }
     actor.y=p.y;
-    const undergroundHidden=!interiorVisible||(p.y<15.5&&player&&player.y>=24.5);
+    const undergroundHidden=(!interiorVisible&&p.y<16.2)||(p.y<15.5&&player&&player.y>=24.5);
     actor.root.visible=!undergroundHidden;
     if(actor.root.visible)visible=true;
    }

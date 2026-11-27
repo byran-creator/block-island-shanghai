@@ -1,5 +1,6 @@
-// Public Shanghai city & public-service lightbox poster canvas; friends edition loads external JPEG asset.
+// Public Shanghai city & public-service lightbox poster image; friends edition uses external JPEG asset.
 export const METRO_POSTER_ASPECT=0.75;
+export const PUBLIC_METRO_POSTER_URL='./assets/public-metro-poster.jpg';
 export const FRIENDS_METRO_POSTER_URL='./assets/friends-metro-poster.jpg';
 
 export function createShanghaiCityPosterCanvas(){
